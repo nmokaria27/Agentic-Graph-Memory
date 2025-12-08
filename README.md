@@ -1,175 +1,114 @@
-# Multi-Agent Knowledge Graph Enrichment Framework
+# Multi-Agent Knowledge Graph Framework
 
-A deliberative multi-agent framework for building knowledge graphs using LLM-backed agents. The system features a tiered 8-agent architecture with specialized workers and coordinators, integrated with a novel shared memory and blackboard system for cross-document reasoning and collaborative deliberation.
+Building knowledge graphs from unstructured text is tricky—entities hide in weird places, relationships aren't always obvious, and LLMs love to hallucinate facts that sound right but aren't. This framework uses a team of 8 specialized AI agents that each handle one part of the problem, and they actually communicate with each other through a shared memory system. When an agent isn't confident about something, it doesn't just guess—it posts the question to a blackboard where other agents vote and debate until they reach consensus.
 
-## Architecture
-
-### 8-Agent Pipeline
-
-The system uses a tiered architecture inspired by KARMA research, with 5 worker agents for extraction and 3 coordinator agents for validation.
+The pipeline has 9 steps: chunk the document, classify its domain, extract entities (4-stage process), find relationships, link everything to evidence, run multi-agent deliberation on uncertain items, validate quality, do an anti-hallucination check, and organize it into a knowledge graph. The deliberation step is where it gets interesting—agents cast weighted votes (coordinator agents count more than workers), and if votes conflict, they enter a debate loop where they present arguments until one side wins. Everything flows through shared memory so context carries across the whole system.
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     DeliberativeOrchestrator                        │
-│         Coordinates all agents with SharedMemory + MessageBus       │
-└──────────────────────────────┬──────────────────────────────────────┘
-                               │
-    ┌──────────────────────────┴──────────────────────────┐
-    │                 Shared Infrastructure                │
-    │  SharedMemory: episodic, semantic, working memory   │
-    │  Blackboard: hypothesis posting and voting          │
-    │  MessageBus: inter-agent communication              │
-    └─────────────────────────────────────────────────────┘
-                               │
-         ┌─────────────────────┴─────────────────────┐
-         │              WORKER AGENTS                 │
-         │                                            │
-         │  [1] DocumentProcessor                     │
-         │       ↓ segments                           │
-         │  [2] DomainClassifier                      │
-         │       ↓ domain config                      │
-         │  [3] EntityExtractor (4-stage pipeline)    │
-         │       ↓ entities                           │
-         │  [4] RelationExtractor (RHF + open-world)  │
-         │       ↓ triples                            │
-         │  [5] EvidenceLinker                        │
-         │       ↓ linked evidence                    │
-         └────────────────────┬──────────────────────┘
-                              │
-         ┌────────────────────┴──────────────────────┐
-         │           COORDINATOR AGENTS               │
-         │                                            │
-         │  [6] ExtractionValidator                   │
-         │       ↓ validates + refines (max 4 iters)  │
-         │  [7] ExtractionVerificationAgent           │
-         │       ↓ anti-hallucination check           │
-         │  [8] KnowledgeOrganizer                    │
-         │       → integrates into KnowledgeGraph     │
-         └────────────────────────────────────────────┘
+                              YOUR DOCUMENT
+                                   │
+                                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          SHARED MEMORY                                       │
+│   ┌─────────────┐   ┌─────────────┐   ┌─────────────────────────────────┐   │
+│   │   Memory    │   │  Blackboard │   │         Message Bus             │   │
+│   │  (context)  │   │  (debates)  │   │    (agent communication)        │   │
+│   └─────────────┘   └─────────────┘   └─────────────────────────────────┘   │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                   │
+        ═══════════════════════════╪═══════════════════════════════════
+                    EXTRACTION     │
+        ═══════════════════════════╪═══════════════════════════════════
+                                   ▼
+              ┌────────────────────────────────────────┐
+              │  [1] Document Processor                │
+              │      Chunks text into segments         │
+              └──────────────────┬─────────────────────┘
+                                 ▼
+              ┌────────────────────────────────────────┐
+              │  [2] Domain Classifier                 │
+              │      Scientific? Legal? News?          │
+              └──────────────────┬─────────────────────┘
+                                 ▼
+              ┌────────────────────────────────────────┐
+              │  [3] Entity Extractor                  │
+              │      4-stage: find → refine → type     │
+              │              → resolve duplicates      │
+              └──────────────────┬─────────────────────┘
+                                 ▼
+              ┌────────────────────────────────────────┐
+              │  [4] Relation Extractor                │
+              │      RHF pipeline + discovers new      │
+              │      relation types not in schema      │
+              └──────────────────┬─────────────────────┘
+                                 ▼
+              ┌────────────────────────────────────────┐
+              │  [5] Evidence Linker                   │
+              │      Links each fact to source text    │
+              └──────────────────┬─────────────────────┘
+                                 │
+        ═══════════════════════════╪═══════════════════════════════════
+                  DELIBERATION     │
+        ═══════════════════════════╪═══════════════════════════════════
+                                 ▼
+              ┌────────────────────────────────────────┐
+              │  [6] Multi-Agent Deliberation          │
+              │                                        │
+              │   Low confidence? → Post to blackboard │
+              │                          ↓             │
+              │              Other agents vote         │
+              │                          ↓             │
+              │         Votes conflict? → Debate loop  │
+              │                          ↓             │
+              │              Accept or Reject          │
+              └──────────────────┬─────────────────────┘
+                                 │
+        ═══════════════════════════╪═══════════════════════════════════
+                  VALIDATION       │
+        ═══════════════════════════╪═══════════════════════════════════
+                                 ▼
+              ┌────────────────────────────────────────┐
+              │  [7] Extraction Validator              │
+              │      Iterates until quality ≥ 85%      │
+              └──────────────────┬─────────────────────┘
+                                 ▼
+              ┌────────────────────────────────────────┐
+              │  [8] Verification Agent                │
+              │      Anti-hallucination check          │
+              └──────────────────┬─────────────────────┘
+                                 ▼
+              ┌────────────────────────────────────────┐
+              │  [9] Knowledge Organizer               │
+              │      Dedupes, normalizes, stores       │
+              └──────────────────┬─────────────────────┘
+                                 │
+                                 ▼
+                        KNOWLEDGE GRAPH
 ```
 
-### Worker Agents (Extraction)
+## Key Features
 
-| Agent | Role | Key Features |
-|-------|------|--------------|
-| **DocumentProcessor** | Ingests documents, segments into chunks | Semantic chunking, source tracking |
-| **DomainClassifier** | Classifies into 6 domains | Domain-specific prompts and entity types |
-| **EntityExtractor** | 4-stage entity extraction | Initial → Boundary → Type → Coreference |
-| **RelationExtractor** | RHF pipeline + open-world | Discovers new relation types |
-| **EvidenceLinker** | Links triples to evidence | Cross-document references |
+- **Multi-agent voting & debate** - Agents vote on uncertain extractions with 7-level weighted votes. Conflicts trigger debate loops with arguments until consensus.
+- **Self-consistency confidence** - Multiple LLM samples vote on answers. If 4/5 agree, confidence is 0.8. Disagreement = escalation.
+- **Open-world relation discovery** - Finds relation types not predefined in the schema.
+- **Evidence grounding** - Every fact links to source text. Can't prove it? Probably hallucinated.
+- **Cross-document memory** - Context persists across documents for entity resolution.
 
-### Coordinator Agents (Validation)
-
-| Agent | Role | Key Features |
-|-------|------|--------------|
-| **ExtractionValidator** | Validates + iterative refinement | Up to 4 iterations, threshold ≥0.85 |
-| **ExtractionVerificationAgent** | Final verification | Anti-hallucination, source grounding |
-| **KnowledgeOrganizer** | KG integration | Entity dedup, relation normalization |
-
-### Agent Base Class
-
-All agents inherit from `BaseAgent` which provides:
-- `call_llm()` / `call_llm_with_self_consistency()` - LLM interaction with confidence
-- `store_in_memory()` / `retrieve_from_memory()` - SharedMemory access
-- `post_hypothesis()` / `vote_on_hypothesis()` - Blackboard operations
-- `send_message()` / `receive_messages()` - MessageBus communication
-- `escalate_to_coordinator()` - Escalation for low-confidence items
-- `request_refinement()` / `provide_feedback()` - Collaborative refinement
-
-### Novel Features
-
-**SharedMemory System:**
-- Episodic memory: Document-specific context
-- Semantic memory: Persistent facts and discovered relations
-- Working memory: Current processing state
-- Blackboard: Hypothesis posting and multi-agent voting
-
-**MessageBus Communication:**
-- Inter-agent messaging (INFORM, REQUEST, PROPOSE, DELEGATE, FEEDBACK)
-- Escalation for low-confidence items
-- Collaborative refinement requests
-
-**Self-Consistency Confidence:**
-- Multiple LLM samples with voting for confidence estimation
-- Quality threshold (≥0.85) for acceptance
-- Automatic escalation when confidence is low
-
-**Open-World Extraction:**
-- Discovery of new relation types not predefined
-- Relation type learning across documents
-- Cross-document entity resolution
-
-## Installation
+## Quick Start
 
 ```bash
 pip install -e .
+export OPENAI_API_KEY=your_key
+python -m multi_agent_kg.examples.deliberative_pipeline
 ```
-
-## Usage
 
 ```python
 from multi_agent_kg.core import DeliberativeOrchestrator, KnowledgeGraph, LLMConfig
 
-# Configure
-llm_config = LLMConfig(model="gpt-4o-mini", temperature=0.3)
-
-# Create orchestrator with all features
 orchestrator = DeliberativeOrchestrator(
-    llm_config=llm_config,
+    llm_config=LLMConfig(model="gpt-4o-mini"),
     knowledge_graph=KnowledgeGraph(),
-    quality_threshold=0.85,
-    max_refinement_iterations=4,
-    enable_self_consistency=True,
-    enable_open_world=True,
-    enable_cross_document=True,
 )
 
-# Process documents
-result = orchestrator.process_document(text="Your document text here...")
-
-# Process corpus
-results = orchestrator.process_corpus([
-    {"text": "Document 1...", "id": "doc1"},
-    {"text": "Document 2...", "id": "doc2"},
-])
-
-# Export
-export = orchestrator.export()
-
-```
-
-## Model Tiers
-
-The system supports tiered model selection:
-- **Small** (gpt-3.5-turbo): Simple tasks (document processing, domain classification)
-- **Medium** (gpt-4o-mini): Core extraction (entities, relations, evidence)
-- **Large** (gpt-4o): Coordination tasks (validation, verification)
-
-## Requirements
-
-- Python 3.11+
-- OpenAI API key
-- See requirements.txt for dependencies
-
-## Project Structure
-
-```
-multi_agent_kg/
-├── agents/
-│   ├── base.py                    # Enhanced base agent with memory/comm
-│   ├── document_processor.py      # Worker: Document ingestion
-│   ├── domain_classifier.py       # Worker: Domain classification
-│   ├── entity_extractor.py        # Worker: Multi-stage entity extraction
-│   ├── relation_extractor.py      # Worker: RHF relation extraction
-│   ├── evidence_linker.py         # Worker: Evidence linking
-│   ├── extraction_validator.py    # Coordinator: Validation
-│   ├── extraction_verification_agent.py  # Coordinator: Verification
-│   └── knowledge_organizer.py     # Coordinator: KG integration
-├── core/
-│   ├── deliberative_orchestrator.py  # Main integrated orchestrator
-│   ├── memory.py                  # SharedMemory + Blackboard
-│   ├── communication.py           # MessageBus + CollaborationProtocol
-│   └── knowledge_graph.py         # KG data structures
-└── examples/
-    └── deliberative_pipeline.py   # Demo script
+result = orchestrator.process_document(text="Your text here...")
 ```

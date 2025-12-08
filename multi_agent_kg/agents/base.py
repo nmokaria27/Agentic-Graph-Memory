@@ -1,9 +1,10 @@
 """
-Enhanced Base Agent with Full Memory and Communication Integration.
+Enhanced Base Agent with Full Memory, Communication, and Deliberation Integration.
 
 All agents inherit from this base class which provides:
 - SharedMemory access (episodic, semantic, working memory + blackboard)
 - MessageBus communication (inter-agent messaging, voting, delegation)
+- Multi-agent deliberation (hypothesis voting, debate, consensus)
 - Confidence calculation with self-consistency
 - Iterative refinement support
 - LLM interaction with tiered model selection
@@ -11,7 +12,7 @@ All agents inherit from this base class which provides:
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from enum import Enum
 import json
 
@@ -26,6 +27,9 @@ from multi_agent_kg.core.communication import (
 )
 from multi_agent_kg.core.config import LLMConfig
 from multi_agent_kg.llm.openai_client import chat_completion_json
+
+if TYPE_CHECKING:
+    from multi_agent_kg.core.deliberation import DeliberationCoordinator, VoteType
 
 
 class AgentRole(str, Enum):
@@ -81,6 +85,7 @@ class BaseAgent(ABC):
     All agents in the system inherit from this class and get:
     - Automatic memory integration
     - Inter-agent communication via MessageBus
+    - Multi-agent deliberation with voting and debate
     - Blackboard-based hypothesis posting and voting
     - Self-consistency based confidence calculation
     - Iterative refinement with feedback loops
@@ -129,6 +134,9 @@ class BaseAgent(ABC):
         # Collaboration protocol for structured communication
         self.collab = CollaborationProtocol(message_bus) if message_bus else None
         
+        # Deliberation coordinator (set by orchestrator)
+        self._deliberation_coordinator: Optional["DeliberationCoordinator"] = None
+        
         # Message subscriptions
         self._subscriptions: List[str] = []
         
@@ -138,7 +146,14 @@ class BaseAgent(ABC):
             "llm_calls": 0,
             "escalations": 0,
             "refinements": 0,
+            "deliberations_submitted": 0,
+            "votes_cast": 0,
+            "debates_participated": 0,
         }
+
+    def set_deliberation_coordinator(self, coordinator: "DeliberationCoordinator") -> None:
+        """Set the deliberation coordinator for multi-agent voting."""
+        self._deliberation_coordinator = coordinator
 
     @abstractmethod
     def run(self, context: AgentContext, **kwargs) -> ExtractionResult:
@@ -615,6 +630,231 @@ class BaseAgent(ABC):
             )
         
         return None
+
+    # ==================== Deliberation Methods ====================
+
+    def submit_for_deliberation(
+        self,
+        hypothesis_type: str,
+        content: Dict[str, Any],
+        confidence: float,
+        evidence: Optional[List[str]] = None,
+        document_id: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Submit a hypothesis for multi-agent deliberation.
+        
+        Use this when confidence is below threshold and you want
+        other agents to vote on the extraction.
+        
+        Args:
+            hypothesis_type: Type (entity, relation, triple)
+            content: The hypothesis content
+            confidence: Your confidence in this hypothesis
+            evidence: Supporting evidence
+            document_id: Source document
+            
+        Returns:
+            Hypothesis ID if submitted
+        """
+        if not self._deliberation_coordinator:
+            # Fall back to blackboard posting
+            if self.shared_memory:
+                return self.shared_memory.post_to_blackboard(
+                    author=self.name,
+                    entry_type="hypothesis",
+                    content={
+                        "type": hypothesis_type,
+                        "content": content,
+                        "confidence": confidence,
+                        "evidence": evidence or [],
+                    },
+                )
+            return None
+        
+        self.stats["deliberations_submitted"] += 1
+        return self._deliberation_coordinator.submit_hypothesis(
+            author=self.name,
+            hypothesis_type=hypothesis_type,
+            content=content,
+            confidence=confidence,
+            evidence=evidence,
+            document_id=document_id,
+        )
+
+    def cast_vote(
+        self,
+        hypothesis_id: str,
+        vote_type: "VoteType",
+        confidence: float,
+        rationale: str,
+        evidence: Optional[List[str]] = None,
+    ) -> None:
+        """
+        Vote on another agent's hypothesis.
+        
+        Args:
+            hypothesis_id: ID of hypothesis to vote on
+            vote_type: Your vote (from VoteType enum)
+            confidence: Your confidence in this vote (0-1)
+            rationale: Reason for your vote
+            evidence: Supporting evidence
+        """
+        if not self._deliberation_coordinator:
+            # Fall back to blackboard voting
+            if self.shared_memory:
+                self.shared_memory.vote_on_blackboard(
+                    entry_id=hypothesis_id,
+                    voter=self.name,
+                    confidence=confidence,
+                )
+            return
+        
+        self.stats["votes_cast"] += 1
+        self._deliberation_coordinator.receive_vote(
+            hypothesis_id=hypothesis_id,
+            voter=self.name,
+            vote_type=vote_type,
+            confidence=confidence,
+            rationale=rationale,
+            evidence=evidence,
+        )
+
+    def provide_debate_argument(
+        self,
+        hypothesis_id: str,
+        position: str,
+        argument: str,
+        evidence: Optional[List[str]] = None,
+    ) -> None:
+        """
+        Provide an argument in a debate.
+        
+        Args:
+            hypothesis_id: ID of hypothesis being debated
+            position: "support" or "oppose"
+            argument: Your argument
+            evidence: Supporting evidence
+        """
+        if not self._deliberation_coordinator:
+            return
+        
+        self.stats["debates_participated"] += 1
+        self._deliberation_coordinator.receive_debate_argument(
+            hypothesis_id=hypothesis_id,
+            agent=self.name,
+            position=position,
+            argument=argument,
+            evidence=evidence,
+        )
+
+    def check_for_vote_requests(self) -> List[Dict[str, Any]]:
+        """
+        Check for pending vote requests from the deliberation coordinator.
+        
+        Returns:
+            List of vote request contents
+        """
+        if not self.message_bus:
+            return []
+        
+        messages = self.message_bus.receive(self.name)
+        vote_requests = [
+            m.content for m in messages
+            if m.comm_type == CommunicationType.REQUEST
+            and m.content.get("action") == "vote"
+        ]
+        
+        return vote_requests
+
+    def check_for_debate_requests(self) -> List[Dict[str, Any]]:
+        """
+        Check for pending debate requests from the deliberation coordinator.
+        
+        Returns:
+            List of debate request contents
+        """
+        if not self.message_bus:
+            return []
+        
+        messages = self.message_bus.receive(self.name)
+        debate_requests = [
+            m.content for m in messages
+            if m.comm_type == CommunicationType.REQUEST
+            and m.content.get("action") == "debate"
+        ]
+        
+        return debate_requests
+
+    def process_vote_requests(self, context: Optional[AgentContext] = None) -> int:
+        """
+        Process all pending vote requests.
+        
+        This method checks for vote requests, evaluates each hypothesis,
+        and submits votes. Subclasses can override evaluate_hypothesis_for_vote
+        to provide agent-specific voting logic.
+        
+        Args:
+            context: Optional processing context
+            
+        Returns:
+            Number of votes cast
+        """
+        vote_requests = self.check_for_vote_requests()
+        votes_cast = 0
+        
+        for request in vote_requests:
+            hypothesis_id = request.get("hypothesis_id")
+            hypothesis_type = request.get("hypothesis_type")
+            content = request.get("content")
+            
+            if not hypothesis_id or not content:
+                continue
+            
+            # Evaluate and vote
+            vote_type, confidence, rationale = self.evaluate_hypothesis_for_vote(
+                hypothesis_content=content,
+                hypothesis_type=hypothesis_type,
+                context=context,
+            )
+            
+            # Import here to avoid circular import
+            from multi_agent_kg.core.deliberation import VoteType
+            
+            if vote_type != VoteType.ABSTAIN:
+                self.cast_vote(
+                    hypothesis_id=hypothesis_id,
+                    vote_type=vote_type,
+                    confidence=confidence,
+                    rationale=rationale,
+                )
+                votes_cast += 1
+        
+        return votes_cast
+
+    def evaluate_hypothesis_for_vote(
+        self,
+        hypothesis_content: Dict[str, Any],
+        hypothesis_type: str,
+        context: Optional[AgentContext] = None,
+    ) -> Tuple["VoteType", float, str]:
+        """
+        Evaluate a hypothesis and determine your vote.
+        
+        Override this method in subclasses to implement
+        agent-specific voting logic.
+        
+        Args:
+            hypothesis_content: The hypothesis to evaluate
+            hypothesis_type: Type of hypothesis (entity, relation, triple)
+            context: Optional processing context
+            
+        Returns:
+            Tuple of (vote_type, confidence, rationale)
+        """
+        # Default implementation - abstain
+        from multi_agent_kg.core.deliberation import VoteType
+        return VoteType.ABSTAIN, 0.5, "No specific evaluation logic for this agent"
 
     # ==================== Utility Methods ====================
 

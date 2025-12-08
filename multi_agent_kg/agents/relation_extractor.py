@@ -13,7 +13,7 @@ Features:
 - Blackboard voting for novel relations
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 from dataclasses import dataclass, field
 import json
 
@@ -29,6 +29,9 @@ from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
 from multi_agent_kg.core.memory import SharedMemory
 from multi_agent_kg.core.communication import MessageBus, CommunicationType
 from multi_agent_kg.core.config import LLMConfig
+
+if TYPE_CHECKING:
+    from multi_agent_kg.core.deliberation import VoteType
 
 
 @dataclass
@@ -480,9 +483,19 @@ class RelationExtractor(BaseAgent):
                 evidence=[triple.get("evidence", "")],
             )
         
+        # Submit to deliberation for multi-agent voting
+        for triple in triples[:10]:  # Limit
+            self.submit_for_deliberation(
+                hypothesis_type="triple",
+                content=triple,
+                confidence=triple.get("confidence", 0.5),
+                evidence=[triple.get("evidence", "")],
+                document_id=context.document_id,
+            )
+        
         # Escalate to coordinator
         self.escalate_to_coordinator(
-            reason="Low confidence relation extractions",
+            reason="Low confidence relation extractions submitted for deliberation",
             items=triples,
             context={
                 "document_id": context.document_id,
@@ -495,17 +508,18 @@ class RelationExtractor(BaseAgent):
         new_relations: List[Dict[str, Any]],
         context: AgentContext,
     ) -> None:
-        """Handle newly discovered relation types."""
-        # Post to blackboard for community voting
+        """Handle newly discovered relation types via deliberation."""
+        # Submit new relation types for community voting
         for rel in new_relations:
-            self.post_hypothesis(
-                hypothesis={
-                    "type": "new_relation_type",
+            self.submit_for_deliberation(
+                hypothesis_type="relation_type",
+                content={
                     "relation_type": rel.get("relation_type"),
                     "definition": rel.get("definition"),
                 },
                 confidence=0.6,
                 evidence=[context.document_id],
+                document_id=context.document_id,
             )
         
         # Store in memory for future reference
@@ -517,6 +531,91 @@ class RelationExtractor(BaseAgent):
                     "definitions": {r.get("relation_type"): r.get("definition") for r in new_relations},
                 },
             )
+
+    def evaluate_hypothesis_for_vote(
+        self,
+        hypothesis_content: Dict[str, Any],
+        hypothesis_type: str,
+        context: Optional[AgentContext] = None,
+    ) -> Tuple:
+        """
+        RelationExtractor's logic for voting on hypotheses.
+        
+        Can vote on:
+        - entity: Abstain (not our specialty)
+        - relation: Check if relation type is valid
+        - triple: Check if relation makes semantic sense
+        - relation_type: Evaluate new relation type proposals
+        """
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        if hypothesis_type == "entity":
+            # Entities are not our specialty
+            return VoteType.ABSTAIN, 0.5, "RelationExtractor focuses on relations"
+        elif hypothesis_type == "relation" or hypothesis_type == "triple":
+            return self._vote_on_triple(hypothesis_content, context)
+        elif hypothesis_type == "relation_type":
+            return self._vote_on_relation_type(hypothesis_content, context)
+        
+        return VoteType.ABSTAIN, 0.5, "RelationExtractor cannot evaluate this hypothesis type"
+
+    def _vote_on_triple(
+        self,
+        triple: Dict[str, Any],
+        context: Optional[AgentContext],
+    ) -> Tuple:
+        """Vote on a triple hypothesis."""
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        subject = triple.get("subject", "")
+        relation = triple.get("relation", "") or triple.get("relation_type", "")
+        obj = triple.get("object", "")
+        
+        # Basic validation
+        if not subject or not relation or not obj:
+            return VoteType.REJECT, 0.9, "Triple missing subject, relation, or object"
+        
+        # Check if relation type is known
+        known_relations = list(self.discovered_relations.keys()) + self.domain_relations.get("general", [])
+        if relation.lower() in [r.lower() for r in known_relations]:
+            return VoteType.ACCEPT, 0.8, f"Known relation type: {relation}"
+        
+        # Check for common sense relation patterns
+        relation_lower = relation.lower().replace("_", " ")
+        common_patterns = ["is a", "works for", "located in", "part of", "born in", 
+                          "founded", "married to", "has", "owns", "created", "leads"]
+        if any(p in relation_lower for p in common_patterns):
+            return VoteType.WEAK_ACCEPT, 0.7, f"Relation follows common pattern"
+        
+        # Unknown relation - weak reject
+        return VoteType.WEAK_REJECT, 0.6, f"Unknown relation type: {relation}"
+
+    def _vote_on_relation_type(
+        self,
+        relation_type: Dict[str, Any],
+        context: Optional[AgentContext],
+    ) -> Tuple:
+        """Vote on a new relation type proposal."""
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        rel_name = relation_type.get("relation_type", "")
+        definition = relation_type.get("definition", "")
+        
+        if not rel_name:
+            return VoteType.REJECT, 0.9, "No relation type name provided"
+        
+        if not definition:
+            return VoteType.WEAK_REJECT, 0.7, "New relation type needs a definition"
+        
+        # Check if relation already exists
+        if rel_name in self.discovered_relations:
+            return VoteType.REJECT, 0.8, f"Relation type '{rel_name}' already exists"
+        
+        # Accept if well-defined
+        if len(definition) > 20:
+            return VoteType.WEAK_ACCEPT, 0.7, "New relation type with good definition"
+        
+        return VoteType.WEAK_REJECT, 0.6, "Definition too short for new relation type"
 
     def _store_triples(
         self,

@@ -14,7 +14,7 @@ Features:
 - Iterative refinement with feedback
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 from dataclasses import dataclass, field
 
 from multi_agent_kg.agents.base import (
@@ -29,6 +29,9 @@ from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Entity
 from multi_agent_kg.core.memory import SharedMemory
 from multi_agent_kg.core.communication import MessageBus, CommunicationType
 from multi_agent_kg.core.config import LLMConfig
+
+if TYPE_CHECKING:
+    from multi_agent_kg.core.deliberation import VoteType
 
 
 @dataclass
@@ -473,24 +476,121 @@ class EntityExtractor(BaseAgent):
         entities: List[Dict[str, Any]],
         context: AgentContext,
     ) -> None:
-        """Handle low confidence entities via escalation."""
-        # Post to blackboard for voting
-        for entity in entities[:10]:  # Limit
-            self.post_hypothesis(
-                hypothesis=entity,
+        """Handle low confidence entities via deliberation."""
+        # Submit to deliberation for multi-agent voting
+        for entity in entities[:10]:  # Limit to avoid flooding
+            self.submit_for_deliberation(
+                hypothesis_type="entity",
+                content=entity,
                 confidence=entity.get("confidence", 0.5),
                 evidence=[entity.get("source_segment", "")],
+                document_id=context.document_id,
             )
         
-        # Escalate to coordinator
+        # Also escalate to coordinator for awareness
         self.escalate_to_coordinator(
-            reason="Low confidence entity extractions",
+            reason="Low confidence entity extractions submitted for deliberation",
             items=entities,
             context={
                 "document_id": context.document_id,
                 "domain": context.domain,
             },
         )
+
+    def evaluate_hypothesis_for_vote(
+        self,
+        hypothesis_content: Dict[str, Any],
+        hypothesis_type: str,
+        context: Optional[AgentContext] = None,
+    ) -> Tuple:
+        """
+        EntityExtractor's logic for voting on hypotheses.
+        
+        Can vote on:
+        - entity: Check if it looks like a valid entity
+        - relation: Check if entities exist
+        - triple: Check if entities are valid
+        """
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        if hypothesis_type == "entity":
+            # Evaluate entity hypothesis
+            return self._vote_on_entity(hypothesis_content, context)
+        elif hypothesis_type == "relation":
+            # Check if the entities in the relation exist
+            return self._vote_on_relation_entities(hypothesis_content, context)
+        elif hypothesis_type == "triple":
+            # Check if subject/object are valid entities
+            return self._vote_on_triple_entities(hypothesis_content, context)
+        
+        return VoteType.ABSTAIN, 0.5, "EntityExtractor cannot evaluate this hypothesis type"
+
+    def _vote_on_entity(
+        self,
+        entity: Dict[str, Any],
+        context: Optional[AgentContext],
+    ) -> Tuple:
+        """Vote on an entity hypothesis."""
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        entity_text = entity.get("text", "")
+        entity_type = entity.get("type", "")
+        
+        # Basic validation checks
+        if not entity_text or len(entity_text) < 2:
+            return VoteType.REJECT, 0.9, "Entity text too short or empty"
+        
+        if len(entity_text) > 100:
+            return VoteType.WEAK_REJECT, 0.7, "Entity text suspiciously long"
+        
+        # Check if entity type is valid
+        valid_types = ["PERSON", "ORGANIZATION", "LOCATION", "CONCEPT", "EVENT", 
+                       "PRODUCT", "DISEASE", "DRUG", "GENE", "LAW", "COURT"]
+        if entity_type and entity_type.upper() not in valid_types:
+            return VoteType.WEAK_REJECT, 0.6, f"Unknown entity type: {entity_type}"
+        
+        # Check if it looks like a real entity (capitalized, etc.)
+        if entity_text[0].isupper():
+            return VoteType.WEAK_ACCEPT, 0.7, "Entity appears to be properly capitalized"
+        
+        # Default to weak accept if nothing wrong
+        return VoteType.WEAK_ACCEPT, 0.6, "Entity passes basic validation"
+
+    def _vote_on_relation_entities(
+        self,
+        relation: Dict[str, Any],
+        context: Optional[AgentContext],
+    ) -> Tuple:
+        """Vote on whether a relation's entities are valid."""
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        subject = relation.get("subject", {})
+        obj = relation.get("object", {})
+        
+        # Check if entities look valid
+        subject_text = subject.get("text", "") if isinstance(subject, dict) else str(subject)
+        obj_text = obj.get("text", "") if isinstance(obj, dict) else str(obj)
+        
+        if not subject_text or not obj_text:
+            return VoteType.REJECT, 0.9, "Missing subject or object entity"
+        
+        return VoteType.WEAK_ACCEPT, 0.6, "Entities in relation appear valid"
+
+    def _vote_on_triple_entities(
+        self,
+        triple: Dict[str, Any],
+        context: Optional[AgentContext],
+    ) -> Tuple:
+        """Vote on whether a triple's entities are valid."""
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        subject = triple.get("subject", "")
+        obj = triple.get("object", "")
+        
+        if not subject or not obj:
+            return VoteType.REJECT, 0.9, "Triple missing subject or object"
+        
+        return VoteType.WEAK_ACCEPT, 0.6, "Triple entities appear valid"
 
     def _store_entities(
         self,

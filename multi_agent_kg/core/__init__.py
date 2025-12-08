@@ -15,6 +15,11 @@ Communication:
 - MessageBus: Inter-agent communication
 - AgentMessage, CollaborationProtocol: Communication types
 
+Deliberation:
+- DeliberationCoordinator: Multi-agent voting and debate system
+- VotingSession, DebateSession: Session tracking
+- VoteType, DeliberationConfig: Configuration types
+
 Orchestrator:
 - DeliberativeOrchestrator: Full integrated multi-agent pipeline
 
@@ -32,6 +37,15 @@ from multi_agent_kg.core.communication import (
     CollaborationProtocol,
     CommunicationType,
     MessagePriority,
+)
+from multi_agent_kg.core.deliberation import (
+    DeliberationCoordinator,
+    Hypothesis,
+    Vote,
+    DebateArgument,
+    VoteType,
+    DeliberationStatus,
+    VOTE_WEIGHTS,
 )
 from multi_agent_kg.core.deliberative_orchestrator import DeliberativeOrchestrator
 
@@ -58,6 +72,14 @@ __all__ = [
     "CollaborationProtocol",
     "CommunicationType",
     "MessagePriority",
+    # Deliberation
+    "DeliberationCoordinator",
+    "Hypothesis",
+    "Vote",
+    "DebateArgument",
+    "VoteType",
+    "DeliberationStatus",
+    "VOTE_WEIGHTS",
     # Orchestrator
     "DeliberativeOrchestrator",
 ]

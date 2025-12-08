@@ -5,12 +5,13 @@ Responsible for:
 - Validating entity and relation extractions
 - Handling escalated low-confidence items
 - Running iterative refinement loops
-- Coordinating blackboard voting
+- Coordinating multi-agent deliberation and debate
+- Processing vote results and resolving conflicts
 
 This is the first coordinator agent in the pipeline.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import json
 
 from multi_agent_kg.agents.base import (
@@ -25,6 +26,9 @@ from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.core.memory import SharedMemory
 from multi_agent_kg.core.communication import MessageBus, CommunicationType, MessagePriority
 from multi_agent_kg.core.config import LLMConfig
+
+if TYPE_CHECKING:
+    from multi_agent_kg.core.deliberation import DeliberationCoordinator, VoteType
 
 
 VALIDATION_PROMPT = """Validate these extractions for accuracy and completeness.
@@ -463,3 +467,185 @@ class ExtractionValidator(BaseAgent):
             },
             priority=MessagePriority.NORMAL,
         )
+
+    # ==================== Deliberation Methods ====================
+
+    def process_pending_deliberations(self) -> Dict[str, Any]:
+        """
+        Process all pending deliberations and resolve them.
+        
+        This method:
+        1. Checks for pending hypotheses that need votes
+        2. Triggers agent voting if needed
+        3. Initiates debates for conflicting votes
+        4. Resolves deliberations after sufficient votes/debate
+        
+        Returns:
+            Summary of deliberation processing
+        """
+        if not self._deliberation_coordinator:
+            return {"status": "no_coordinator"}
+        
+        # Process any pending vote requests first
+        self.process_vote_requests()
+        
+        # Check for debate requests
+        debate_requests = self.check_for_debate_requests()
+        for req in debate_requests:
+            self._participate_in_debate(req)
+        
+        # Process pending hypotheses that are ready for decision
+        resolved = self._deliberation_coordinator.process_pending(max_wait_seconds=2.0)
+        
+        # Get accepted and rejected hypotheses
+        accepted = self._deliberation_coordinator.get_accepted_hypotheses()
+        rejected = self._deliberation_coordinator.get_rejected_hypotheses()
+        
+        return {
+            "resolved_this_round": len(resolved),
+            "total_accepted": len(accepted),
+            "total_rejected": len(rejected),
+            "stats": self._deliberation_coordinator.get_stats(),
+        }
+
+    def _participate_in_debate(self, debate_request: Dict[str, Any]) -> None:
+        """
+        Participate in a debate by providing arguments.
+        
+        As a coordinator, we analyze the current votes and provide
+        a reasoned argument for or against the hypothesis.
+        """
+        hypothesis_id = debate_request.get("hypothesis_id")
+        content = debate_request.get("content", {})
+        current_votes = debate_request.get("current_votes", {})
+        
+        # Analyze the hypothesis
+        accepts = current_votes.get("accepts", [])
+        rejects = current_votes.get("rejects", [])
+        
+        # Generate our argument using LLM
+        prompt = f"""A hypothesis is being debated by multiple agents.
+
+HYPOTHESIS:
+{json.dumps(content, indent=2)}
+
+ARGUMENTS FOR ACCEPTANCE:
+{json.dumps([v.get("rationale") for v in accepts], indent=2)}
+
+ARGUMENTS FOR REJECTION:
+{json.dumps([v.get("rationale") for v in rejects], indent=2)}
+
+As the Extraction Validator, analyze these arguments and provide:
+1. Your position (support or oppose)
+2. Your reasoning
+3. Any evidence you can add
+
+Return JSON:
+{{
+    "position": "support" or "oppose",
+    "argument": "<your detailed argument>",
+    "key_points": ["<point1>", "<point2>"]
+}}"""
+
+        result = self.call_llm(
+            prompt=prompt,
+            system_prompt="You are an expert validator. Provide a well-reasoned argument.",
+            tier=ModelTier.LARGE,
+        )
+        
+        position = result.get("position", "support")
+        argument = result.get("argument", "No detailed argument provided")
+        
+        self.provide_debate_argument(
+            hypothesis_id=hypothesis_id,
+            position=position,
+            argument=argument,
+        )
+
+    def evaluate_hypothesis_for_vote(
+        self,
+        hypothesis_content: Dict[str, Any],
+        hypothesis_type: str,
+        context: Optional[AgentContext] = None,
+    ) -> Tuple:
+        """
+        ExtractionValidator's voting logic.
+        
+        As a coordinator, we use LLM to provide high-quality votes.
+        """
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        # Use LLM to evaluate
+        prompt = f"""Evaluate this {hypothesis_type} hypothesis for validity.
+
+HYPOTHESIS:
+{json.dumps(hypothesis_content, indent=2)}
+
+Assess:
+1. Is this a valid extraction?
+2. What is your confidence?
+3. What issues or concerns do you have?
+
+Return JSON:
+{{
+    "valid": <true/false>,
+    "confidence": <0.0-1.0>,
+    "rationale": "<your reasoning>",
+    "issues": ["<issue1>", ...]
+}}"""
+
+        result = self.call_llm(
+            prompt=prompt,
+            system_prompt="You are an expert extraction validator.",
+            tier=ModelTier.LARGE,
+        )
+        
+        valid = result.get("valid", False)
+        confidence = result.get("confidence", 0.5)
+        rationale = result.get("rationale", "No rationale provided")
+        
+        if valid and confidence >= 0.8:
+            return VoteType.STRONG_ACCEPT, confidence, rationale
+        elif valid and confidence >= 0.6:
+            return VoteType.ACCEPT, confidence, rationale
+        elif valid:
+            return VoteType.WEAK_ACCEPT, confidence, rationale
+        elif confidence <= 0.2:
+            return VoteType.STRONG_REJECT, confidence, rationale
+        elif confidence <= 0.4:
+            return VoteType.REJECT, confidence, rationale
+        else:
+            return VoteType.WEAK_REJECT, confidence, rationale
+
+    def get_deliberation_results(self) -> Dict[str, Any]:
+        """
+        Get all deliberation results for integration.
+        
+        Returns:
+            Dict with accepted entities and triples from deliberation
+        """
+        if not self._deliberation_coordinator:
+            return {"entities": [], "triples": []}
+        
+        accepted = self._deliberation_coordinator.get_accepted_hypotheses()
+        
+        entities = []
+        triples = []
+        
+        for hyp in accepted:
+            if hyp.hypothesis_type == "entity":
+                entity = hyp.content.copy()
+                entity["deliberation_confidence"] = hyp.final_confidence
+                entity["deliberation_id"] = hyp.id
+                entities.append(entity)
+            elif hyp.hypothesis_type in ["triple", "relation"]:
+                triple = hyp.content.copy()
+                triple["deliberation_confidence"] = hyp.final_confidence
+                triple["deliberation_id"] = hyp.id
+                triples.append(triple)
+        
+        return {
+            "entities": entities,
+            "triples": triples,
+            "stats": self._deliberation_coordinator.get_stats() if self._deliberation_coordinator else {},
+        }

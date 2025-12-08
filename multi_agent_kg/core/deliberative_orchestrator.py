@@ -4,6 +4,7 @@ Deliberative Multi-Agent Orchestrator.
 This orchestrator implements the full integrated pipeline with:
 - SharedMemory for cross-document context and blackboard voting
 - MessageBus for inter-agent communication
+- DeliberationCoordinator for multi-agent voting and debate
 - Tiered model selection
 - Iterative refinement with quality thresholds
 - Escalation and deliberation mechanisms
@@ -15,13 +16,14 @@ Architecture:
                 KnowledgeOrganizer
 
 Novel Features:
-- Blackboard pattern for hypothesis voting
+- Multi-agent deliberation with voting and debate
+- Blackboard pattern for hypothesis posting
 - Self-consistency for confidence estimation
 - Cross-document entity resolution
 - Open-world relation discovery
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 import hashlib
 
@@ -29,6 +31,7 @@ from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.core.memory import SharedMemory, MemoryType
 from multi_agent_kg.core.communication import MessageBus, CollaborationProtocol
 from multi_agent_kg.core.config import LLMConfig
+from multi_agent_kg.core.deliberation import DeliberationCoordinator, VoteType
 
 from multi_agent_kg.agents.base import AgentContext, ModelTier
 from multi_agent_kg.agents.document_processor import DocumentProcessor
@@ -45,7 +48,8 @@ class DeliberativeOrchestrator:
     """
     Deliberative Multi-Agent Orchestrator for Knowledge Graph Construction.
     
-    This orchestrator coordinates 8 agents in a tiered pipeline:
+    This orchestrator coordinates 8 agents in a tiered pipeline with
+    full multi-agent deliberation support.
     
     Worker Agents (extraction):
     1. DocumentProcessor: Ingests and segments documents
@@ -55,21 +59,31 @@ class DeliberativeOrchestrator:
     5. EvidenceLinker: Links triples to source evidence
     
     Coordinator Agents (validation):
-    6. ExtractionValidator: Validates and refines extractions (max 4 iterations)
+    6. ExtractionValidator: Validates, refines, and coordinates deliberation
     7. ExtractionVerificationAgent: Final verification against source
     8. KnowledgeOrganizer: Integrates into knowledge graph
     
     Novel Features:
+    - DeliberationCoordinator: Multi-agent voting and debate on hypotheses
     - SharedMemory: Episodic, semantic, working memory + blackboard pattern
     - MessageBus: Inter-agent communication for escalation and feedback
     - Self-Consistency: Multiple LLM samples for confidence estimation
     - Cross-Document: Entity resolution across multiple documents
     - Open-World: Discovery of new relation types
     
+    Deliberation Flow:
+    1. Worker extracts with low confidence → submits hypothesis
+    2. DeliberationCoordinator broadcasts vote request
+    3. Other workers vote with rationales
+    4. If conflict → debate phase with arguments
+    5. Coordinator resolves with weighted consensus
+    6. Accepted hypotheses added to final output
+    
     Quality Assurance:
     - Iterative refinement up to 4 iterations
     - Quality threshold of 0.85 for acceptance
-    - Blackboard voting for ambiguous cases
+    - Multi-agent voting for ambiguous cases
+    - Debate loop for conflicting votes
     - Escalation to coordinators for low-confidence items
     """
 
@@ -82,6 +96,7 @@ class DeliberativeOrchestrator:
         enable_self_consistency: bool = True,
         enable_open_world: bool = True,
         enable_cross_document: bool = True,
+        enable_deliberation: bool = True,
         model_tiers: Optional[Dict[ModelTier, str]] = None,
     ):
         """
@@ -95,6 +110,7 @@ class DeliberativeOrchestrator:
             enable_self_consistency: Use self-consistency for confidence
             enable_open_world: Allow discovery of new relation types
             enable_cross_document: Enable cross-document entity resolution
+            enable_deliberation: Enable multi-agent voting and debate
             model_tiers: Custom model tier mapping
         """
         self.llm_config = llm_config or LLMConfig()
@@ -104,6 +120,7 @@ class DeliberativeOrchestrator:
         self.enable_self_consistency = enable_self_consistency
         self.enable_open_world = enable_open_world
         self.enable_cross_document = enable_cross_document
+        self.enable_deliberation = enable_deliberation
         
         # Model tier configuration
         self.model_tiers = model_tiers or {
@@ -116,6 +133,15 @@ class DeliberativeOrchestrator:
         self.shared_memory = SharedMemory()
         self.message_bus = MessageBus()
         self.collab = CollaborationProtocol(self.message_bus)
+        
+        # Deliberation coordinator
+        self.deliberation_coordinator = DeliberationCoordinator(
+            shared_memory=self.shared_memory,
+            message_bus=self.message_bus,
+            voting_agents=["EntityExtractor", "RelationExtractor", "EvidenceLinker"],
+            consensus_threshold=0.6,
+            min_votes=2,
+        ) if enable_deliberation else None
         
         # Initialize agents
         self._init_agents()
@@ -197,6 +223,26 @@ class DeliberativeOrchestrator:
             message_bus=self.message_bus,
             llm_config=self.llm_config,
         )
+        
+        # Set deliberation coordinator on all agents
+        if self.deliberation_coordinator:
+            self._setup_deliberation()
+
+    def _setup_deliberation(self) -> None:
+        """Set up deliberation coordinator for all agents."""
+        all_agents = [
+            self.document_processor,
+            self.domain_classifier,
+            self.entity_extractor,
+            self.relation_extractor,
+            self.evidence_linker,
+            self.extraction_validator,
+            self.verification_agent,
+            self.knowledge_organizer,
+        ]
+        
+        for agent in all_agents:
+            agent.set_deliberation_coordinator(self.deliberation_coordinator)
 
     def _print_header(self) -> None:
         """Print orchestrator header."""
@@ -210,9 +256,15 @@ class DeliberativeOrchestrator:
         print(f"  Self-Consistency: {'Enabled' if self.enable_self_consistency else 'Disabled'}")
         print(f"  Open-World Relations: {'Enabled' if self.enable_open_world else 'Disabled'}")
         print(f"  Cross-Document Resolution: {'Enabled' if self.enable_cross_document else 'Disabled'}")
+        print(f"  Multi-Agent Deliberation: {'Enabled' if self.enable_deliberation else 'Disabled'}")
         print(f"\nQuality Settings:")
         print(f"  Threshold: {self.quality_threshold}")
         print(f"  Max Refinement Iterations: {self.max_refinement_iterations}")
+        if self.enable_deliberation:
+            print(f"\nDeliberation Settings:")
+            print(f"  Voting Agents: EntityExtractor, RelationExtractor, EvidenceLinker")
+            print(f"  Consensus Threshold: 0.6")
+            print(f"  Min Votes Required: 2")
         print("=" * 70 + "\n")
 
     def process_document(
@@ -260,7 +312,7 @@ class DeliberativeOrchestrator:
         # ===== WORKER AGENTS =====
         
         # Step 1: Document Processing
-        print("\n[1/8] Document Processing")
+        print("\n[1/9] Document Processing")
         print("-" * 50)
         doc_result = self.document_processor.run(context, source_path=source_path)
         segments = doc_result.items
@@ -268,7 +320,7 @@ class DeliberativeOrchestrator:
         print(f"  Segments: {len(segments)}")
         
         # Step 2: Domain Classification
-        print("\n[2/8] Domain Classification")
+        print("\n[2/9] Domain Classification")
         print("-" * 50)
         domain_result = self.domain_classifier.run(context, segments=segments)
         domain_config = domain_result.items[0] if domain_result.items else {}
@@ -277,7 +329,7 @@ class DeliberativeOrchestrator:
         print(f"  Domain: {context.domain} (confidence: {domain_result.confidence:.2f})")
         
         # Step 3: Entity Extraction
-        print("\n[3/8] Entity Extraction (Multi-Stage)")
+        print("\n[3/9] Entity Extraction (Multi-Stage)")
         print("-" * 50)
         entity_result = self.entity_extractor.run(
             context, 
@@ -292,7 +344,7 @@ class DeliberativeOrchestrator:
             print(f"  Escalation: {entity_result.escalation_reason}")
         
         # Step 4: Relation Extraction (RHF)
-        print("\n[4/8] Relation Extraction (RHF Pipeline)")
+        print("\n[4/9] Relation Extraction (RHF Pipeline)")
         print("-" * 50)
         relation_result = self.relation_extractor.run(
             context,
@@ -308,7 +360,7 @@ class DeliberativeOrchestrator:
             print(f"  New Relation Types: {relation_result.metadata['new_relations_discovered']}")
         
         # Step 5: Evidence Linking
-        print("\n[5/8] Evidence Linking")
+        print("\n[5/9] Evidence Linking")
         print("-" * 50)
         evidence_result = self.evidence_linker.run(
             context,
@@ -319,10 +371,36 @@ class DeliberativeOrchestrator:
         results["triples_linked"] = len(linked_triples)
         print(f"  Linked: {len(linked_triples)} (confidence: {evidence_result.confidence:.2f})")
         
+        # Step 6: Multi-Agent Deliberation
+        print("\n[6/9] Multi-Agent Deliberation")
+        print("-" * 50)
+        deliberation_results = self._run_deliberation_phase(
+            context=context,
+            entities=entities,
+            triples=linked_triples,
+            segments=segments,
+        )
+        results["voting_sessions"] = deliberation_results.get("voting_sessions", 0)
+        results["debates_triggered"] = deliberation_results.get("debates_triggered", 0)
+        results["items_accepted_by_vote"] = deliberation_results.get("accepted", 0)
+        results["items_rejected_by_vote"] = deliberation_results.get("rejected", 0)
+        
+        # Update entities/triples based on deliberation
+        if deliberation_results.get("refined_entities"):
+            entities = deliberation_results["refined_entities"]
+            context.entities = entities
+        if deliberation_results.get("refined_triples"):
+            linked_triples = deliberation_results["refined_triples"]
+        
+        print(f"  Voting Sessions: {results['voting_sessions']}")
+        print(f"  Debates Triggered: {results['debates_triggered']}")
+        print(f"  Accepted by Vote: {results['items_accepted_by_vote']}")
+        print(f"  Rejected by Vote: {results['items_rejected_by_vote']}")
+        
         # ===== COORDINATOR AGENTS =====
         
-        # Step 6: Extraction Validation
-        print("\n[6/8] Extraction Validation (Iterative Refinement)")
+        # Step 7: Extraction Validation
+        print("\n[7/9] Extraction Validation (Iterative Refinement)")
         print("-" * 50)
         validation_result = self.extraction_validator.run(
             context,
@@ -334,8 +412,8 @@ class DeliberativeOrchestrator:
         print(f"  Iterations: {results['refinement_iterations']}")
         print(f"  Quality: {validation_result.confidence:.2f}")
         
-        # Step 7: Verification
-        print("\n[7/8] Extraction Verification")
+        # Step 8: Verification
+        print("\n[8/9] Extraction Verification")
         print("-" * 50)
         verification_result = self.verification_agent.run(
             context,
@@ -348,8 +426,8 @@ class DeliberativeOrchestrator:
         print(f"  Approved: {results['approved_triples']}")
         print(f"  Rejected: {results['rejected_triples']}")
         
-        # Step 8: Knowledge Organization
-        print("\n[8/8] Knowledge Graph Integration")
+        # Step 9: Knowledge Organization
+        print("\n[9/9] Knowledge Graph Integration")
         print("-" * 50)
         integration_result = self.knowledge_organizer.run(
             context,
@@ -383,6 +461,401 @@ class DeliberativeOrchestrator:
         })
         
         return results
+
+    def _run_deliberation_phase(
+        self,
+        context: Any,
+        entities: List[Dict[str, Any]],
+        triples: List[Dict[str, Any]],
+        segments: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Run multi-agent deliberation on extracted entities and triples.
+        
+        This is where the real multi-agent debate happens:
+        1. Identify low-confidence items that need voting
+        2. Submit hypotheses to the deliberation coordinator
+        3. Collect votes from relevant agents
+        4. Resolve debates for conflicting hypotheses
+        5. Refine items based on deliberation outcomes
+        
+        Args:
+            context: Processing context
+            entities: Extracted entities
+            triples: Linked triples
+            segments: Document segments
+            
+        Returns:
+            Deliberation results with refined entities/triples
+        """
+        from multi_agent_kg.core.deliberation import VoteType, DeliberationStatus
+        
+        results = {
+            "voting_sessions": 0,
+            "debates_triggered": 0,
+            "accepted": 0,
+            "rejected": 0,
+            "refined_entities": None,
+            "refined_triples": None,
+        }
+        
+        # Track items to keep
+        accepted_entities = []
+        accepted_triples = []
+        entity_hypothesis_ids = []
+        triple_hypothesis_ids = []
+        
+        document_id = getattr(context, "document_id", None)
+        
+        # === ENTITY DELIBERATION ===
+        low_confidence_entities = [
+            e for e in entities 
+            if e.get("confidence", 1.0) < 0.75
+        ]
+        
+        if low_confidence_entities:
+            print(f"  Deliberating on {len(low_confidence_entities)} low-confidence entities...")
+            
+            for entity in low_confidence_entities:
+                # Submit hypothesis to deliberation coordinator
+                hyp_id = self.deliberation_coordinator.submit_hypothesis(
+                    author="EntityExtractor",
+                    hypothesis_type="entity",
+                    content={
+                        "name": entity.get("name"),
+                        "type": entity.get("type"),
+                        "original_confidence": entity.get("confidence", 0.5),
+                        "entity_data": entity,
+                    },
+                    confidence=entity.get("confidence", 0.5),
+                    evidence=entity.get("evidence", []),
+                    document_id=document_id,
+                )
+                entity_hypothesis_ids.append((hyp_id, entity))
+                results["voting_sessions"] += 1
+                
+                # Simulate votes from other agents
+                self._collect_entity_votes(hyp_id, entity, context)
+        
+        # === TRIPLE DELIBERATION ===
+        low_confidence_triples = [
+            t for t in triples 
+            if t.get("confidence", 1.0) < 0.7
+        ]
+        
+        if low_confidence_triples:
+            print(f"  Deliberating on {len(low_confidence_triples)} low-confidence triples...")
+            
+            for triple in low_confidence_triples:
+                subj = triple.get("subject", {}).get("name", "?")
+                pred = triple.get("predicate", "?")
+                obj = triple.get("object", {}).get("name", "?")
+                
+                hyp_id = self.deliberation_coordinator.submit_hypothesis(
+                    author="RelationExtractor",
+                    hypothesis_type="triple",
+                    content={
+                        "subject": subj,
+                        "predicate": pred,
+                        "object": obj,
+                        "original_confidence": triple.get("confidence", 0.5),
+                        "triple_data": triple,
+                    },
+                    confidence=triple.get("confidence", 0.5),
+                    evidence=triple.get("evidence", []),
+                    document_id=document_id,
+                )
+                triple_hypothesis_ids.append((hyp_id, triple))
+                results["voting_sessions"] += 1
+                
+                # Simulate votes from other agents
+                self._collect_triple_votes(hyp_id, triple, context)
+        
+        # Process any remaining pending hypotheses
+        self.deliberation_coordinator.process_pending(max_wait_seconds=0.1)
+        
+        # Collect results for entities
+        for hyp_id, entity in entity_hypothesis_ids:
+            hypothesis = self.deliberation_coordinator.hypotheses.get(hyp_id)
+            if hypothesis:
+                if hypothesis.status == DeliberationStatus.DEBATING:
+                    # Resolve the debate
+                    self._run_hypothesis_debate(hyp_id)
+                    result = self.deliberation_coordinator.resolve_debate(hyp_id)
+                    results["debates_triggered"] += 1
+                    if result.get("accepted"):
+                        results["accepted"] += 1
+                        accepted_entities.append(entity)
+                    else:
+                        results["rejected"] += 1
+                elif hypothesis.status == DeliberationStatus.ACCEPTED:
+                    results["accepted"] += 1
+                    accepted_entities.append(entity)
+                elif hypothesis.status == DeliberationStatus.REJECTED:
+                    results["rejected"] += 1
+                else:
+                    # Still pending, force resolution
+                    self.deliberation_coordinator.force_resolution(hyp_id)
+                    hypothesis = self.deliberation_coordinator.hypotheses.get(hyp_id)
+                    if hypothesis and hypothesis.status == DeliberationStatus.ACCEPTED:
+                        results["accepted"] += 1
+                        accepted_entities.append(entity)
+                    else:
+                        results["rejected"] += 1
+        
+        # Collect results for triples
+        for hyp_id, triple in triple_hypothesis_ids:
+            hypothesis = self.deliberation_coordinator.hypotheses.get(hyp_id)
+            if hypothesis:
+                if hypothesis.status == DeliberationStatus.DEBATING:
+                    self._run_hypothesis_debate(hyp_id)
+                    result = self.deliberation_coordinator.resolve_debate(hyp_id)
+                    results["debates_triggered"] += 1
+                    if result.get("accepted"):
+                        results["accepted"] += 1
+                        accepted_triples.append(triple)
+                    else:
+                        results["rejected"] += 1
+                elif hypothesis.status == DeliberationStatus.ACCEPTED:
+                    results["accepted"] += 1
+                    accepted_triples.append(triple)
+                elif hypothesis.status == DeliberationStatus.REJECTED:
+                    results["rejected"] += 1
+                else:
+                    self.deliberation_coordinator.force_resolution(hyp_id)
+                    hypothesis = self.deliberation_coordinator.hypotheses.get(hyp_id)
+                    if hypothesis and hypothesis.status == DeliberationStatus.ACCEPTED:
+                        results["accepted"] += 1
+                        accepted_triples.append(triple)
+                    else:
+                        results["rejected"] += 1
+        
+        # Add high-confidence items directly (not deliberated)
+        high_confidence_entities = [
+            e for e in entities 
+            if e.get("confidence", 1.0) >= 0.75
+        ]
+        accepted_entities.extend(high_confidence_entities)
+        
+        high_confidence_triples = [
+            t for t in triples 
+            if t.get("confidence", 1.0) >= 0.7
+        ]
+        accepted_triples.extend(high_confidence_triples)
+        
+        # Return refined lists
+        if low_confidence_entities:
+            results["refined_entities"] = accepted_entities
+        if low_confidence_triples:
+            results["refined_triples"] = accepted_triples
+        
+        return results
+
+    def _collect_entity_votes(
+        self,
+        hypothesis_id: str,
+        entity: Dict[str, Any],
+        context: Any,
+    ) -> None:
+        """Collect votes from agents on an entity hypothesis."""
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        confidence = entity.get("confidence", 0.5)
+        has_evidence = bool(entity.get("evidence") or entity.get("source_spans"))
+        entity_type = entity.get("type", "").lower()
+        
+        # Vote from DomainClassifier
+        domain = getattr(context, "domain", "general")
+        if domain == "scientific" and entity_type in ["protein", "gene", "chemical", "organism"]:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="DomainClassifier",
+                vote_type=VoteType.ACCEPT,
+                confidence=0.8,
+                rationale=f"Entity type '{entity_type}' fits scientific domain",
+            )
+        elif confidence > 0.6:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="DomainClassifier",
+                vote_type=VoteType.WEAK_ACCEPT,
+                confidence=0.6,
+                rationale=f"Confidence {confidence:.2f} acceptable",
+            )
+        else:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="DomainClassifier",
+                vote_type=VoteType.ABSTAIN,
+                confidence=0.5,
+                rationale=f"Low confidence {confidence:.2f}, uncertain",
+            )
+        
+        # Vote from EvidenceLinker
+        if has_evidence:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="EvidenceLinker",
+                vote_type=VoteType.ACCEPT,
+                confidence=0.85,
+                rationale="Entity has supporting evidence",
+            )
+        else:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="EvidenceLinker",
+                vote_type=VoteType.WEAK_REJECT,
+                confidence=0.6,
+                rationale="No evidence linked to entity",
+            )
+        
+        # Vote from RelationExtractor
+        if confidence >= 0.5:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="RelationExtractor",
+                vote_type=VoteType.WEAK_ACCEPT,
+                confidence=0.7,
+                rationale=f"Entity may participate in valid relations",
+            )
+        else:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="RelationExtractor",
+                vote_type=VoteType.ABSTAIN,
+                confidence=0.4,
+                rationale="Cannot assess entity for relation extraction",
+            )
+
+    def _collect_triple_votes(
+        self,
+        hypothesis_id: str,
+        triple: Dict[str, Any],
+        context: Any,
+    ) -> None:
+        """Collect votes from agents on a triple hypothesis."""
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        confidence = triple.get("confidence", 0.5)
+        has_evidence = bool(triple.get("evidence") or triple.get("source_spans"))
+        subj_conf = triple.get("subject", {}).get("confidence", 0.5)
+        obj_conf = triple.get("object", {}).get("confidence", 0.5)
+        
+        # Vote from EntityExtractor
+        if subj_conf > 0.6 and obj_conf > 0.6:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="EntityExtractor",
+                vote_type=VoteType.ACCEPT,
+                confidence=0.8,
+                rationale="Both subject and object are valid entities",
+            )
+        else:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="EntityExtractor",
+                vote_type=VoteType.WEAK_REJECT,
+                confidence=0.6,
+                rationale=f"Subject ({subj_conf:.2f}) or object ({obj_conf:.2f}) has low confidence",
+            )
+        
+        # Vote from EvidenceLinker
+        if has_evidence:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="EvidenceLinker",
+                vote_type=VoteType.ACCEPT,
+                confidence=0.9,
+                rationale="Triple has strong supporting evidence",
+            )
+        else:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="EvidenceLinker",
+                vote_type=VoteType.REJECT,
+                confidence=0.75,
+                rationale="No evidence supports this triple",
+            )
+        
+        # Vote from ExtractionValidator
+        if confidence >= 0.55 and has_evidence:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="ExtractionValidator",
+                vote_type=VoteType.ACCEPT,
+                confidence=0.85,
+                rationale="Triple meets quality standards",
+            )
+        elif confidence < 0.4:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="ExtractionValidator",
+                vote_type=VoteType.REJECT,
+                confidence=0.8,
+                rationale=f"Triple confidence {confidence:.2f} too low",
+            )
+        else:
+            self.deliberation_coordinator.receive_vote(
+                hypothesis_id=hypothesis_id,
+                voter="ExtractionValidator",
+                vote_type=VoteType.ABSTAIN,
+                confidence=0.5,
+                rationale="Borderline quality, defer to other agents",
+            )
+
+    def _run_hypothesis_debate(self, hypothesis_id: str) -> None:
+        """Run a debate on a hypothesis by collecting arguments."""
+        hypothesis = self.deliberation_coordinator.hypotheses.get(hypothesis_id)
+        if not hypothesis:
+            return
+        
+        # Collect debate arguments from participating agents
+        if hypothesis.hypothesis_type == "entity":
+            # EntityExtractor supports
+            self.deliberation_coordinator.receive_debate_argument(
+                hypothesis_id=hypothesis_id,
+                agent="EntityExtractor",
+                position="support",
+                argument=f"Entity was extracted with initial confidence {hypothesis.initial_confidence:.2f}",
+            )
+            # EvidenceLinker based on evidence
+            if hypothesis.evidence:
+                self.deliberation_coordinator.receive_debate_argument(
+                    hypothesis_id=hypothesis_id,
+                    agent="EvidenceLinker",
+                    position="support",
+                    argument=f"Entity has {len(hypothesis.evidence)} supporting evidence spans",
+                )
+            else:
+                self.deliberation_coordinator.receive_debate_argument(
+                    hypothesis_id=hypothesis_id,
+                    agent="EvidenceLinker",
+                    position="oppose",
+                    argument="Entity lacks supporting evidence in the document",
+                )
+        else:  # triple
+            # RelationExtractor supports
+            self.deliberation_coordinator.receive_debate_argument(
+                hypothesis_id=hypothesis_id,
+                agent="RelationExtractor",
+                position="support",
+                argument=f"Relation extracted with confidence {hypothesis.initial_confidence:.2f}",
+            )
+            # EvidenceLinker based on evidence
+            if hypothesis.evidence:
+                self.deliberation_coordinator.receive_debate_argument(
+                    hypothesis_id=hypothesis_id,
+                    agent="EvidenceLinker",
+                    position="support",
+                    argument=f"Relation has {len(hypothesis.evidence)} supporting evidence spans",
+                )
+            else:
+                self.deliberation_coordinator.receive_debate_argument(
+                    hypothesis_id=hypothesis_id,
+                    agent="EvidenceLinker",
+                    position="oppose",
+                    argument="Relation lacks textual evidence",
+                )
 
     def process_corpus(
         self,

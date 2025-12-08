@@ -10,7 +10,7 @@ Responsible for:
 This is the last worker agent before coordinators validate.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import json
 
 from multi_agent_kg.agents.base import (
@@ -25,6 +25,9 @@ from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.core.memory import SharedMemory
 from multi_agent_kg.core.communication import MessageBus, CommunicationType
 from multi_agent_kg.core.config import LLMConfig
+
+if TYPE_CHECKING:
+    from multi_agent_kg.core.deliberation import VoteType
 
 
 EVIDENCE_LINKING_PROMPT = """Link each triple to its supporting evidence in the text.
@@ -380,27 +383,114 @@ class EvidenceLinker(BaseAgent):
         triples: List[Dict[str, Any]],
         context: AgentContext,
     ) -> None:
-        """Handle triples that need review."""
-        # Post to blackboard
+        """Handle triples that need review via deliberation."""
+        # Submit to deliberation for multi-agent voting
         for triple in triples[:10]:
-            self.post_hypothesis(
-                hypothesis={
-                    "subject": triple.get("subject", triple.get("triple", {}).get("subject", "")),
-                    "relation": triple.get("relation", triple.get("triple", {}).get("relation", "")),
-                    "object": triple.get("object", triple.get("triple", {}).get("object", "")),
-                },
+            triple_content = {
+                "subject": triple.get("subject", triple.get("triple", {}).get("subject", "")),
+                "relation": triple.get("relation", triple.get("triple", {}).get("relation", "")),
+                "object": triple.get("object", triple.get("triple", {}).get("object", "")),
+                "evidence_sentences": triple.get("evidence_sentences", []),
+                "evidence_type": triple.get("evidence_type", "unknown"),
+            }
+            self.submit_for_deliberation(
+                hypothesis_type="triple",
+                content=triple_content,
                 confidence=triple.get("final_confidence", 0.5),
                 evidence=triple.get("evidence_sentences", []),
+                document_id=context.document_id,
             )
         
         # Escalate
         self.escalate_to_coordinator(
-            reason="Triples with weak evidence",
+            reason="Triples with weak evidence submitted for deliberation",
             items=triples,
             context={
                 "document_id": context.document_id,
             },
         )
+
+    def evaluate_hypothesis_for_vote(
+        self,
+        hypothesis_content: Dict[str, Any],
+        hypothesis_type: str,
+        context: Optional[AgentContext] = None,
+    ) -> Tuple:
+        """
+        EvidenceLinker's logic for voting on hypotheses.
+        
+        As the evidence expert, we vote on:
+        - entity: Check if there's evidence for this entity
+        - triple: Check if there's evidence for this relation
+        - relation_type: Abstain (not our specialty)
+        """
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        if hypothesis_type == "entity":
+            return self._vote_on_entity_evidence(hypothesis_content, context)
+        elif hypothesis_type == "triple" or hypothesis_type == "relation":
+            return self._vote_on_triple_evidence(hypothesis_content, context)
+        elif hypothesis_type == "relation_type":
+            return VoteType.ABSTAIN, 0.5, "EvidenceLinker focuses on evidence quality"
+        
+        return VoteType.ABSTAIN, 0.5, "EvidenceLinker cannot evaluate this hypothesis type"
+
+    def _vote_on_entity_evidence(
+        self,
+        entity: Dict[str, Any],
+        context: Optional[AgentContext],
+    ) -> Tuple:
+        """Vote on entity based on evidence presence."""
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        entity_text = entity.get("text", "")
+        source_segment = entity.get("source_segment", "")
+        
+        # If we have evidence of where this entity came from
+        if source_segment:
+            return VoteType.WEAK_ACCEPT, 0.7, "Entity has source segment evidence"
+        
+        # Check context if available
+        if context and context.text:
+            if entity_text in context.text:
+                return VoteType.ACCEPT, 0.8, "Entity text found in source document"
+            else:
+                return VoteType.WEAK_REJECT, 0.6, "Entity text not found in document"
+        
+        return VoteType.ABSTAIN, 0.5, "Insufficient evidence information"
+
+    def _vote_on_triple_evidence(
+        self,
+        triple: Dict[str, Any],
+        context: Optional[AgentContext],
+    ) -> Tuple:
+        """Vote on triple based on evidence quality."""
+        from multi_agent_kg.core.deliberation import VoteType
+        
+        evidence_sentences = triple.get("evidence_sentences", [])
+        evidence_type = triple.get("evidence_type", "unknown")
+        evidence_strength = triple.get("evidence_strength", 0.5)
+        contradictions = triple.get("contradictions", [])
+        
+        # Strong reject if contradictions exist
+        if contradictions:
+            return VoteType.REJECT, 0.8, f"Evidence contradicted: {contradictions[0][:50]}..."
+        
+        # Vote based on evidence type and strength
+        if evidence_type == "explicit" and evidence_strength > 0.7:
+            return VoteType.STRONG_ACCEPT, 0.9, "Strong explicit evidence"
+        elif evidence_type == "explicit":
+            return VoteType.ACCEPT, 0.8, "Explicit evidence present"
+        elif evidence_type == "implicit" and evidence_strength > 0.6:
+            return VoteType.WEAK_ACCEPT, 0.7, "Implicit evidence present"
+        elif evidence_type == "inferred":
+            return VoteType.WEAK_REJECT, 0.6, "Only inferred evidence"
+        
+        # Check if evidence sentences exist
+        if evidence_sentences:
+            return VoteType.WEAK_ACCEPT, 0.6, f"Has {len(evidence_sentences)} evidence sentences"
+        
+        return VoteType.WEAK_REJECT, 0.6, "No clear evidence for triple"
 
     def _store_evidence_links(
         self,
