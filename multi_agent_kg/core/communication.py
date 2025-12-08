@@ -14,9 +14,6 @@ from datetime import datetime
 from enum import Enum
 import uuid
 
-if TYPE_CHECKING:
-    from multi_agent_kg.agents.base_agent import Agent
-
 
 class MessagePriority(str, Enum):
     LOW = "low"
