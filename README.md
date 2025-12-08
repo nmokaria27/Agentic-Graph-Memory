@@ -135,13 +135,7 @@ results = orchestrator.process_corpus([
 
 # Export
 export = orchestrator.export()
-```
 
-## Run Demo
-
-```bash
-export OPENAI_API_KEY=your_key_here
-python -m multi_agent_kg.examples.deliberative_pipeline
 ```
 
 ## Model Tiers
@@ -179,7 +173,3 @@ multi_agent_kg/
 └── examples/
     └── deliberative_pipeline.py   # Demo script
 ```
-
-## License
-
-MIT
