@@ -116,12 +116,12 @@ def main():
     print("=" * 70)
 
     if failed == 0:
-        print("\n✅ All tests passed! Installation is successful.")
+        print("\nAll tests passed! Installation is successful.")
         print("\nNext steps:")
         print("  1. Set your OPENAI_API_KEY in .env file")
         print("  2. Run: python -m multi_agent_kg.examples.run_pipeline")
     else:
-        print("\n❌ Some tests failed. Please check the errors above.")
+        print("\nSome tests failed. Please check the errors above.")
         sys.exit(1)
 
 

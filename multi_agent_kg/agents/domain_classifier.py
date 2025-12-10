@@ -1,13 +1,18 @@
 """
 Domain Classifier Agent.
 
-Responsible for:
-- Classifying document domain (scientific, legal, general, etc.)
-- Selecting appropriate extraction prompts per domain
-- Adapting entity/relation types based on domain
-- Storing domain context for downstream agents
+Analyzes raw document content to classify its domain and generate extraction 
+guidance (entity types, relation types, examples) for downstream agents.
 
-This agent helps customize extraction for different content types.
+This agent dynamically identifies:
+- Primary domain and hierarchical sub-domains
+- Priority entity types relevant to the content
+- Priority relation types relevant to the content
+- Domain-specific few-shot examples for Entity Extractor
+- Extraction depth and complexity parameters
+
+Unlike a static domain classifier, this agent generates domain-specific schemas
+dynamically based on the actual content, without relying on predefined categories.
 """
 
 from typing import Any, Dict, List, Optional
@@ -26,116 +31,123 @@ from multi_agent_kg.core.communication import MessageBus
 from multi_agent_kg.core.config import LLMConfig
 
 
-# Domain configurations with expected entity and relation types
-DOMAIN_CONFIGS = {
-    "scientific": {
-        "entity_types": [
-            "CONCEPT", "THEORY", "METHOD", "DATASET", "METRIC", 
-            "RESEARCHER", "INSTITUTION", "PUBLICATION", "FINDING"
-        ],
-        "relation_types": [
-            "proposes", "evaluates", "improves", "uses", "cites",
-            "achieves", "introduces", "compares", "extends", "applies"
-        ],
-        "focus": "technical concepts, methodologies, and experimental findings",
-    },
-    "biomedical": {
-        "entity_types": [
-            "DISEASE", "DRUG", "GENE", "PROTEIN", "CELL_TYPE",
-            "ORGANISM", "PATHWAY", "SYMPTOM", "TREATMENT", "BIOMARKER"
-        ],
-        "relation_types": [
-            "treats", "causes", "inhibits", "activates", "regulates",
-            "binds_to", "expressed_in", "associated_with", "targets", "metabolizes"
-        ],
-        "focus": "biological entities and their interactions",
-    },
-    "legal": {
-        "entity_types": [
-            "PERSON", "ORGANIZATION", "LAW", "COURT", "JURISDICTION",
-            "CONTRACT", "CASE", "STATUTE", "REGULATION", "RIGHT"
-        ],
-        "relation_types": [
-            "governs", "applies_to", "supersedes", "amends", "violates",
-            "establishes", "defines", "requires", "permits", "prohibits"
-        ],
-        "focus": "legal entities, regulations, and jurisdictional relationships",
-    },
-    "news": {
-        "entity_types": [
-            "PERSON", "ORGANIZATION", "LOCATION", "EVENT", "DATE",
-            "PRODUCT", "MONEY", "PERCENTAGE", "TITLE", "NATIONALITY"
-        ],
-        "relation_types": [
-            "announced", "acquired", "appointed", "located_in", "founded",
-            "works_for", "member_of", "occurred_on", "valued_at", "affects"
-        ],
-        "focus": "current events, people, organizations, and their relationships",
-    },
-    "technical": {
-        "entity_types": [
-            "SYSTEM", "COMPONENT", "TECHNOLOGY", "PROTOCOL", "STANDARD",
-            "VERSION", "PLATFORM", "API", "FEATURE", "REQUIREMENT"
-        ],
-        "relation_types": [
-            "implements", "depends_on", "integrates_with", "extends",
-            "replaces", "requires", "supports", "configures", "exposes", "consumes"
-        ],
-        "focus": "technical systems, components, and their dependencies",
-    },
-    "general": {
-        "entity_types": [
-            "PERSON", "ORGANIZATION", "LOCATION", "CONCEPT", "EVENT",
-            "PRODUCT", "DATE", "QUANTITY", "ATTRIBUTE", "ACTION"
-        ],
-        "relation_types": [
-            "is_a", "has", "located_in", "works_for", "related_to",
-            "causes", "enables", "requires", "produces", "affects"
-        ],
-        "focus": "general entities and their relationships",
-    },
-}
+# Prompt for domain classification and schema generation
+DOMAIN_ANALYSIS_PROMPT = """Analyze the following document to understand its domain and generate extraction guidance.
 
+Your task is to:
+1. Identify the PRIMARY DOMAIN of this document (e.g., "Machine Learning", "Corporate Finance", "Ancient History", "Cooking Recipes", etc.)
+2. Identify HIERARCHICAL SUB-DOMAINS (e.g., "Technology → Artificial Intelligence → Natural Language Processing")
+3. Generate a list of ENTITY TYPES that are most relevant to extract from this specific content
+4. Generate a list of RELATION TYPES that would connect these entities meaningfully
+5. Provide 2-3 FEW-SHOT EXAMPLES of entity extractions from the text
+6. Assess the COMPLEXITY and DENSITY of extractable knowledge
 
-CLASSIFICATION_PROMPT = """Classify the following text into one of these domains:
-- scientific: Academic papers, research articles, technical studies
-- biomedical: Medical, biological, pharmaceutical content
-- legal: Laws, contracts, court cases, regulations
-- news: News articles, current events, journalism
-- technical: Software documentation, system specifications, APIs
-- general: General purpose text that doesn't fit other categories
+Be specific and tailored to THIS document. Do not use generic categories - derive everything from the actual content.
 
-Analyze the text and return your classification.
-
-TEXT:
+DOCUMENT TEXT:
 {text}
 
 Respond with JSON:
 {{
-    "domain": "<domain_name>",
+    "primary_domain": "<specific domain name>",
+    "sub_domains": ["<parent domain>", "<child domain>", "<specific domain>"],
+    "domain_description": "<1-2 sentence description of what this domain covers>",
     "confidence": <0.0-1.0>,
-    "reasoning": "<brief explanation>",
-    "key_indicators": ["<indicator1>", "<indicator2>", ...]
+    "reasoning": "<brief explanation of why this classification>",
+    "key_indicators": ["<indicator1>", "<indicator2>", ...],
+    
+    "entity_types": [
+        {{
+            "type": "<ENTITY_TYPE_NAME>",
+            "description": "<what this entity type represents>",
+            "priority": "<high|medium|low>"
+        }}
+    ],
+    
+    "relation_types": [
+        {{
+            "type": "<RELATION_TYPE_NAME>",
+            "description": "<what relationship this captures>",
+            "source_types": ["<valid source entity types>"],
+            "target_types": ["<valid target entity types>"],
+            "priority": "<high|medium|low>"
+        }}
+    ],
+    
+    "few_shot_examples": [
+        {{
+            "text_span": "<exact text from document>",
+            "entity": "<extracted entity>",
+            "entity_type": "<type>",
+            "explanation": "<why this is an entity>"
+        }}
+    ],
+    
+    "extraction_parameters": {{
+        "complexity": "<low|medium|high>",
+        "knowledge_density": "<sparse|moderate|dense>",
+        "recommended_chunk_size": <number of tokens>,
+        "requires_coreference": <true|false>,
+        "has_temporal_relations": <true|false>,
+        "has_hierarchical_entities": <true|false>
+    }}
+}}"""
+
+
+# Prompt for generating relation examples
+RELATION_EXAMPLES_PROMPT = """Based on the following document and the identified entity types, provide few-shot examples of relations.
+
+DOCUMENT TEXT:
+{text}
+
+IDENTIFIED ENTITY TYPES:
+{entity_types}
+
+IDENTIFIED RELATION TYPES:
+{relation_types}
+
+For each relation type, find an example from the text. Respond with JSON:
+{{
+    "relation_examples": [
+        {{
+            "relation_type": "<RELATION_TYPE>",
+            "text_span": "<exact supporting text>",
+            "subject": "<subject entity>",
+            "subject_type": "<entity type>",
+            "object": "<object entity>",
+            "object_type": "<entity type>",
+            "explanation": "<why this relation exists>"
+        }}
+    ]
 }}"""
 
 
 class DomainClassifier(BaseAgent):
     """
-    Domain Classifier Agent - Classifies document domain for tailored extraction.
+    Domain Classifier Agent - Dynamically classifies document domain and generates
+    extraction guidance tailored to the specific content.
     
-    Responsibilities:
-    1. Analyze text to determine domain
-    2. Provide domain-specific entity and relation type hints
-    3. Store domain classification in shared memory
-    4. Escalate ambiguous classifications to coordinator
+    Per Spec (13B parameters):
+    - Analyzes raw document content to identify primary domain
+    - Detects sub-domains for hierarchical classification
+    - Generates list of priority entity types relevant to the domain
+    - Generates list of priority relation types relevant to the domain
+    - Provides domain-specific few-shot examples for Entity Extractor
+    - Sets extraction depth and complexity parameters
+    - Operates in parallel with Document Processor (both receive raw input)
+    
+    Key Difference from Static Classifiers:
+    This agent does NOT use predefined domain categories. Instead, it dynamically
+    analyzes the content and generates domain-specific schemas on the fly, making
+    it suitable for any domain without prior configuration.
     
     Uses SharedMemory to:
     - Store domain classification for reuse
-    - Track domain distribution across documents
+    - Cache generated schemas for similar documents
     
     Uses MessageBus to:
-    - Inform downstream agents of domain
-    - Escalate ambiguous cases
+    - Inform Entity Extractor of entity types and few-shot examples
+    - Inform Relation Extractor of relation types and constraints
     """
 
     def __init__(
@@ -144,8 +156,9 @@ class DomainClassifier(BaseAgent):
         shared_memory: Optional[SharedMemory] = None,
         message_bus: Optional[MessageBus] = None,
         llm_config: Optional[LLMConfig] = None,
-        domain_configs: Optional[Dict[str, Dict]] = None,
         confidence_threshold: float = 0.7,
+        max_entity_types: int = 15,
+        max_relation_types: int = 15,
     ):
         super().__init__(
             name="DomainClassifier",
@@ -154,10 +167,11 @@ class DomainClassifier(BaseAgent):
             shared_memory=shared_memory,
             message_bus=message_bus,
             llm_config=llm_config,
-            default_tier=ModelTier.SMALL,  # Classification is simple
+            default_tier=ModelTier.MEDIUM,  # 13B per spec for nuanced classification
             quality_threshold=confidence_threshold,
         )
-        self.domain_configs = domain_configs or DOMAIN_CONFIGS
+        self.max_entity_types = max_entity_types
+        self.max_relation_types = max_relation_types
 
     def run(
         self,
@@ -166,151 +180,397 @@ class DomainClassifier(BaseAgent):
         **kwargs,
     ) -> ExtractionResult:
         """
-        Classify document domain.
+        Analyze document and generate domain-specific extraction guidance.
         
         Args:
-            context: Processing context
-            segments: Document segments from DocumentProcessor
+            context: Processing context with raw document
+            segments: Optional document segments (uses raw text if not provided)
             
         Returns:
-            ExtractionResult with domain classification
+            ExtractionResult with domain context including:
+            - primary_domain: The identified domain
+            - sub_domains: Hierarchical domain path
+            - entity_types: List of entity type definitions with priorities
+            - relation_types: List of relation type definitions with constraints
+            - few_shot_examples: Examples for entity extraction
+            - relation_examples: Examples for relation extraction
+            - extraction_parameters: Complexity and configuration hints
         """
         self.stats["calls"] += 1
         
-        # Get text for classification (use first few segments or full text)
-        text_for_classification = self._get_classification_text(context, segments)
+        # Get representative text for analysis
+        text_for_analysis = self._get_analysis_text(context, segments)
         
-        # Use self-consistency for confident classification
-        classification, confidence = self._classify_with_consistency(
-            text_for_classification
-        )
+        if not text_for_analysis:
+            self.log("No text provided for domain classification")
+            return self._create_fallback_result(context.document_id)
         
-        # Get domain config
-        domain = classification.get("domain", "general")
-        domain_config = self.domain_configs.get(domain, self.domain_configs["general"])
+        # Phase 1: Domain analysis and schema generation
+        domain_analysis, confidence = self._analyze_domain(text_for_analysis)
         
-        # Check if escalation needed
+        if not domain_analysis:
+            self.log("Domain analysis failed, using fallback")
+            return self._create_fallback_result(context.document_id)
+        
+        # Phase 2: Generate relation examples if we have entity and relation types
+        relation_examples = []
+        if domain_analysis.get("entity_types") and domain_analysis.get("relation_types"):
+            relation_examples = self._generate_relation_examples(
+                text_for_analysis,
+                domain_analysis["entity_types"],
+                domain_analysis["relation_types"],
+            )
+        
+        # Check if escalation needed for low confidence
         needs_escalation = self.should_escalate(confidence)
         
         if needs_escalation:
             self.log(f"Low confidence ({confidence:.2f}) - escalating domain classification")
             self.escalate_to_coordinator(
-                reason="Ambiguous domain classification",
-                items=[classification],
-                context={"text_sample": text_for_classification[:500]},
+                reason="Ambiguous domain classification - needs human review",
+                items=[domain_analysis],
+                context={"text_sample": text_for_analysis[:500]},
             )
         
-        # Store in memory
-        result_item = {
-            "domain": domain,
-            "confidence": confidence,
-            "reasoning": classification.get("reasoning", ""),
-            "key_indicators": classification.get("key_indicators", []),
-            "entity_types": domain_config["entity_types"],
-            "relation_types": domain_config["relation_types"],
-            "focus": domain_config["focus"],
-        }
+        # Build domain context result
+        domain_context = self._build_domain_context(
+            domain_analysis, 
+            relation_examples,
+            context.document_id,
+        )
         
+        # Store in memory for downstream agents
         if self.shared_memory:
-            self._store_classification(result_item, context.document_id)
+            self._store_domain_context(domain_context, context.document_id)
         
-        # Broadcast to other agents
+        # Notify downstream agents
         if self.message_bus:
-            self._notify_agents(result_item, context.document_id)
+            self._notify_agents(domain_context, context.document_id)
         
-        self.log(f"Classified as '{domain}' with confidence {confidence:.2f}")
+        self.log(
+            f"Classified as '{domain_context['primary_domain']}' "
+            f"({' → '.join(domain_context.get('sub_domains', []))}) "
+            f"with {len(domain_context['entity_types'])} entity types, "
+            f"{len(domain_context['relation_types'])} relation types"
+        )
         
         return ExtractionResult(
-            items=[result_item],
+            items=[domain_context],
             confidence=confidence,
-            evidence=classification.get("key_indicators", []),
+            evidence=domain_analysis.get("key_indicators", []),
             metadata={
                 "document_id": context.document_id,
+                "complexity": domain_analysis.get("extraction_parameters", {}).get("complexity", "medium"),
             },
             needs_escalation=needs_escalation,
             escalation_reason="Ambiguous domain" if needs_escalation else None,
         )
 
-    def _get_classification_text(
+    def _get_analysis_text(
         self,
         context: AgentContext,
         segments: Optional[List[Dict[str, Any]]],
     ) -> str:
-        """Get text for classification (first 2000 chars)."""
+        """
+        Get representative text for domain analysis.
+        
+        Uses a larger sample (up to 4000 chars) for better classification,
+        preferring the beginning and sampling from middle if document is long.
+        """
+        max_chars = 4000
+        
         if segments:
-            # Combine first few segments
-            texts = [s.get("text", "") for s in segments[:3]]
-            return " ".join(texts)[:2000]
+            # Combine segments, taking from beginning, middle, and end
+            texts = []
+            n_segments = len(segments)
+            
+            if n_segments <= 5:
+                # Small document - use all segments
+                texts = [s.get("text", "") for s in segments]
+            else:
+                # Large document - sample strategically
+                # First 2 segments
+                texts.extend([s.get("text", "") for s in segments[:2]])
+                # Middle segment
+                mid_idx = n_segments // 2
+                texts.append(segments[mid_idx].get("text", ""))
+                # Last segment
+                texts.append(segments[-1].get("text", ""))
+            
+            combined = "\n\n".join(texts)
+            return combined[:max_chars]
         
-        return context.text[:2000] if context.text else ""
+        # Fall back to raw context text
+        return context.text[:max_chars] if context.text else ""
 
-    def _classify_with_consistency(
-        self,
-        text: str,
-    ) -> tuple:
-        """Classify domain using self-consistency."""
-        if not text:
-            return {"domain": "general", "confidence": 0.5}, 0.5
+    def _analyze_domain(self, text: str) -> tuple:
+        """
+        Analyze document domain and generate extraction schema.
         
-        prompt = CLASSIFICATION_PROMPT.format(text=text)
+        Uses self-consistency with multiple samples for reliable classification.
+        """
+        prompt = DOMAIN_ANALYSIS_PROMPT.format(text=text)
         
-        classification, confidence = self.call_llm_with_self_consistency(
+        analysis, confidence = self.call_llm_with_self_consistency(
             prompt=prompt,
-            system_prompt="You are a domain classification expert. Classify text accurately.",
-            tier=ModelTier.SMALL,
+            system_prompt=(
+                "You are an expert domain analyst. Your task is to deeply analyze "
+                "documents and generate precise, tailored extraction schemas. "
+                "Be specific to the actual content - avoid generic classifications. "
+                "Entity and relation types should be in UPPER_SNAKE_CASE format."
+            ),
+            tier=ModelTier.MEDIUM,  # 13B per spec
             n_samples=3,
-            temperature=0.3,
+            temperature=0.4,
         )
         
-        # Ensure valid domain
-        if not classification or classification.get("domain") not in self.domain_configs:
-            classification = {"domain": "general", "confidence": 0.5}
-            confidence = 0.5
+        if analysis:
+            # Validate and normalize the response
+            analysis = self._normalize_analysis(analysis)
         
-        return classification, confidence
+        return analysis, confidence
 
-    def _store_classification(
+    def _normalize_analysis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize and validate the domain analysis response."""
+        # Ensure required fields exist
+        if "primary_domain" not in analysis:
+            analysis["primary_domain"] = "General"
+        
+        if "sub_domains" not in analysis:
+            analysis["sub_domains"] = [analysis["primary_domain"]]
+        
+        # Normalize entity types
+        entity_types = analysis.get("entity_types", [])
+        if isinstance(entity_types, list):
+            normalized_entities = []
+            for et in entity_types[:self.max_entity_types]:
+                if isinstance(et, str):
+                    # Simple string format - convert to dict
+                    normalized_entities.append({
+                        "type": et.upper().replace(" ", "_"),
+                        "description": f"Entity of type {et}",
+                        "priority": "medium",
+                    })
+                elif isinstance(et, dict):
+                    et["type"] = et.get("type", "ENTITY").upper().replace(" ", "_")
+                    et["priority"] = et.get("priority", "medium")
+                    normalized_entities.append(et)
+            analysis["entity_types"] = normalized_entities
+        else:
+            analysis["entity_types"] = []
+        
+        # Normalize relation types
+        relation_types = analysis.get("relation_types", [])
+        if isinstance(relation_types, list):
+            normalized_relations = []
+            for rt in relation_types[:self.max_relation_types]:
+                if isinstance(rt, str):
+                    normalized_relations.append({
+                        "type": rt.upper().replace(" ", "_"),
+                        "description": f"Relation of type {rt}",
+                        "source_types": [],
+                        "target_types": [],
+                        "priority": "medium",
+                    })
+                elif isinstance(rt, dict):
+                    rt["type"] = rt.get("type", "RELATED_TO").upper().replace(" ", "_")
+                    rt["priority"] = rt.get("priority", "medium")
+                    rt["source_types"] = rt.get("source_types", [])
+                    rt["target_types"] = rt.get("target_types", [])
+                    normalized_relations.append(rt)
+            analysis["relation_types"] = normalized_relations
+        else:
+            analysis["relation_types"] = []
+        
+        # Ensure extraction parameters exist
+        if "extraction_parameters" not in analysis:
+            analysis["extraction_parameters"] = {
+                "complexity": "medium",
+                "knowledge_density": "moderate",
+                "recommended_chunk_size": 512,
+                "requires_coreference": True,
+                "has_temporal_relations": False,
+                "has_hierarchical_entities": False,
+            }
+        
+        # Ensure few-shot examples exist
+        if "few_shot_examples" not in analysis:
+            analysis["few_shot_examples"] = []
+        
+        return analysis
+
+    def _generate_relation_examples(
         self,
-        classification: Dict[str, Any],
+        text: str,
+        entity_types: List[Dict[str, Any]],
+        relation_types: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Generate few-shot examples for relation extraction."""
+        # Format entity and relation types for prompt
+        entity_str = "\n".join([
+            f"- {et['type']}: {et.get('description', '')}"
+            for et in entity_types
+        ])
+        relation_str = "\n".join([
+            f"- {rt['type']}: {rt.get('description', '')}"
+            for rt in relation_types
+        ])
+        
+        prompt = RELATION_EXAMPLES_PROMPT.format(
+            text=text[:2000],  # Use shorter text for examples
+            entity_types=entity_str,
+            relation_types=relation_str,
+        )
+        
+        response = self.call_llm(
+            prompt=prompt,
+            system_prompt=(
+                "You are an expert at identifying relationships between entities in text. "
+                "Provide clear, accurate examples from the given text."
+            ),
+            tier=ModelTier.MEDIUM,
+            temperature=0.2,
+        )
+        
+        if response and "relation_examples" in response:
+            return response["relation_examples"]
+        
+        return []
+
+    def _build_domain_context(
+        self,
+        analysis: Dict[str, Any],
+        relation_examples: List[Dict[str, Any]],
+        document_id: str,
+    ) -> Dict[str, Any]:
+        """Build the complete domain context for downstream agents."""
+        # Extract simple entity type names for easy consumption
+        entity_type_names = [et["type"] for et in analysis.get("entity_types", [])]
+        relation_type_names = [rt["type"] for rt in analysis.get("relation_types", [])]
+        
+        return {
+            # Domain classification
+            "primary_domain": analysis.get("primary_domain", "General"),
+            "sub_domains": analysis.get("sub_domains", []),
+            "domain_description": analysis.get("domain_description", ""),
+            "confidence": analysis.get("confidence", 0.5),
+            "reasoning": analysis.get("reasoning", ""),
+            "key_indicators": analysis.get("key_indicators", []),
+            
+            # Schema for extraction - detailed format
+            "entity_types": analysis.get("entity_types", []),
+            "relation_types": analysis.get("relation_types", []),
+            
+            # Simple lists for quick access
+            "entity_type_names": entity_type_names,
+            "relation_type_names": relation_type_names,
+            
+            # Few-shot examples
+            "entity_examples": analysis.get("few_shot_examples", []),
+            "relation_examples": relation_examples,
+            
+            # Extraction parameters
+            "extraction_parameters": analysis.get("extraction_parameters", {}),
+            
+            # Metadata
+            "document_id": document_id,
+        }
+
+    def _create_fallback_result(self, document_id: str) -> ExtractionResult:
+        """Create a minimal fallback result when classification fails."""
+        fallback_context = {
+            "primary_domain": "General",
+            "sub_domains": ["General"],
+            "domain_description": "Unable to classify domain - using general extraction",
+            "confidence": 0.3,
+            "reasoning": "Classification failed, falling back to general schema",
+            "key_indicators": [],
+            "entity_types": [
+                {"type": "PERSON", "description": "A person or individual", "priority": "high"},
+                {"type": "ORGANIZATION", "description": "An organization or institution", "priority": "high"},
+                {"type": "LOCATION", "description": "A place or location", "priority": "high"},
+                {"type": "CONCEPT", "description": "An abstract concept or idea", "priority": "medium"},
+                {"type": "EVENT", "description": "An event or occurrence", "priority": "medium"},
+                {"type": "DATE", "description": "A date or time reference", "priority": "medium"},
+            ],
+            "relation_types": [
+                {"type": "RELATED_TO", "description": "General relationship", "source_types": [], "target_types": [], "priority": "high"},
+                {"type": "LOCATED_IN", "description": "Location relationship", "source_types": [], "target_types": ["LOCATION"], "priority": "medium"},
+                {"type": "PART_OF", "description": "Part-whole relationship", "source_types": [], "target_types": [], "priority": "medium"},
+                {"type": "WORKS_FOR", "description": "Employment relationship", "source_types": ["PERSON"], "target_types": ["ORGANIZATION"], "priority": "medium"},
+            ],
+            "entity_type_names": ["PERSON", "ORGANIZATION", "LOCATION", "CONCEPT", "EVENT", "DATE"],
+            "relation_type_names": ["RELATED_TO", "LOCATED_IN", "PART_OF", "WORKS_FOR"],
+            "entity_examples": [],
+            "relation_examples": [],
+            "extraction_parameters": {
+                "complexity": "medium",
+                "knowledge_density": "moderate",
+                "recommended_chunk_size": 512,
+                "requires_coreference": True,
+                "has_temporal_relations": False,
+                "has_hierarchical_entities": False,
+            },
+            "document_id": document_id,
+        }
+        
+        return ExtractionResult(
+            items=[fallback_context],
+            confidence=0.3,
+            evidence=[],
+            metadata={"document_id": document_id, "fallback": True},
+            needs_escalation=True,
+            escalation_reason="Classification failed - using fallback schema",
+        )
+
+    def _store_domain_context(
+        self,
+        domain_context: Dict[str, Any],
         document_id: str,
     ) -> None:
-        """Store domain classification in memory."""
+        """Store domain context in shared memory for downstream agents."""
         self.store_in_memory(
             memory_type=MemoryType.SEMANTIC,
             content={
-                "classification": classification,
+                "domain_context": domain_context,
                 "document_id": document_id,
             },
         )
 
     def _notify_agents(
         self,
-        classification: Dict[str, Any],
+        domain_context: Dict[str, Any],
         document_id: str,
     ) -> None:
-        """Notify downstream agents of domain classification."""
+        """Notify downstream agents of domain classification and schema."""
         from multi_agent_kg.core.communication import CommunicationType
         
+        # Notify Entity Extractor with entity types and examples
         self.send_message(
             receiver="EntityExtractor",
             comm_type=CommunicationType.INFORM,
             content={
-                "domain": classification["domain"],
-                "entity_types": classification["entity_types"],
+                "domain": domain_context["primary_domain"],
+                "sub_domains": domain_context["sub_domains"],
+                "entity_types": domain_context["entity_types"],
+                "entity_type_names": domain_context["entity_type_names"],
+                "few_shot_examples": domain_context["entity_examples"],
+                "extraction_parameters": domain_context["extraction_parameters"],
                 "document_id": document_id,
             },
         )
         
+        # Notify Relation Extractor with relation types and constraints
         self.send_message(
-            receiver="RelationExtractor", 
+            receiver="RelationExtractor",
             comm_type=CommunicationType.INFORM,
             content={
-                "domain": classification["domain"],
-                "relation_types": classification["relation_types"],
+                "domain": domain_context["primary_domain"],
+                "relation_types": domain_context["relation_types"],
+                "relation_type_names": domain_context["relation_type_names"],
+                "relation_examples": domain_context["relation_examples"],
+                "entity_type_names": domain_context["entity_type_names"],
+                "extraction_parameters": domain_context["extraction_parameters"],
                 "document_id": document_id,
             },
         )
-
-    def get_domain_config(self, domain: str) -> Dict[str, Any]:
-        """Get configuration for a specific domain."""
-        return self.domain_configs.get(domain, self.domain_configs["general"])
