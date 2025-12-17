@@ -231,6 +231,7 @@ class KnowledgeOrganizer(BaseAgent):
                 prompt=prompt,
                 system_prompt="You are an expert at entity resolution. Identify duplicates carefully.",
                 tier=ModelTier.MEDIUM,
+                max_tokens=4096,
             )
             
             merge_groups = result.get("merge_groups", [])
@@ -303,6 +304,7 @@ class KnowledgeOrganizer(BaseAgent):
                 prompt=prompt,
                 system_prompt="You are an expert at relation normalization. Be consistent.",
                 tier=ModelTier.MEDIUM,
+                max_tokens=4096,
             )
             
             # Update cache
@@ -389,7 +391,7 @@ class KnowledgeOrganizer(BaseAgent):
         
         # Count relation types
         relation_counts = defaultdict(int)
-        for triple in self.knowledge_graph.triples.values():
+        for triple in self.knowledge_graph.triples:
             relation_counts[triple.relation] += 1
         
         # Count entity types

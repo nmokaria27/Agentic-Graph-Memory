@@ -430,6 +430,7 @@ class DomainClassifier(BaseAgent):
             ),
             tier=ModelTier.MEDIUM,
             temperature=0.2,
+            max_tokens=4096,
         )
         
         if response and "relation_examples" in response:

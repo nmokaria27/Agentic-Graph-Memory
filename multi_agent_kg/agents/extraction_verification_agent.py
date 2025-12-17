@@ -279,6 +279,7 @@ class ExtractionVerificationAgent(BaseAgent):
                 "Reject any triple that is not clearly supported by the text."
             ),
             tier=ModelTier.LARGE,
+            max_tokens=4096,
         )
         
         return result
@@ -327,6 +328,7 @@ class ExtractionVerificationAgent(BaseAgent):
             prompt=prompt,
             system_prompt="You are an expert at knowledge consistency checking. Be thorough.",
             tier=ModelTier.LARGE,
+            max_tokens=4096,
         )
         
         # Apply consistency results

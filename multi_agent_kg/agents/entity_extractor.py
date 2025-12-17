@@ -190,6 +190,26 @@ class EntityExtractor(BaseAgent):
         self.use_self_consistency = use_self_consistency
         self.n_consistency_samples = n_consistency_samples
 
+    def _normalize_entity_types(self, entity_types_raw: Any) -> List[str]:
+        """Normalize entity types to list of strings, handling dict format from DomainClassifier."""
+        if not entity_types_raw:
+            return []
+        
+        if not isinstance(entity_types_raw, list):
+            return []
+        
+        normalized = []
+        for et in entity_types_raw:
+            if isinstance(et, dict):
+                # DomainClassifier format: {"type": "PERSON", "description": "...", "priority": "high"}
+                normalized.append(et.get("type", str(et)))
+            elif isinstance(et, str):
+                normalized.append(et)
+            else:
+                normalized.append(str(et))
+        
+        return normalized
+
     def run(
         self,
         context: AgentContext,
@@ -211,7 +231,9 @@ class EntityExtractor(BaseAgent):
         self.stats["calls"] += 1
         
         # Get entity types from domain config or use general
-        entity_types = domain_config.get("entity_types", []) if domain_config else []
+        entity_types_raw = domain_config.get("entity_types", []) if domain_config else []
+        entity_types = self._normalize_entity_types(entity_types_raw)
+        
         if not entity_types:
             entity_types = ["PERSON", "ORGANIZATION", "LOCATION", "CONCEPT", "EVENT"]
         
@@ -220,7 +242,7 @@ class EntityExtractor(BaseAgent):
             messages = self.receive_messages()
             for msg in messages:
                 if msg.comm_type == CommunicationType.INFORM and "entity_types" in msg.content:
-                    entity_types = msg.content["entity_types"]
+                    entity_types = self._normalize_entity_types(msg.content["entity_types"])
         
         # Process each segment
         all_entities = []
@@ -303,9 +325,12 @@ class EntityExtractor(BaseAgent):
         entity_types: List[str],
     ) -> List[Dict[str, Any]]:
         """Stage 1: Initial entity extraction."""
+        # Ensure entity_types are strings
+        entity_types_str = self._normalize_entity_types(entity_types)
+        
         prompt = INITIAL_EXTRACTION_PROMPT.format(
             text=text,
-            entity_types=", ".join(entity_types),
+            entity_types=", ".join(entity_types_str),
         )
         
         if self.use_self_consistency:
@@ -320,6 +345,7 @@ class EntityExtractor(BaseAgent):
                 prompt=prompt,
                 system_prompt="You are an expert entity extractor. Extract all named entities precisely.",
                 tier=ModelTier.MEDIUM,
+                max_tokens=4096,  # Model maximum for gpt-4o-mini
             )
             confidence = 0.7
         
@@ -350,6 +376,7 @@ class EntityExtractor(BaseAgent):
             prompt=prompt,
             system_prompt="You are an expert at identifying precise entity boundaries.",
             tier=ModelTier.SMALL,  # Simpler task
+            max_tokens=4096,  # Model maximum for gpt-4o-mini
         )
         
         return result.get("entities", entities)
@@ -387,6 +414,7 @@ class EntityExtractor(BaseAgent):
                 prompt=prompt,
                 system_prompt="You are an expert at entity typing. Assign accurate types.",
                 tier=ModelTier.MEDIUM,
+                max_tokens=4096,
             )
             confidence = 0.7
         
@@ -425,6 +453,7 @@ class EntityExtractor(BaseAgent):
             prompt=prompt,
             system_prompt="You are an expert at coreference resolution. Group mentions accurately.",
             tier=ModelTier.MEDIUM,
+            max_tokens=4096,
         )
         
         # Convert groups back to entity format

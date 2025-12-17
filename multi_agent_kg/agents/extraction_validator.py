@@ -332,6 +332,7 @@ class ExtractionValidator(BaseAgent):
             prompt=prompt,
             system_prompt="You are an expert extraction validator. Be thorough but fair in assessment.",
             tier=ModelTier.LARGE,
+            max_tokens=4096,
         )
         
         return result
@@ -368,6 +369,7 @@ class ExtractionValidator(BaseAgent):
             prompt=prompt,
             system_prompt="You are an expert at refining extractions. Apply corrections precisely.",
             tier=ModelTier.LARGE,
+            max_tokens=4096,
         )
         
         return result
@@ -551,6 +553,7 @@ Return JSON:
             prompt=prompt,
             system_prompt="You are an expert validator. Provide a well-reasoned argument.",
             tier=ModelTier.LARGE,
+            max_tokens=4096,
         )
         
         position = result.get("position", "support")
@@ -598,6 +601,7 @@ Return JSON:
             prompt=prompt,
             system_prompt="You are an expert extraction validator.",
             tier=ModelTier.LARGE,
+            max_tokens=4096,
         )
         
         valid = result.get("valid", False)

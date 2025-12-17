@@ -205,10 +205,17 @@ class BaseAgent(ABC):
         
         self.stats["llm_calls"] += 1
         
+        # Build messages list
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
         return chat_completion_json(
-            prompt=prompt,
-            system_prompt=system_prompt,
-            llm_config=config,
+            messages=messages,
+            model=config.model,
+            temperature=config.temperature,
+            max_tokens=config.max_tokens,
         )
 
     def call_llm_with_self_consistency(

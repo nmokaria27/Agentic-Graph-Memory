@@ -235,7 +235,7 @@ class EvidenceLinker(BaseAgent):
             return triples
         
         # Process in batches to avoid token limits
-        batch_size = 10
+        batch_size = 5  # Reduced to prevent JSON truncation
         all_linked = []
         
         for i in range(0, len(triples), batch_size):
@@ -259,6 +259,7 @@ class EvidenceLinker(BaseAgent):
                 prompt=prompt,
                 system_prompt="You are an expert at finding evidence for claims. Be precise about source sentences.",
                 tier=ModelTier.MEDIUM,
+                max_tokens=4096,  # Model maximum for gpt-4o-mini
             )
             
             linked = result.get("linked_triples", [])
@@ -323,6 +324,7 @@ class EvidenceLinker(BaseAgent):
             prompt=prompt,
             system_prompt="You are an expert at knowledge integration. Check for consistency with prior facts.",
             tier=ModelTier.MEDIUM,
+            max_tokens=4096,  # Model maximum for gpt-4o-mini
         )
         
         cross_refs = result.get("cross_references", [])

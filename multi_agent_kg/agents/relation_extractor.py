@@ -179,6 +179,25 @@ class RelationExtractor(BaseAgent):
         # Track discovered relation types
         self.discovered_relations: Dict[str, DiscoveredRelation] = {}
 
+    def _normalize_relation_types(self, relation_types_raw: Any) -> List[str]:
+        """Normalize relation types from various formats to List[str]."""
+        if not relation_types_raw:
+            return []
+        
+        if not isinstance(relation_types_raw, list):
+            return []
+        
+        normalized = []
+        for rt in relation_types_raw:
+            if isinstance(rt, dict):
+                # Extract 'type' field from dict format
+                if "type" in rt:
+                    normalized.append(rt["type"])
+            elif isinstance(rt, str):
+                normalized.append(rt)
+        
+        return normalized
+
     def run(
         self,
         context: AgentContext,
@@ -212,7 +231,7 @@ class RelationExtractor(BaseAgent):
             messages = self.receive_messages()
             for msg in messages:
                 if msg.comm_type == CommunicationType.INFORM and "relation_types" in msg.content:
-                    suggested_types = msg.content["relation_types"]
+                    suggested_types = self._normalize_relation_types(msg.content["relation_types"])
         
         # Process segments or full text
         all_triples = []
@@ -325,9 +344,10 @@ class RelationExtractor(BaseAgent):
         """Get suggested relation types from domain and discovered."""
         types = []
         
-        # From domain config
+        # From domain config - normalize from dict format
         if domain_config:
-            types.extend(domain_config.get("relation_types", []))
+            relation_types_raw = domain_config.get("relation_types", [])
+            types.extend(self._normalize_relation_types(relation_types_raw))
         
         # From discovered relations (high frequency)
         for name, rel in self.discovered_relations.items():
@@ -372,6 +392,7 @@ class RelationExtractor(BaseAgent):
                 prompt=prompt,
                 system_prompt="You are an expert at identifying relations between entities. Be thorough but precise.",
                 tier=ModelTier.MEDIUM,
+                max_tokens=4096,
             )
         
         return result.get("relations_found", [])
@@ -398,6 +419,7 @@ class RelationExtractor(BaseAgent):
             prompt=prompt,
             system_prompt="You are an expert at identifying subject-relation pairs in text.",
             tier=ModelTier.MEDIUM,
+            max_tokens=4096,
         )
         
         return result.get("head_bindings", [])
@@ -440,6 +462,7 @@ class RelationExtractor(BaseAgent):
                 prompt=prompt,
                 system_prompt="You are an expert at completing relation triples. Be precise about object entities.",
                 tier=ModelTier.MEDIUM,
+                max_tokens=4096,
             )
             return result.get("triples", [])
 
