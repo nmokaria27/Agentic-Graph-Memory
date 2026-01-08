@@ -77,11 +77,12 @@ class MessageBus:
     - Message history
     """
 
-    def __init__(self):
+    def __init__(self, debug_logger=None):
         self.messages: List[AgentMessage] = []
         self.pending_responses: Dict[str, AgentMessage] = {}
         self.subscribers: Dict[str, List[Callable]] = {}  # topic -> callbacks
         self.agent_inboxes: Dict[str, List[AgentMessage]] = {}
+        self.debug_logger = debug_logger
 
     def send(
         self,
@@ -125,6 +126,16 @@ class MessageBus:
         )
         
         self.messages.append(message)
+        
+        # Debug log the message
+        if self.debug_logger:
+            self.debug_logger.log_agent_message(
+                sender=sender,
+                receiver=receiver,
+                message_type=comm_type.value,
+                content=content,
+                priority=priority.value
+            )
         
         if requires_response:
             self.pending_responses[msg_id] = message

@@ -1,8 +1,17 @@
 # Multi-Agent Knowledge Graph Framework
 
-Building knowledge graphs from unstructured text is tricky—entities hide in weird places, relationships aren't always obvious, and LLMs love to hallucinate facts that sound right but aren't. This framework uses a team of 8 specialized AI agents that each handle one part of the problem, and they actually communicate with each other through a shared memory system. When an agent isn't confident about something, it doesn't just guess—it posts the question to a blackboard where other agents vote and debate until they reach consensus.
+A deliberative multi-agent system for knowledge graph construction from unstructured text using LLM-backed agents with inter-agent communication, voting, and debate mechanisms.
 
-The pipeline has 9 steps: chunk the document, classify its domain, extract entities (4-stage process), find relationships, link everything to evidence, run multi-agent deliberation on uncertain items, validate quality, do an anti-hallucination check, and organize it into a knowledge graph. The deliberation step is where it gets interesting—agents cast weighted votes (coordinator agents count more than workers), and if votes conflict, they enter a debate loop where they present arguments until one side wins. Everything flows through shared memory so context carries across the whole system.
+## Overview
+
+This framework implements an 8-agent pipeline where specialized AI agents collaborate through shared memory, message passing, and democratic deliberation to extract high-quality knowledge graphs from documents.
+
+**Key Features:**
+- **Multi-Agent Deliberation**: Agents vote and debate on uncertain extractions
+- **Tiered LLM Usage**: Small/medium/large models for cost-efficiency
+- **Anti-Hallucination**: Verification against source text with evidence linking
+- **Domain-Adaptive**: Automatic schema generation for different document types
+- **Open-World Relations**: Discovers novel relation types beyond predefined schemas
 
 ```
                               YOUR DOCUMENT
@@ -38,77 +47,200 @@ The pipeline has 9 steps: chunk the document, classify its domain, extract entit
                                  ▼
               ┌────────────────────────────────────────┐
               │  [4] Relation Extractor                │
-              │      RHF pipeline + discovers new      │
-              │      relation types not in schema      │
-              └──────────────────┬─────────────────────┘
-                                 ▼
-              ┌────────────────────────────────────────┐
-              │  [5] Evidence Linker                   │
-              │      Links each fact to source text    │
-              └──────────────────┬─────────────────────┘
-                                 │
-        ═══════════════════════════╪═══════════════════════════════════
-                  DELIBERATION     │
-        ═══════════════════════════╪═══════════════════════════════════
-                                 ▼
-              ┌────────────────────────────────────────┐
-              │  [6] Multi-Agent Deliberation          │
-              │                                        │
-              │   Low confidence? → Post to blackboard │
-              │                          ↓             │
-              │              Other agents vote         │
-              │                          ↓             │
-              │         Votes conflict? → Debate loop  │
-              │                          ↓             │
-              │              Accept or Reject          │
-              └──────────────────┬─────────────────────┘
-                                 │
-        ═══════════════════════════╪═══════════════════════════════════
-                  VALIDATION       │
-        ═══════════════════════════╪═══════════════════════════════════
-                                 ▼
-              ┌────────────────────────────────────────┐
-              │  [7] Extraction Validator              │
-              │      Iterates until quality ≥ 85%      │
-              └──────────────────┬─────────────────────┘
-                                 ▼
-              ┌────────────────────────────────────────┐
-              │  [8] Verification Agent                │
-              │      Anti-hallucination check          │
-              └──────────────────┬─────────────────────┘
-                                 ▼
-              ┌────────────────────────────────────────┐
-              │  [9] Knowledge Organizer               │
-              │      Dedupes, normalizes, stores       │
-              └──────────────────┬─────────────────────┘
-                                 │
-                                 ▼
-                        KNOWLEDGE GRAPH
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                       SHARED MEMORY LAYER                        │
+│  • Episodic/Semantic/Procedural Memory                          │
+│  • Blackboard (voting/debate)                                   │
+│  • MessageBus (agent communication)                              │
+└──────────────────────────────────────────────────────────────────┘
+                              ▼
+┌─────────────────────────  PIPELINE  ─────────────────────────────┐
+│                                                                   │
+│  [1] DocumentProcessor  →  Segment text into chunks              │
+│  [2] DomainClassifier   →  Identify domain + generate schema    │
+│  [3] EntityExtractor    →  4-stage entity extraction             │
+│  [4] RelationExtractor  →  RHF pipeline + open-world discovery  │
+│  [5] EvidenceLinker     →  Link facts to source text            │
+│                                                                   │
+│  ┌─────────────── DELIBERATION PHASE ───────────────┐            │
+│  │  [6] Multi-Agent Voting & Debate                 │            │
+│  │      • Low confidence → Post to blackboard       │            │
+│  │      • 2-3 agents vote (weighted by role)        │            │
+│  │      • Conflicts trigger debate loops            │            │
+│  └──────────────────────────────────────────────────┘            │
+│                                                                   │
+│  [7] ExtractionValidator       →  Iterative refinement          │
+│  [8] VerificationAgent         →  Anti-hallucination check      │
+│  [9] KnowledgeOrganizer        →  Dedup + normalize + store     │
+│                                                                   │
+└───────────────────────────────────────────────────────────────────┘
+                              ▼
+                      KNOWLEDGE GRAPH
 ```
 
-## Key Features
+## Agent API Reference
 
-- **Multi-agent voting & debate** - Agents vote on uncertain extractions with 7-level weighted votes. Conflicts trigger debate loops with arguments until consensus.
-- **Self-consistency confidence** - Multiple LLM samples vote on answers. If 4/5 agree, confidence is 0.8. Disagreement = escalation.
-- **Open-world relation discovery** - Finds relation types not predefined in the schema.
-- **Evidence grounding** - Every fact links to source text. Can't prove it? Probably hallucinated.
-- **Cross-document memory** - Context persists across documents for entity resolution.
+### Agent 1: DocumentProcessor
+- **Role**: Text segmentation and preprocessing  
+- **Model**: gpt-3.5-turbo (Small)
+- **Input**: Raw document text
+- **Output**: List of text segments (1500-2000 chars each)
+- **LLM Calls**: 0 (rule-based)
+
+### Agent 2: DomainClassifier
+- **Role**: Domain identification and schema generation  
+- **Model**: gpt-4o-mini (Medium)
+- **Input**: Document segments
+- **Output**: Domain + entity_types + relation_types + examples
+- **LLM Calls**: 2 (domain analysis, relation examples)
+- **Side Effects**: Broadcasts schema to all downstream agents
+
+### Agent 3: EntityExtractor
+- **Role**: 4-stage entity extraction pipeline  
+- **Model**: gpt-4o-mini (Medium)
+- **Stages**:
+  1. Initial extraction (with domain entity types)
+  2. Boundary refinement (fix text spans)
+  3. Type assignment (validate types)
+  4. Coreference resolution (merge duplicates)
+- **Input**: Text segments + entity_types
+- **Output**: Entities with types, confidence, aliases
+- **LLM Calls**: 4 per segment
+- **Side Effects**: Posts low-confidence entities for voting
+
+### Agent 4: RelationExtractor
+- **Role**: Relation-Head-First (RHF) triple extraction  
+- **Model**: gpt-4o-mini (Medium)
+- **Stages**:
+  1. Relation identification
+  2. Head entity binding (subjects)
+  3. Tail entity binding (objects)
+- **Input**: Entities + relation_types
+- **Output**: Triples (subject, relation, object) with evidence
+- **LLM Calls**: 3 per segment
+- **Side Effects**: Discovers new relation types if open-world enabled
+
+### Agent 5: EvidenceLinker
+- **Role**: Link triples to source evidence  
+- **Model**: gpt-4o-mini (Medium)
+- **Input**: Triples from RelationExtractor
+- **Output**: Triples with evidence sentences + confidence scores
+- **LLM Calls**: ~N/10 batches
+- **Side Effects**: Adjusts confidence based on evidence quality
+
+### Agent 6: Multi-Agent Deliberation
+- **Coordinator**: DeliberationCoordinator  
+- **Voting Panel**: EntityExtractor, RelationExtractor, EvidenceLinker
+- **Process**:
+  1. Low-confidence items posted to blackboard
+  2. Voting agents cast weighted votes (7 levels: STRONG_ACCEPT to STRONG_REJECT)
+  3. Consensus threshold: 0.6 (60% weighted agreement)
+  4. Conflicts → debate phase with arguments
+- **Output**: Accepted/rejected items with rationales
+
+### Agent 7: ExtractionValidator
+- **Role**: Validation coordinator with iterative refinement  
+- **Model**: gpt-4o (Large)
+- **Input**: Low-confidence entities/triples from workers
+- **Output**: Validated extractions with quality scores
+- **LLM Calls**: 2-4 per iteration
+- **Max Iterations**: 4 (stops when quality ≥ threshold)
+
+### Agent 8: ExtractionVerificationAgent
+- **Role**: Anti-hallucination verification  
+- **Model**: gpt-4o (Large)
+- **Process**:
+  1. Source verification (check against text)
+  2. Cross-document consistency check
+  3. Classify: verified/partial/rejected/hallucinated
+- **Input**: Validated triples
+- **Output**: Approved/rejected with verification_status
+- **LLM Calls**: ~2 operations (batch verification)
+
+### Agent 9: KnowledgeOrganizer
+- **Role**: KG integration and maintenance  
+- **Model**: gpt-4o-mini (Medium)
+- **Process**:
+  1. Entity deduplication (merge aliases)
+  2. Relation normalization
+  3. KG integration
+  4. Export to JSON
+- **Input**: Verified entities/triples
+- **Output**: Updated KnowledgeGraph + statistics
+- **LLM Calls**: ~2 operations (dedup, normalization)
+
+## Installation
+
+```bash
+git clone https://github.com/PranavBykampadi/multi-agent-kg.git
+cd multi-agent-kg
+pip install -e .
+```
 
 ## Quick Start
 
-```bash
-pip install -e .
-export OPENAI_API_KEY=your_key
-python -m multi_agent_kg.examples.deliberative_pipeline
-```
-
 ```python
-from multi_agent_kg.core import DeliberativeOrchestrator, KnowledgeGraph, LLMConfig
+from multi_agent_kg.core import DeliberativeOrchestrator, LLMConfig
+
+documents = [{"id": "doc1", "text": "Your document text...", "metadata": {}}]
 
 orchestrator = DeliberativeOrchestrator(
-    llm_config=LLMConfig(model="gpt-4o-mini"),
-    knowledge_graph=KnowledgeGraph(),
+    llm_config=LLMConfig(model="gpt-4o-mini", temperature=0.2),
+    quality_threshold=0.7,
+    enable_deliberation=True
 )
 
-result = orchestrator.process_document(text="Your text here...")
+results = orchestrator.process_corpus(documents)
+kg = results["knowledge_graph"]
+kg.export("output.json")
 ```
+
+## Configuration
+
+**Model Tiers:**
+- Small (gpt-3.5-turbo): Simple tasks (segmentation)
+- Medium (gpt-4o-mini): Extraction tasks (entities, relations)
+- Large (gpt-4o): Validation and verification
+
+**Key Parameters:**
+- `quality_threshold`: Minimum confidence for acceptance (default: 0.7)
+- `max_refinement_iterations`: Iterative refinement limit (default: 4)
+- `enable_deliberation`: Multi-agent voting/debate (default: True)
+- `enable_open_world`: Discover new relation types (default: True)
+- `consensus_threshold`: Voting agreement needed (default: 0.6)
+
+## Data Structures
+
+**Entity:**
+```python
+{
+    "id": "entity_001",
+    "text": "intimate partner violence",
+    "type": "Violence_Type",
+    "confidence": 0.92,
+    "start": 45,
+    "end": 70,
+    "aliases": ["IPV"]
+}
+```
+
+**Triple:**
+```python
+{
+    "subject": "intimate partner violence",
+    "subject_id": "entity_001",
+    "relation": "associated_with",
+    "object": "depression",
+    "object_id": "entity_023",
+    "confidence": 0.85,
+    "evidence": {
+        "text": "IPV was significantly associated with depression...",
+        "type": "explicit",
+        "char_start": 1234
+    }
+}
+```
+

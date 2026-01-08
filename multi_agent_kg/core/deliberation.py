@@ -185,6 +185,7 @@ class DeliberationCoordinator:
         voting_agents: Optional[List[str]] = None,
         consensus_threshold: float = 0.6,
         min_votes: int = 2,
+        debug_logger=None,
     ):
         """
         Initialize the deliberation coordinator.
@@ -195,6 +196,7 @@ class DeliberationCoordinator:
             voting_agents: List of agents that can vote (default: all extractors)
             consensus_threshold: Threshold for consensus decision
             min_votes: Minimum votes required for a decision
+            debug_logger: Debug logger for tracking votes and debates
         """
         self.memory = shared_memory
         self.bus = message_bus
@@ -205,6 +207,7 @@ class DeliberationCoordinator:
         ]
         self.consensus_threshold = consensus_threshold
         self.min_votes = min_votes
+        self.debug_logger = debug_logger
         
         # Active deliberations
         self.hypotheses: Dict[str, Hypothesis] = {}
@@ -343,6 +346,18 @@ class DeliberationCoordinator:
         
         hypothesis.add_vote(vote)
         self.stats["votes_collected"] += 1
+        
+        # Debug log the vote
+        if self.debug_logger:
+            self.debug_logger.log_vote(
+                voter=voter,
+                hypothesis_id=hypothesis_id,
+                vote_type=vote_type.value,
+                confidence=confidence,
+                rationale=rationale,
+                evidence=evidence,
+                weighted_score=vote.weighted_score
+            )
         
         # Also record on blackboard
         self.memory.vote_on_blackboard(

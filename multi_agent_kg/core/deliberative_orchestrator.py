@@ -98,6 +98,7 @@ class DeliberativeOrchestrator:
         enable_cross_document: bool = True,
         enable_deliberation: bool = True,
         model_tiers: Optional[Dict[ModelTier, str]] = None,
+        debug_logger = None,
     ):
         """
         Initialize the deliberative orchestrator.
@@ -112,6 +113,7 @@ class DeliberativeOrchestrator:
             enable_cross_document: Enable cross-document entity resolution
             enable_deliberation: Enable multi-agent voting and debate
             model_tiers: Custom model tier mapping
+            debug_logger: Debug logger for tracking communications
         """
         self.llm_config = llm_config or LLMConfig()
         self.knowledge_graph = knowledge_graph or KnowledgeGraph()
@@ -121,6 +123,7 @@ class DeliberativeOrchestrator:
         self.enable_open_world = enable_open_world
         self.enable_cross_document = enable_cross_document
         self.enable_deliberation = enable_deliberation
+        self.debug_logger = debug_logger
         
         # Model tier configuration
         self.model_tiers = model_tiers or {
@@ -131,7 +134,7 @@ class DeliberativeOrchestrator:
         
         # Shared infrastructure
         self.shared_memory = SharedMemory()
-        self.message_bus = MessageBus()
+        self.message_bus = MessageBus(debug_logger=self.debug_logger)
         self.collab = CollaborationProtocol(self.message_bus)
         
         # Deliberation coordinator
@@ -141,6 +144,7 @@ class DeliberativeOrchestrator:
             voting_agents=["EntityExtractor", "RelationExtractor", "EvidenceLinker"],
             consensus_threshold=0.6,
             min_votes=2,
+            debug_logger=self.debug_logger,
         ) if enable_deliberation else None
         
         # Initialize agents
@@ -312,6 +316,8 @@ class DeliberativeOrchestrator:
         # ===== WORKER AGENTS =====
         
         # Step 1: Document Processing
+        if self.debug_logger:
+            self.debug_logger.log_stage_header(1, "Document Processing")
         print("\n[1/9] Document Processing")
         print("-" * 50)
         doc_result = self.document_processor.run(context, source_path=source_path)
@@ -320,6 +326,8 @@ class DeliberativeOrchestrator:
         print(f"  Segments: {len(segments)}")
         
         # Step 2: Domain Classification
+        if self.debug_logger:
+            self.debug_logger.log_stage_header(2, "Domain Classification")
         print("\n[2/9] Domain Classification")
         print("-" * 50)
         domain_result = self.domain_classifier.run(context, segments=segments)
@@ -329,6 +337,8 @@ class DeliberativeOrchestrator:
         print(f"  Domain: {context.domain} (confidence: {domain_result.confidence:.2f})")
         
         # Step 3: Entity Extraction
+        if self.debug_logger:
+            self.debug_logger.log_stage_header(3, "Entity Extraction (Multi-Stage)")
         print("\n[3/9] Entity Extraction (Multi-Stage)")
         print("-" * 50)
         entity_result = self.entity_extractor.run(
@@ -344,6 +354,8 @@ class DeliberativeOrchestrator:
             print(f"  Escalation: {entity_result.escalation_reason}")
         
         # Step 4: Relation Extraction (RHF)
+        if self.debug_logger:
+            self.debug_logger.log_stage_header(4, "Relation Extraction (RHF Pipeline)")
         print("\n[4/9] Relation Extraction (RHF Pipeline)")
         print("-" * 50)
         relation_result = self.relation_extractor.run(
@@ -360,6 +372,8 @@ class DeliberativeOrchestrator:
             print(f"  New Relation Types: {relation_result.metadata['new_relations_discovered']}")
         
         # Step 5: Evidence Linking
+        if self.debug_logger:
+            self.debug_logger.log_stage_header(5, "Evidence Linking")
         print("\n[5/9] Evidence Linking")
         print("-" * 50)
         evidence_result = self.evidence_linker.run(
@@ -372,6 +386,8 @@ class DeliberativeOrchestrator:
         print(f"  Linked: {len(linked_triples)} (confidence: {evidence_result.confidence:.2f})")
         
         # Step 6: Multi-Agent Deliberation
+        if self.debug_logger:
+            self.debug_logger.log_stage_header(6, "Multi-Agent Deliberation")
         print("\n[6/9] Multi-Agent Deliberation")
         print("-" * 50)
         deliberation_results = self._run_deliberation_phase(
@@ -400,6 +416,8 @@ class DeliberativeOrchestrator:
         # ===== COORDINATOR AGENTS =====
         
         # Step 7: Extraction Validation
+        if self.debug_logger:
+            self.debug_logger.log_stage_header(7, "Extraction Validation (Iterative Refinement)")
         print("\n[7/9] Extraction Validation (Iterative Refinement)")
         print("-" * 50)
         validation_result = self.extraction_validator.run(
@@ -413,6 +431,8 @@ class DeliberativeOrchestrator:
         print(f"  Quality: {validation_result.confidence:.2f}")
         
         # Step 8: Verification
+        if self.debug_logger:
+            self.debug_logger.log_stage_header(8, "Extraction Verification")
         print("\n[8/9] Extraction Verification")
         print("-" * 50)
         verification_result = self.verification_agent.run(
@@ -427,6 +447,8 @@ class DeliberativeOrchestrator:
         print(f"  Rejected: {results['rejected_triples']}")
         
         # Step 9: Knowledge Organization
+        if self.debug_logger:
+            self.debug_logger.log_stage_header(9, "Knowledge Graph Integration")
         print("\n[9/9] Knowledge Graph Integration")
         print("-" * 50)
         integration_result = self.knowledge_organizer.run(

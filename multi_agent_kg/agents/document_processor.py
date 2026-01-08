@@ -48,8 +48,8 @@ class DocumentProcessor(BaseAgent):
         shared_memory: Optional[SharedMemory] = None,
         message_bus: Optional[MessageBus] = None,
         llm_config: Optional[LLMConfig] = None,
-        min_segment_length: int = 800,
-        max_segment_length: int = 1000,
+        min_segment_length: int = 1500,
+        max_segment_length: int = 2000,
         overlap: int = 150,
     ):
         super().__init__(

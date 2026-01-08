@@ -289,6 +289,11 @@ class EntityExtractor(BaseAgent):
         )
         
         # Handle low confidence entities
+        print(f"\n[ENTITY EXTRACTOR DEBUG]")
+        print(f"  Total extracted: {len(all_entities)}")
+        print(f"  High confidence (>={self.quality_threshold}): {len(all_entities)}")
+        print(f"  Low confidence (<{self.quality_threshold}): {len(low_confidence_entities)}")
+        
         if low_confidence_entities:
             self._handle_low_confidence_entities(
                 low_confidence_entities,
@@ -345,7 +350,7 @@ class EntityExtractor(BaseAgent):
                 prompt=prompt,
                 system_prompt="You are an expert entity extractor. Extract all named entities precisely.",
                 tier=ModelTier.MEDIUM,
-                max_tokens=4096,  # Model maximum for gpt-4o-mini
+                max_tokens=4096,
             )
             confidence = 0.7
         
@@ -376,7 +381,7 @@ class EntityExtractor(BaseAgent):
             prompt=prompt,
             system_prompt="You are an expert at identifying precise entity boundaries.",
             tier=ModelTier.SMALL,  # Simpler task
-            max_tokens=4096,  # Model maximum for gpt-4o-mini
+            max_tokens=4096,
         )
         
         return result.get("entities", entities)
@@ -393,41 +398,50 @@ class EntityExtractor(BaseAgent):
             return []
         
         import json
-        entities_json = json.dumps(entities, indent=2)
         
-        prompt = TYPE_ASSIGNMENT_PROMPT.format(
-            text=text,
-            entities_json=entities_json,
-            valid_types=", ".join(valid_types),
-            domain=domain or "general",
-        )
+        # Process in batches to avoid token limit issues
+        batch_size = 50  # Process 50 entities at a time
+        all_typed_entities = []
         
-        if self.use_self_consistency:
-            result, confidence = self.call_llm_with_self_consistency(
-                prompt=prompt,
-                system_prompt="You are an expert at entity typing. Assign accurate types.",
-                tier=ModelTier.MEDIUM,
-                n_samples=self.n_consistency_samples,
+        for i in range(0, len(entities), batch_size):
+            batch = entities[i:i+batch_size]
+            entities_json = json.dumps(batch, indent=2)
+            
+            prompt = TYPE_ASSIGNMENT_PROMPT.format(
+                text=text,
+                entities_json=entities_json,
+                valid_types=", ".join(valid_types),
+                domain=domain or "general",
             )
-        else:
-            result = self.call_llm(
-                prompt=prompt,
-                system_prompt="You are an expert at entity typing. Assign accurate types.",
-                tier=ModelTier.MEDIUM,
-                max_tokens=4096,
-            )
-            confidence = 0.7
+            
+            if self.use_self_consistency:
+                result, confidence = self.call_llm_with_self_consistency(
+                    prompt=prompt,
+                    system_prompt="You are an expert at entity typing. Assign accurate types.",
+                    tier=ModelTier.MEDIUM,
+                    n_samples=self.n_consistency_samples,
+                )
+            else:
+                result = self.call_llm(
+                    prompt=prompt,
+                    system_prompt="You are an expert at entity typing. Assign accurate types.",
+                    tier=ModelTier.MEDIUM,
+                    max_tokens=4096,
+                )
+                confidence = 0.7
+            
+            typed_batch = result.get("entities", batch)
+            
+            # Combine stage confidences
+            for e in typed_batch:
+                type_conf = e.get("type_confidence", 0.7)
+                stage1_conf = e.get("stage1_confidence", 0.7)
+                # Combined confidence
+                e["confidence"] = (stage1_conf + type_conf + confidence) / 3
+            
+            all_typed_entities.extend(typed_batch)
         
-        typed_entities = result.get("entities", entities)
-        
-        # Combine stage confidences
-        for e in typed_entities:
-            type_conf = e.get("type_confidence", 0.7)
-            stage1_conf = e.get("stage1_confidence", 0.7)
-            # Combined confidence
-            e["confidence"] = (stage1_conf + type_conf + confidence) / 3
-        
-        return typed_entities
+        return all_typed_entities
 
     def _stage4_coreference_resolution(
         self,
@@ -440,43 +454,49 @@ class EntityExtractor(BaseAgent):
             return []
         
         import json
-        entities_json = json.dumps(entities, indent=2)
-        known_json = json.dumps(known_entities[:20], indent=2) if known_entities else "[]"
         
-        prompt = COREFERENCE_PROMPT.format(
-            text=text[:3000],  # Limit context
-            entities_json=entities_json,
-            known_entities=known_json,
-        )
+        # Process in batches to avoid token limit
+        batch_size = 30
+        all_resolved = []
         
-        result = self.call_llm(
-            prompt=prompt,
-            system_prompt="You are an expert at coreference resolution. Group mentions accurately.",
-            tier=ModelTier.MEDIUM,
-            max_tokens=4096,
-        )
+        for i in range(0, len(entities), batch_size):
+            batch = entities[i:i+batch_size]
+            entities_json = json.dumps(batch, indent=2)
+            known_json = json.dumps(known_entities[:20], indent=2) if known_entities else "[]"
+            
+            prompt = COREFERENCE_PROMPT.format(
+                text=text[:3000],  # Limit context
+                entities_json=entities_json,
+                known_entities=known_json,
+            )
+            
+            result = self.call_llm(
+                prompt=prompt,
+                system_prompt="You are an expert at coreference resolution. Group mentions accurately.",
+                tier=ModelTier.MEDIUM,
+                max_tokens=4096,
+            )
+            
+            # Convert groups back to entity format
+            for group in result.get("entity_groups", []):
+                resolved_entity = {
+                    "id": group.get("canonical_id", ""),
+                    "text": group.get("canonical_name", ""),
+                    "type": group.get("type", "UNKNOWN"),
+                    "mentions": group.get("mentions", []),
+                    "confidence": 0.8 if group.get("is_known_entity") else 0.7,
+                    "is_known_entity": group.get("is_known_entity", False),
+                }
+                all_resolved.append(resolved_entity)
+                
+                # Register aliases in shared memory
+                if self.shared_memory:
+                    canonical_id = resolved_entity["id"]
+                    for mention in resolved_entity.get("mentions", []):
+                        if mention != resolved_entity["text"]:
+                            self.shared_memory.register_entity_alias(mention, canonical_id)
         
-        # Convert groups back to entity format
-        resolved = []
-        for group in result.get("entity_groups", []):
-            resolved.append({
-                "id": group.get("canonical_id", ""),
-                "text": group.get("canonical_name", ""),
-                "type": group.get("type", "UNKNOWN"),
-                "mentions": group.get("mentions", []),
-                "confidence": 0.8 if group.get("is_known_entity") else 0.7,
-                "is_known_entity": group.get("is_known_entity", False),
-            })
-        
-        # Register aliases in shared memory
-        if self.shared_memory:
-            for entity in resolved:
-                canonical_id = entity["id"]
-                for mention in entity.get("mentions", []):
-                    if mention != entity["text"]:
-                        self.shared_memory.register_entity_alias(mention, canonical_id)
-        
-        return resolved if resolved else entities
+        return all_resolved if all_resolved else entities
 
     def _get_known_entities(self) -> List[Dict[str, Any]]:
         """Get known entities from memory and knowledge graph."""
