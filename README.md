@@ -13,40 +13,6 @@ This framework implements an 8-agent pipeline where specialized AI agents collab
 - **Domain-Adaptive**: Automatic schema generation for different document types
 - **Open-World Relations**: Discovers novel relation types beyond predefined schemas
 
-```
-                              YOUR DOCUMENT
-                                   │
-                                   ▼
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                          SHARED MEMORY                                       │
-│   ┌─────────────┐   ┌─────────────┐   ┌─────────────────────────────────┐   │
-│   │   Memory    │   │  Blackboard │   │         Message Bus             │   │
-│   │  (context)  │   │  (debates)  │   │    (agent communication)        │   │
-│   └─────────────┘   └─────────────┘   └─────────────────────────────────┘   │
-└──────────────────────────────────────────────────────────────────────────────┘
-                                   │
-        ═══════════════════════════╪═══════════════════════════════════
-                    EXTRACTION     │
-        ═══════════════════════════╪═══════════════════════════════════
-                                   ▼
-              ┌────────────────────────────────────────┐
-              │  [1] Document Processor                │
-              │      Chunks text into segments         │
-              └──────────────────┬─────────────────────┘
-                                 ▼
-              ┌────────────────────────────────────────┐
-              │  [2] Domain Classifier                 │
-              │      Scientific? Legal? News?          │
-              └──────────────────┬─────────────────────┘
-                                 ▼
-              ┌────────────────────────────────────────┐
-              │  [3] Entity Extractor                  │
-              │      4-stage: find → refine → type     │
-              │              → resolve duplicates      │
-              └──────────────────┬─────────────────────┘
-                                 ▼
-              ┌────────────────────────────────────────┐
-              │  [4] Relation Extractor                │
 ## Architecture
 
 ```
