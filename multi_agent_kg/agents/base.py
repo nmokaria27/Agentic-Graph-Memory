@@ -40,16 +40,16 @@ class AgentRole(str, Enum):
 
 class ModelTier(str, Enum):
     """Model tier for tiered model selection."""
-    SMALL = "small"     # 7B equivalent - fast, cheap (gpt-3.5-turbo)
-    MEDIUM = "medium"   # 13B equivalent - balanced (gpt-4o-mini)
-    LARGE = "large"     # 70B equivalent - highest quality (gpt-4o, gpt-4-turbo)
+    SMALL = "small"     # ~4B params - fast (qwen3:4b)
+    MEDIUM = "medium"   # ~8B params - balanced (qwen3:8b)
+    LARGE = "large"     # ~27B params - highest quality (gemma3:27b)
 
 
-# Default model mapping
+# Default model mapping (Ollama models on GPU via SSH tunnel)
 DEFAULT_MODEL_TIERS = {
-    ModelTier.SMALL: "gpt-3.5-turbo",
-    ModelTier.MEDIUM: "gpt-4o-mini", 
-    ModelTier.LARGE: "gpt-4o",
+    ModelTier.SMALL: "gemma3:27b",
+    ModelTier.MEDIUM: "gemma3:27b",
+    ModelTier.LARGE: "gemma3:27b",
 }
 
 

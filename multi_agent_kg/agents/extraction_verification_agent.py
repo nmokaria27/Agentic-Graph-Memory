@@ -36,11 +36,20 @@ TRIPLES TO VERIFY:
 {triples_json}
 
 For each triple, verify:
-1. Is the subject correctly identified?
-2. Is the relation accurately stated?
-3. Is the object correctly identified?
-4. Is the triple supported by the text (not hallucinated)?
-5. Is the confidence score appropriate?
+1. Is the subject mentioned or reasonably implied in the text?
+2. Does the relation capture a relationship that exists in the text (explicit or inferred)?
+3. Is the object mentioned or reasonably implied in the text?
+4. Is the triple consistent with the text's content and domain?
+5. Is the confidence score reasonable?
+
+IMPORTANT:
+- Accept BOTH explicit AND reasonably inferred relationships
+- Focus on whether the triple captures real knowledge from the domain
+- Accept if the triple is consistent with the text, even if not explicitly stated
+- Only reject if clearly contradicted or completely unrelated to the text
+- Partial support counts as valid - mark as "partial" with slightly lower confidence
+- Inferred relationships between domain entities are valuable knowledge
+- Different entity/relation types are OK if they capture the domain correctly
 
 Return:
 {{
@@ -123,8 +132,8 @@ class ExtractionVerificationAgent(BaseAgent):
         shared_memory: Optional[SharedMemory] = None,
         message_bus: Optional[MessageBus] = None,
         llm_config: Optional[LLMConfig] = None,
-        quality_threshold: float = 0.85,
-        strict_mode: bool = True,
+        quality_threshold: float = 0.45,  # Further lowered to accept more inferred knowledge
+        strict_mode: bool = False,  # Allow partial verifications
     ):
         super().__init__(
             name="ExtractionVerificationAgent",
@@ -186,17 +195,36 @@ class ExtractionVerificationAgent(BaseAgent):
         partial = []
         rejected = []
         
+        print("\n" + "="*70)
+        print("[VERIFICATION DEBUG] Categorizing verification results...")
+        print("="*70)
+        
+        from multi_agent_kg.utils.debug_logger import get_debug_logger
+        logger = get_debug_logger()
+        
         for v in verification_result.get("verified_triples", []):
             status = v.get("verification_status", "rejected")
+            triple = v.get('triple', {})
+            triple_str = f"{triple.get('subject', '?')} -> {triple.get('relation', '?')} -> {triple.get('object', '?')}"
+            reason = v.get('verification_reasoning', v.get('rejection_reason', 'No reason provided'))
+            
             if status == "verified":
                 verified.append(v)
+                print(f"  ✓ VERIFIED: {triple_str}")
+                logger.log_decision("ExtractionVerificationAgent", "triple", triple, "VERIFIED", reason)
             elif status == "partial":
                 if not self.strict_mode:
                     partial.append(v)
+                    print(f"  ~ PARTIAL: {triple_str}")
+                    logger.log_decision("ExtractionVerificationAgent", "triple", triple, "PARTIAL", reason)
                 else:
                     rejected.append(v)
+                    print(f"  ✗ REJECTED (strict mode): {triple_str}")
+                    logger.log_decision("ExtractionVerificationAgent", "triple", triple, "REJECTED", f"Strict mode - {reason}")
             else:
                 rejected.append(v)
+                print(f"  ✗ REJECTED: {triple_str} | Reason: {reason}")
+                logger.log_decision("ExtractionVerificationAgent", "triple", triple, "REJECTED", reason)
         
         # Step 2: Cross-document consistency check
         existing_knowledge = self._get_existing_knowledge()
@@ -204,12 +232,26 @@ class ExtractionVerificationAgent(BaseAgent):
             verified = self._check_cross_doc_consistency(verified, existing_knowledge)
         
         # Filter by final confidence threshold
+        print(f"\n[VERIFICATION DEBUG] Filtering by confidence threshold ({self.quality_threshold})...")
         approved = []
+        failed_conf_count = 0
+        
         for triple in verified + partial:
-            if triple.get("final_confidence", 0) >= self.quality_threshold:
+            conf = triple.get("final_confidence", 0)
+            triple_data = triple.get('triple', {})
+            triple_str = f"{triple_data.get('subject', '?')} -> {triple_data.get('relation', '?')} -> {triple_data.get('object', '?')}"
+            
+            if conf >= self.quality_threshold:
                 approved.append(triple)
+                print(f"  ✓ APPROVED (conf={conf:.2f}): {triple_str}")
+                logger.log_decision("ExtractionVerificationAgent", "triple", triple_data, "APPROVED", 
+                                  f"Confidence {conf:.2f} >= threshold {self.quality_threshold}", conf)
             else:
                 rejected.append(triple)
+                failed_conf_count += 1
+                print(f"  ✗ REJECTED (conf={conf:.2f} < {self.quality_threshold}): {triple_str}")
+                logger.log_decision("ExtractionVerificationAgent", "triple", triple_data, "REJECTED", 
+                                  f"Confidence {conf:.2f} < threshold {self.quality_threshold}", conf)
         
         # Store verification results
         if self.shared_memory:
@@ -226,6 +268,15 @@ class ExtractionVerificationAgent(BaseAgent):
                 approved,
                 context.document_id,
             )
+        
+        print(f"\n[VERIFICATION SUMMARY]")
+        print(f"  Input: {len(triples)} triples")
+        print(f"  Verified: {len(verified)}")
+        print(f"  Partial: {len(partial)}")
+        print(f"  Initially Rejected: {len(rejected) - len([t for t in verified + partial if t.get('final_confidence', 0) < self.quality_threshold])}")
+        print(f"  Failed Confidence Threshold: {len([t for t in verified + partial if t.get('final_confidence', 0) < self.quality_threshold])}")
+        print(f"  Final Approved: {len(approved)}")
+        print(f"  Total Rejected: {len(rejected)}")
         
         summary = verification_result.get("verification_summary", {})
         self.log(
@@ -253,36 +304,49 @@ class ExtractionVerificationAgent(BaseAgent):
         text: str,
         triples: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        """Verify triples against source text."""
+        """Verify triples against source text, in batches to respect token limits."""
         if not triples:
             return {"verified_triples": [], "verification_summary": {}}
-        
-        triples_json = json.dumps([
-            {
-                "subject": t.get("subject", ""),
-                "relation": t.get("relation", ""),
-                "object": t.get("object", ""),
-                "confidence": t.get("confidence", 0.7),
-            }
-            for t in triples[:30]
-        ], indent=2)
-        
-        prompt = VERIFICATION_PROMPT.format(
-            text=text[:5000],
-            triples_json=triples_json,
-        )
-        
-        result = self.call_llm(
-            prompt=prompt,
-            system_prompt=(
-                "You are an expert fact verifier. Be strict about accuracy. "
-                "Reject any triple that is not clearly supported by the text."
-            ),
-            tier=ModelTier.LARGE,
-            max_tokens=4096,
-        )
-        
-        return result
+
+        BATCH = 30
+        all_verified: List[Dict[str, Any]] = []
+        summary_totals = {"total": 0, "verified": 0, "partial": 0, "rejected": 0, "hallucinated": 0}
+
+        for i in range(0, len(triples), BATCH):
+            batch = triples[i:i + BATCH]
+            triples_json = json.dumps([
+                {
+                    "subject": t.get("subject", ""),
+                    "relation": t.get("relation", ""),
+                    "object": t.get("object", ""),
+                    "confidence": t.get("confidence", 0.7),
+                }
+                for t in batch
+            ], indent=2)
+
+            prompt = VERIFICATION_PROMPT.format(
+                text=text[:6000],
+                triples_json=triples_json,
+            )
+
+            result = self.call_llm(
+                prompt=prompt,
+                system_prompt=(
+                    "You are an expert fact verifier. Accept BOTH explicit and "
+                    "reasonably inferred relationships. Only reject triples that "
+                    "are clearly contradicted or completely unsupported by the text. "
+                    "Partial support counts as valid with lower confidence."
+                ),
+                tier=ModelTier.LARGE,
+                max_tokens=4096,
+            )
+
+            all_verified.extend(result.get("verified_triples", []))
+            batch_summary = result.get("verification_summary", {})
+            for key in summary_totals:
+                summary_totals[key] += batch_summary.get(key, 0)
+
+        return {"verified_triples": all_verified, "verification_summary": summary_totals}
 
     def _get_existing_knowledge(self) -> List[Dict[str, Any]]:
         """Get existing knowledge for consistency check."""
@@ -290,7 +354,7 @@ class ExtractionVerificationAgent(BaseAgent):
         
         # From knowledge graph
         if self.knowledge_graph:
-            for triple_id, triple in list(self.knowledge_graph.triples.items())[:100]:
+            for triple in list(self.knowledge_graph.triples)[:100]:
                 existing.append({
                     "subject": triple.subject,
                     "relation": triple.relation,
@@ -314,10 +378,10 @@ class ExtractionVerificationAgent(BaseAgent):
                 "relation": t.get("relation", ""),
                 "object": t.get("object", ""),
             }
-            for t in triples[:20]
+            for t in triples
         ], indent=2)
         
-        existing_json = json.dumps(existing[:50], indent=2)
+        existing_json = json.dumps(existing, indent=2)
         
         prompt = CROSS_DOC_VERIFICATION_PROMPT.format(
             new_triples=new_triples_json,

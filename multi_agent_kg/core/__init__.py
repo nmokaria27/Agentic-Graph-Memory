@@ -48,6 +48,36 @@ from multi_agent_kg.core.deliberation import (
     VOTE_WEIGHTS,
 )
 from multi_agent_kg.core.deliberative_orchestrator import DeliberativeOrchestrator
+from multi_agent_kg.core.adaptive_config import (
+    DomainTaxonomy,
+    DomainSchema,
+    AdaptiveBatchCalculator,
+    ThresholdAutoTuner,
+    MODEL_SPECS,
+)
+from multi_agent_kg.core.kg_operations import (
+    KGDiff,
+    compute_diff,
+    merge_kg,
+    load_kg,
+    save_kg,
+    find_entity_matches,
+)
+from multi_agent_kg.core.incremental_enrichment import (
+    IncrementalEnricher,
+    ConflictResolver,
+)
+from multi_agent_kg.core.domain_experts import (
+    Domain,
+    TopicSubAgent,
+    OrgChart,
+    DomainBuilder,
+    DomainExpertAgent,
+    QAOrchestrator,
+    find_paths,
+    paths_to_text,
+    neighbourhood,
+)
 
 __all__ = [
     # Knowledge Graph
@@ -82,4 +112,31 @@ __all__ = [
     "VOTE_WEIGHTS",
     # Orchestrator
     "DeliberativeOrchestrator",
+    # Adaptive Configuration
+    "DomainTaxonomy",
+    "DomainSchema",
+    "AdaptiveBatchCalculator",
+    "ThresholdAutoTuner",
+    "MODEL_SPECS",
+    # KG Operations
+    "KGDiff",
+    "compute_diff",
+    "merge_kg",
+    "load_kg",
+    "save_kg",
+    "find_entity_matches",
+    # Incremental Enrichment
+    "IncrementalEnricher",
+    "ConflictResolver",
+    # Domain Expert QA
+    "Domain",
+    "TopicSubAgent",
+    "OrgChart",
+    "DomainBuilder",
+    "DomainExpertAgent",
+    "QAOrchestrator",
+    # Multi-hop graph utilities
+    "find_paths",
+    "paths_to_text",
+    "neighbourhood",
 ]

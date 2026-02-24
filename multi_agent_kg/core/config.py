@@ -95,19 +95,19 @@ class LLMConfig:
     Configuration for LLM calls.
 
     Attributes:
-        model: The model to use (e.g., "gpt-4", "gpt-3.5-turbo")
+        model: The model to use (e.g., "gemma3:27b", "qwen3:8b")
         temperature: Sampling temperature (0.0 to 2.0)
         max_tokens: Maximum tokens in the response
         top_p: Nucleus sampling parameter
     """
 
-    model: str = "gpt-4"
+    model: str = "gemma3:27b"
     temperature: float = 0.2
     max_tokens: Optional[int] = None
     top_p: float = 1.0
 
     def to_dict(self) -> dict:
-        """Convert to dictionary for OpenAI API calls."""
+        """Convert to dictionary for API calls."""
         config = {
             "model": self.model,
             "temperature": self.temperature,

@@ -314,28 +314,56 @@ class ExtractionValidator(BaseAgent):
         triples: List[Dict[str, Any]],
         domain: Optional[str],
     ) -> Dict[str, Any]:
-        """Validate extractions using LLM."""
+        """Validate extractions using LLM, batching to respect token limits."""
         if not entities and not triples:
             return {"overall_quality": 0.0}
-        
-        entities_json = json.dumps(entities[:30], indent=2)
-        triples_json = json.dumps(triples[:30], indent=2)
-        
-        prompt = VALIDATION_PROMPT.format(
-            text=text[:4000],
-            entities_json=entities_json,
-            triples_json=triples_json,
-            domain=domain or "general",
-        )
-        
-        result = self.call_llm(
-            prompt=prompt,
-            system_prompt="You are an expert extraction validator. Be thorough but fair in assessment.",
-            tier=ModelTier.LARGE,
-            max_tokens=4096,
-        )
-        
-        return result
+
+        # Process in batches of 40 items to stay within token limits
+        BATCH = 40
+        all_entity_validations: List[Dict[str, Any]] = []
+        all_triple_validations: List[Dict[str, Any]] = []
+        quality_scores: List[float] = []
+        all_recommendations: List[str] = []
+
+        entity_batches = [entities[i:i + BATCH] for i in range(0, max(len(entities), 1), BATCH)] if entities else [[]]
+        triple_batches = [triples[i:i + BATCH] for i in range(0, max(len(triples), 1), BATCH)] if triples else [[]]
+
+        # Pair up entity and triple batches
+        n = max(len(entity_batches), len(triple_batches))
+        for idx in range(n):
+            e_batch = entity_batches[idx] if idx < len(entity_batches) else []
+            t_batch = triple_batches[idx] if idx < len(triple_batches) else []
+            if not e_batch and not t_batch:
+                continue
+
+            entities_json = json.dumps(e_batch, indent=2)
+            triples_json = json.dumps(t_batch, indent=2)
+
+            prompt = VALIDATION_PROMPT.format(
+                text=text[:6000],
+                entities_json=entities_json,
+                triples_json=triples_json,
+                domain=domain or "general",
+            )
+
+            result = self.call_llm(
+                prompt=prompt,
+                system_prompt="You are an expert extraction validator. Be thorough but fair in assessment.",
+                tier=ModelTier.LARGE,
+                max_tokens=4096,
+            )
+
+            all_entity_validations.extend(result.get("entity_validations", []))
+            all_triple_validations.extend(result.get("triple_validations", []))
+            quality_scores.append(result.get("overall_quality", 0.0))
+            all_recommendations.extend(result.get("recommendations", []))
+
+        return {
+            "entity_validations": all_entity_validations,
+            "triple_validations": all_triple_validations,
+            "overall_quality": sum(quality_scores) / len(quality_scores) if quality_scores else 0.0,
+            "recommendations": all_recommendations,
+        }
 
     def _refine_extractions(
         self,
@@ -344,35 +372,58 @@ class ExtractionValidator(BaseAgent):
         validation: Dict[str, Any],
         iteration: int,
     ) -> Dict[str, Any]:
-        """Refine extractions based on validation feedback."""
-        extractions_json = json.dumps({
-            "entities": entities[:20],
-            "triples": triples[:20],
-        }, indent=2)
-        
-        feedback_json = json.dumps({
-            "entity_validations": validation.get("entity_validations", []),
-            "triple_validations": validation.get("triple_validations", []),
-            "recommendations": validation.get("recommendations", []),
-        }, indent=2)
-        
-        prompt = REFINEMENT_PROMPT.format(
-            extractions_json=extractions_json,
-            feedback_json=feedback_json,
-            iteration=iteration,
-            max_iterations=self.max_iterations,
-        )
-        
-        self.stats["refinements"] += 1
-        
-        result = self.call_llm(
-            prompt=prompt,
-            system_prompt="You are an expert at refining extractions. Apply corrections precisely.",
-            tier=ModelTier.LARGE,
-            max_tokens=4096,
-        )
-        
-        return result
+        """Refine extractions based on validation feedback, in batches."""
+        BATCH = 30
+        all_refined_entities: List[Dict[str, Any]] = []
+        all_refined_triples: List[Dict[str, Any]] = []
+        quality_scores: List[float] = []
+
+        entity_batches = [entities[i:i + BATCH] for i in range(0, max(len(entities), 1), BATCH)] if entities else [[]]
+        triple_batches = [triples[i:i + BATCH] for i in range(0, max(len(triples), 1), BATCH)] if triples else [[]]
+
+        n = max(len(entity_batches), len(triple_batches))
+        for idx in range(n):
+            e_batch = entity_batches[idx] if idx < len(entity_batches) else []
+            t_batch = triple_batches[idx] if idx < len(triple_batches) else []
+            if not e_batch and not t_batch:
+                continue
+
+            extractions_json = json.dumps({
+                "entities": e_batch,
+                "triples": t_batch,
+            }, indent=2)
+
+            feedback_json = json.dumps({
+                "entity_validations": validation.get("entity_validations", []),
+                "triple_validations": validation.get("triple_validations", []),
+                "recommendations": validation.get("recommendations", []),
+            }, indent=2)
+
+            prompt = REFINEMENT_PROMPT.format(
+                extractions_json=extractions_json,
+                feedback_json=feedback_json,
+                iteration=iteration,
+                max_iterations=self.max_iterations,
+            )
+
+            self.stats["refinements"] += 1
+
+            result = self.call_llm(
+                prompt=prompt,
+                system_prompt="You are an expert at refining extractions. Apply corrections precisely.",
+                tier=ModelTier.MEDIUM,  # Was LARGE (gpt-4o) — downgraded to reduce quota burn
+                max_tokens=4096,
+            )
+
+            all_refined_entities.extend(result.get("refined_entities", []))
+            all_refined_triples.extend(result.get("refined_triples", []))
+            quality_scores.append(result.get("quality_after_refinement", 0.0))
+
+        return {
+            "refined_entities": all_refined_entities if all_refined_entities else entities,
+            "refined_triples": all_refined_triples if all_refined_triples else triples,
+            "quality_after_refinement": sum(quality_scores) / len(quality_scores) if quality_scores else 0.0,
+        }
 
     def _apply_entity_validations(
         self,

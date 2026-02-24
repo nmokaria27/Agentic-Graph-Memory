@@ -43,6 +43,12 @@ from multi_agent_kg.agents.extraction_validator import ExtractionValidator
 from multi_agent_kg.agents.extraction_verification_agent import ExtractionVerificationAgent
 from multi_agent_kg.agents.knowledge_organizer import KnowledgeOrganizer
 
+try:
+    from multi_agent_kg.utils.kg_visualizer import KGVisualizer
+    VISUALIZER_AVAILABLE = True
+except ImportError:
+    VISUALIZER_AVAILABLE = False
+
 
 class DeliberativeOrchestrator:
     """
@@ -91,7 +97,7 @@ class DeliberativeOrchestrator:
         self,
         llm_config: Optional[LLMConfig] = None,
         knowledge_graph: Optional[KnowledgeGraph] = None,
-        quality_threshold: float = 0.85,
+        quality_threshold: float = 0.60,
         max_refinement_iterations: int = 4,
         enable_self_consistency: bool = True,
         enable_open_world: bool = True,
@@ -106,7 +112,7 @@ class DeliberativeOrchestrator:
         Args:
             llm_config: Base LLM configuration
             knowledge_graph: Existing KG or creates new
-            quality_threshold: Minimum confidence for acceptance (default 0.85)
+            quality_threshold: Minimum confidence for acceptance (default 0.60)
             max_refinement_iterations: Max refinement loops (default 4)
             enable_self_consistency: Use self-consistency for confidence
             enable_open_world: Allow discovery of new relation types
@@ -127,9 +133,9 @@ class DeliberativeOrchestrator:
         
         # Model tier configuration
         self.model_tiers = model_tiers or {
-            ModelTier.SMALL: "gpt-3.5-turbo",
-            ModelTier.MEDIUM: "gpt-4o-mini",
-            ModelTier.LARGE: "gpt-4o",
+            ModelTier.SMALL: "gemma3:27b",
+            ModelTier.MEDIUM: "gemma3:27b",
+            ModelTier.LARGE: "gemma3:27b",
         }
         
         # Shared infrastructure
@@ -227,6 +233,9 @@ class DeliberativeOrchestrator:
             message_bus=self.message_bus,
             llm_config=self.llm_config,
         )
+        
+        # Visualizer will be initialized on-demand when export() is called
+        self.visualizer = None
         
         # Set deliberation coordinator on all agents
         if self.deliberation_coordinator:
@@ -390,23 +399,31 @@ class DeliberativeOrchestrator:
             self.debug_logger.log_stage_header(6, "Multi-Agent Deliberation")
         print("\n[6/9] Multi-Agent Deliberation")
         print("-" * 50)
-        deliberation_results = self._run_deliberation_phase(
-            context=context,
-            entities=entities,
-            triples=linked_triples,
-            segments=segments,
-        )
-        results["voting_sessions"] = deliberation_results.get("voting_sessions", 0)
-        results["debates_triggered"] = deliberation_results.get("debates_triggered", 0)
-        results["items_accepted_by_vote"] = deliberation_results.get("accepted", 0)
-        results["items_rejected_by_vote"] = deliberation_results.get("rejected", 0)
         
-        # Update entities/triples based on deliberation
-        if deliberation_results.get("refined_entities"):
-            entities = deliberation_results["refined_entities"]
-            context.entities = entities
-        if deliberation_results.get("refined_triples"):
-            linked_triples = deliberation_results["refined_triples"]
+        if self.enable_deliberation and self.deliberation_coordinator:
+            deliberation_results = self._run_deliberation_phase(
+                context=context,
+                entities=entities,
+                triples=linked_triples,
+                segments=segments,
+            )
+            results["voting_sessions"] = deliberation_results.get("voting_sessions", 0)
+            results["debates_triggered"] = deliberation_results.get("debates_triggered", 0)
+            results["items_accepted_by_vote"] = deliberation_results.get("accepted", 0)
+            results["items_rejected_by_vote"] = deliberation_results.get("rejected", 0)
+            
+            # Update entities/triples based on deliberation
+            if deliberation_results.get("refined_entities"):
+                entities = deliberation_results["refined_entities"]
+                context.entities = entities
+            if deliberation_results.get("refined_triples"):
+                linked_triples = deliberation_results["refined_triples"]
+        else:
+            results["voting_sessions"] = 0
+            results["debates_triggered"] = 0
+            results["items_accepted_by_vote"] = 0
+            results["items_rejected_by_vote"] = 0
+            print("  Deliberation disabled - skipping")
         
         print(f"  Voting Sessions: {results['voting_sessions']}")
         print(f"  Debates Triggered: {results['debates_triggered']}")
@@ -530,10 +547,26 @@ class DeliberativeOrchestrator:
         document_id = getattr(context, "document_id", None)
         
         # === ENTITY DELIBERATION ===
+        # Only entities in the genuinely uncertain band (0.35–0.65) need voting.
+        # Entities ≥ 0.65 are accepted directly; entities < 0.35 are rejected outright.
+        # This prevents hundreds of pre-baked identical votes for items that are
+        # clearly acceptable (confidence ~0.70) from flooding the log.
+        ENTITY_UNCERTAIN_LOW  = 0.35
+        ENTITY_UNCERTAIN_HIGH = 0.65
         low_confidence_entities = [
-            e for e in entities 
-            if e.get("confidence", 1.0) < 0.75
+            e for e in entities
+            if ENTITY_UNCERTAIN_LOW <= e.get("confidence", 1.0) < ENTITY_UNCERTAIN_HIGH
         ]
+        # Items clearly below the floor → reject immediately, no vote needed
+        for e in entities:
+            if e.get("confidence", 1.0) < ENTITY_UNCERTAIN_LOW:
+                results["rejected"] += 1
+        # Items clearly above the ceiling → accept immediately
+        high_confidence_entities = [
+            e for e in entities
+            if e.get("confidence", 1.0) >= ENTITY_UNCERTAIN_HIGH
+        ]
+        accepted_entities.extend(high_confidence_entities)
         
         if low_confidence_entities:
             print(f"  Deliberating on {len(low_confidence_entities)} low-confidence entities...")
@@ -560,10 +593,20 @@ class DeliberativeOrchestrator:
                 self._collect_entity_votes(hyp_id, entity, context)
         
         # === TRIPLE DELIBERATION ===
+        TRIPLE_UNCERTAIN_LOW  = 0.35
+        TRIPLE_UNCERTAIN_HIGH = 0.65
         low_confidence_triples = [
-            t for t in triples 
-            if t.get("confidence", 1.0) < 0.7
+            t for t in triples
+            if TRIPLE_UNCERTAIN_LOW <= t.get("confidence", 1.0) < TRIPLE_UNCERTAIN_HIGH
         ]
+        for t in triples:
+            if t.get("confidence", 1.0) < TRIPLE_UNCERTAIN_LOW:
+                results["rejected"] += 1
+        high_confidence_triples_direct = [
+            t for t in triples
+            if t.get("confidence", 1.0) >= TRIPLE_UNCERTAIN_HIGH
+        ]
+        accepted_triples.extend(high_confidence_triples_direct)
         
         if low_confidence_triples:
             print(f"  Deliberating on {len(low_confidence_triples)} low-confidence triples...")
@@ -652,18 +695,8 @@ class DeliberativeOrchestrator:
                     else:
                         results["rejected"] += 1
         
-        # Add high-confidence items directly (not deliberated)
-        high_confidence_entities = [
-            e for e in entities 
-            if e.get("confidence", 1.0) >= 0.75
-        ]
-        accepted_entities.extend(high_confidence_entities)
-        
-        high_confidence_triples = [
-            t for t in triples 
-            if t.get("confidence", 1.0) >= 0.7
-        ]
-        accepted_triples.extend(high_confidence_triples)
+        # High-confidence items were already added at the start of this method
+        # (band-filtering above). No duplicates needed here.
         
         # Return refined lists
         if low_confidence_entities:
@@ -962,6 +995,61 @@ class DeliberativeOrchestrator:
             },
             "discovered_relations": list(self.relation_extractor.get_discovered_relations().keys()),
         }
+
+    def visualize_kg(
+        self,
+        output_file: str = "kg_visualization.html",
+        layout: str = "spring",
+        show_labels: bool = True,
+        generate_static: bool = False
+    ) -> str:
+        """
+        Visualize the knowledge graph.
+        
+        Args:
+            output_file: Output file path (default: kg_visualization.html)
+            layout: Layout algorithm - spring, hierarchical, circular, kamada_kawai
+            show_labels: Whether to show edge labels
+            generate_static: Also generate static PNG version
+            
+        Returns:
+            Path to generated visualization file
+            
+        Raises:
+            ImportError: If visualization dependencies not installed
+        """
+        if not VISUALIZER_AVAILABLE:
+            raise ImportError(
+                "Visualization dependencies not installed. "
+                "Install with: pip install pyvis networkx matplotlib"
+            )
+        
+        kg = self.knowledge_organizer.knowledge_graph
+        visualizer = KGVisualizer(kg)
+        
+        print(f"\n📊 Generating knowledge graph visualization...")
+        print(f"  Layout: {layout}")
+        print(f"  Output: {output_file}")
+        
+        # Generate interactive HTML
+        visualizer.visualize_kg(
+            output_file=output_file,
+            layout=layout,
+            show_labels=show_labels
+        )
+        
+        # Generate static PNG if requested
+        if generate_static:
+            static_file = output_file.replace(".html", ".png")
+            print(f"  Static: {static_file}")
+            visualizer.visualize_kg(
+                output_file=static_file,
+                layout=layout,
+                show_labels=show_labels
+            )
+        
+        print("✓ Visualization complete!")
+        return output_file
 
     def export(self) -> Dict[str, Any]:
         """Export complete system state."""

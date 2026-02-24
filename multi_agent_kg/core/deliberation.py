@@ -346,9 +346,11 @@ class DeliberationCoordinator:
         
         hypothesis.add_vote(vote)
         self.stats["votes_collected"] += 1
-        
-        # Debug log the vote
-        if self.debug_logger:
+
+        # Only debug-log votes when verbose debug is explicitly enabled;
+        # the default synchronous rule-based voting fires hundreds of times
+        # per pipeline run and floods stdout with identical lines.
+        if self.debug_logger and getattr(self.debug_logger, "verbose_votes", False):
             self.debug_logger.log_vote(
                 voter=voter,
                 hypothesis_id=hypothesis_id,

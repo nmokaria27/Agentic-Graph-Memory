@@ -46,8 +46,30 @@ class EntityCandidate:
     aliases: List[str] = field(default_factory=list)
     
 
-INITIAL_EXTRACTION_PROMPT = """Extract all named entities from the following text.
-Focus on: {entity_types}
+INITIAL_EXTRACTION_PROMPT = """Extract ALL significant entities that represent knowledge in this document.
+
+EXTRACT entities including:
+- Domain concepts, theories, methods, techniques, phenomena, mechanisms
+- Medical/scientific conditions, diseases, treatments, clinical measures, biomarkers
+- Therapeutic interventions, drugs, procedures, therapies
+- Biological processes, pathways, molecular mechanisms
+- Clinical outcomes, complications, risk factors, prognostic indicators
+- Organizations, institutions, research groups, medical centers
+- Researchers, authors, key contributors
+- Specialized terminology and technical concepts
+- Study cohorts, patient populations, demographic groups
+- Measurement tools, instruments, assessment methods, scoring systems
+- Important statistical markers (e.g., "HbA1c", "IESS", "CFR") when they represent specific measurements
+
+DO NOT EXTRACT:
+- Generic dates/times ("January 2020", "90 days") unless defining eras/periods
+- Bare numbers without meaning ("0.85", "38614")
+- Common adjectives alone ("high", "low", "greater")
+- Generic temporal references ("baseline", "follow-up") unless technical terms
+
+IMPORTANT: Err on the side of INCLUSION. Extract entities that help build a comprehensive knowledge representation of the document.
+
+{entity_guidance}
 
 TEXT:
 {text}
@@ -59,7 +81,7 @@ Return a JSON object with:
             "text": "<exact entity mention>",
             "start": <character start position>,
             "end": <character end position>,
-            "type_guess": "<entity type guess>"
+            "type_guess": "<describe what this entity represents in this context>"
         }}
     ]
 }}
@@ -93,10 +115,16 @@ Return corrected entities:
 }}"""
 
 
-TYPE_ASSIGNMENT_PROMPT = """Assign entity types to these entities based on context.
+TYPE_ASSIGNMENT_PROMPT = """Assign entity types to these entities based on what they represent IN THIS DOCUMENT.
+
+IMPORTANT:
+- DISCOVER types from the content - do NOT use standard taxonomies
+- Create specific, descriptive type names based on what the entity actually IS
+- Types should be in UPPER_SNAKE_CASE
+- Be as specific as possible (e.g., CLINICAL_MEASUREMENT not MEASUREMENT)
 
 DOMAIN: {domain}
-VALID TYPES: {valid_types}
+{type_guidance}
 
 TEXT CONTEXT:
 {text}
@@ -104,16 +132,16 @@ TEXT CONTEXT:
 ENTITIES:
 {entities_json}
 
-For each entity, determine the most appropriate type from the valid types.
+For each entity, assign a type that describes what it represents in this specific document.
 
 Return:
 {{
     "entities": [
         {{
             "text": "<entity text>",
-            "type": "<assigned type from valid types>",
+            "type": "<DISCOVERED_TYPE_NAME>",
             "type_confidence": <0.0-1.0>,
-            "type_reasoning": "<brief reasoning>"
+            "type_reasoning": "<why this type fits this entity>"
         }}
     ]
 }}"""
@@ -330,25 +358,28 @@ class EntityExtractor(BaseAgent):
         entity_types: List[str],
     ) -> List[Dict[str, Any]]:
         """Stage 1: Initial entity extraction."""
-        # Ensure entity_types are strings
-        entity_types_str = self._normalize_entity_types(entity_types)
+        # Build guidance from entity types if provided by domain classifier
+        entity_guidance = ""
+        if entity_types:
+            entity_types_str = self._normalize_entity_types(entity_types)
+            entity_guidance = f"The domain classifier suggested these entity categories for context: {', '.join(entity_types_str)}\nHowever, feel free to discover additional entity types based on the actual content."
         
         prompt = INITIAL_EXTRACTION_PROMPT.format(
             text=text,
-            entity_types=", ".join(entity_types_str),
+            entity_guidance=entity_guidance,
         )
         
         if self.use_self_consistency:
             result, confidence = self.call_llm_with_self_consistency(
                 prompt=prompt,
-                system_prompt="You are an expert entity extractor. Extract all named entities precisely.",
+                system_prompt="You are an expert at discovering entities from scratch. Extract entities based on what you observe in the text, not predefined categories.",
                 tier=ModelTier.MEDIUM,
                 n_samples=self.n_consistency_samples,
             )
         else:
             result = self.call_llm(
                 prompt=prompt,
-                system_prompt="You are an expert entity extractor. Extract all named entities precisely.",
+                system_prompt="You are an expert at discovering entities from scratch. Extract entities based on what you observe in the text, not predefined categories.",
                 tier=ModelTier.MEDIUM,
                 max_tokens=4096,
             )
@@ -369,22 +400,31 @@ class EntityExtractor(BaseAgent):
         if not entities:
             return []
         
+        # Process in batches to avoid JSON truncation
+        batch_size = 30
+        refined_entities = []
+        
         import json
-        entities_json = json.dumps(entities, indent=2)
         
-        prompt = BOUNDARY_REFINEMENT_PROMPT.format(
-            text=text,
-            entities_json=entities_json,
-        )
+        for i in range(0, len(entities), batch_size):
+            batch = entities[i:i+batch_size]
+            entities_json = json.dumps(batch, indent=2)
+            
+            prompt = BOUNDARY_REFINEMENT_PROMPT.format(
+                text=text[:3000],  # Limit text size
+                entities_json=entities_json,
+            )
+            
+            result = self.call_llm(
+                prompt=prompt,
+                system_prompt="You are an expert at identifying precise entity boundaries.",
+                tier=ModelTier.SMALL,  # Simpler task
+                max_tokens=4096,
+            )
+            
+            refined_entities.extend(result.get("entities", batch))
         
-        result = self.call_llm(
-            prompt=prompt,
-            system_prompt="You are an expert at identifying precise entity boundaries.",
-            tier=ModelTier.SMALL,  # Simpler task
-            max_tokens=4096,
-        )
-        
-        return result.get("entities", entities)
+        return refined_entities
 
     def _stage3_type_assignment(
         self,
@@ -400,17 +440,22 @@ class EntityExtractor(BaseAgent):
         import json
         
         # Process in batches to avoid token limit issues
-        batch_size = 50  # Process 50 entities at a time
+        batch_size = 25  # Process 25 entities at a time to stay under token limit
         all_typed_entities = []
         
         for i in range(0, len(entities), batch_size):
             batch = entities[i:i+batch_size]
             entities_json = json.dumps(batch, indent=2)
             
+            # Build type guidance
+            type_guidance = ""
+            if valid_types:
+                type_guidance = f"Suggested type categories from domain analysis: {', '.join(valid_types)}\\nYou may use these or create more specific types as needed."
+            
             prompt = TYPE_ASSIGNMENT_PROMPT.format(
                 text=text,
                 entities_json=entities_json,
-                valid_types=", ".join(valid_types),
+                type_guidance=type_guidance,
                 domain=domain or "general",
             )
             
@@ -456,7 +501,7 @@ class EntityExtractor(BaseAgent):
         import json
         
         # Process in batches to avoid token limit
-        batch_size = 30
+        batch_size = 20  # Smaller batches for coreference resolution
         all_resolved = []
         
         for i in range(0, len(entities), batch_size):

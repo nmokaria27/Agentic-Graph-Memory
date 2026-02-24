@@ -47,8 +47,16 @@ class DiscoveredRelation:
 
 RELATION_IDENTIFICATION_PROMPT = """Identify all relation types present in the following text.
 
+DISCOVER relations from scratch by analyzing the actual text:
+- What RELATIONSHIPS are described between entities?
+- What CONNECTIONS exist between concepts?
+- What ACTIONS or ASSOCIATIONS are mentioned?
+
+DO NOT use predefined relation taxonomies - CREATE types specific to this content.
+
 DOMAIN: {domain}
-SUGGESTED RELATION TYPES: {suggested_types}
+
+SUGGESTED TYPES (if any): {suggested_types}
 
 TEXT:
 {text}
@@ -57,19 +65,19 @@ ENTITIES FOUND:
 {entities}
 
 Instructions:
-1. Identify explicit and implicit relations between entities
-2. Use suggested relation types when appropriate
-3. Propose NEW relation types if needed (open-world extraction)
-4. For new types, provide a clear definition
+1. Look for explicit and implicit relationships between entities
+2. Create descriptive relation type names based on what you observe
+3. Each relation type should capture a SPECIFIC type of relationship
+4. Relation names should be in UPPER_SNAKE_CASE and descriptive
 
 Return:
 {{
     "relations_found": [
         {{
-            "relation_type": "<relation name>",
-            "is_new_type": <true/false>,
-            "definition": "<definition if new type>",
-            "count_in_text": <approximate count>
+            "relation_type": "<DESCRIPTIVE_RELATION_NAME>",
+            "definition": "<what this relation means in this context>",
+            "count_in_text": <approximate count>,
+            "example_text": "<example sentence showing this relation>"
         }}
     ]
 }}"""
@@ -296,6 +304,12 @@ class RelationExtractor(BaseAgent):
                     low_confidence_triples.append(triple)
         
         # Handle low confidence triples
+        print(f"\n[RELATION EXTRACTOR DEBUG]")
+        print(f"  Total extracted: {len(all_triples)}")
+        print(f"  High confidence (>={self.quality_threshold}): {len(all_triples)}")
+        print(f"  Low confidence (<{self.quality_threshold}): {len(low_confidence_triples)}")
+        print(f"  New relation types discovered: {len(new_relations_discovered)}")
+        
         if low_confidence_triples:
             self._handle_low_confidence_triples(
                 low_confidence_triples,
@@ -371,7 +385,7 @@ class RelationExtractor(BaseAgent):
         domain: Optional[str],
     ) -> List[Dict[str, Any]]:
         """Stage 1: Identify relation types in text."""
-        entities_str = ", ".join(e.get("text", str(e)) for e in entities[:20])
+        entities_str = ", ".join(e.get("text", str(e)) for e in entities)
         
         prompt = RELATION_IDENTIFICATION_PROMPT.format(
             text=text,
@@ -407,7 +421,7 @@ class RelationExtractor(BaseAgent):
         if not relation_types:
             return []
         
-        entities_json = json.dumps(entities[:30], indent=2)
+        entities_json = json.dumps(entities, indent=2)
         
         prompt = HEAD_BINDING_PROMPT.format(
             text=text,
@@ -434,37 +448,46 @@ class RelationExtractor(BaseAgent):
         if not head_bindings:
             return []
         
-        entities_json = json.dumps(entities[:30], indent=2)
-        head_bindings_json = json.dumps(head_bindings, indent=2)
+        # Process head_bindings in batches to avoid JSON truncation
+        batch_size = 15  # Conservative batch size for relation completion
+        all_triples = []
         
-        prompt = TAIL_BINDING_PROMPT.format(
-            text=text,
-            entities=entities_json,
-            head_bindings=head_bindings_json,
-        )
+        entities_json = json.dumps(entities, indent=2)
         
-        if self.use_self_consistency:
-            result, confidence = self.call_llm_with_self_consistency(
-                prompt=prompt,
-                system_prompt="You are an expert at completing relation triples. Be precise about object entities.",
-                tier=ModelTier.MEDIUM,
-                n_samples=self.n_consistency_samples,
+        for i in range(0, len(head_bindings), batch_size):
+            batch = head_bindings[i:i+batch_size]
+            head_bindings_json = json.dumps(batch, indent=2)
+            
+            prompt = TAIL_BINDING_PROMPT.format(
+                text=text,
+                entities=entities_json,
+                head_bindings=head_bindings_json,
             )
             
-            # Adjust confidences based on consistency
-            triples = result.get("triples", [])
-            for t in triples:
-                # Combine LLM confidence with self-consistency
-                t["confidence"] = (t.get("confidence", 0.7) + confidence) / 2
-            return triples
-        else:
-            result = self.call_llm(
-                prompt=prompt,
-                system_prompt="You are an expert at completing relation triples. Be precise about object entities.",
-                tier=ModelTier.MEDIUM,
-                max_tokens=4096,
-            )
-            return result.get("triples", [])
+            if self.use_self_consistency:
+                result, confidence = self.call_llm_with_self_consistency(
+                    prompt=prompt,
+                    system_prompt="You are an expert at completing relation triples. Be precise about object entities.",
+                    tier=ModelTier.MEDIUM,
+                    n_samples=self.n_consistency_samples,
+                )
+                
+                # Adjust confidences based on consistency
+                triples = result.get("triples", [])
+                for t in triples:
+                    # Combine LLM confidence with self-consistency
+                    t["confidence"] = (t.get("confidence", 0.7) + confidence) / 2
+                all_triples.extend(triples)
+            else:
+                result = self.call_llm(
+                    prompt=prompt,
+                    system_prompt="You are an expert at completing relation triples. Be precise about object entities.",
+                    tier=ModelTier.MEDIUM,
+                    max_tokens=4096,
+                )
+                all_triples.extend(result.get("triples", []))
+        
+        return all_triples
 
     def _register_new_relation(
         self,

@@ -18,10 +18,14 @@ from datetime import datetime
 class DebugLogger:
     """Centralized logger for detailed debugging of agent decisions and communications."""
     
-    def __init__(self, log_file: str = "pipeline_debug.log", verbose: bool = True):
+    def __init__(self, log_file: str = "pipeline_debug.log", verbose: bool = True, clear_log: bool = True):
         self.log_file = Path(log_file)
         self.verbose = verbose
-        self.log_file.write_text("")  # Clear log file
+        
+        # Only clear if explicitly requested (at start of new run)
+        if clear_log:
+            self.log_file.write_text("")
+        
         self._message_counter = 0
         self._vote_counter = 0
         self._llm_call_counter = 0
@@ -240,8 +244,8 @@ _logger: Optional[DebugLogger] = None
 
 
 def get_debug_logger(log_file: str = "pipeline_debug.log") -> DebugLogger:
-    """Get or create the global debug logger."""
+    """Get or create the global debug logger. Reuses existing instance to preserve logs."""
     global _logger
     if _logger is None:
-        _logger = DebugLogger(log_file)
+        _logger = DebugLogger(log_file, clear_log=False)  # Don't clear when accessed later
     return _logger

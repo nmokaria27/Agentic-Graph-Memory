@@ -131,61 +131,93 @@ class DocumentProcessor(BaseAgent):
         )
 
     def _clean_text(self, text: str) -> str:
-        """Clean and normalize text."""
-        # Remove excessive whitespace
+        """Clean and normalize text while preserving scientific characters.
+        
+        Keeps Greek letters (α, β, γ …), math symbols (±, ≥, ≤, μ),
+        accented characters, and other Unicode that is common in
+        scientific / medical literature.
+        """
+        import unicodedata
+
+        # Normalize Unicode to NFC so combining chars are composed
+        text = unicodedata.normalize("NFC", text)
+
+        # Collapse runs of whitespace (spaces, tabs, newlines) to a single space
         text = re.sub(r'\s+', ' ', text)
-        
-        # Remove special characters but keep punctuation
-        text = re.sub(r'[^\w\s\.\,\!\?\;\:\'\"\-\(\)\[\]]', '', text)
-        
-        # Normalize unicode
-        text = text.encode('ascii', 'ignore').decode('ascii')
-        
+
+        # Remove only control characters (C0/C1) except common whitespace
+        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+
         return text.strip()
 
     def _segment_text(self, text: str) -> List[str]:
         """
-        Segment text into chunks using sentence boundaries.
+        Segment text into chunks using sentence boundaries with overlap.
         
         Uses a simple but effective approach:
         1. Split by sentence-ending punctuation
         2. Combine short sentences until min_segment_length
         3. Split long segments at natural boundaries
+        4. Overlap trailing sentences from the previous segment
+           into the next to avoid losing entities at boundaries
         """
         # Split on sentence boundaries
         sentence_pattern = r'(?<=[.!?])\s+'
         sentences = re.split(sentence_pattern, text)
-        
-        segments = []
+        sentences = [s.strip() for s in sentences if s.strip()]
+
+        segments: List[str] = []
         current_segment = ""
-        
+        # Keep tail sentences of the previous segment for overlap
+        overlap_buffer: List[str] = []
+
         for sentence in sentences:
-            sentence = sentence.strip()
-            if not sentence:
-                continue
-            
-            # If adding this sentence would exceed max, save current and start new
-            if len(current_segment) + len(sentence) > self.max_segment_length:
-                if current_segment:
-                    segments.append(current_segment.strip())
-                current_segment = sentence
+            prospective = (current_segment + " " + sentence).strip() if current_segment else sentence
+
+            # If adding this sentence would exceed max, flush current segment
+            if len(prospective) > self.max_segment_length and current_segment:
+                segments.append(current_segment.strip())
+
+                # Build overlap from tail of flushed segment
+                overlap_buffer = self._build_overlap_buffer(current_segment)
+                overlap_text = " ".join(overlap_buffer)
+                current_segment = (overlap_text + " " + sentence).strip() if overlap_text else sentence
             else:
-                current_segment = current_segment + " " + sentence if current_segment else sentence
-            
+                current_segment = prospective
+
             # If current segment is at least min length and sentence ends with period
             if len(current_segment) >= self.min_segment_length and sentence.endswith('.'):
                 segments.append(current_segment.strip())
-                current_segment = ""
-        
+                overlap_buffer = self._build_overlap_buffer(current_segment)
+                current_segment = " ".join(overlap_buffer)
+
         # Don't forget the last segment
-        if current_segment and len(current_segment) >= self.min_segment_length // 2:
+        if current_segment and len(current_segment.strip()) >= self.min_segment_length // 4:
             segments.append(current_segment.strip())
-        
+
         # Handle case where text is too short
         if not segments and text:
             segments = [text]
-        
+
         return segments
+
+    def _build_overlap_buffer(self, segment_text: str) -> List[str]:
+        """Return the last N characters' worth of sentences for overlap."""
+        if self.overlap <= 0:
+            return []
+        sentence_pattern = r'(?<=[.!?])\s+'
+        sents = re.split(sentence_pattern, segment_text)
+        buf: List[str] = []
+        total = 0
+        for s in reversed(sents):
+            s = s.strip()
+            if not s:
+                continue
+            total += len(s)
+            buf.insert(0, s)
+            if total >= self.overlap:
+                break
+        return buf
 
     def _enrich_segments(
         self,

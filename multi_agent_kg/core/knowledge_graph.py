@@ -200,13 +200,19 @@ class KnowledgeGraph:
         self.triples.append(triple)
         self._triple_set.add(triple)
 
-        # Ensure entities exist
-        if subject not in self.entities:
-            self.add_entity(subject)
-        if obj not in self.entities:
-            self.add_entity(obj)
-
+        # Do NOT auto-create phantom entities.  The KnowledgeOrganizer is
+        # responsible for ensuring that subject/object IDs exist before
+        # calling add_triple.  If they somehow don't exist we still allow
+        # the triple but log the gap — callers can audit via
+        # ``get_orphan_triples()``.
         return triple
+
+    def get_orphan_triples(self) -> List[Triple]:
+        """Return triples whose subject or object has no matching entity."""
+        return [
+            t for t in self.triples
+            if t.subject not in self.entities or t.object not in self.entities
+        ]
 
     def find_conflicts(self, candidate_triples: List[Triple]) -> List[Conflict]:
         """

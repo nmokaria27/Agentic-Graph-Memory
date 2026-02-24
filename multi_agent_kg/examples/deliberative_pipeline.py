@@ -86,7 +86,7 @@ def main():
     
     # Configure the orchestrator
     llm_config = LLMConfig(
-        model="gpt-4o-mini",  # Use for demos, switch to gpt-4o for production
+        model="gemma3:27b",
         temperature=0.3,
         max_tokens=2000,
     )
@@ -158,6 +158,24 @@ def main():
         print(f"  ({triple['subject']}) --[{triple['relation']}]--> ({triple['object']})")
         print(f"    Confidence: {triple.get('confidence', 0):.2f}")
     
+    # Visualize the knowledge graph
+    print("\n" + "=" * 70)
+    print("KNOWLEDGE GRAPH VISUALIZATION")
+    print("=" * 70)
+    
+    try:
+        # Generate interactive HTML visualization
+        viz_file = orchestrator.visualize_kg(
+            output_file="kg_interactive.html",
+            layout="spring",
+            show_labels=True,
+            generate_static=True  # Also generate PNG
+        )
+        print(f"\n✓ Visualization saved to: {viz_file}")
+        print(f"  Open in browser to explore interactively!")
+    except ImportError as e:
+        print(f"\n⚠ Visualization skipped: {e}")
+    
     print("\n" + "=" * 70)
     print("DEMO COMPLETE")
     print("=" * 70)
@@ -165,3 +183,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

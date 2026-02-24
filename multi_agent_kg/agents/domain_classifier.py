@@ -32,54 +32,62 @@ from multi_agent_kg.core.config import LLMConfig
 
 
 # Prompt for domain classification and schema generation
-DOMAIN_ANALYSIS_PROMPT = """Analyze the following document to understand its domain and generate extraction guidance.
+DOMAIN_ANALYSIS_PROMPT = """Analyze the following document and DISCOVER its domain and extraction schema FROM SCRATCH.
 
 Your task is to:
-1. Identify the PRIMARY DOMAIN of this document (e.g., "Machine Learning", "Corporate Finance", "Ancient History", "Cooking Recipes", etc.)
-2. Identify HIERARCHICAL SUB-DOMAINS (e.g., "Technology → Artificial Intelligence → Natural Language Processing")
-3. Generate a list of ENTITY TYPES that are most relevant to extract from this specific content
-4. Generate a list of RELATION TYPES that would connect these entities meaningfully
-5. Provide 2-3 FEW-SHOT EXAMPLES of entity extractions from the text
+1. Identify the PRIMARY DOMAIN by analyzing the actual content (invent a specific domain name that describes THIS document)
+2. Identify HIERARCHICAL SUB-DOMAINS based on the topics and themes present
+3. DISCOVER what ENTITY TYPES exist in this text - look at what concepts are being discussed
+4. DISCOVER what RELATION TYPES connect these entities - what relationships are described?
+5. Provide 2-3 FEW-SHOT EXAMPLES of actual entities you found in the text
 6. Assess the COMPLEXITY and DENSITY of extractable knowledge
 
-Be specific and tailored to THIS document. Do not use generic categories - derive everything from the actual content.
+CRITICAL INSTRUCTIONS:
+- DO NOT use predefined categories or standard taxonomies
+- CREATE entity and relation types specifically for THIS content
+- Look at ACTUAL TOPICS and THEMES, not just keywords
+- Entity types should capture the KEY CONCEPTS discussed in this specific document
+- Relation types should capture the KEY RELATIONSHIPS described in this text
+- Be as specific as possible - avoid generic types like "ENTITY" or "THING"
 
 DOCUMENT TEXT:
 {text}
 
 Respond with JSON:
 {{
-    "primary_domain": "<specific domain name>",
-    "sub_domains": ["<parent domain>", "<child domain>", "<specific domain>"],
-    "domain_description": "<1-2 sentence description of what this domain covers>",
+    "primary_domain": "<specific domain name invented for this content>",
+    "sub_domains": ["<broader domain>", "<narrower domain>", "<most specific domain>"],
+    "domain_description": "<1-2 sentence description of what this document is about>",
     "confidence": <0.0-1.0>,
-    "reasoning": "<brief explanation of why this classification>",
-    "key_indicators": ["<indicator1>", "<indicator2>", ...],
+    "reasoning": "<why you chose this domain and these types>",
+    "key_indicators": ["<key concept/theme 1>", "<key concept/theme 2>", ...],
     
     "entity_types": [
         {{
             "type": "<ENTITY_TYPE_NAME>",
-            "description": "<what this entity type represents>",
-            "priority": "<high|medium|low>"
+            "description": "<what this represents in THIS document>",
+            "priority": "<high|medium|low>",
+            "examples_from_text": ["<example1>", "<example2>"]
         }}
     ],
     
     "relation_types": [
         {{
             "type": "<RELATION_TYPE_NAME>",
-            "description": "<what relationship this captures>",
-            "source_types": ["<valid source entity types>"],
-            "target_types": ["<valid target entity types>"],
-            "priority": "<high|medium|low>"
+            "description": "<what relationship this captures in THIS context>",
+            "source_types": ["<which entity types can be subjects>"],
+            "target_types": ["<which entity types can be objects>"],
+            "priority": "<high|medium|low>",
+            "example_from_text": "<example relationship from the document>"
         }}
     ],
     
     "few_shot_examples": [
         {{
-            "text_span": "<exact text from document>",
+            "text_span": "<exact quote from document>",
             "entity": "<extracted entity>",
-            "entity_type": "<type>",
-            "explanation": "<why this is an entity>"
+            "entity_type": "<the type you created for it>",
+            "explanation": "<why this entity type fits>"
         }}
     ],
     
@@ -314,9 +322,13 @@ class DomainClassifier(BaseAgent):
         analysis, confidence = self.call_llm_with_self_consistency(
             prompt=prompt,
             system_prompt=(
-                "You are an expert domain analyst. Your task is to deeply analyze "
-                "documents and generate precise, tailored extraction schemas. "
-                "Be specific to the actual content - avoid generic classifications. "
+                "You are an expert at discovering knowledge structures from scratch. "
+                "NEVER use predefined schemas or standard taxonomies. "
+                "Your task is to READ the document carefully and INVENT a custom schema that fits THIS content. "
+                "Focus on WHAT IS ACTUALLY DISCUSSED, not what category you think it fits into. "
+                "Create entity types that capture the KEY CONCEPTS in this text. "
+                "Create relation types that capture the KEY RELATIONSHIPS in this text. "
+                "Be specific and descriptive - avoid generic types. "
                 "Entity and relation types should be in UPPER_SNAKE_CASE format."
             ),
             tier=ModelTier.MEDIUM,  # 13B per spec

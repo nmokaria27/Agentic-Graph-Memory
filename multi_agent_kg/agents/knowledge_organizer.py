@@ -161,16 +161,31 @@ class KnowledgeOrganizer(BaseAgent):
                 triples = msg.content.get("triples", triples)
         
         # Step 1: Entity deduplication
+        print(f"\n" + "="*70)
+        print(f"[ORGANIZER DEBUG] Entity Deduplication")
+        print(f"="*70)
+        print(f"  Input entities: {len(entities)}")
+        
         if self.enable_deduplication and entities:
             entities, merged_count = self._deduplicate_entities(entities)
             self.integration_stats["entities_merged"] += merged_count
+            print(f"  After deduplication: {len(entities)} (merged: {merged_count})")
         
         # Step 2: Relation normalization
+        print(f"\n[ORGANIZER DEBUG] Relation Normalization")
+        print(f"  Input triples: {len(triples)}")
+        
         if self.enable_normalization and triples:
             triples, normalized_count = self._normalize_relations(triples)
             self.integration_stats["relations_normalized"] += normalized_count
+            print(f"  After normalization: {len(triples)} (normalized: {normalized_count})")
         
         # Step 3: Integrate into knowledge graph
+        print(f"\n[ORGANIZER DEBUG] KG Integration")
+        print(f"  Entities to add: {len(entities)}")
+        print(f"  Triples to add: {len(triples)}")
+        print(f"  KG before: {len(self.knowledge_graph.entities)} entities, {len(self.knowledge_graph.triples)} triples")
+        
         if self.knowledge_graph:
             added_entities, added_triples = self._integrate_to_kg(
                 entities,
@@ -179,6 +194,8 @@ class KnowledgeOrganizer(BaseAgent):
             )
             self.integration_stats["entities_added"] += added_entities
             self.integration_stats["triples_added"] += added_triples
+            print(f"  KG after: {len(self.knowledge_graph.entities)} entities, {len(self.knowledge_graph.triples)} triples")
+            print(f"  Actually added: {added_entities} entities, {added_triples} triples")
         
         # Step 4: Update shared memory with aliases
         if self.shared_memory:
@@ -222,7 +239,7 @@ class KnowledgeOrganizer(BaseAgent):
                     "text": e.get("text", ""),
                     "type": e.get("type", ""),
                 }
-                for e in remaining[:30]
+                for e in remaining
             ], indent=2)
             
             prompt = ENTITY_DEDUP_PROMPT.format(entities_json=entities_json)
@@ -332,17 +349,99 @@ class KnowledgeOrganizer(BaseAgent):
         triples: List[Dict[str, Any]],
         document_id: str,
     ) -> tuple:
-        """Integrate into knowledge graph."""
+        """Integrate into knowledge graph with entity-name resolution.
+        
+        Builds a lookup from entity text/labels → entity ID so that
+        triple subjects/objects (which use text names) get resolved to
+        real entity IDs instead of creating phantom entities.
+        """
         added_entities = 0
         added_triples = 0
-        
-        # Add entities
+        skipped_triples = 0
+
+        # ── Filter garbage entities ──────────────────────────────────
+        import re
+        clean_entities = []
+        for entity in entities:
+            eid = entity.get("id", entity.get("text", ""))
+            etext = entity.get("text", eid)
+            # Skip empty, pure-number, or trivially short/generic entities
+            if not etext or not etext.strip():
+                continue
+            stripped = etext.strip()
+            if re.fullmatch(r'\d+', stripped):
+                # Numeric-only ID *and* numeric-only text → garbage
+                if re.fullmatch(r'\d+', eid):
+                    continue
+            if stripped.lower() in {
+                "our findings", "this study", "we", "they", "it",
+                "the study", "results", "data", "analysis",
+            }:
+                continue
+            if len(stripped) < 2:
+                continue
+            clean_entities.append(entity)
+
+        print(f"  Filtered entities: {len(entities)} → {len(clean_entities)} "
+              f"(removed {len(entities) - len(clean_entities)} garbage)")
+        entities = clean_entities
+
+        # ── Build name → entity_id lookup ────────────────────────────
+        # This is the critical mapping that prevents phantom entities.
+        # The entity extractor assigns canonical IDs (sometimes numeric),
+        # but the relation extractor references entities by text name.
+        name_to_id: Dict[str, str] = {}
+        for entity in entities:
+            eid = entity.get("id", entity.get("text", ""))
+            etext = entity.get("text", eid)
+            # Map the text form → canonical ID
+            name_to_id[etext.lower().strip()] = eid
+            # Map the ID itself
+            name_to_id[eid.lower().strip()] = eid
+            # Map any aliases/mentions
+            for mention in entity.get("mentions", []):
+                name_to_id[mention.lower().strip()] = eid
+
+        # Also map existing KG entities
+        for existing_id, existing_entity in self.knowledge_graph.entities.items():
+            name_to_id[existing_id.lower().strip()] = existing_id
+            for label in existing_entity.labels:
+                name_to_id[label.lower().strip()] = existing_id
+
+        # Also check shared memory for aliases
+        if self.shared_memory and hasattr(self.shared_memory, 'entity_aliases'):
+            for alias, canonical in self.shared_memory.entity_aliases.items():
+                name_to_id[alias.lower().strip()] = canonical
+
+        def _resolve_entity_name(name: str) -> Optional[str]:
+            """Resolve a triple subject/object text to an entity ID."""
+            key = name.lower().strip()
+            if key in name_to_id:
+                return name_to_id[key]
+            # Try fuzzy: check if name is a substring of any known entity
+            for known_name, known_id in name_to_id.items():
+                if len(key) > 3 and (key in known_name or known_name in key):
+                    return known_id
+            return None
+
+        # ── Add entities ─────────────────────────────────────────────
         for entity in entities:
             entity_id = entity.get("id", entity.get("text", ""))
+            etext = entity.get("text", entity_id)
+            # Use text as ID if the ID is purely numeric (fixes numeric IDs)
+            if re.fullmatch(r'\d+', entity_id) and etext and not re.fullmatch(r'\d+', etext):
+                old_id = entity_id
+                entity_id = etext.lower().replace(" ", "_")
+                # Update the lookup
+                name_to_id[etext.lower().strip()] = entity_id
+                name_to_id[old_id] = entity_id
+                for mention in entity.get("mentions", []):
+                    name_to_id[mention.lower().strip()] = entity_id
+
             if entity_id not in self.knowledge_graph.entities:
                 self.knowledge_graph.add_entity(
                     entity_id=entity_id,
-                    labels=[entity.get("text", entity_id)],
+                    labels=[etext] if etext != entity_id else [entity_id],
                     entity_type=entity.get("type", "UNKNOWN"),
                     metadata={
                         "source_document": document_id,
@@ -350,22 +449,69 @@ class KnowledgeOrganizer(BaseAgent):
                     },
                 )
                 added_entities += 1
-        
-        # Add triples
+
+        # ── Add triples (with entity resolution) ─────────────────────
         for triple in triples:
-            self.knowledge_graph.add_triple(
-                subject=triple.get("subject", ""),
-                relation=triple.get("relation", ""),
-                obj=triple.get("object", ""),
+            raw_subj = triple.get("subject", "")
+            raw_obj = triple.get("object", "")
+            relation = triple.get("relation", "")
+
+            if not raw_subj or not raw_obj or not relation:
+                skipped_triples += 1
+                continue
+
+            # Resolve subject and object to known entity IDs
+            resolved_subj = _resolve_entity_name(raw_subj) or _resolve_entity_name(
+                triple.get("subject_id", "")
+            )
+            resolved_obj = _resolve_entity_name(raw_obj) or _resolve_entity_name(
+                triple.get("object_id", "")
+            )
+
+            # If we can't resolve, use the text form as a new entity
+            # (but create it properly with type info, not as a phantom)
+            if not resolved_subj:
+                resolved_subj = raw_subj.lower().replace(" ", "_")
+                if resolved_subj not in self.knowledge_graph.entities:
+                    self.knowledge_graph.add_entity(
+                        entity_id=resolved_subj,
+                        labels=[raw_subj],
+                        entity_type="UNRESOLVED",
+                        metadata={"source_document": document_id, "auto_created": True},
+                    )
+                    name_to_id[raw_subj.lower().strip()] = resolved_subj
+
+            if not resolved_obj:
+                resolved_obj = raw_obj.lower().replace(" ", "_")
+                if resolved_obj not in self.knowledge_graph.entities:
+                    self.knowledge_graph.add_entity(
+                        entity_id=resolved_obj,
+                        labels=[raw_obj],
+                        entity_type="UNRESOLVED",
+                        metadata={"source_document": document_id, "auto_created": True},
+                    )
+                    name_to_id[raw_obj.lower().strip()] = resolved_obj
+
+            result = self.knowledge_graph.add_triple(
+                subject=resolved_subj,
+                relation=relation,
+                obj=resolved_obj,
                 confidence=triple.get("final_confidence", triple.get("confidence", 0.7)),
                 source=document_id,
                 metadata={
                     "evidence": triple.get("supporting_evidence", ""),
                     "verification_status": triple.get("verification_status", "unknown"),
+                    "original_subject": raw_subj,
+                    "original_object": raw_obj,
                 },
             )
-            added_triples += 1
-        
+            if result is not None:
+                added_triples += 1
+            else:
+                skipped_triples += 1  # Duplicate
+
+        print(f"  Entity resolution: mapped {len(name_to_id)} name variants")
+        print(f"  Triples skipped (dup/invalid): {skipped_triples}")
         return added_entities, added_triples
 
     def _update_memory(
@@ -422,9 +568,9 @@ class KnowledgeOrganizer(BaseAgent):
             })
         
         triples = []
-        for triple_id, triple in self.knowledge_graph.triples.items():
+        for i, triple in enumerate(self.knowledge_graph.triples):
             triples.append({
-                "id": triple_id,
+                "id": f"triple_{i}",
                 "subject": triple.subject,
                 "relation": triple.relation,
                 "object": triple.object,

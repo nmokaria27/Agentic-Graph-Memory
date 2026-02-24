@@ -6,15 +6,20 @@ Assumes article_text.txt exists from running extract_pdf.py
 from dotenv import load_dotenv
 import os
 from multi_agent_kg.core import LLMConfig, DeliberativeOrchestrator, KnowledgeGraph
+from multi_agent_kg.utils.debug_logger import DebugLogger
 
 # Load environment
 load_dotenv()
 
-if not os.getenv("OPENAI_API_KEY"):
+if os.getenv("LLM_BACKEND", "ollama").lower() == "openai" and not os.getenv("OPENAI_API_KEY"):
     raise SystemExit("ERROR: OPENAI_API_KEY not set. Add it to .env file.")
 
+# Initialize debug logger (clears previous log)
+debug_logger = DebugLogger("pipeline_debug.log", verbose=True, clear_log=True)
+print("Debug logging enabled - logs will be saved to pipeline_debug.log\n")
+
 # Load the extracted text
-text_file = "article_text_short.txt"
+text_file = "gfy083_full_plaintext.txt"
 if not os.path.exists(text_file):
     raise SystemExit(f"ERROR: {text_file} not found. Run extract_pdf.py first.")
 
@@ -43,11 +48,11 @@ documents = [
     }
 ]
 
-# Configure LLM (using gpt-4o-mini for cost efficiency)
+# Configure LLM (using gemma3:27b via Ollama for best quality)
 llm_config = LLMConfig(
-    model="gpt-4o-mini",
+    model="gemma3:27b",
     temperature=0.2,
-    max_tokens=4096,  # Model maximum for gpt-4o-mini
+    max_tokens=4096,
 )
 
 # Create orchestrator
@@ -55,11 +60,12 @@ print("\nInitializing orchestrator...")
 orchestrator = DeliberativeOrchestrator(
     llm_config=llm_config,
     knowledge_graph=KnowledgeGraph(),
-    quality_threshold=0.7,
+    quality_threshold=0.6,  # Lowered from 0.7 for less harsh filtering
     max_refinement_iterations=1,
     enable_self_consistency=False,
     enable_open_world=True,
     enable_cross_document=False,
+    debug_logger=debug_logger,
 )
 
 print("Processing document through pipeline...")
@@ -123,10 +129,42 @@ try:
     with open("kg_export.json", "w", encoding="utf-8") as f:
         json.dump(export, f, indent=2, default=str)
     
+    print("\nFull knowledge graph saved to: kg_export.json")
+    
+    # Generate visualizations
+    print("\n" + "=" * 70)
+    print("GENERATING VISUALIZATIONS")
+    print("=" * 70)
+    
+    # Import visualizer
+    from multi_agent_kg.utils.kg_visualizer import KGVisualizer
+    
+    # Create visualizer with the exported KG data
+    kg_data = export.get('knowledge_graph', export)
+    visualizer = KGVisualizer(kg_data=kg_data)
+    
+    viz_html = "kg_interactive.html"
+    viz_png = "kg_static.png"
+    
+    # Interactive HTML visualization
+    visualizer.visualize_interactive(
+        output_file=viz_html,
+        height="800px"
+    )
+    print(f"✓ Interactive visualization: {viz_html}")
+    
+    # Static PNG visualization
+    visualizer.visualize_static(
+        output_file=viz_png,
+        layout="spring",
+        figsize=(20, 16)
+    )
+    print(f"✓ Static visualization: {viz_png}")
+    
     print("\n" + "=" * 70)
     print("COMPLETE")
     print("=" * 70)
-    print("\nFull knowledge graph saved to: kg_export.json")
+    print(f"\nOpen {viz_html} in your browser to explore the knowledge graph!")
 
 except Exception as e:
     print("\n" + "=" * 70)
