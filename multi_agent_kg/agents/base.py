@@ -40,16 +40,24 @@ class AgentRole(str, Enum):
 
 class ModelTier(str, Enum):
     """Model tier for tiered model selection."""
-    SMALL = "small"     # ~4B params - fast (qwen3:4b)
-    MEDIUM = "medium"   # ~8B params - balanced (qwen3:8b)
-    LARGE = "large"     # ~27B params - highest quality (gemma3:27b)
+    SMALL = "small"     # ~4B params - fast, simple tasks (boundary refinement, dedup)
+    MEDIUM = "medium"   # ~8-27B params - balanced, extraction tasks
+    LARGE = "large"     # ~27B params - highest quality, validation/verification
 
 
 # Default model mapping (Ollama models on GPU via SSH tunnel)
+# NOTE: Set these according to your available models.
+# Recommended: SMALL=qwen3:4b, MEDIUM=qwen3:8b, LARGE=gemma3:27b
+# If only one model is available, all tiers will use it (current default).
+import os as _os
+_OLLAMA_SMALL = _os.getenv("OLLAMA_MODEL_SMALL", "gemma3:27b")
+_OLLAMA_MEDIUM = _os.getenv("OLLAMA_MODEL_MEDIUM", "gemma3:27b")
+_OLLAMA_LARGE = _os.getenv("OLLAMA_MODEL_LARGE", "gemma3:27b")
+
 DEFAULT_MODEL_TIERS = {
-    ModelTier.SMALL: "gemma3:27b",
-    ModelTier.MEDIUM: "gemma3:27b",
-    ModelTier.LARGE: "gemma3:27b",
+    ModelTier.SMALL: _OLLAMA_SMALL,
+    ModelTier.MEDIUM: _OLLAMA_MEDIUM,
+    ModelTier.LARGE: _OLLAMA_LARGE,
 }
 
 
@@ -104,10 +112,11 @@ class BaseAgent(ABC):
         default_tier: ModelTier = ModelTier.MEDIUM,
         quality_threshold: float = 0.85,
         max_iterations: int = 4,
+        model_override: Optional[str] = None,
     ):
         """
         Initialize the enhanced base agent.
-        
+
         Args:
             name: Unique agent name
             role: Worker or coordinator
@@ -119,6 +128,10 @@ class BaseAgent(ABC):
             default_tier: Default model tier to use
             quality_threshold: Threshold for acceptable quality
             max_iterations: Maximum refinement iterations
+            model_override: If set, ALL LLM calls for this agent use this
+                exact model name, bypassing tier-based lookup entirely.
+                Useful for pinning a specific agent to a specific model
+                (e.g. "deepseek-r1:14b" for the verification agent).
         """
         self.name = name
         self.role = role
@@ -130,6 +143,7 @@ class BaseAgent(ABC):
         self.default_tier = default_tier
         self.quality_threshold = quality_threshold
         self.max_iterations = max_iterations
+        self.model_override = model_override  # bypasses tier lookup when set
         
         # Collaboration protocol for structured communication
         self.collab = CollaborationProtocol(message_bus) if message_bus else None
@@ -194,8 +208,12 @@ class BaseAgent(ABC):
         Returns:
             Parsed JSON response from LLM
         """
-        tier = tier or self.default_tier
-        model = self.model_tiers.get(tier, self.llm_config.model)
+        # model_override pins this agent to a specific model regardless of tier
+        if self.model_override:
+            model = self.model_override
+        else:
+            tier = tier or self.default_tier
+            model = self.model_tiers.get(tier, self.llm_config.model)
         
         config = LLMConfig(
             model=model,
@@ -269,38 +287,148 @@ class BaseAgent(ABC):
         responses: List[Dict[str, Any]],
     ) -> Tuple[Dict[str, Any], float]:
         """
-        Compute consensus from multiple responses.
-        
-        Uses a simple voting mechanism:
-        - Serialize each response
-        - Count occurrences
-        - Return most common with frequency as confidence
+        Compute consensus from multiple responses using ITEM-LEVEL voting.
+
+        Instead of comparing entire serialized JSON responses (which almost
+        never match for complex outputs), this method:
+        1. Extracts individual items (entities, triples, relations) from each response
+        2. Normalizes each item to a comparable key
+        3. Counts how many responses include each item
+        4. Returns items that appear in a majority of responses
+        5. Confidence = average agreement ratio across items
+
+        This implements the SF-GPT "Entity Extraction Filter" technique.
         """
+        from collections import Counter
+
         if not responses:
             return {}, 0.0
-        
-        # Serialize for comparison
-        serialized = []
-        for r in responses:
+
+        if len(responses) == 1:
+            return responses[0], 0.5
+
+        n = len(responses)
+
+        # Detect what kind of response this is
+        # and extract the list key (entities, triples, relations_found, etc.)
+        list_keys = [
+            "entities", "triples", "relations_found", "head_bindings",
+            "linked_triples", "entity_groups", "relation_examples",
+            "merge_groups", "normalizations", "verified_triples",
+        ]
+
+        # Find which list key is present
+        active_key = None
+        for key in list_keys:
+            for r in responses:
+                if key in r and isinstance(r[key], list) and len(r[key]) > 0:
+                    active_key = key
+                    break
+            if active_key:
+                break
+
+        # If no list key found, fall back to whole-response voting
+        if not active_key:
+            serialized = []
+            for r in responses:
+                try:
+                    serialized.append(json.dumps(r, sort_keys=True))
+                except Exception:
+                    serialized.append(str(r))
+            counts = Counter(serialized)
+            most_common, count = counts.most_common(1)[0]
             try:
-                serialized.append(json.dumps(r, sort_keys=True))
-            except:
-                serialized.append(str(r))
-        
-        # Count votes
-        from collections import Counter
-        counts = Counter(serialized)
-        most_common, count = counts.most_common(1)[0]
-        
-        confidence = count / len(responses)
-        
-        # Deserialize winner
-        try:
-            result = json.loads(most_common)
-        except:
-            result = responses[0]
-        
-        return result, confidence
+                result = json.loads(most_common)
+            except Exception:
+                result = responses[0]
+            return result, count / n
+
+        # Item-level consensus
+        def _item_key(item: Dict[str, Any]) -> str:
+            """Create a normalized key for an item for comparison."""
+            # For entities
+            if "text" in item and "type" not in item:
+                return item.get("text", "").strip().lower()
+            if "text" in item and "type" in item:
+                return f"{item.get('text', '').strip().lower()}|{item.get('type', '').strip().lower()}"
+            # For triples
+            if "subject" in item and "relation" in item and "object" in item:
+                s = item.get("subject", "").strip().lower()
+                r = item.get("relation", "").strip().lower()
+                o = item.get("object", "").strip().lower()
+                return f"{s}|{r}|{o}"
+            # For relations_found
+            if "relation_type" in item:
+                return item.get("relation_type", "").strip().lower()
+            # For head_bindings
+            if "head_entity" in item and "relation_type" in item:
+                h = item.get("head_entity", "").strip().lower()
+                r = item.get("relation_type", "").strip().lower()
+                return f"{h}|{r}"
+            # For entity_groups
+            if "canonical_name" in item:
+                return item.get("canonical_name", "").strip().lower()
+            # Fallback: serialize the item
+            try:
+                return json.dumps(item, sort_keys=True)
+            except Exception:
+                return str(item)
+
+        # Count item occurrences across responses
+        item_votes: Dict[str, int] = Counter()
+        item_best: Dict[str, Dict[str, Any]] = {}  # key → best version of item
+
+        for r in responses:
+            items = r.get(active_key, [])
+            if not isinstance(items, list):
+                continue
+            seen_in_response = set()
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                key = _item_key(item)
+                if key and key not in seen_in_response:
+                    item_votes[key] += 1
+                    seen_in_response.add(key)
+                    # Keep the version with highest confidence
+                    existing = item_best.get(key)
+                    if existing is None or item.get("confidence", 0) > existing.get("confidence", 0):
+                        item_best[key] = item
+
+        # Accept items that appear in majority of responses (> 50%)
+        threshold = n / 2.0
+        consensus_items = []
+        confidences = []
+
+        for key, vote_count in item_votes.items():
+            agreement = vote_count / n
+            if vote_count > threshold:
+                item = item_best[key].copy()
+                # Attach agreement-based confidence boost
+                item["_agreement"] = agreement
+                consensus_items.append(item)
+                confidences.append(agreement)
+            elif vote_count == 1 and n >= 3:
+                # Item only in 1 of 3+ responses — likely noise, skip
+                pass
+            else:
+                # Borderline — include but with lower confidence
+                item = item_best[key].copy()
+                item["_agreement"] = agreement
+                # Lower the confidence proportionally
+                if "confidence" in item:
+                    item["confidence"] = item["confidence"] * agreement
+                consensus_items.append(item)
+                confidences.append(agreement)
+
+        # Build result
+        result = responses[0].copy()  # Start with first response structure
+        result[active_key] = consensus_items
+
+        # Overall confidence = average agreement
+        overall_confidence = sum(confidences) / len(confidences) if confidences else 0.5
+
+        return result, overall_confidence
 
     # ==================== Memory Methods ====================
 

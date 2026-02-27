@@ -131,11 +131,12 @@ class DeliberativeOrchestrator:
         self.enable_deliberation = enable_deliberation
         self.debug_logger = debug_logger
         
-        # Model tier configuration
+        # Model tier configuration — uses env vars or defaults
+        import os
         self.model_tiers = model_tiers or {
-            ModelTier.SMALL: "gemma3:27b",
-            ModelTier.MEDIUM: "gemma3:27b",
-            ModelTier.LARGE: "gemma3:27b",
+            ModelTier.SMALL: os.getenv("OLLAMA_MODEL_SMALL", "gemma3:27b"),
+            ModelTier.MEDIUM: os.getenv("OLLAMA_MODEL_MEDIUM", "gemma3:27b"),
+            ModelTier.LARGE: os.getenv("OLLAMA_MODEL_LARGE", "gemma3:27b"),
         }
         
         # Shared infrastructure
@@ -163,9 +164,27 @@ class DeliberativeOrchestrator:
         
         self._print_header()
 
+    # ── Per-agent model assignments ───────────────────────────────────────
+    # These can be overridden by env vars (AGENT_MODEL_<NAME>) or by passing
+    # model_tiers to the constructor.  When set, the agent ignores the global
+    # tier table and always calls this specific model.
+    import os as _os
+    AGENT_MODELS: Dict[str, str] = {
+        # Worker agents
+        "DocumentProcessor":          _os.getenv("AGENT_MODEL_DOCUMENT_PROCESSOR",   "qwen3:4b"),
+        "DomainClassifier":           _os.getenv("AGENT_MODEL_DOMAIN_CLASSIFIER",    "qwen3:8b"),
+        "EntityExtractor":            _os.getenv("AGENT_MODEL_ENTITY_EXTRACTOR",     "qwen3:8b"),
+        "RelationExtractor":          _os.getenv("AGENT_MODEL_RELATION_EXTRACTOR",   "qwen3:8b"),
+        "EvidenceLinker":             _os.getenv("AGENT_MODEL_EVIDENCE_LINKER",      "qwen3:4b"),
+        # Coordinator agents
+        "ExtractionVerificationAgent":_os.getenv("AGENT_MODEL_VERIFICATION_AGENT",   "deepseek-r1:14b"),
+        "KnowledgeOrganizer":         _os.getenv("AGENT_MODEL_KNOWLEDGE_ORGANIZER",  "gpt-oss:20b"),
+        # ExtractionValidator uses the global tier table (no override by default)
+    }
+
     def _init_agents(self) -> None:
         """Initialize all agents with shared infrastructure."""
-        
+
         # Worker Agents
         self.document_processor = DocumentProcessor(
             knowledge_graph=self.knowledge_graph,
@@ -173,14 +192,16 @@ class DeliberativeOrchestrator:
             message_bus=self.message_bus,
             llm_config=self.llm_config,
         )
-        
+        self.document_processor.model_override = self.AGENT_MODELS["DocumentProcessor"]
+
         self.domain_classifier = DomainClassifier(
             knowledge_graph=self.knowledge_graph,
             shared_memory=self.shared_memory,
             message_bus=self.message_bus,
             llm_config=self.llm_config,
         )
-        
+        self.domain_classifier.model_override = self.AGENT_MODELS["DomainClassifier"]
+
         self.entity_extractor = EntityExtractor(
             knowledge_graph=self.knowledge_graph,
             shared_memory=self.shared_memory,
@@ -189,7 +210,8 @@ class DeliberativeOrchestrator:
             quality_threshold=self.quality_threshold,
             use_self_consistency=self.enable_self_consistency,
         )
-        
+        self.entity_extractor.model_override = self.AGENT_MODELS["EntityExtractor"]
+
         self.relation_extractor = RelationExtractor(
             knowledge_graph=self.knowledge_graph,
             shared_memory=self.shared_memory,
@@ -199,7 +221,8 @@ class DeliberativeOrchestrator:
             use_self_consistency=self.enable_self_consistency,
             enable_open_world=self.enable_open_world,
         )
-        
+        self.relation_extractor.model_override = self.AGENT_MODELS["RelationExtractor"]
+
         self.evidence_linker = EvidenceLinker(
             knowledge_graph=self.knowledge_graph,
             shared_memory=self.shared_memory,
@@ -208,7 +231,8 @@ class DeliberativeOrchestrator:
             quality_threshold=self.quality_threshold,
             enable_cross_reference=self.enable_cross_document,
         )
-        
+        self.evidence_linker.model_override = self.AGENT_MODELS["EvidenceLinker"]
+
         # Coordinator Agents
         self.extraction_validator = ExtractionValidator(
             knowledge_graph=self.knowledge_graph,
@@ -218,7 +242,8 @@ class DeliberativeOrchestrator:
             quality_threshold=self.quality_threshold,
             max_iterations=self.max_refinement_iterations,
         )
-        
+        # ExtractionValidator has no override — uses the global tier table
+
         self.verification_agent = ExtractionVerificationAgent(
             knowledge_graph=self.knowledge_graph,
             shared_memory=self.shared_memory,
@@ -226,17 +251,19 @@ class DeliberativeOrchestrator:
             llm_config=self.llm_config,
             quality_threshold=self.quality_threshold,
         )
-        
+        self.verification_agent.model_override = self.AGENT_MODELS["ExtractionVerificationAgent"]
+
         self.knowledge_organizer = KnowledgeOrganizer(
             knowledge_graph=self.knowledge_graph,
             shared_memory=self.shared_memory,
             message_bus=self.message_bus,
             llm_config=self.llm_config,
         )
-        
+        self.knowledge_organizer.model_override = self.AGENT_MODELS["KnowledgeOrganizer"]
+
         # Visualizer will be initialized on-demand when export() is called
         self.visualizer = None
-        
+
         # Set deliberation coordinator on all agents
         if self.deliberation_coordinator:
             self._setup_deliberation()
@@ -262,9 +289,19 @@ class DeliberativeOrchestrator:
         print("\n" + "=" * 70)
         print("DELIBERATIVE MULTI-AGENT KNOWLEDGE GRAPH FRAMEWORK")
         print("=" * 70)
-        print(f"Model Tiers:")
-        for tier, model in self.model_tiers.items():
-            print(f"  {tier.value}: {model}")
+        print("Per-Agent Models:")
+        agent_model_display = [
+            ("DocumentProcessor",           self.AGENT_MODELS.get("DocumentProcessor", "—")),
+            ("DomainClassifier",            self.AGENT_MODELS.get("DomainClassifier", "—")),
+            ("EntityExtractor",             self.AGENT_MODELS.get("EntityExtractor", "—")),
+            ("RelationExtractor",           self.AGENT_MODELS.get("RelationExtractor", "—")),
+            ("EvidenceLinker",              self.AGENT_MODELS.get("EvidenceLinker", "—")),
+            ("ExtractionValidator",         f"{self.model_tiers.get(ModelTier.LARGE, '?')} (tier-based)"),
+            ("ExtractionVerificationAgent", self.AGENT_MODELS.get("ExtractionVerificationAgent", "—")),
+            ("KnowledgeOrganizer",          self.AGENT_MODELS.get("KnowledgeOrganizer", "—")),
+        ]
+        for agent_name, model in agent_model_display:
+            print(f"  {agent_name:<30} {model}")
         print(f"\nFeatures:")
         print(f"  Self-Consistency: {'Enabled' if self.enable_self_consistency else 'Disabled'}")
         print(f"  Open-World Relations: {'Enabled' if self.enable_open_world else 'Disabled'}")
@@ -321,9 +358,15 @@ class DeliberativeOrchestrator:
         )
         
         results = {}
-        
-        # ===== WORKER AGENTS =====
-        
+
+        # ===== CHECK FOR SHORT TEXT → SINGLE-PASS MODE =====
+        word_count = len((text or "").split())
+        if word_count > 0 and word_count <= 200:
+            print(f"\n  [SHORT TEXT MODE] {word_count} words — using single-pass extraction")
+            return self._process_short_text(context, document_id, start_time, metadata)
+
+        # ===== WORKER AGENTS (FULL PIPELINE) =====
+
         # Step 1: Document Processing
         if self.debug_logger:
             self.debug_logger.log_stage_header(1, "Document Processing")
@@ -379,7 +422,26 @@ class DeliberativeOrchestrator:
         print(f"  Triples: {len(triples)} (confidence: {relation_result.confidence:.2f})")
         if relation_result.metadata.get("new_relations_discovered"):
             print(f"  New Relation Types: {relation_result.metadata['new_relations_discovered']}")
-        
+
+        # Step 4b: Inferred Triple Generation
+        print("\n[4b/9] Inferred Triple Generation")
+        print("-" * 50)
+        inferred_triples = self.relation_extractor.generate_inferred_triples(
+            text=context.text,
+            entities=entities,
+            triples=triples,
+        )
+        if inferred_triples:
+            triples = triples + inferred_triples
+            context.relations = triples
+            results["inferred_triples"] = len(inferred_triples)
+            print(f"  Inferred: {len(inferred_triples)} new triples")
+        else:
+            results["inferred_triples"] = 0
+            print("  No additional triples inferred")
+        results["triples_total"] = len(triples)
+        print(f"  Total triples: {len(triples)}")
+
         # Step 5: Evidence Linking
         if self.debug_logger:
             self.debug_logger.log_stage_header(5, "Evidence Linking")
@@ -499,6 +561,216 @@ class DeliberativeOrchestrator:
             "results": results,
         })
         
+        return results
+
+    def _process_short_text(
+        self,
+        context: AgentContext,
+        document_id: str,
+        start_time: "datetime",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Single-pass extraction for short texts (< 200 words).
+
+        Uses a single Chain-of-Thought LLM call that extracts entities AND
+        relations together, avoiding the overhead of the full multi-stage
+        pipeline.  This follows the EDC (Extract-Define-Canonicalize)
+        pattern from EMNLP 2024.
+        """
+        from multi_agent_kg.llm.openai_client import chat_completion_json
+
+        text = context.text
+        results: Dict[str, Any] = {"segments": 1, "mode": "single_pass"}
+
+        prompt = f"""Extract a knowledge graph from the following text.
+
+TEXT:
+{text}
+
+INSTRUCTIONS — follow this chain of thought step by step:
+1. First, identify ALL entities mentioned or implied in the text. Include:
+   - People (full names)
+   - Organizations, teams, companies
+   - Locations, countries, nationalities
+   - Dates (convert to YYYY-MM-DD format, e.g., "22 May 1980" → "1980-05-22")
+   - Occupations, professions, roles (e.g., "volleyball player")
+   - Any other significant concepts
+
+2. Then, identify ALL relationships between these entities. For each relationship:
+   - The subject and object MUST be different entities (no self-referential triples)
+   - Use clear, descriptive relation names in lowercase_with_underscores format
+   - Good: has_nationality, has_date_of_birth, has_occupation, member_of, plays_for
+   - Bad: PERSON_BORN_ON, PERSON_NATIONALITY (don't embed entity types in relation names)
+   - Distinguish between semantically different relationships
+     (e.g., "member_of" for national team vs "plays_for" for club)
+
+3. Also identify any INFERRED relationships that can be derived from the explicit ones.
+   For example, if someone is part of "Greece men's national volleyball team", then
+   that team has_nationality Greek.
+
+Return JSON:
+{{
+    "reasoning": "<your step-by-step reasoning>",
+    "entities": [
+        {{
+            "text": "<entity text>",
+            "type": "<ENTITY_TYPE in UPPER_CASE>",
+            "id": "<lowercase_underscored_id>"
+        }}
+    ],
+    "triples": [
+        {{
+            "subject": "<subject entity text>",
+            "relation": "<relation_name>",
+            "object": "<object entity text>",
+            "confidence": <0.0-1.0>,
+            "evidence": "<supporting text or 'inferred'>"
+        }}
+    ]
+}}"""
+
+        print("\n[1/3] Single-pass extraction (CoT)")
+        print("-" * 50)
+
+        result = chat_completion_json(
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an expert knowledge graph extractor. "
+                        "Extract entities and relationships from text with high precision. "
+                        "Always normalize dates to ISO 8601 (YYYY-MM-DD). "
+                        "Never create self-referential triples where subject equals object. "
+                        "Include inferred relationships when they follow logically."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            model=self.model_tiers.get(ModelTier.MEDIUM, self.llm_config.model),
+            temperature=0.2,
+            max_tokens=4096,
+        )
+
+        entities = result.get("entities", [])
+        triples = result.get("triples", [])
+
+        # Filter self-referential triples
+        triples = [
+            t for t in triples
+            if t.get("subject", "").strip().lower() != t.get("object", "").strip().lower()
+        ]
+
+        # Set default confidence
+        for e in entities:
+            e.setdefault("confidence", 0.8)
+        for t in triples:
+            t.setdefault("confidence", 0.8)
+
+        context.entities = entities
+        context.relations = triples
+        results["entities_extracted"] = len(entities)
+        results["triples_extracted"] = len(triples)
+        results["domain"] = "auto"
+
+        print(f"  Entities: {len(entities)}")
+        print(f"  Triples: {len(triples)}")
+        if result.get("reasoning"):
+            print(f"  Reasoning: {result['reasoning'][:200]}...")
+
+        # Step 2: Lightweight verification — single call
+        print("\n[2/3] Lightweight verification")
+        print("-" * 50)
+
+        import json as _json
+        triples_json_str = _json.dumps(triples, indent=2)
+        verify_prompt = f"""Verify these knowledge graph triples against the source text.
+
+SOURCE TEXT:
+{text}
+
+TRIPLES:
+{triples_json_str}
+
+For each triple:
+- Mark as "verified" if supported by the text (explicit or reasonably inferred)
+- Mark as "rejected" only if clearly wrong or contradicted
+- Adjust confidence if needed
+
+Return JSON:
+{{
+    "verified_triples": [
+        {{
+            "subject": "<subject>",
+            "relation": "<relation>",
+            "object": "<object>",
+            "verified": true/false,
+            "confidence": <0.0-1.0>
+        }}
+    ]
+}}"""
+
+        verify_result = chat_completion_json(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert fact verifier. Accept both explicit and reasonably inferred relationships.",
+                },
+                {"role": "user", "content": verify_prompt},
+            ],
+            model=self.model_tiers.get(ModelTier.MEDIUM, self.llm_config.model),
+            temperature=0.1,
+            max_tokens=4096,
+        )
+
+        verified = [
+            t for t in verify_result.get("verified_triples", [])
+            if t.get("verified", True)
+        ]
+        rejected_count = len(verify_result.get("verified_triples", [])) - len(verified)
+
+        results["approved_triples"] = len(verified)
+        results["rejected_triples"] = rejected_count
+        print(f"  Approved: {len(verified)}, Rejected: {rejected_count}")
+
+        # Step 3: Integrate into KG
+        print("\n[3/3] Knowledge Graph Integration")
+        print("-" * 50)
+
+        integration_result = self.knowledge_organizer.run(
+            context,
+            entities=entities,
+            triples=verified,
+        )
+
+        kg_stats = integration_result.metadata.get("kg_stats", {})
+        results["kg_entities"] = kg_stats.get("total_entities", 0)
+        results["kg_triples"] = kg_stats.get("total_triples", 0)
+
+        # Summary
+        elapsed = (datetime.now() - start_time).total_seconds()
+        results["processing_time_seconds"] = elapsed
+        results["voting_sessions"] = 0
+        results["debates_triggered"] = 0
+        results["items_accepted_by_vote"] = 0
+        results["items_rejected_by_vote"] = 0
+        results["refinement_iterations"] = 0
+
+        print(f"\n{'='*70}")
+        print("PROCESSING COMPLETE (Single-Pass Mode)")
+        print(f"{'='*70}")
+        print(f"Document: {document_id}")
+        print(f"Time: {elapsed:.2f}s")
+        print(f"Entities: {results['entities_extracted']} extracted -> {results['kg_entities']} in KG")
+        print(f"Triples: {results['triples_extracted']} extracted -> {results['approved_triples']} approved -> {results['kg_triples']} in KG")
+        print(f"{'='*70}\n")
+
+        self.processing_history.append({
+            "document_id": document_id,
+            "timestamp": datetime.now().isoformat(),
+            "results": results,
+        })
+
         return results
 
     def _run_deliberation_phase(

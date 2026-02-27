@@ -171,6 +171,9 @@ class KnowledgeOrganizer(BaseAgent):
             self.integration_stats["entities_merged"] += merged_count
             print(f"  After deduplication: {len(entities)} (merged: {merged_count})")
         
+        # Step 1b: Normalize entity values (dates, etc.)
+        entities, triples = self._normalize_entity_values(entities, triples)
+
         # Step 2: Relation normalization
         print(f"\n[ORGANIZER DEBUG] Relation Normalization")
         print(f"  Input triples: {len(triples)}")
@@ -295,6 +298,118 @@ class KnowledgeOrganizer(BaseAgent):
         
         return merges, remaining
 
+    def _normalize_entity_values(
+        self,
+        entities: List[Dict[str, Any]],
+        triples: List[Dict[str, Any]],
+    ) -> tuple:
+        """Normalize entity values: dates to ISO 8601, clean up formatting.
+
+        Modifies entities in-place and also updates triple subject/object
+        references that match old entity text.
+        """
+        import re
+        from datetime import datetime as _dt
+
+        # Month name → number
+        _MONTHS = {
+            "january": 1, "february": 2, "march": 3, "april": 4,
+            "may": 5, "june": 6, "july": 7, "august": 8,
+            "september": 9, "october": 10, "november": 11, "december": 12,
+            "jan": 1, "feb": 2, "mar": 3, "apr": 4,
+            "jun": 6, "jul": 7, "aug": 8, "sep": 9, "sept": 9,
+            "oct": 10, "nov": 11, "dec": 12,
+        }
+
+        def _try_parse_date(text: str) -> Optional[str]:
+            """Try to parse a date string and return ISO 8601 format."""
+            text = text.strip()
+            # Pattern: "22 May 1980" or "22 May, 1980"
+            m = re.match(r'(\d{1,2})\s+(\w+),?\s+(\d{4})', text)
+            if m:
+                day, month_str, year = int(m.group(1)), m.group(2).lower(), int(m.group(3))
+                if month_str in _MONTHS:
+                    try:
+                        return _dt(year, _MONTHS[month_str], day).strftime("%Y-%m-%d")
+                    except ValueError:
+                        pass
+            # Pattern: "May 22, 1980" or "May 22 1980"
+            m = re.match(r'(\w+)\s+(\d{1,2}),?\s+(\d{4})', text)
+            if m:
+                month_str, day, year = m.group(1).lower(), int(m.group(2)), int(m.group(3))
+                if month_str in _MONTHS:
+                    try:
+                        return _dt(year, _MONTHS[month_str], day).strftime("%Y-%m-%d")
+                    except ValueError:
+                        pass
+            # Pattern: "1980-05-22" (already ISO)
+            m = re.match(r'(\d{4})-(\d{2})-(\d{2})$', text)
+            if m:
+                return text
+            # Pattern: "22/05/1980" or "22-05-1980"
+            m = re.match(r'(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})', text)
+            if m:
+                day, month, year = int(m.group(1)), int(m.group(2)), int(m.group(3))
+                if 1 <= month <= 12 and 1 <= day <= 31:
+                    try:
+                        return _dt(year, month, day).strftime("%Y-%m-%d")
+                    except ValueError:
+                        pass
+            return None
+
+        # Build a mapping from old text → new text for date-like entities
+        text_remap: Dict[str, str] = {}
+        normalized_count = 0
+
+        for entity in entities:
+            etext = entity.get("text", "")
+            etype = entity.get("type", "").upper()
+
+            # Check if this looks like a date entity
+            is_date_type = any(kw in etype for kw in ["DATE", "TEMPORAL", "TIME", "BIRTH", "BORN"])
+            iso_date = _try_parse_date(etext)
+
+            if iso_date and iso_date != etext:
+                old_text = etext
+                entity["original_text"] = old_text
+                entity["text"] = iso_date
+                text_remap[old_text] = iso_date
+                # Also remap common ID variants
+                old_id = old_text.lower().replace(" ", "_")
+                new_id = iso_date
+                text_remap[old_id] = new_id
+                if entity.get("id"):
+                    text_remap[entity["id"]] = new_id
+                    entity["id"] = new_id
+                normalized_count += 1
+            elif is_date_type and not iso_date:
+                # Even if we can't parse it, keep it as-is
+                pass
+
+        # Update triple references
+        if text_remap:
+            for triple in triples:
+                subj = triple.get("subject", "")
+                obj = triple.get("object", "")
+                if subj in text_remap:
+                    triple["original_subject"] = subj
+                    triple["subject"] = text_remap[subj]
+                if obj in text_remap:
+                    triple["original_object"] = obj
+                    triple["object"] = text_remap[obj]
+                # Also check subject_id and object_id
+                subj_id = triple.get("subject_id", "")
+                obj_id = triple.get("object_id", "")
+                if subj_id in text_remap:
+                    triple["subject_id"] = text_remap[subj_id]
+                if obj_id in text_remap:
+                    triple["object_id"] = text_remap[obj_id]
+
+        if normalized_count > 0:
+            print(f"  [ORGANIZER] Normalized {normalized_count} date entities to ISO 8601 format")
+
+        return entities, triples
+
     def _normalize_relations(
         self,
         triples: List[Dict[str, Any]],
@@ -362,25 +477,34 @@ class KnowledgeOrganizer(BaseAgent):
         # ── Filter garbage entities ──────────────────────────────────
         import re
         clean_entities = []
+        removed_entities = []
         for entity in entities:
             eid = entity.get("id", entity.get("text", ""))
             etext = entity.get("text", eid)
-            # Skip empty, pure-number, or trivially short/generic entities
+            # Skip empty
             if not etext or not etext.strip():
+                removed_entities.append((etext, "empty"))
                 continue
             stripped = etext.strip()
-            if re.fullmatch(r'\d+', stripped):
-                # Numeric-only ID *and* numeric-only text → garbage
-                if re.fullmatch(r'\d+', eid):
-                    continue
+            # Skip numeric-only text when ID is also numeric-only
+            if re.fullmatch(r'\d+', stripped) and re.fullmatch(r'\d+', str(eid)):
+                removed_entities.append((stripped, "numeric-only"))
+                continue
+            # Skip pronouns and generic references
             if stripped.lower() in {
                 "our findings", "this study", "we", "they", "it",
                 "the study", "results", "data", "analysis",
             }:
+                removed_entities.append((stripped, "stopword"))
                 continue
+            # Skip single-character entities
             if len(stripped) < 2:
+                removed_entities.append((stripped, "too short"))
                 continue
             clean_entities.append(entity)
+        if removed_entities:
+            for rtext, reason in removed_entities:
+                print(f"    Removed entity '{rtext}': {reason}")
 
         print(f"  Filtered entities: {len(entities)} → {len(clean_entities)} "
               f"(removed {len(entities) - len(clean_entities)} garbage)")

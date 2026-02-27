@@ -120,7 +120,7 @@ class EvidenceLinker(BaseAgent):
         shared_memory: Optional[SharedMemory] = None,
         message_bus: Optional[MessageBus] = None,
         llm_config: Optional[LLMConfig] = None,
-        quality_threshold: float = 0.85,
+        quality_threshold: float = 0.55,
         enable_cross_reference: bool = True,
     ):
         super().__init__(
@@ -269,8 +269,17 @@ class EvidenceLinker(BaseAgent):
                 tier=ModelTier.MEDIUM,
                 max_tokens=4096,
             )
-            
+
             linked = result.get("linked_triples", [])
+
+            # If evidence linking failed (empty result), pass through originals
+            # with default evidence metadata so they aren't lost
+            if not linked:
+                for t in batch:
+                    t.setdefault("evidence_type", "unlinked")
+                    t.setdefault("evidence_strength", 0.5)
+                    t.setdefault("evidence_sentences", [])
+                linked = batch
             
             # Merge back with original triple data
             for j, linked_triple in enumerate(linked):
@@ -357,22 +366,34 @@ class EvidenceLinker(BaseAgent):
         self,
         triple: Dict[str, Any],
     ) -> float:
-        """Calculate final confidence based on all factors."""
+        """
+        Calculate final confidence using a weighted-average formula.
+
+        The old multiplicative formula (base * multiplier * strength) crushed
+        inferred triples to ~0.34, making them fall below any reasonable
+        acceptance threshold.  The new approach uses an additive weighted
+        average so that each signal contributes proportionally:
+
+            final = 0.40 * base_confidence
+                  + 0.35 * evidence_strength
+                  + 0.25 * evidence_type_score
+                  + xref_adjustment
+        """
         # Start with extraction confidence
         base_confidence = triple.get("confidence", 0.7)
-        
-        # Adjust based on evidence type
+
+        # Evidence type score (replaces the old multiplier)
         evidence_type = triple.get("evidence_type", "inferred")
-        evidence_multiplier = {
+        evidence_type_score = {
             "explicit": 1.0,
-            "implicit": 0.85,
-            "inferred": 0.7,
-        }.get(evidence_type, 0.7)
-        
-        # Adjust based on evidence strength
+            "implicit": 0.75,
+            "inferred": 0.50,
+        }.get(evidence_type, 0.50)
+
+        # Evidence strength from the linker
         evidence_strength = triple.get("evidence_strength", 0.7)
-        
-        # Adjust based on cross-reference
+
+        # Cross-reference adjustment (additive)
         xref_status = triple.get("cross_reference_status", "novel")
         xref_adjustment = {
             "supported": 0.15,
@@ -380,18 +401,20 @@ class EvidenceLinker(BaseAgent):
             "novel": 0.0,
             "refined": 0.1,
         }.get(xref_status, 0)
-        
-        # Check for contradictions
+
+        # Penalty for contradictions
         contradictions = triple.get("contradictions", [])
         if contradictions:
-            xref_adjustment -= 0.1 * len(contradictions)
-        
-        # Calculate final
+            xref_adjustment -= 0.1 * min(len(contradictions), 3)
+
+        # Weighted average + cross-reference adjustment
         final = (
-            base_confidence * evidence_multiplier * evidence_strength 
+            0.40 * base_confidence
+            + 0.35 * evidence_strength
+            + 0.25 * evidence_type_score
             + xref_adjustment
         )
-        
+
         return max(0.0, min(1.0, final))
 
     def _handle_needs_review(

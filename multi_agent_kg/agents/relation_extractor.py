@@ -45,14 +45,7 @@ class DiscoveredRelation:
     source_documents: List[str] = field(default_factory=list)
 
 
-RELATION_IDENTIFICATION_PROMPT = """Identify all relation types present in the following text.
-
-DISCOVER relations from scratch by analyzing the actual text:
-- What RELATIONSHIPS are described between entities?
-- What CONNECTIONS exist between concepts?
-- What ACTIONS or ASSOCIATIONS are mentioned?
-
-DO NOT use predefined relation taxonomies - CREATE types specific to this content.
+RELATION_IDENTIFICATION_PROMPT = """Identify all relation types present in the following text using chain-of-thought reasoning.
 
 DOMAIN: {domain}
 
@@ -64,20 +57,33 @@ TEXT:
 ENTITIES FOUND:
 {entities}
 
-Instructions:
-1. Look for explicit and implicit relationships between entities
-2. Create descriptive relation type names based on what you observe
-3. Each relation type should capture a SPECIFIC type of relationship
-4. Relation names should be in UPPER_SNAKE_CASE and descriptive
+CHAIN OF THOUGHT — follow these steps:
+1. For each pair of entities, ask: "Does the text describe a relationship between these two?"
+2. For each relationship found, ask: "What is the NATURE of this relationship?"
+3. Create a descriptive name for each unique relationship type.
+
+RELATION NAMING RULES:
+- Use lowercase_with_underscores format (e.g., has_nationality, member_of, plays_for)
+- The name should describe the RELATIONSHIP, not the entity types involved
+- BAD: PERSON_BORN_ON, TEAM_HAS_PLAYER (embeds entity types)
+- GOOD: has_date_of_birth, has_member, plays_for (describes the relation)
+- Distinguish between semantically different relationships even if they seem similar
+  (e.g., "member_of" for national team membership vs "plays_for" for club membership)
+
+Also identify any INFERRED relationships:
+- If entity A is part of "Country X men's national Y team", then that team has_nationality Country X
+- If entity A has_occupation "Y player", they play_sport Y
 
 Return:
 {{
+    "reasoning": "<your step-by-step chain of thought>",
     "relations_found": [
         {{
-            "relation_type": "<DESCRIPTIVE_RELATION_NAME>",
-            "definition": "<what this relation means in this context>",
+            "relation_type": "<descriptive_relation_name>",
+            "definition": "<what this relation means — what kind of entity is the subject and what kind is the object>",
             "count_in_text": <approximate count>,
-            "example_text": "<example sentence showing this relation>"
+            "example_text": "<example: Subject -> relation -> Object>",
+            "is_inferred": <true if this is an inferred rather than explicit relation>
         }}
     ]
 }}"""
@@ -118,10 +124,20 @@ TEXT:
 ENTITIES:
 {entities}
 
+RELATION DEFINITIONS (for reference):
+{relation_definitions}
+
 HEAD BINDINGS (subject-relation pairs):
 {head_bindings}
 
 For each head binding, identify what entity is the OBJECT (tail) of that relation.
+
+CRITICAL RULES:
+- The OBJECT must be DIFFERENT from the SUBJECT. A triple where subject == object is INVALID.
+- The object should be an entity that is the TARGET of the relationship, not the source.
+- Use the relation definitions above to understand what kind of entity each relation expects as its object.
+- For occupation/role relations, the object should be the occupation (e.g., "volleyball player"), NOT the person.
+- For nationality relations, the object should be the nationality (e.g., "Greek"), NOT the person.
 
 Return:
 {{
@@ -130,7 +146,7 @@ Return:
             "subject": "<head entity>",
             "subject_id": "<head entity id>",
             "relation": "<relation type>",
-            "object": "<tail entity>",
+            "object": "<tail entity - MUST be different from subject>",
             "object_id": "<tail entity id>",
             "confidence": <0.0-1.0>,
             "evidence": "<supporting text snippet>"
@@ -291,8 +307,28 @@ class RelationExtractor(BaseAgent):
                 text,
                 entities,
                 head_bindings,
+                relations_found,
             )
-            
+
+            # Filter self-referential triples (subject == object)
+            before_filter = len(triples)
+            filtered_triples = []
+            for t in triples:
+                subj = t.get("subject", "").strip().lower()
+                obj = t.get("object", "").strip().lower()
+                # Only filter if BOTH subject and object are non-empty AND identical
+                if subj and obj and subj == obj:
+                    continue
+                # Also check IDs, but only when both are non-empty
+                subj_id = t.get("subject_id", "").strip().lower()
+                obj_id = t.get("object_id", "").strip().lower()
+                if subj_id and obj_id and subj_id == obj_id:
+                    continue
+                filtered_triples.append(t)
+            triples = filtered_triples
+            if before_filter != len(triples):
+                self.log(f"Filtered {before_filter - len(triples)} self-referential triples")
+
             # Add segment info and separate by confidence
             for triple in triples:
                 triple["source_segment"] = segment_id
@@ -443,25 +479,39 @@ class RelationExtractor(BaseAgent):
         text: str,
         entities: List[Dict[str, Any]],
         head_bindings: List[Dict[str, Any]],
+        relations_found: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
         """Stage 3: Complete triples with tail (object) entities."""
         if not head_bindings:
             return []
-        
+
         # Process head_bindings in batches to avoid JSON truncation
         batch_size = 15  # Conservative batch size for relation completion
         all_triples = []
-        
+
         entities_json = json.dumps(entities, indent=2)
-        
+
+        # Build relation definitions string for context
+        relation_defs_str = "None provided"
+        if relations_found:
+            defs = []
+            for r in relations_found:
+                rtype = r.get("relation_type", "")
+                defn = r.get("definition", "")
+                if rtype:
+                    defs.append(f"- {rtype}: {defn}")
+            if defs:
+                relation_defs_str = "\n".join(defs)
+
         for i in range(0, len(head_bindings), batch_size):
             batch = head_bindings[i:i+batch_size]
             head_bindings_json = json.dumps(batch, indent=2)
-            
+
             prompt = TAIL_BINDING_PROMPT.format(
                 text=text,
                 entities=entities_json,
                 head_bindings=head_bindings_json,
+                relation_definitions=relation_defs_str,
             )
             
             if self.use_self_consistency:
@@ -488,6 +538,144 @@ class RelationExtractor(BaseAgent):
                 all_triples.extend(result.get("triples", []))
         
         return all_triples
+
+    # ------------------------------------------------------------------
+    # Inferred Triple Generation
+    # ------------------------------------------------------------------
+
+    INFERRED_TRIPLE_PROMPT = """Given the entities and triples already extracted from a text, generate additional INFERRED triples.
+
+TEXT:
+{text}
+
+ENTITIES:
+{entities_json}
+
+EXISTING TRIPLES:
+{triples_json}
+
+Inferred triples are relationships that are NOT stated verbatim but follow logically from the text and the existing triples. Common patterns:
+- If an entity is described as "<Country> men's/women's national <Sport> team", infer:
+  * that team → has_nationality → <Country>
+  * that team → plays_sport → <Sport>
+- If a person is a "member_of" a national team of country X, infer:
+  * person → has_nationality → <Country/Nationality>  (only if not already extracted)
+- If a person "has_occupation" = "<Sport> player", infer:
+  * person → plays_sport → <Sport>
+- Transitivity: if A is_part_of B and B is_part_of C, then A is_part_of C
+
+RULES:
+- Only generate triples where BOTH subject and object already exist in the entity list (or are obvious implied entities like a nationality)
+- subject MUST be different from object
+- Do NOT duplicate triples that already exist
+- Mark all generated triples with "is_inferred": true
+- Use lowercase_with_underscores relation names
+
+Return:
+{{
+    "inferred_triples": [
+        {{
+            "subject": "<subject>",
+            "relation": "<relation>",
+            "object": "<object>",
+            "confidence": <0.5-0.9>,
+            "reasoning": "<why this triple is inferred>",
+            "is_inferred": true
+        }}
+    ]
+}}
+
+If there are no valid inferred triples, return {{"inferred_triples": []}}"""
+
+    def generate_inferred_triples(
+        self,
+        text: str,
+        entities: List[Dict[str, Any]],
+        triples: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate additional triples that are logically inferred from the text
+        and the already-extracted entities/triples.
+
+        This captures compositional and transitive relationships such as:
+        - "Greece men's national volleyball team" → has_nationality → "Greek"
+        - A member of that team → has_nationality → "Greek"
+        - A "volleyball player" → plays_sport → "volleyball"
+
+        Returns:
+            List of inferred triple dicts, each with is_inferred=True.
+        """
+        if not text or not entities:
+            return []
+
+        entities_json = json.dumps(
+            [{"text": e.get("text", ""), "type": e.get("type", "")} for e in entities],
+            indent=2,
+        )
+        triples_json = json.dumps(
+            [
+                {
+                    "subject": t.get("subject", ""),
+                    "relation": t.get("relation", ""),
+                    "object": t.get("object", ""),
+                }
+                for t in triples
+            ],
+            indent=2,
+        )
+
+        prompt = self.INFERRED_TRIPLE_PROMPT.format(
+            text=text[:4000],
+            entities_json=entities_json,
+            triples_json=triples_json,
+        )
+
+        result = self.call_llm(
+            prompt=prompt,
+            system_prompt=(
+                "You are a knowledge graph inference engine. "
+                "Generate only high-confidence inferred triples that follow logically from the text. "
+                "Do not hallucinate entities that are not present in or implied by the text."
+            ),
+            tier=ModelTier.MEDIUM,
+            max_tokens=2048,
+        )
+
+        inferred = result.get("inferred_triples", [])
+
+        # Build a set of existing triple keys for dedup
+        existing_keys = set()
+        for t in triples:
+            key = (
+                t.get("subject", "").strip().lower(),
+                t.get("relation", "").strip().lower(),
+                t.get("object", "").strip().lower(),
+            )
+            existing_keys.add(key)
+
+        # Filter: remove duplicates and self-referential triples
+        new_triples = []
+        for t in inferred:
+            subj = t.get("subject", "").strip()
+            obj = t.get("object", "").strip()
+            rel = t.get("relation", "").strip()
+            if not subj or not obj or not rel:
+                continue
+            if subj.lower() == obj.lower():
+                continue
+            key = (subj.lower(), rel.lower(), obj.lower())
+            if key in existing_keys:
+                continue
+            existing_keys.add(key)  # prevent duplicates within inferred set
+            t["is_inferred"] = True
+            t.setdefault("confidence", 0.65)
+            t.setdefault("evidence_type", "inferred")
+            new_triples.append(t)
+
+        if new_triples:
+            self.log(f"Generated {len(new_triples)} inferred triples")
+
+        return new_triples
 
     def _register_new_relation(
         self,

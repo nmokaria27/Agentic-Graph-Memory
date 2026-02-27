@@ -1,0 +1,2040 @@
+{
+  "knowledge_graph": {
+    "entities": [
+      {
+        "id": "apple_inc.",
+        "labels": [
+          "Apple Inc."
+        ],
+        "type": "COMPANY",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.98
+        }
+      },
+      {
+        "id": "steve_jobs",
+        "labels": [
+          "Steve Jobs"
+        ],
+        "type": "PERSON",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.98
+        }
+      },
+      {
+        "id": "steve_wozniak",
+        "labels": [
+          "Steve Wozniak"
+        ],
+        "type": "PERSON",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.98
+        }
+      },
+      {
+        "id": "ronald_wayne",
+        "labels": [
+          "Ronald Wayne"
+        ],
+        "type": "PERSON",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.98
+        }
+      },
+      {
+        "id": "apple_i",
+        "labels": [
+          "Apple I"
+        ],
+        "type": "PRODUCT",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "apple_ii",
+        "labels": [
+          "Apple II"
+        ],
+        "type": "PRODUCT",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "lisa",
+        "labels": [
+          "Lisa"
+        ],
+        "type": "PRODUCT",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "macintosh",
+        "labels": [
+          "Macintosh"
+        ],
+        "type": "PRODUCT",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "microsoft_windows",
+        "labels": [
+          "Microsoft Windows"
+        ],
+        "type": "COMPETITOR",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "intel",
+        "labels": [
+          "Intel"
+        ],
+        "type": "COMPETITOR",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "cupertino,_california",
+        "labels": [
+          "Cupertino, California"
+        ],
+        "type": "LOCATION",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "silicon_valley",
+        "labels": [
+          "Silicon Valley"
+        ],
+        "type": "LOCATION",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "graphical_user_interface",
+        "labels": [
+          "Graphical User Interface"
+        ],
+        "type": "SOFTWARE_FEATURE",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "mouse",
+        "labels": [
+          "Mouse"
+        ],
+        "type": "PERIPHERAL_DEVICE",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "american",
+        "labels": [
+          "American"
+        ],
+        "type": "NATIONALITY",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "ipod",
+        "labels": [
+          "iPod"
+        ],
+        "type": "PRODUCT_MODEL",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "iphone",
+        "labels": [
+          "iPhone"
+        ],
+        "type": "PRODUCT_MODEL",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.98
+        }
+      },
+      {
+        "id": "ipad",
+        "labels": [
+          "iPad"
+        ],
+        "type": "PRODUCT_MODEL",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.98
+        }
+      },
+      {
+        "id": "itunes_store",
+        "labels": [
+          "iTunes Store"
+        ],
+        "type": "SERVICE",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.98
+        }
+      },
+      {
+        "id": "think_different",
+        "labels": [
+          "Think different"
+        ],
+        "type": "MARKETING_CAMPAIGN",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "apple_store",
+        "labels": [
+          "Apple Store"
+        ],
+        "type": "RETAIL_CHAIN",
+        "metadata": {
+          "source_document": "pubmed_article_lancet",
+          "confidence": 0.95
+        }
+      }
+    ],
+    "triples": [
+      {
+        "id": "triple_0",
+        "subject": "apple_inc.",
+        "relation": "launched",
+        "object": "think_different",
+        "confidence": 0.97,
+        "source": "pubmed_article_lancet"
+      },
+      {
+        "id": "triple_1",
+        "subject": "apple_inc.",
+        "relation": "launched",
+        "object": "apple_store",
+        "confidence": 0.97,
+        "source": "pubmed_article_lancet"
+      }
+    ],
+    "stats": {
+      "total_entities": 21,
+      "total_triples": 2,
+      "entity_types": {
+        "COMPANY": 1,
+        "PERSON": 3,
+        "PRODUCT": 4,
+        "COMPETITOR": 2,
+        "LOCATION": 2,
+        "SOFTWARE_FEATURE": 1,
+        "PERIPHERAL_DEVICE": 1,
+        "NATIONALITY": 1,
+        "PRODUCT_MODEL": 3,
+        "SERVICE": 1,
+        "MARKETING_CAMPAIGN": 1,
+        "RETAIL_CHAIN": 1
+      },
+      "relation_types": {
+        "launched": 2
+      },
+      "unique_relations": 1
+    },
+    "integration_stats": {
+      "entities_added": 21,
+      "entities_merged": 0,
+      "triples_added": 2,
+      "triples_updated": 0,
+      "relations_normalized": 0
+    }
+  },
+  "memory": {
+    "memories": [
+      {
+        "id": "episodic_DocumentProcessor_1ec25ce1170c",
+        "memory_type": "episodic",
+        "content": {
+          "document_id": "pubmed_article_lancet",
+          "segments": [
+            "pubmed_article_lancet_seg_0",
+            "pubmed_article_lancet_seg_1"
+          ],
+          "segment_count": 2
+        },
+        "source": "DocumentProcessor",
+        "timestamp": "2026-02-27T11:50:41.215958",
+        "relevance_score": 1.0,
+        "references": [],
+        "metadata": {
+          "source_path": null
+        }
+      },
+      {
+        "id": "semantic_DomainClassifier_9bd0c2342d2d",
+        "memory_type": "semantic",
+        "content": {
+          "domain_context": {
+            "primary_domain": "TechnologyCompanyHistoryAndImpact",
+            "sub_domains": [
+              "CorporateHistory",
+              "ProductDevelopment",
+              "MarketAndCorporateImpact"
+            ],
+            "domain_description": "A comprehensive overview of Apple Inc.'s corporate evolution, product innovation, market dominance, and societal impact",
+            "confidence": 0.95,
+            "reasoning": "The document focuses on Apple's historical development, product ecosystem, financial metrics, and corporate controversies, requiring specialized entity types for technology companies, their products, and market dynamics",
+            "key_indicators": [
+              "Corporate evolution timelines",
+              "Product innovation cycles",
+              "Market capitalization metrics",
+              "Corporate social responsibility",
+              "Technological innovation milestones"
+            ],
+            "entity_types": [
+              {
+                "description": "Core technology enterprise with multiple product lines and market positions",
+                "examples_from_text": [
+                  "Apple Inc.",
+                  "Apple Computer, Inc."
+                ],
+                "priority": "high",
+                "type": "COMPANY"
+              },
+              {
+                "description": "Individual who initiated company formation",
+                "examples_from_text": [
+                  "Steve Jobs",
+                  "Steve Wozniak"
+                ],
+                "priority": "high",
+                "type": "FOUNDER"
+              },
+              {
+                "description": "Consumer electronics and software offerings",
+                "examples_from_text": [
+                  "iPhone",
+                  "iPad",
+                  "Apple Watch"
+                ],
+                "priority": "high",
+                "type": "PRODUCT"
+              },
+              {
+                "description": "Digital services and platforms",
+                "examples_from_text": [
+                  "iTunes Store",
+                  "Apple Music"
+                ],
+                "priority": "medium",
+                "type": "SERVICE"
+              },
+              {
+                "description": "Market valuation and revenue metrics",
+                "examples_from_text": [
+                  "$1 trillion valuation",
+                  "$4 trillion valuation"
+                ],
+                "priority": "high",
+                "type": "FINANCIAL_STATISTIC"
+              },
+              {
+                "description": "Corporate leadership positions",
+                "examples_from_text": [
+                  "CEO",
+                  "Chief Executive Officer"
+                ],
+                "priority": "high",
+                "type": "ROLE"
+              },
+              {
+                "description": "Temporal markers for historical events",
+                "examples_from_text": [
+                  "1976",
+                  "2007",
+                  "2011"
+                ],
+                "priority": "high",
+                "type": "DATE"
+              }
+            ],
+            "relation_types": [
+              {
+                "description": "Connects company to its founding individuals",
+                "example_from_text": "Apple Inc. founded_by Steve Jobs, Steve Wozniak and Ronald Wayne",
+                "priority": "high",
+                "source_types": [
+                  "COMPANY"
+                ],
+                "target_types": [
+                  "FOUNDER"
+                ],
+                "type": "FOUNDED_BY"
+              },
+              {
+                "description": "Associates company with product releases",
+                "example_from_text": "Apple launched iPhone",
+                "priority": "high",
+                "source_types": [
+                  "COMPANY"
+                ],
+                "target_types": [
+                  "PRODUCT"
+                ],
+                "type": "LAUNCHED"
+              },
+              {
+                "description": "Links company to financial valuation metrics",
+                "example_from_text": "Apple has_market_cap $1 trillion valuation",
+                "priority": "high",
+                "source_types": [
+                  "COMPANY"
+                ],
+                "target_types": [
+                  "FINANCIAL_STATISTIC"
+                ],
+                "type": "HAS_MARKET_CAP"
+              },
+              {
+                "description": "Indicates leadership transitions",
+                "example_from_text": "CEO succeeded_by Tim Cook",
+                "priority": "medium",
+                "source_types": [
+                  "ROLE"
+                ],
+                "target_types": [
+                  "ROLE"
+                ],
+                "type": "SUCCEEDED_BY"
+              },
+              {
+                "description": "Associates company with its establishment year",
+                "example_from_text": "Apple Inc. has_date_of_founding 1976",
+                "priority": "high",
+                "source_types": [
+                  "COMPANY"
+                ],
+                "target_types": [
+                  "DATE"
+                ],
+                "type": "HAS_DATE_OF_FOUNDING"
+              },
+              {
+                "description": "Links individual to corporate roles",
+                "example_from_text": "Steve Jobs member_of CEO",
+                "priority": "medium",
+                "source_types": [
+                  "FOUNDER"
+                ],
+                "target_types": [
+                  "ROLE"
+                ],
+                "type": "MEMBER_OF"
+              }
+            ],
+            "entity_type_names": [
+              "COMPANY",
+              "FOUNDER",
+              "PRODUCT",
+              "SERVICE",
+              "FINANCIAL_STATISTIC",
+              "ROLE",
+              "DATE"
+            ],
+            "relation_type_names": [
+              "FOUNDED_BY",
+              "LAUNCHED",
+              "HAS_MARKET_CAP",
+              "SUCCEEDED_BY",
+              "HAS_DATE_OF_FOUNDING",
+              "MEMBER_OF"
+            ],
+            "entity_examples": [
+              {
+                "entity": "Apple Inc.",
+                "entity_type": "COMPANY",
+                "explanation": "Core entity representing the technology enterprise",
+                "text_span": "Apple Inc. is an American multinational technology company..."
+              },
+              {
+                "entity": "Steve Jobs",
+                "entity_type": "FOUNDER",
+                "explanation": "Individual who initiated company formation",
+                "text_span": "Founded in 1976 as Apple Computer Company by Steve Jobs..."
+              },
+              {
+                "entity": "Lisa",
+                "entity_type": "PRODUCT",
+                "explanation": "Consumer electronics product",
+                "text_span": "Apple introduced the Lisa in 1983 and the Macintosh in 1984..."
+              }
+            ],
+            "relation_examples": [
+              {
+                "relation_type": "FOUNDED_BY",
+                "text_span": "Founded in 1976 as Apple Computer Company by Steve Jobs, Steve Wozniak and Ronald Wayne",
+                "subject": "Apple Inc.",
+                "subject_type": "COMPANY",
+                "object": "Steve Jobs, Steve Wozniak and Ronald Wayne",
+                "object_type": "FOUNDER",
+                "explanation": "Apple Inc. was founded by these individuals."
+              },
+              {
+                "relation_type": "LAUNCHED",
+                "text_span": "Apple introduced the Lisa in 1983 and the Macintosh in 1984 as some of the first computers to use a graphical user interface and a mouse",
+                "subject": "Apple Inc.",
+                "subject_type": "COMPANY",
+                "object": "Lisa, Macintosh",
+                "object_type": "PRODUCT",
+                "explanation": "Apple launched these products as part of its product line."
+              },
+              {
+                "relation_type": "SUCCEEDED_BY",
+                "text_span": "Jobs resigned in 2011 for health reasons, and died two months later; he was succeeded as CEO by Tim Cook",
+                "subject": "Steve Jobs",
+                "subject_type": "ROLE",
+                "object": "Tim Cook",
+                "object_type": "ROLE",
+                "explanation": "Tim Cook succeeded Steve Jobs as CEO."
+              },
+              {
+                "relation_type": "HAS_DATE_OF_FOUNDING",
+                "text_span": "Founded in 1976 as Apple Computer Company by Steve Jobs, Steve Wozniak and Ronald Wayne",
+                "subject": "Apple Inc.",
+                "subject_type": "COMPANY",
+                "object": "1976",
+                "object_type": "DATE",
+                "explanation": "Apple Inc. was founded in 1976."
+              }
+            ],
+            "extraction_parameters": {
+              "complexity": "high",
+              "has_hierarchical_entities": true,
+              "has_temporal_relations": true,
+              "knowledge_density": "dense",
+              "recommended_chunk_size": 500,
+              "requires_coreference": true
+            },
+            "document_id": "pubmed_article_lancet"
+          },
+          "document_id": "pubmed_article_lancet"
+        },
+        "source": "DomainClassifier",
+        "timestamp": "2026-02-27T11:52:05.355212",
+        "relevance_score": 1.0,
+        "references": [],
+        "metadata": {}
+      },
+      {
+        "id": "semantic_EntityExtractor_ec1686c9f184",
+        "memory_type": "semantic",
+        "content": {
+          "entities": [
+            {
+              "id": "1",
+              "text": "Apple Inc.",
+              "type": "COMPANY",
+              "mentions": [
+                "Apple Inc.",
+                "Apple Computer, Inc.",
+                "Apple"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "2",
+              "text": "Steve Jobs",
+              "type": "PERSON",
+              "mentions": [
+                "Steve Jobs"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "3",
+              "text": "Steve Wozniak",
+              "type": "PERSON",
+              "mentions": [
+                "Steve Wozniak"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "4",
+              "text": "Ronald Wayne",
+              "type": "PERSON",
+              "mentions": [
+                "Ronald Wayne"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "5",
+              "text": "Apple I",
+              "type": "PRODUCT",
+              "mentions": [
+                "Apple I"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "6",
+              "text": "Apple II",
+              "type": "PRODUCT",
+              "mentions": [
+                "Apple II"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "7",
+              "text": "Lisa",
+              "type": "PRODUCT",
+              "mentions": [
+                "Lisa"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "8",
+              "text": "Macintosh",
+              "type": "PRODUCT",
+              "mentions": [
+                "Macintosh"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "9",
+              "text": "Microsoft Windows",
+              "type": "COMPETITOR",
+              "mentions": [
+                "Microsoft Windows"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "10",
+              "text": "Intel",
+              "type": "COMPETITOR",
+              "mentions": [
+                "Intel"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "11",
+              "text": "Cupertino, California",
+              "type": "LOCATION",
+              "mentions": [
+                "Cupertino, California"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "12",
+              "text": "Silicon Valley",
+              "type": "LOCATION",
+              "mentions": [
+                "Silicon Valley"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "13",
+              "text": "1976",
+              "type": "DATE",
+              "mentions": [
+                "1976"
+              ],
+              "confidence": 0.95,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "14",
+              "text": "2007",
+              "type": "DATE",
+              "mentions": [
+                "2007"
+              ],
+              "confidence": 0.95,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "15",
+              "text": "Graphical User Interface",
+              "type": "SOFTWARE_FEATURE",
+              "mentions": [
+                "graphical user interface"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "16",
+              "text": "Mouse",
+              "type": "PERIPHERAL_DEVICE",
+              "mentions": [
+                "mouse"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "17",
+              "text": "American",
+              "type": "NATIONALITY",
+              "mentions": [
+                "American"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "1",
+              "text": "iPod",
+              "type": "PRODUCT_MODEL",
+              "mentions": [
+                "iPod"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "2",
+              "text": "iPhone",
+              "type": "PRODUCT_MODEL",
+              "mentions": [
+                "iPhone"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "3",
+              "text": "iPad",
+              "type": "PRODUCT_MODEL",
+              "mentions": [
+                "iPad"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "4",
+              "text": "iTunes Store",
+              "type": "SERVICE",
+              "mentions": [
+                "iTunes Store"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "5",
+              "text": "Think different",
+              "type": "MARKETING_CAMPAIGN",
+              "mentions": [
+                "Think different"
+              ],
+              "confidence": 0.95,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "6",
+              "text": "Apple Store",
+              "type": "RETAIL_CHAIN",
+              "mentions": [
+                "Apple Store"
+              ],
+              "confidence": 0.95,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "confidence": 0.95,
+              "domain_description": "A comprehensive overview of Apple Inc.'s corporate evolution, product innovation, market dominance, and societal impact",
+              "entity_types": [
+                {
+                  "description": "Core technology enterprise with multiple product lines and market positions",
+                  "examples_from_text": [
+                    "Apple Inc.",
+                    "Apple Computer, Inc."
+                  ],
+                  "priority": "high",
+                  "type": "COMPANY"
+                },
+                {
+                  "description": "Individual who initiated company formation",
+                  "examples_from_text": [
+                    "Steve Jobs",
+                    "Steve Wozniak"
+                  ],
+                  "priority": "high",
+                  "type": "FOUNDER"
+                },
+                {
+                  "description": "Consumer electronics and software offerings",
+                  "examples_from_text": [
+                    "iPhone",
+                    "iPad",
+                    "Apple Watch"
+                  ],
+                  "priority": "high",
+                  "type": "PRODUCT"
+                },
+                {
+                  "description": "Digital services and platforms",
+                  "examples_from_text": [
+                    "iTunes Store",
+                    "Apple Music"
+                  ],
+                  "priority": "medium",
+                  "type": "SERVICE"
+                },
+                {
+                  "description": "Market valuation and revenue metrics",
+                  "examples_from_text": [
+                    "$1 trillion valuation",
+                    "$4 trillion valuation"
+                  ],
+                  "priority": "high",
+                  "type": "FINANCIAL_STATISTIC"
+                },
+                {
+                  "description": "Corporate leadership positions",
+                  "examples_from_text": [
+                    "CEO",
+                    "Chief Executive Officer"
+                  ],
+                  "priority": "high",
+                  "type": "ROLE"
+                },
+                {
+                  "description": "Temporal markers for historical events",
+                  "examples_from_text": [
+                    "1976",
+                    "2007",
+                    "2011"
+                  ],
+                  "priority": "high",
+                  "type": "DATE"
+                }
+              ],
+              "extraction_parameters": {
+                "complexity": "high",
+                "has_hierarchical_entities": true,
+                "has_temporal_relations": true,
+                "knowledge_density": "dense",
+                "recommended_chunk_size": 500,
+                "requires_coreference": true
+              },
+              "few_shot_examples": [
+                {
+                  "entity": "Apple Inc.",
+                  "entity_type": "COMPANY",
+                  "explanation": "Core entity representing the technology enterprise",
+                  "text_span": "Apple Inc. is an American multinational technology company..."
+                },
+                {
+                  "entity": "Steve Jobs",
+                  "entity_type": "FOUNDER",
+                  "explanation": "Individual who initiated company formation",
+                  "text_span": "Founded in 1976 as Apple Computer Company by Steve Jobs..."
+                },
+                {
+                  "entity": "Lisa",
+                  "entity_type": "PRODUCT",
+                  "explanation": "Consumer electronics product",
+                  "text_span": "Apple introduced the Lisa in 1983 and the Macintosh in 1984..."
+                }
+              ],
+              "key_indicators": [
+                "Corporate evolution timelines",
+                "Product innovation cycles",
+                "Market capitalization metrics",
+                "Corporate social responsibility",
+                "Technological innovation milestones"
+              ],
+              "primary_domain": "TechnologyCompanyHistoryAndImpact",
+              "reasoning": "The document focuses on Apple's historical development, product ecosystem, financial metrics, and corporate controversies, requiring specialized entity types for technology companies, their products, and market dynamics",
+              "relation_types": [
+                {
+                  "description": "Connects company to its founding individuals",
+                  "example_from_text": "Apple Inc. founded_by Steve Jobs, Steve Wozniak and Ronald Wayne",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "FOUNDER"
+                  ],
+                  "type": "FOUNDED_BY"
+                },
+                {
+                  "description": "Associates company with product releases",
+                  "example_from_text": "Apple launched iPhone",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "PRODUCT"
+                  ],
+                  "type": "LAUNCHED"
+                },
+                {
+                  "description": "Links company to financial valuation metrics",
+                  "example_from_text": "Apple has_market_cap $1 trillion valuation",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "FINANCIAL_STATISTIC"
+                  ],
+                  "type": "HAS_MARKET_CAP"
+                },
+                {
+                  "description": "Indicates leadership transitions",
+                  "example_from_text": "CEO succeeded_by Tim Cook",
+                  "priority": "medium",
+                  "source_types": [
+                    "ROLE"
+                  ],
+                  "target_types": [
+                    "ROLE"
+                  ],
+                  "type": "SUCCEEDED_BY"
+                },
+                {
+                  "description": "Associates company with its establishment year",
+                  "example_from_text": "Apple Inc. has_date_of_founding 1976",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "DATE"
+                  ],
+                  "type": "HAS_DATE_OF_FOUNDING"
+                },
+                {
+                  "description": "Links individual to corporate roles",
+                  "example_from_text": "Steve Jobs member_of CEO",
+                  "priority": "medium",
+                  "source_types": [
+                    "FOUNDER"
+                  ],
+                  "target_types": [
+                    "ROLE"
+                  ],
+                  "type": "MEMBER_OF"
+                }
+              ],
+              "sub_domains": [
+                "CorporateHistory",
+                "ProductDevelopment",
+                "MarketAndCorporateImpact"
+              ],
+              "validation_issues": []
+            }
+          ],
+          "document_id": "pubmed_article_lancet"
+        },
+        "source": "EntityExtractor",
+        "timestamp": "2026-02-27T11:55:40.595518",
+        "relevance_score": 1.0,
+        "references": [],
+        "metadata": {}
+      },
+      {
+        "id": "semantic_RelationExtractor_13ff3e1ad757",
+        "memory_type": "semantic",
+        "content": {
+          "triples": [
+            {
+              "subject": "Apple Inc.",
+              "subject_id": "1",
+              "relation": "launched",
+              "object": "Think different",
+              "object_id": "5",
+              "confidence": 0.97,
+              "evidence": "launching the \"Think different\" advertising campaign",
+              "source_segment": "pubmed_article_lancet_seg_1",
+              "document_id": "pubmed_article_lancet",
+              "validation_issues": []
+            },
+            {
+              "subject": "Apple Inc.",
+              "subject_id": "1",
+              "relation": "launched",
+              "object": "Apple Store",
+              "object_id": "6",
+              "confidence": 0.97,
+              "evidence": "opening the Apple Store retail chain",
+              "source_segment": "pubmed_article_lancet_seg_1",
+              "document_id": "pubmed_article_lancet",
+              "validation_issues": []
+            }
+          ],
+          "document_id": "pubmed_article_lancet"
+        },
+        "source": "RelationExtractor",
+        "timestamp": "2026-02-27T12:00:31.510780",
+        "relevance_score": 1.0,
+        "references": [],
+        "metadata": {}
+      },
+      {
+        "id": "semantic_EvidenceLinker_e0a20b8bdaf5",
+        "memory_type": "semantic",
+        "content": {
+          "evidence_linked_triples": [],
+          "document_id": "pubmed_article_lancet"
+        },
+        "source": "EvidenceLinker",
+        "timestamp": "2026-02-27T12:04:02.116768",
+        "relevance_score": 1.0,
+        "references": [],
+        "metadata": {}
+      },
+      {
+        "id": "working_ExtractionValidator_e8c7ee6a0aff",
+        "memory_type": "working",
+        "content": {
+          "validated_entities": [
+            {
+              "id": "1",
+              "text": "Apple Inc.",
+              "type": "COMPANY",
+              "mentions": [
+                "Apple Inc.",
+                "Apple Computer, Inc.",
+                "Apple"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "2",
+              "text": "Steve Jobs",
+              "type": "PERSON",
+              "mentions": [
+                "Steve Jobs"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "3",
+              "text": "Steve Wozniak",
+              "type": "PERSON",
+              "mentions": [
+                "Steve Wozniak"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "4",
+              "text": "Ronald Wayne",
+              "type": "PERSON",
+              "mentions": [
+                "Ronald Wayne"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "5",
+              "text": "Apple I",
+              "type": "PRODUCT",
+              "mentions": [
+                "Apple I"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "6",
+              "text": "Apple II",
+              "type": "PRODUCT",
+              "mentions": [
+                "Apple II"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "7",
+              "text": "Lisa",
+              "type": "PRODUCT",
+              "mentions": [
+                "Lisa"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "8",
+              "text": "Macintosh",
+              "type": "PRODUCT",
+              "mentions": [
+                "Macintosh"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "9",
+              "text": "Microsoft Windows",
+              "type": "COMPETITOR",
+              "mentions": [
+                "Microsoft Windows"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "10",
+              "text": "Intel",
+              "type": "COMPETITOR",
+              "mentions": [
+                "Intel"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "11",
+              "text": "Cupertino, California",
+              "type": "LOCATION",
+              "mentions": [
+                "Cupertino, California"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "12",
+              "text": "Silicon Valley",
+              "type": "LOCATION",
+              "mentions": [
+                "Silicon Valley"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "13",
+              "text": "1976",
+              "type": "DATE",
+              "mentions": [
+                "1976"
+              ],
+              "confidence": 0.95,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "14",
+              "text": "2007",
+              "type": "DATE",
+              "mentions": [
+                "2007"
+              ],
+              "confidence": 0.95,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "15",
+              "text": "Graphical User Interface",
+              "type": "SOFTWARE_FEATURE",
+              "mentions": [
+                "graphical user interface"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "16",
+              "text": "Mouse",
+              "type": "PERIPHERAL_DEVICE",
+              "mentions": [
+                "mouse"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "17",
+              "text": "American",
+              "type": "NATIONALITY",
+              "mentions": [
+                "American"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "1",
+              "text": "iPod",
+              "type": "PRODUCT_MODEL",
+              "mentions": [
+                "iPod"
+              ],
+              "confidence": 0.7,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "2",
+              "text": "iPhone",
+              "type": "PRODUCT_MODEL",
+              "mentions": [
+                "iPhone"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "3",
+              "text": "iPad",
+              "type": "PRODUCT_MODEL",
+              "mentions": [
+                "iPad"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "4",
+              "text": "iTunes Store",
+              "type": "SERVICE",
+              "mentions": [
+                "iTunes Store"
+              ],
+              "confidence": 0.98,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "5",
+              "text": "Think different",
+              "type": "MARKETING_CAMPAIGN",
+              "mentions": [
+                "Think different"
+              ],
+              "confidence": 0.95,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "id": "6",
+              "text": "Apple Store",
+              "type": "RETAIL_CHAIN",
+              "mentions": [
+                "Apple Store"
+              ],
+              "confidence": 0.95,
+              "is_known_entity": false,
+              "validation_issues": []
+            },
+            {
+              "confidence": 0.95,
+              "domain_description": "A comprehensive overview of Apple Inc.'s corporate evolution, product innovation, market dominance, and societal impact",
+              "entity_types": [
+                {
+                  "description": "Core technology enterprise with multiple product lines and market positions",
+                  "examples_from_text": [
+                    "Apple Inc.",
+                    "Apple Computer, Inc."
+                  ],
+                  "priority": "high",
+                  "type": "COMPANY"
+                },
+                {
+                  "description": "Individual who initiated company formation",
+                  "examples_from_text": [
+                    "Steve Jobs",
+                    "Steve Wozniak"
+                  ],
+                  "priority": "high",
+                  "type": "FOUNDER"
+                },
+                {
+                  "description": "Consumer electronics and software offerings",
+                  "examples_from_text": [
+                    "iPhone",
+                    "iPad",
+                    "Apple Watch"
+                  ],
+                  "priority": "high",
+                  "type": "PRODUCT"
+                },
+                {
+                  "description": "Digital services and platforms",
+                  "examples_from_text": [
+                    "iTunes Store",
+                    "Apple Music"
+                  ],
+                  "priority": "medium",
+                  "type": "SERVICE"
+                },
+                {
+                  "description": "Market valuation and revenue metrics",
+                  "examples_from_text": [
+                    "$1 trillion valuation",
+                    "$4 trillion valuation"
+                  ],
+                  "priority": "high",
+                  "type": "FINANCIAL_STATISTIC"
+                },
+                {
+                  "description": "Corporate leadership positions",
+                  "examples_from_text": [
+                    "CEO",
+                    "Chief Executive Officer"
+                  ],
+                  "priority": "high",
+                  "type": "ROLE"
+                },
+                {
+                  "description": "Temporal markers for historical events",
+                  "examples_from_text": [
+                    "1976",
+                    "2007",
+                    "2011"
+                  ],
+                  "priority": "high",
+                  "type": "DATE"
+                }
+              ],
+              "extraction_parameters": {
+                "complexity": "high",
+                "has_hierarchical_entities": true,
+                "has_temporal_relations": true,
+                "knowledge_density": "dense",
+                "recommended_chunk_size": 500,
+                "requires_coreference": true
+              },
+              "few_shot_examples": [
+                {
+                  "entity": "Apple Inc.",
+                  "entity_type": "COMPANY",
+                  "explanation": "Core entity representing the technology enterprise",
+                  "text_span": "Apple Inc. is an American multinational technology company..."
+                },
+                {
+                  "entity": "Steve Jobs",
+                  "entity_type": "FOUNDER",
+                  "explanation": "Individual who initiated company formation",
+                  "text_span": "Founded in 1976 as Apple Computer Company by Steve Jobs..."
+                },
+                {
+                  "entity": "Lisa",
+                  "entity_type": "PRODUCT",
+                  "explanation": "Consumer electronics product",
+                  "text_span": "Apple introduced the Lisa in 1983 and the Macintosh in 1984..."
+                }
+              ],
+              "key_indicators": [
+                "Corporate evolution timelines",
+                "Product innovation cycles",
+                "Market capitalization metrics",
+                "Corporate social responsibility",
+                "Technological innovation milestones"
+              ],
+              "primary_domain": "TechnologyCompanyHistoryAndImpact",
+              "reasoning": "The document focuses on Apple's historical development, product ecosystem, financial metrics, and corporate controversies, requiring specialized entity types for technology companies, their products, and market dynamics",
+              "relation_types": [
+                {
+                  "description": "Connects company to its founding individuals",
+                  "example_from_text": "Apple Inc. founded_by Steve Jobs, Steve Wozniak and Ronald Wayne",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "FOUNDER"
+                  ],
+                  "type": "FOUNDED_BY"
+                },
+                {
+                  "description": "Associates company with product releases",
+                  "example_from_text": "Apple launched iPhone",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "PRODUCT"
+                  ],
+                  "type": "LAUNCHED"
+                },
+                {
+                  "description": "Links company to financial valuation metrics",
+                  "example_from_text": "Apple has_market_cap $1 trillion valuation",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "FINANCIAL_STATISTIC"
+                  ],
+                  "type": "HAS_MARKET_CAP"
+                },
+                {
+                  "description": "Indicates leadership transitions",
+                  "example_from_text": "CEO succeeded_by Tim Cook",
+                  "priority": "medium",
+                  "source_types": [
+                    "ROLE"
+                  ],
+                  "target_types": [
+                    "ROLE"
+                  ],
+                  "type": "SUCCEEDED_BY"
+                },
+                {
+                  "description": "Associates company with its establishment year",
+                  "example_from_text": "Apple Inc. has_date_of_founding 1976",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "DATE"
+                  ],
+                  "type": "HAS_DATE_OF_FOUNDING"
+                },
+                {
+                  "description": "Links individual to corporate roles",
+                  "example_from_text": "Steve Jobs member_of CEO",
+                  "priority": "medium",
+                  "source_types": [
+                    "FOUNDER"
+                  ],
+                  "target_types": [
+                    "ROLE"
+                  ],
+                  "type": "MEMBER_OF"
+                }
+              ],
+              "sub_domains": [
+                "CorporateHistory",
+                "ProductDevelopment",
+                "MarketAndCorporateImpact"
+              ],
+              "validation_issues": []
+            }
+          ],
+          "validated_triples": [
+            {
+              "subject": "Apple Inc.",
+              "subject_id": "1",
+              "relation": "launched",
+              "object": "Think different",
+              "object_id": "5",
+              "confidence": 0.97,
+              "evidence": "launching the \"Think different\" advertising campaign",
+              "source_segment": "pubmed_article_lancet_seg_1",
+              "document_id": "pubmed_article_lancet",
+              "validation_issues": []
+            },
+            {
+              "subject": "Apple Inc.",
+              "subject_id": "1",
+              "relation": "launched",
+              "object": "Apple Store",
+              "object_id": "6",
+              "confidence": 0.97,
+              "evidence": "opening the Apple Store retail chain",
+              "source_segment": "pubmed_article_lancet_seg_1",
+              "document_id": "pubmed_article_lancet",
+              "validation_issues": []
+            }
+          ],
+          "document_id": "pubmed_article_lancet",
+          "refinement_iterations": 0
+        },
+        "source": "ExtractionValidator",
+        "timestamp": "2026-02-27T12:05:30.324612",
+        "relevance_score": 1.0,
+        "references": [],
+        "metadata": {}
+      },
+      {
+        "id": "working_ExtractionVerificationAgent_546f67686584",
+        "memory_type": "working",
+        "content": {
+          "approved_triples": [
+            {
+              "subject": "Apple Inc.",
+              "relation": "launched",
+              "object": "Think different",
+              "verified": true,
+              "verification_status": "verified",
+              "final_confidence": 0.97,
+              "supporting_evidence": "Under his leadership, Apple returned to profitability by introducing the iMac, iPod, iPhone, and iPad devices; creating the iTunes Store; launching the 'Think different' advertising campaign; and opening the Apple Store retail chain.",
+              "rejection_reason": ""
+            },
+            {
+              "subject": "Apple Inc.",
+              "relation": "launched",
+              "object": "Apple Store",
+              "verified": true,
+              "verification_status": "verified",
+              "final_confidence": 0.97,
+              "supporting_evidence": "Under his leadership, Apple returned to profitability by introducing the iMac, iPod, iPhone, and iPad devices; creating the iTunes Store; launching the 'Think different' advertising campaign; and opening the Apple Store retail chain.",
+              "rejection_reason": ""
+            }
+          ],
+          "rejected_triples": [],
+          "document_id": "pubmed_article_lancet"
+        },
+        "source": "ExtractionVerificationAgent",
+        "timestamp": "2026-02-27T12:05:40.260688",
+        "relevance_score": 1.0,
+        "references": [],
+        "metadata": {}
+      },
+      {
+        "id": "semantic_KnowledgeOrganizer_70ee8c34856d",
+        "memory_type": "semantic",
+        "content": {
+          "integrated_entities": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            "7",
+            "8",
+            "9",
+            "10",
+            "11",
+            "12",
+            "13",
+            "14",
+            "15",
+            "16",
+            "17",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6",
+            null
+          ],
+          "integrated_triples": 2,
+          "document_id": "pubmed_article_lancet"
+        },
+        "source": "KnowledgeOrganizer",
+        "timestamp": "2026-02-27T12:06:09.965799",
+        "relevance_score": 1.0,
+        "references": [],
+        "metadata": {}
+      }
+    ],
+    "blackboard": [
+      {
+        "id": "bb_DomainClassifier_1772211125.349068",
+        "author": "DomainClassifier",
+        "entry_type": "escalation",
+        "content": {
+          "reason": "Ambiguous domain classification - needs human review",
+          "items": [
+            {
+              "confidence": 0.95,
+              "domain_description": "A comprehensive overview of Apple Inc.'s corporate evolution, product innovation, market dominance, and societal impact",
+              "entity_types": [
+                {
+                  "description": "Core technology enterprise with multiple product lines and market positions",
+                  "examples_from_text": [
+                    "Apple Inc.",
+                    "Apple Computer, Inc."
+                  ],
+                  "priority": "high",
+                  "type": "COMPANY"
+                },
+                {
+                  "description": "Individual who initiated company formation",
+                  "examples_from_text": [
+                    "Steve Jobs",
+                    "Steve Wozniak"
+                  ],
+                  "priority": "high",
+                  "type": "FOUNDER"
+                },
+                {
+                  "description": "Consumer electronics and software offerings",
+                  "examples_from_text": [
+                    "iPhone",
+                    "iPad",
+                    "Apple Watch"
+                  ],
+                  "priority": "high",
+                  "type": "PRODUCT"
+                },
+                {
+                  "description": "Digital services and platforms",
+                  "examples_from_text": [
+                    "iTunes Store",
+                    "Apple Music"
+                  ],
+                  "priority": "medium",
+                  "type": "SERVICE"
+                },
+                {
+                  "description": "Market valuation and revenue metrics",
+                  "examples_from_text": [
+                    "$1 trillion valuation",
+                    "$4 trillion valuation"
+                  ],
+                  "priority": "high",
+                  "type": "FINANCIAL_STATISTIC"
+                },
+                {
+                  "description": "Corporate leadership positions",
+                  "examples_from_text": [
+                    "CEO",
+                    "Chief Executive Officer"
+                  ],
+                  "priority": "high",
+                  "type": "ROLE"
+                },
+                {
+                  "description": "Temporal markers for historical events",
+                  "examples_from_text": [
+                    "1976",
+                    "2007",
+                    "2011"
+                  ],
+                  "priority": "high",
+                  "type": "DATE"
+                }
+              ],
+              "extraction_parameters": {
+                "complexity": "high",
+                "has_hierarchical_entities": true,
+                "has_temporal_relations": true,
+                "knowledge_density": "dense",
+                "recommended_chunk_size": 500,
+                "requires_coreference": true
+              },
+              "few_shot_examples": [
+                {
+                  "entity": "Apple Inc.",
+                  "entity_type": "COMPANY",
+                  "explanation": "Core entity representing the technology enterprise",
+                  "text_span": "Apple Inc. is an American multinational technology company..."
+                },
+                {
+                  "entity": "Steve Jobs",
+                  "entity_type": "FOUNDER",
+                  "explanation": "Individual who initiated company formation",
+                  "text_span": "Founded in 1976 as Apple Computer Company by Steve Jobs..."
+                },
+                {
+                  "entity": "Lisa",
+                  "entity_type": "PRODUCT",
+                  "explanation": "Consumer electronics product",
+                  "text_span": "Apple introduced the Lisa in 1983 and the Macintosh in 1984..."
+                }
+              ],
+              "key_indicators": [
+                "Corporate evolution timelines",
+                "Product innovation cycles",
+                "Market capitalization metrics",
+                "Corporate social responsibility",
+                "Technological innovation milestones"
+              ],
+              "primary_domain": "TechnologyCompanyHistoryAndImpact",
+              "reasoning": "The document focuses on Apple's historical development, product ecosystem, financial metrics, and corporate controversies, requiring specialized entity types for technology companies, their products, and market dynamics",
+              "relation_types": [
+                {
+                  "description": "Connects company to its founding individuals",
+                  "example_from_text": "Apple Inc. founded_by Steve Jobs, Steve Wozniak and Ronald Wayne",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "FOUNDER"
+                  ],
+                  "type": "FOUNDED_BY"
+                },
+                {
+                  "description": "Associates company with product releases",
+                  "example_from_text": "Apple launched iPhone",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "PRODUCT"
+                  ],
+                  "type": "LAUNCHED"
+                },
+                {
+                  "description": "Links company to financial valuation metrics",
+                  "example_from_text": "Apple has_market_cap $1 trillion valuation",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "FINANCIAL_STATISTIC"
+                  ],
+                  "type": "HAS_MARKET_CAP"
+                },
+                {
+                  "description": "Indicates leadership transitions",
+                  "example_from_text": "CEO succeeded_by Tim Cook",
+                  "priority": "medium",
+                  "source_types": [
+                    "ROLE"
+                  ],
+                  "target_types": [
+                    "ROLE"
+                  ],
+                  "type": "SUCCEEDED_BY"
+                },
+                {
+                  "description": "Associates company with its establishment year",
+                  "example_from_text": "Apple Inc. has_date_of_founding 1976",
+                  "priority": "high",
+                  "source_types": [
+                    "COMPANY"
+                  ],
+                  "target_types": [
+                    "DATE"
+                  ],
+                  "type": "HAS_DATE_OF_FOUNDING"
+                },
+                {
+                  "description": "Links individual to corporate roles",
+                  "example_from_text": "Steve Jobs member_of CEO",
+                  "priority": "medium",
+                  "source_types": [
+                    "FOUNDER"
+                  ],
+                  "target_types": [
+                    "ROLE"
+                  ],
+                  "type": "MEMBER_OF"
+                }
+              ],
+              "sub_domains": [
+                "CorporateHistory",
+                "ProductDevelopment",
+                "MarketAndCorporateImpact"
+              ],
+              "validation_issues": []
+            }
+          ],
+          "context": {
+            "text_sample": "Apple Inc. is an American multinational technology company headquartered in Cupertino, California, in Silicon Valley, best known for its consumer electronics, software and online services. Founded in 1976 as Apple Computer Company by Steve Jobs, Steve Wozniak and Ronald Wayne, the company was incorporated by Jobs and Wozniak as Apple Computer, Inc. the following year. It was renamed to its current name in 2007 as the company had expanded its focus from computers to consumer electronics. Apple is"
+          }
+        },
+        "status": "accepted",
+        "responses": [],
+        "votes": {}
+      }
+    ],
+    "entity_aliases": {
+      "Apple Computer, Inc.": "1",
+      "Apple": "1",
+      "graphical user interface": "15",
+      "mouse": "16"
+    },
+    "documents": [
+      {
+        "id": "pubmed_article_lancet",
+        "content_preview": "Apple Inc. is an American multinational technology company headquartered in Cupertino, California, in Silicon Valley, best known for its consumer electronics, software and online services. Founded in 1976 as Apple Computer Company by Steve Jobs, Steve Wozniak and Ronald Wayne, the company was incorporated by Jobs and Wozniak as Apple Computer, Inc. the following year. It was renamed to its current name in 2007 as the company had expanded its focus from computers to consumer electronics. Apple is",
+        "length": 2889,
+        "processed_at": "2026-02-27T11:50:41.215927",
+        "metadata": {
+          "source_path": null,
+          "segment_count": 2
+        }
+      }
+    ],
+    "stats": {
+      "total_memories": 8,
+      "by_type": {
+        "episodic": 1,
+        "working": 2,
+        "semantic": 5,
+        "procedural": 0
+      },
+      "by_source": {
+        "DocumentProcessor": 1,
+        "DomainClassifier": 1,
+        "EntityExtractor": 1,
+        "RelationExtractor": 1,
+        "EvidenceLinker": 1,
+        "ExtractionValidator": 1,
+        "ExtractionVerificationAgent": 1,
+        "KnowledgeOrganizer": 1
+      },
+      "unique_entities": 17,
+      "entity_aliases": 4,
+      "blackboard_entries": 1,
+      "documents_processed": 1
+    }
+  },
+  "stats": {
+    "session_start": "2026-02-27T11:50:41.215034",
+    "documents_processed": 1,
+    "memory_stats": {
+      "total_memories": 8,
+      "by_type": {
+        "episodic": 1,
+        "working": 2,
+        "semantic": 5,
+        "procedural": 0
+      },
+      "by_source": {
+        "DocumentProcessor": 1,
+        "DomainClassifier": 1,
+        "EntityExtractor": 1,
+        "RelationExtractor": 1,
+        "EvidenceLinker": 1,
+        "ExtractionValidator": 1,
+        "ExtractionVerificationAgent": 1,
+        "KnowledgeOrganizer": 1
+      },
+      "unique_entities": 17,
+      "entity_aliases": 4,
+      "blackboard_entries": 1,
+      "documents_processed": 1
+    },
+    "kg_stats": {
+      "total_entities": 21,
+      "total_triples": 2,
+      "entity_types": {
+        "COMPANY": 1,
+        "PERSON": 3,
+        "PRODUCT": 4,
+        "COMPETITOR": 2,
+        "LOCATION": 2,
+        "SOFTWARE_FEATURE": 1,
+        "PERIPHERAL_DEVICE": 1,
+        "NATIONALITY": 1,
+        "PRODUCT_MODEL": 3,
+        "SERVICE": 1,
+        "MARKETING_CAMPAIGN": 1,
+        "RETAIL_CHAIN": 1
+      },
+      "relation_types": {
+        "launched": 2
+      },
+      "unique_relations": 1
+    },
+    "agent_stats": {
+      "document_processor": {
+        "name": "DocumentProcessor",
+        "role": "worker",
+        "calls": 1,
+        "llm_calls": 0,
+        "escalations": 0,
+        "refinements": 0,
+        "deliberations_submitted": 0,
+        "votes_cast": 0,
+        "debates_participated": 0
+      },
+      "domain_classifier": {
+        "name": "DomainClassifier",
+        "role": "worker",
+        "calls": 1,
+        "llm_calls": 4,
+        "escalations": 1,
+        "refinements": 0,
+        "deliberations_submitted": 0,
+        "votes_cast": 0,
+        "debates_participated": 0
+      },
+      "entity_extractor": {
+        "name": "EntityExtractor",
+        "role": "worker",
+        "calls": 1,
+        "llm_calls": 8,
+        "escalations": 0,
+        "refinements": 0,
+        "deliberations_submitted": 0,
+        "votes_cast": 0,
+        "debates_participated": 0
+      },
+      "relation_extractor": {
+        "name": "RelationExtractor",
+        "role": "worker",
+        "calls": 1,
+        "llm_calls": 7,
+        "escalations": 0,
+        "refinements": 0,
+        "deliberations_submitted": 0,
+        "votes_cast": 0,
+        "debates_participated": 0
+      },
+      "evidence_linker": {
+        "name": "EvidenceLinker",
+        "role": "worker",
+        "calls": 1,
+        "llm_calls": 1,
+        "escalations": 0,
+        "refinements": 0,
+        "deliberations_submitted": 0,
+        "votes_cast": 0,
+        "debates_participated": 0
+      },
+      "extraction_validator": {
+        "name": "ExtractionValidator",
+        "role": "coordinator",
+        "calls": 1,
+        "llm_calls": 1,
+        "escalations": 0,
+        "refinements": 0,
+        "deliberations_submitted": 0,
+        "votes_cast": 0,
+        "debates_participated": 0
+      },
+      "verification_agent": {
+        "name": "ExtractionVerificationAgent",
+        "role": "coordinator",
+        "calls": 1,
+        "llm_calls": 1,
+        "escalations": 0,
+        "refinements": 0,
+        "deliberations_submitted": 0,
+        "votes_cast": 0,
+        "debates_participated": 0
+      },
+      "knowledge_organizer": {
+        "name": "KnowledgeOrganizer",
+        "role": "coordinator",
+        "calls": 1,
+        "llm_calls": 1,
+        "escalations": 0,
+        "refinements": 0,
+        "deliberations_submitted": 0,
+        "votes_cast": 0,
+        "debates_participated": 0
+      }
+    },
+    "discovered_relations": []
+  },
+  "processing_history": [
+    {
+      "document_id": "pubmed_article_lancet",
+      "timestamp": "2026-02-27T12:06:09.965980",
+      "results": {
+        "segments": 2,
+        "domain": "general",
+        "entities_extracted": 23,
+        "triples_extracted": 2,
+        "inferred_triples": 0,
+        "triples_total": 2,
+        "triples_linked": 0,
+        "voting_sessions": 0,
+        "debates_triggered": 0,
+        "items_accepted_by_vote": 0,
+        "items_rejected_by_vote": 0,
+        "refinement_iterations": 0,
+        "approved_triples": 2,
+        "rejected_triples": 0,
+        "kg_entities": 21,
+        "kg_triples": 2,
+        "processing_time_seconds": 928.75031
+      }
+    }
+  ]
+}

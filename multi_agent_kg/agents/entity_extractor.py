@@ -49,25 +49,31 @@ class EntityCandidate:
 INITIAL_EXTRACTION_PROMPT = """Extract ALL significant entities that represent knowledge in this document.
 
 EXTRACT entities including:
+- People, named individuals, notable figures
+- Occupations, professions, roles, job titles (e.g., "volleyball player", "doctor", "researcher")
+- Organizations, institutions, companies, teams, research groups, medical centers
+- Locations, countries, cities, regions
+- Nationalities, ethnicities, languages
+- Dates and specific time points (e.g., "22 May 1980", "2020") - preserve the exact text
 - Domain concepts, theories, methods, techniques, phenomena, mechanisms
 - Medical/scientific conditions, diseases, treatments, clinical measures, biomarkers
 - Therapeutic interventions, drugs, procedures, therapies
 - Biological processes, pathways, molecular mechanisms
 - Clinical outcomes, complications, risk factors, prognostic indicators
-- Organizations, institutions, research groups, medical centers
 - Researchers, authors, key contributors
 - Specialized terminology and technical concepts
 - Study cohorts, patient populations, demographic groups
 - Measurement tools, instruments, assessment methods, scoring systems
+- Sports, activities, disciplines
 - Important statistical markers (e.g., "HbA1c", "IESS", "CFR") when they represent specific measurements
 
 DO NOT EXTRACT:
-- Generic dates/times ("January 2020", "90 days") unless defining eras/periods
 - Bare numbers without meaning ("0.85", "38614")
 - Common adjectives alone ("high", "low", "greater")
 - Generic temporal references ("baseline", "follow-up") unless technical terms
+- Pronouns or generic references ("he", "she", "they", "it")
 
-IMPORTANT: Err on the side of INCLUSION. Extract entities that help build a comprehensive knowledge representation of the document.
+IMPORTANT: Err on the side of INCLUSION. Extract entities that help build a comprehensive knowledge representation of the document. When a person is described as having an occupation (e.g., "volleyball player"), extract BOTH the person AND the occupation as separate entities.
 
 {entity_guidance}
 
@@ -78,7 +84,7 @@ Return a JSON object with:
 {{
     "entities": [
         {{
-            "text": "<exact entity mention>",
+            "text": "<exact entity mention as it appears in the text>",
             "start": <character start position>,
             "end": <character end position>,
             "type_guess": "<describe what this entity represents in this context>"
@@ -421,8 +427,10 @@ class EntityExtractor(BaseAgent):
                 tier=ModelTier.SMALL,  # Simpler task
                 max_tokens=4096,
             )
-            
-            refined_entities.extend(result.get("entities", batch))
+
+            refined = result.get("entities", [])
+            # If refinement returned empty (parse failure), keep originals
+            refined_entities.extend(refined if refined else batch)
         
         return refined_entities
 
@@ -475,8 +483,11 @@ class EntityExtractor(BaseAgent):
                 )
                 confidence = 0.7
             
-            typed_batch = result.get("entities", batch)
-            
+            typed_batch = result.get("entities", [])
+            # If type assignment returned empty (parse failure), keep originals
+            if not typed_batch:
+                typed_batch = batch
+
             # Combine stage confidences
             for e in typed_batch:
                 type_conf = e.get("type_confidence", 0.7)

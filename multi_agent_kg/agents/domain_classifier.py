@@ -47,8 +47,18 @@ CRITICAL INSTRUCTIONS:
 - CREATE entity and relation types specifically for THIS content
 - Look at ACTUAL TOPICS and THEMES, not just keywords
 - Entity types should capture the KEY CONCEPTS discussed in this specific document
-- Relation types should capture the KEY RELATIONSHIPS described in this text
-- Be as specific as possible - avoid generic types like "ENTITY" or "THING"
+- ALWAYS include OCCUPATION, ROLE, or PROFESSION as entity types when people are discussed
+- ALWAYS include DATE or TEMPORAL as entity types when dates/times are mentioned
+
+RELATION NAMING RULES (VERY IMPORTANT):
+- Relation types should describe the RELATIONSHIP ITSELF, not the entity types involved
+- DO NOT embed entity type names in the relation name
+- BAD examples: PERSON_BORN_ON, PERSON_NATIONALITY, PERSON_PLAYS_SPORT, TEAM_LOCATED_IN
+- GOOD examples: has_date_of_birth, has_nationality, has_occupation, member_of, plays_for, located_in
+- Use source_types and target_types fields to specify which entity types can participate
+- Prefer lowercase_with_underscores format for relation names (e.g., "has_nationality" not "HAS_NATIONALITY")
+- Distinguish between semantically different relationships even if they seem similar
+  (e.g., "member_of" for national team membership vs "plays_for" for club membership)
 
 DOCUMENT TEXT:
 {text}
@@ -61,7 +71,7 @@ Respond with JSON:
     "confidence": <0.0-1.0>,
     "reasoning": "<why you chose this domain and these types>",
     "key_indicators": ["<key concept/theme 1>", "<key concept/theme 2>", ...],
-    
+
     "entity_types": [
         {{
             "type": "<ENTITY_TYPE_NAME>",
@@ -70,18 +80,18 @@ Respond with JSON:
             "examples_from_text": ["<example1>", "<example2>"]
         }}
     ],
-    
+
     "relation_types": [
         {{
-            "type": "<RELATION_TYPE_NAME>",
+            "type": "<relation_name_describing_the_relationship>",
             "description": "<what relationship this captures in THIS context>",
             "source_types": ["<which entity types can be subjects>"],
             "target_types": ["<which entity types can be objects>"],
             "priority": "<high|medium|low>",
-            "example_from_text": "<example relationship from the document>"
+            "example_from_text": "<example: subject -> relation -> object>"
         }}
     ],
-    
+
     "few_shot_examples": [
         {{
             "text_span": "<exact quote from document>",
@@ -90,7 +100,7 @@ Respond with JSON:
             "explanation": "<why this entity type fits>"
         }}
     ],
-    
+
     "extraction_parameters": {{
         "complexity": "<low|medium|high>",
         "knowledge_density": "<sparse|moderate|dense>",
@@ -326,10 +336,13 @@ class DomainClassifier(BaseAgent):
                 "NEVER use predefined schemas or standard taxonomies. "
                 "Your task is to READ the document carefully and INVENT a custom schema that fits THIS content. "
                 "Focus on WHAT IS ACTUALLY DISCUSSED, not what category you think it fits into. "
-                "Create entity types that capture the KEY CONCEPTS in this text. "
+                "Create entity types that capture the KEY CONCEPTS in this text. Entity types should be in UPPER_SNAKE_CASE format. "
                 "Create relation types that capture the KEY RELATIONSHIPS in this text. "
-                "Be specific and descriptive - avoid generic types. "
-                "Entity and relation types should be in UPPER_SNAKE_CASE format."
+                "CRITICAL: Relation names must describe the RELATIONSHIP, not the entity types. "
+                "Use lowercase_with_underscores for relation names (e.g., has_nationality, member_of, plays_for). "
+                "NEVER embed entity type in the relation name (BAD: PERSON_BORN_ON, GOOD: has_date_of_birth). "
+                "Use source_types/target_types to constrain which entities can participate. "
+                "Always include occupation/role entity types and relations when people are discussed."
             ),
             tier=ModelTier.MEDIUM,  # 13B per spec
             n_samples=3,
