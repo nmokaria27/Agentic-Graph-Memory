@@ -195,7 +195,8 @@ class DebugLogger:
         
         # Terminal output (concise)
         conf_str = f"conf={confidence:.2f}" if confidence is not None else ""
-        terminal_msg = f"[{timestamp}] [{agent}] {decision_type.upper()}: {decision} ({conf_str}) - {reasoning[:60]}..."
+        reasoning_snippet = (reasoning or "")[:60]
+        terminal_msg = f"[{timestamp}] [{agent}] {decision_type.upper()}: {decision} ({conf_str}) - {reasoning_snippet}..."
         
         if self.verbose:
             print(terminal_msg)
@@ -207,7 +208,7 @@ class DebugLogger:
             f.write(f"Agent: {agent}\n")
             f.write(f"Type: {decision_type}\n")
             f.write(f"Decision: {decision}\n")
-            f.write(f"Reasoning: {reasoning}\n")
+            f.write(f"Reasoning: {reasoning or ''}\n")
             if confidence is not None:
                 f.write(f"Confidence: {confidence:.3f}\n")
             f.write(f"\nFull Item:\n")

@@ -6,12 +6,36 @@ A deliberative multi-agent system for knowledge graph construction from unstruct
 
 This framework implements an 8-agent pipeline where specialized AI agents collaborate through shared memory, message passing, and democratic deliberation to extract high-quality knowledge graphs from documents.
 
+ - Dataset: https://github.com/declare-lab/WikiDes?tab=readme-ov-file
+
 **Key Features:**
 - **Multi-Agent Deliberation**: Agents vote and debate on uncertain extractions
 - **Tiered LLM Usage**: Small/medium/large models for cost-efficiency
 - **Anti-Hallucination**: Verification against source text with evidence linking
 - **Domain-Adaptive**: Automatic schema generation for different document types
 - **Open-World Relations**: Discovers novel relation types beyond predefined schemas
+
+## Configuration
+
+**Model tiers (conceptual):**
+- **Small**: Fast, lightweight models (simple preprocessing tasks)
+- **Medium**: Balanced models (entity/relation extraction)
+- **Large**: Highest quality (validation, verification, complex reasoning)
+
+**Current per-agent model mapping (Ollama tags):**
+- **Worker agents**
+  - `DocumentProcessor` → `qwen3:4b`
+  - `DomainClassifier` → `qwen3:8b`
+  - `EntityExtractor` → `qwen3:8b`
+  - `RelationExtractor` → `qwen3:8b`
+  - `EvidenceLinker` → `qwen3:4b`
+- **Coordinator agents**
+  - `ExtractionVerificationAgent` → `deepseek-r1:14b`
+  - `KnowledgeOrganizer` → `gpt-oss:20b`
+- **Evaluation (LLM-as-judge, planned)**  
+  - Hold-out judge role is intended to run on `llama4:latest`.
+
+These mappings are centralized in `BaseAgent` via an `AGENT_MODEL_OVERRIDES` table so they can be changed without touching individual agents.
 
 ## Architecture
 
@@ -164,14 +188,7 @@ kg = results["knowledge_graph"]
 kg.export("output.json")
 ```
 
-## Configuration
-
-**Model Tiers:**
-- Small (gpt-3.5-turbo): Simple tasks (segmentation)
-- Medium (gpt-4o-mini): Extraction tasks (entities, relations)
-- Large (gpt-4o): Validation and verification
-
-**Key Parameters:**
+**Key parameters:**
 - `quality_threshold`: Minimum confidence for acceptance (default: 0.7)
 - `max_refinement_iterations`: Iterative refinement limit (default: 4)
 - `enable_deliberation`: Multi-agent voting/debate (default: True)

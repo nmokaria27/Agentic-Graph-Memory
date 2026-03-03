@@ -52,6 +52,23 @@ DEFAULT_MODEL_TIERS = {
     ModelTier.LARGE: "gemma3:27b",
 }
 
+# Per-agent model overrides (takes precedence over tier mapping).
+# This lets us assign specific Ollama models to each concrete agent
+# without changing individual agent implementations.
+AGENT_MODEL_OVERRIDES: Dict[str, str] = {
+    # Worker agents
+    "DocumentProcessor": "qwen3:4b",
+    "DomainClassifier": "qwen3:8b",
+    "EntityExtractor": "qwen3:8b",
+    "RelationExtractor": "qwen3:8b",
+    "EvidenceLinker": "qwen3:4b",
+    # Coordinator agents
+    "ExtractionVerificationAgent": "deepseek-r1:14b",
+    "KnowledgeOrganizer": "gpt-oss:20b",
+    # Evaluation / judge agents can be added here, e.g.:
+    # "HoldoutJudge": "llama4:latest",
+}
+
 
 @dataclass
 class ExtractionResult:
@@ -195,7 +212,14 @@ class BaseAgent(ABC):
             Parsed JSON response from LLM
         """
         tier = tier or self.default_tier
-        model = self.model_tiers.get(tier, self.llm_config.model)
+
+        # If a concrete agent has an explicit model override, use it
+        # regardless of tier. Otherwise fall back to the tier mapping.
+        override_model = AGENT_MODEL_OVERRIDES.get(self.name)
+        if override_model:
+            model = override_model
+        else:
+            model = self.model_tiers.get(tier, self.llm_config.model)
         
         config = LLMConfig(
             model=model,
