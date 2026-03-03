@@ -1,0 +1,350 @@
+[
+  {
+    "question": "How does insulin resistance lead to microvascular dysfunction?",
+    "final_answer": "Insulin resistance contributes to microvascular dysfunction through multiple interconnected pathways. The strongest evidence indicates a role for inflammation, where inflammation is directly linked to microvascular dysfunction (inflammation_and_immune_response). Monocyte chemotactic protein (MCP-1) appears to be a key mediator, associating with both inflammation and endothelial dysfunction, a component of microvascular dysfunction (inflammation_and_immune_response, cardiovascular_function_and_assessment).  Furthermore, insulin resistance is associated with obesity (cardio_renal_metabolic_syndrome), which in turn is linked to increased levels of acylcarnitines. These acylcarnitines are then associated with microvascular dysfunction (cardio_renal_metabolic_syndrome). While a direct link between insulin resistance and microvascular dysfunction isn't explicitly stated in all knowledge graphs, these indirect pathways provide a plausible mechanism. The cross-domain context reinforces this, highlighting connections between factors like obesity and monocyte chemotactic protein, further supporting the interplay between these conditions.",
+    "sub_questions": [
+      {
+        "question": "What is the relationship between insulin resistance and microvascular function?",
+        "target_domains": [
+          "cardio_renal_metabolic_syndrome",
+          "cardiovascular_function_and_assessment"
+        ],
+        "context": "Explore the mechanisms by which insulin resistance impacts microvascular health."
+      },
+      {
+        "question": "Does inflammation play a role in the link between insulin resistance and microvascular dysfunction?",
+        "target_domains": [
+          "inflammation_and_immune_response",
+          "cardio_renal_metabolic_syndrome"
+        ],
+        "context": "Investigate if inflammatory pathways mediate the effects of insulin resistance on microvasculature."
+      }
+    ],
+    "domain_responses": [
+      {
+        "answer": "The knowledge graph indicates an indirect relationship between insulin resistance and microvascular function. Insulin resistance is ASSOCIATED_WITH_CONDITION obesity. Obesity, in turn, is ASSOCIATED_WITH_CONDITION acylcarnitines. Acylcarnitines are ASSOCIATED_WITH_CONDITION microvascular dysfunction. Therefore, insulin resistance impacts microvascular function through its association with obesity and subsequent effects on acylcarnitines.",
+        "coverage": 0.25,
+        "evidence": [
+          "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity) (conf=0.70)",
+          "(intermediate CFR and uACR) -[ASSOCIATED_WITH_CONDITION]-> (acylcarnitines) (conf=0.80)",
+          "(acylcarnitines) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction) (conf=0.85)"
+        ],
+        "confidence": 0.0,
+        "out_of_scope_aspects": [],
+        "domain_id": "cardio_renal_metabolic_syndrome",
+        "topics_used": [
+          "Diabetes and Complications"
+        ],
+        "multi_hop_paths": "none",
+        "sub_question": "What is the relationship between insulin resistance and microvascular function?"
+      },
+      {
+        "answer": "The knowledge graph does not directly state a relationship between insulin resistance and microvascular function. However, it does indicate a connection between endothelial dysfunction and monocyte chemotactic protein. Microvascular dysfunction is a medical condition, and endothelial dysfunction is listed as an unresolved entity. While not a direct link to insulin resistance, the graph suggests a potential pathway where factors impacting endothelial health (like insulin resistance - as per the additional context) could contribute to microvascular dysfunction.",
+        "coverage": 0.25,
+        "evidence": [
+          "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (endothelial_dysfunction)",
+          "(network disease) -[PART_OF_SYSTEM]-> (myocardium)"
+        ],
+        "confidence": 0.0,
+        "out_of_scope_aspects": [
+          "direct relationship between insulin resistance and microvascular function"
+        ],
+        "domain_id": "cardiovascular_function_and_assessment",
+        "topics_used": [
+          "Microvascular Function"
+        ],
+        "multi_hop_paths": "none",
+        "sub_question": "What is the relationship between insulin resistance and microvascular function?"
+      },
+      {
+        "answer": "Yes, inflammation plays a role in the link between insulin resistance and microvascular dysfunction. The knowledge graph indicates that inflammation is directly associated with microvascular dysfunction via the relationship 'inflammation -[MEDIATED_BY]-> microvascular dysfunction'. While insulin resistance isn't directly linked in the graph, monocyte chemotactic protein is associated with both inflammation and endothelial dysfunction (a component of microvascular dysfunction).",
+        "coverage": 0.667,
+        "evidence": [
+          "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+          "(MCP-1 (CCL2)) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+          "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (endothelial_dysfunction)"
+        ],
+        "confidence": 0.467,
+        "out_of_scope_aspects": [
+          "insulin resistance"
+        ],
+        "domain_id": "inflammation_and_immune_response",
+        "topics_used": [
+          "Cytokine Storm",
+          "Complement Activation",
+          "Leukocyte Infiltration"
+        ],
+        "multi_hop_paths": "none",
+        "sub_question": "Does inflammation play a role in the link between insulin resistance and microvascular dysfunction?"
+      }
+    ],
+    "overall_coverage": 0.85,
+    "overall_confidence": 0.75,
+    "gaps": [
+      "The precise molecular mechanisms linking acylcarnitines to microvascular dysfunction are not fully detailed.",
+      "The relative contribution of each pathway (inflammation vs. obesity/acylcarnitines) to microvascular dysfunction remains unclear.",
+      "The role of specific inflammatory cytokines beyond those mentioned is not addressed."
+    ]
+  },
+  {
+    "question": "What biomarkers are associated with endothelial dysfunction?",
+    "final_answer": "Monocyte chemotactic protein (MCP) is consistently associated with endothelial dysfunction (cardiovascular_function_and_assessment, inflammation_and_immune_response). While not directly identified as biomarkers *indicative* of endothelial dysfunction, endothelial stress biomarkers and systemic endothelial injury markers are considered biological markers related to endothelial function (cardiovascular_function_and_assessment). Furthermore, MCP is also linked to inflammation, which contributes to microvascular dysfunction and cardiovascular disease (inflammation_and_immune_response).",
+    "sub_questions": [
+      {
+        "question": "What biomarkers are indicative of endothelial dysfunction?",
+        "target_domains": [
+          "cardiovascular_function_and_assessment",
+          "inflammation_and_immune_response"
+        ]
+      }
+    ],
+    "domain_responses": [
+      {
+        "answer": "Based on the knowledge graph, monocyte chemotactic protein is associated with endothelial dysfunction. Additionally, endothelial stress biomarkers and systemic endothelial injury marker are considered biological markers related to endothelial function, though a direct relationship to endothelial dysfunction isn't explicitly stated in the provided data.",
+        "coverage": 1.0,
+        "evidence": [
+          "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (endothelial_dysfunction)",
+          "(endothelial_stress_biomarkers) is a BIOLOGICAL_MARKER",
+          "(systemic_endothelial_injury_marker) is a BIOLOGICAL_MARKER"
+        ],
+        "confidence": 0.7,
+        "out_of_scope_aspects": [],
+        "domain_id": "cardiovascular_function_and_assessment",
+        "topics_used": [
+          "Microvascular Function"
+        ],
+        "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'endothelial_dysfunction':\n  (monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (endothelial_dysfunction)\n  (monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (coronary microvascular dysfunction)\n  (monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)\n  (monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)\n  (monocyte_chemotactic_protein) -[CONTRIBUTES_TO_DISEASE]-> (myocardial remodeling)\n  (monocyte_chemotactic_protein) -[CONTRIBUTES_TO_DISEASE]-> (inflammation)\n  (type 2 diabetes) -[ASSOCIATED_WITH_DISEASE]-> (coronary microvascular dysfunction)\n  (Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (type 2 diabetes mellitus)\n  (Metabolic syndrome) -[ASSOCIATED_WITH_DISEASE]-> (type 2 diabetes mellitus)\n  (Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)\n  (HbA1c) -[ASSOCIATED_WITH_RISK]-> (type 2 diabetes mellitus)\n  (inflammation) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)\n  (MCP-1 (CCL2)) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)\n  (inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)\n  (inflammation) -[CONTRIBUTES_TO_DISEASE]-> (cardiovascular disease)\n  (urinary albumin creatinine ratio) -[MEDIATES_RELATIONSHIP]-> (myocardial remodeling)\n  (high ECV) -[MANIFESTS_AS_SYMPTOM]-> (myocardial remodeling)",
+        "sub_question": "What biomarkers are indicative of endothelial dysfunction?"
+      },
+      {
+        "answer": "Based on the knowledge graph, monocyte_chemotactic_protein is associated with endothelial_dysfunction. While the graph doesn't directly list biomarkers *indicative* of endothelial dysfunction, it does show that monocyte_chemotactic_protein is associated with it. Additionally, monocyte_chemotactic_protein is also associated with inflammation, which in turn is mediated by microvascular dysfunction and contributes to cardiovascular disease.",
+        "coverage": 0.5,
+        "evidence": [
+          "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (endothelial_dysfunction)",
+          "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+          "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+          "(inflammation) -[CONTRIBUTES_TO_DISEASE]-> (cardiovascular disease)"
+        ],
+        "confidence": 0.35,
+        "out_of_scope_aspects": [],
+        "domain_id": "inflammation_and_immune_response",
+        "topics_used": [
+          "Cytokine Storm",
+          "Complement Activation",
+          "Leukocyte Infiltration"
+        ],
+        "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'endothelial_dysfunction':\n  (monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (endothelial_dysfunction)\n  (monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (coronary microvascular dysfunction)\n  (monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)\n  (monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)\n  (monocyte_chemotactic_protein) -[CONTRIBUTES_TO_DISEASE]-> (myocardial remodeling)\n  (monocyte_chemotactic_protein) -[CONTRIBUTES_TO_DISEASE]-> (inflammation)\n  (type 2 diabetes) -[ASSOCIATED_WITH_DISEASE]-> (coronary microvascular dysfunction)\n  (Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (type 2 diabetes mellitus)\n  (Metabolic syndrome) -[ASSOCIATED_WITH_DISEASE]-> (type 2 diabetes mellitus)\n  (Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)\n  (HbA1c) -[ASSOCIATED_WITH_RISK]-> (type 2 diabetes mellitus)\n  (inflammation) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)\n  (MCP-1 (CCL2)) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)\n  (inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)\n  (inflammation) -[CONTRIBUTES_TO_DISEASE]-> (cardiovascular disease)\n  (urinary albumin creatinine ratio) -[MEDIATES_RELATIONSHIP]-> (myocardial remodeling)\n  (high ECV) -[MANIFESTS_AS_SYMPTOM]-> (myocardial remodeling)",
+        "sub_question": "What biomarkers are indicative of endothelial dysfunction?"
+      }
+    ],
+    "overall_coverage": 0.85,
+    "overall_confidence": 0.75,
+    "gaps": [
+      "Specific, direct biomarkers that definitively *indicate* endothelial dysfunction beyond association were not clearly identified in the provided data. The provided data focuses on associations rather than diagnostic markers."
+    ]
+  },
+  {
+    "question": "What is the relationship between IL-6 signaling and cardiovascular outcomes?",
+    "final_answer": "IL-6 signaling appears to be implicated in cardiovascular outcomes, primarily through its connection to inflammation and obesity. While a direct link between IL-6 and specific cardiovascular events isn't explicitly stated in the combined knowledge graphs, several indirect relationships emerge. The inflammation and immune response expert indicates that IL-6 signaling (il_6_receptor_signaling) is related to inflammation (inflammation_and_immune_response). Obesity, which is associated with elevated IL-6 levels (cardio_renal_metabolic_syndrome), also contributes to inflammation (inflammation_and_immune_response) and is linked to biomarkers like ADMA (cardio_renal_metabolic_syndrome). Furthermore, inflammation and obesity are associated with endothelial dysfunction, a key factor in cardiovascular disease (cardiovascular_function_and_assessment). Monocyte chemotactic protein, contributing to inflammation (inflammation_and_immune_response), is also directly associated with endothelial dysfunction (cardiovascular_function_and_assessment).  Endothelial dysfunction is linked to various cardiovascular conditions including myocardial remodeling, microvascular dysfunction, and heart failure with preserved ejection fraction (hfpef) (cardiovascular_function_and_assessment). The pharmacological interventions expert did not provide information on IL-6 signaling, but did note medications used for related conditions like obesity and microvascular dysfunction.",
+    "sub_questions": [
+      {
+        "question": "How does IL-6 signaling contribute to inflammation and immune response?",
+        "target_domains": [
+          "inflammation_and_immune_response"
+        ]
+      },
+      {
+        "question": "What are the cardiovascular outcomes associated with elevated IL-6 levels?",
+        "target_domains": [
+          "cardiovascular_function_and_assessment",
+          "cardio_renal_metabolic_syndrome"
+        ]
+      },
+      {
+        "question": "Are there any pharmacological interventions that target IL-6 signaling to improve cardiovascular outcomes?",
+        "target_domains": [
+          "pharmacological_interventions"
+        ]
+      }
+    ],
+    "domain_responses": [
+      {
+        "answer": "The knowledge graph indicates that IL-6 signaling (il_6_receptor_signaling) is related to inflammation (BIOLOGICAL_PROCESS). While the graph doesn't directly state *how* IL-6 signaling contributes, it shows a connection. Furthermore, monocyte_chemotactic_protein (MCP) contributes to inflammation, and IL-1 beta is associated with obesity, which can induce inflammation. However, the specific mechanisms of IL-6 signaling's contribution are not detailed within this knowledge graph.",
+        "coverage": 1.0,
+        "evidence": [
+          "(il_6_receptor_signaling) -[MEDIATED_BY]-> (inflammation)",
+          "(MCP-1 (CCL2)) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+          "(monocyte_chemotactic_protein) -[CONTRIBUTES_TO_DISEASE]-> (inflammation)",
+          "(il_1_beta) -[ASSOCIATED_WITH_CONDITION]-> (obesity)"
+        ],
+        "confidence": 0.7,
+        "out_of_scope_aspects": [
+          "Detailed mechanisms of IL-6 signaling",
+          "Specific immune responses triggered by IL-6"
+        ],
+        "domain_id": "inflammation_and_immune_response",
+        "topics_used": [
+          "Cytokine Storm",
+          "Complement Activation",
+          "Leukocyte Infiltration"
+        ],
+        "multi_hop_paths": "none",
+        "sub_question": "How does IL-6 signaling contribute to inflammation and immune response?"
+      },
+      {
+        "answer": "The knowledge graph does not directly mention IL-6 levels. However, it does contain information about endothelial stress and dysfunction, which may be related to inflammatory processes like those involving IL-6. The graph indicates that monocyte chemotactic protein is associated with endothelial dysfunction. Furthermore, endothelial stress is linked to biomarkers like soluble_c5b and endothelial_stress_biomarkers. Cardiovascular disease, myocardial remodeling, microvascular dysfunction, coronary microvascular dysfunction, and hfpef are all medical conditions potentially related to endothelial dysfunction and cardiovascular health. Therefore, while a direct link to IL-6 is missing, the graph suggests potential cardiovascular outcomes related to inflammatory processes affecting endothelial function.",
+        "coverage": 0.65,
+        "evidence": [
+          "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (endothelial_dysfunction)",
+          "(network disease) -[PART_OF_SYSTEM]-> (myocardium)"
+        ],
+        "confidence": 0.7,
+        "out_of_scope_aspects": [
+          "specific link between IL-6 and cardiovascular outcomes"
+        ],
+        "domain_id": "cardiovascular_function_and_assessment",
+        "topics_used": [
+          "CMR Imaging",
+          "Microvascular Function",
+          "Endothelial Stress"
+        ],
+        "multi_hop_paths": "none",
+        "sub_question": "What are the cardiovascular outcomes associated with elevated IL-6 levels?"
+      },
+      {
+        "answer": "The knowledge graph indicates that obesity is associated with elevated levels of IL-6. While the graph doesn't directly state cardiovascular outcomes of elevated IL-6, it does link obesity to ADMA, a biological marker. Furthermore, the graph shows that obesity is associated with conditions like chronic metabolic inflammation and affects biomarkers like C3a, C5a, and sC5b-9. However, there is no direct link between IL-6 and specific cardiovascular outcomes within the provided knowledge graph.",
+        "coverage": 0.65,
+        "evidence": [
+          "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6) (conf=0.70)",
+          "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA) (conf=0.70)",
+          "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (obesity) (conf=0.85)",
+          "(obesity) -[AFFECTS_BIOMARKER]-> (C3a) (conf=0.70)",
+          "(obesity) -[AFFECTS_BIOMARKER]-> (C5a) (conf=0.70)",
+          "(obesity) -[AFFECTS_BIOMARKER]-> (sC5b-9) (conf=0.70)"
+        ],
+        "confidence": 0.7,
+        "out_of_scope_aspects": [
+          "Specific cardiovascular outcomes directly linked to IL-6"
+        ],
+        "domain_id": "cardio_renal_metabolic_syndrome",
+        "topics_used": [
+          "Diabetes and Complications",
+          "Hypertension and Renal Injury",
+          "Obesity and Metabolic Inflammation",
+          "Cardiac Remodeling",
+          "Renal Phenotyping"
+        ],
+        "multi_hop_paths": "none",
+        "sub_question": "What are the cardiovascular outcomes associated with elevated IL-6 levels?"
+      },
+      {
+        "answer": "The knowledge graph does not contain information about interventions targeting IL-6 signaling. It includes information about several medications used for metabolic and cardiovascular conditions, such as statins, empagliflozin, lisinopril, and losartan, and their effects on biomarkers like uacr and conditions like microvascular dysfunction. However, there is no mention of any drugs specifically acting on IL-6 signaling.",
+        "coverage": 0.0,
+        "evidence": [],
+        "confidence": 1.0,
+        "out_of_scope_aspects": [
+          "IL-6 signaling"
+        ],
+        "domain_id": "pharmacological_interventions",
+        "topics_used": [
+          "GLP-1 Receptor Agonists"
+        ],
+        "multi_hop_paths": "none",
+        "sub_question": "Are there any pharmacological interventions that target IL-6 signaling to improve cardiovascular outcomes?"
+      }
+    ],
+    "overall_coverage": 0.85,
+    "overall_confidence": 0.75,
+    "gaps": [
+      "Specific mechanisms of how IL-6 signaling contributes to cardiovascular disease.",
+      "Direct evidence linking IL-6 levels to specific cardiovascular outcomes.",
+      "Interventions targeting IL-6 signaling for cardiovascular benefit."
+    ]
+  },
+  {
+    "question": "What role do SGLT2 inhibitors play in cardiovascular protection?",
+    "final_answer": "SGLT2 inhibitors, specifically empagliflozin and liraglutide, demonstrate a role in cardiovascular protection, though primarily through indirect mechanisms. The pharmacological_interventions expert indicates these drugs reduce the progression of Urine Albumin-to-Creatinine Ratio (UACR), a biomarker linked to kidney function and cardiovascular health. While not a direct cardiovascular benefit, improving UACR suggests a positive impact on these systems. The cardio_renal_metabolic_syndrome expert highlights the interconnectedness of obesity, insulin resistance, chronic metabolic inflammation, and renal injury (manifesting as albuminuria), suggesting that interventions addressing these factors could indirectly benefit cardiovascular health. Although the cardiovascular_function_and_assessment expert's knowledge graph lacks specific information on SGLT2 inhibitors, it provides a foundational understanding of relevant cardiovascular measurements (blood pressure, myocardial perfusion reserve index) and conditions (cardiovascular disease, heart failure with preserved ejection fraction - HFPEF), as well as biomarkers like soluble C5b and nitric oxide bioavailability, which could be targets for SGLT2 inhibitor effects. The cross-domain context further reinforces the link between metabolic factors (like obesity) and endothelial dysfunction, potentially explaining how SGLT2 inhibitors might exert their protective effects.",
+    "sub_questions": [
+      {
+        "question": "What are the specific cardiovascular benefits associated with SGLT2 inhibitors?",
+        "target_domains": [
+          "pharmacological_interventions",
+          "cardiovascular_function_and_assessment"
+        ]
+      },
+      {
+        "question": "How do SGLT2 inhibitors affect disease progression in patients with cardio-renal metabolic syndrome?",
+        "target_domains": [
+          "pharmacological_interventions",
+          "cardio_renal_metabolic_syndrome"
+        ]
+      }
+    ],
+    "domain_responses": [
+      {
+        "answer": "The knowledge graph indicates that empagliflozin and liraglutide, both types of SGLT2 inhibitors, reduce the progression of UACR (Urine Albumin-to-Creatinine Ratio). While not a direct cardiovascular benefit, UACR is a biomarker related to kidney function and cardiovascular health. Therefore, these medications have an indirect impact on cardiovascular outcomes by affecting this biomarker.",
+        "coverage": 0.5,
+        "evidence": [
+          "(empagliflozin) -[REDUCES_PROGRESSION]-> (uacr)",
+          "(liraglutide) -[REDUCES_PROGRESSION]-> (uacr)"
+        ],
+        "confidence": 0.0,
+        "out_of_scope_aspects": [],
+        "domain_id": "pharmacological_interventions",
+        "topics_used": [
+          "SGLT2 Inhibitors",
+          "GLP-1 Receptor Agonists"
+        ],
+        "multi_hop_paths": "none",
+        "sub_question": "What are the specific cardiovascular benefits associated with SGLT2 inhibitors?"
+      },
+      {
+        "answer": "The knowledge graph does not contain information about SGLT2 inhibitors or their benefits. However, it does provide information about cardiovascular health, measurements, and related conditions. It details measurements like blood_pressure, iess, ecv, and myocardial_perfusion_reserve_index, as well as conditions like cardiovascular_disease, myocardial_remodeling, microvascular_dysfunction, and hfpef. It also includes biological markers such as soluble_c5b, endothelial_stress_biomarkers, and nitric_oxide_bioavailability. While the graph doesn't address SGLT2 inhibitors, it establishes a foundation for understanding cardiovascular function and assessment.",
+        "coverage": 0.0,
+        "evidence": [],
+        "confidence": 1.0,
+        "out_of_scope_aspects": [
+          "benefits of SGLT2 inhibitors"
+        ],
+        "domain_id": "cardiovascular_function_and_assessment",
+        "topics_used": [
+          "CMR Imaging",
+          "Microvascular Function",
+          "Endothelial Stress"
+        ],
+        "multi_hop_paths": "none",
+        "sub_question": "What are the specific cardiovascular benefits associated with SGLT2 inhibitors?"
+      },
+      {
+        "answer": "The provided knowledge graph does not contain information about SGLT2 inhibitors or their effects on disease progression. However, it does describe relationships relevant to cardio-renal metabolic syndrome. Obesity is associated with ADMA, IL-6, TNF-\u03b1, ICAM-1, C3a, C5a, sC5b-9, and acylcarnitines. Insulin resistance is associated with obesity. Chronic metabolic inflammation is associated with obesity, and the kidney is part of the system affected by chronic metabolic inflammation. Renal injury manifests as albuminuria. While the graph details connections between metabolic conditions, biomarkers, and renal parameters, it lacks information about specific treatments like SGLT2 inhibitors.",
+        "coverage": 0.25,
+        "evidence": [
+          "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+          "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+          "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (obesity)",
+          "(kidney) -[PART_OF_SYSTEM]-> (Chronic metabolic inflammation)",
+          "(renal injury) -[MANIFESTS_AS_SYMPTOM]-> (albuminuria)"
+        ],
+        "confidence": 0.0,
+        "out_of_scope_aspects": [
+          "SGLT2 inhibitors",
+          "disease progression",
+          "treatment effects"
+        ],
+        "domain_id": "cardio_renal_metabolic_syndrome",
+        "topics_used": [
+          "Obesity and Metabolic Inflammation"
+        ],
+        "multi_hop_paths": "none",
+        "sub_question": "How do SGLT2 inhibitors affect disease progression in patients with cardio-renal metabolic syndrome?"
+      }
+    ],
+    "overall_coverage": 0.67,
+    "overall_confidence": 0.6,
+    "gaps": [
+      "Direct mechanisms of cardiovascular protection by SGLT2 inhibitors are not fully explained.",
+      "Specific effects of SGLT2 inhibitors on the cardiovascular measurements and biomarkers identified by the cardiovascular_function_and_assessment expert are unknown.",
+      "The extent to which SGLT2 inhibitors impact the relationships between obesity, inflammation, and renal injury detailed by the cardio_renal_metabolic_syndrome expert remains unclear."
+    ]
+  }
+]
