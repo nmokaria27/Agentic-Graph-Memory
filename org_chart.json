@@ -1,465 +1,285 @@
 {
   "domains": [
     {
-      "domain_id": "cardio_renal_metabolic",
-      "label": "Cardio-Renal-Metabolic Syndrome",
-      "description": "This domain encompasses the interconnectedness of metabolic dysfunction, cardiovascular disease, and kidney injury. It focuses on the pathways linking conditions like diabetes and obesity to heart failure and chronic kidney disease.",
-      "entity_count": 50,
+      "domain_id": "metabolic_inflammation",
+      "label": "Metabolic Inflammation",
+      "description": "This domain focuses on chronic metabolic inflammation and its impact on various biological tissues and systems. It explores the relationships between metabolic inflammation, adipose tissue, innate immunity, and other related conditions.",
+      "entity_count": 46,
       "entities": [
-        "fasting_insulin",
-        "homa_ir",
-        "myocardial_fibrosis",
-        "albuminuria",
-        "endothelial_activation",
-        "microalbuminuria",
-        "acylcarnitines",
-        "inflammation",
-        "triglycerides",
-        "microvascular_function",
-        "kidney_injury",
-        "insulin_resistance",
-        "metabolic_disease",
-        "metabolic_syndrome",
-        "cardiovascular_disease",
-        "glucose",
-        "diffuse_interstitial_fibrosis",
-        "coronary_microvascular_dysfunction",
-        "patients",
-        "tnf_alpha"
+        "",
+        "Our findings",
+        "2",
+        "complement",
+        "adipose tissue",
+        "innate immunity",
+        "plasma proteomics",
+        "coronary flow reserve (CFR)",
+        "transcriptomic signatures of monocyte activation (S100A8/S100A9, LST1)",
+        "complement activation (C3a, C5a)",
+        "endothelial dysfunction",
+        "LV remodeling",
+        "18",
+        "17",
+        "complement activation",
+        "19",
+        "early kidney injury",
+        "endothelial activation",
+        "IL-6",
+        "kidney"
       ],
       "relation_schema": {
-        "ASSOCIATED_WITH": "",
-        "CONTRIBUTES_TO": "",
-        "AFFECTS_BIOMARKER": "",
-        "ESTIMATES_VALUE": "",
-        "ACTIVATES_PROCESS": "",
-        "MEASURES_ATTRIBUTE": "",
-        "ASSOCIATED_WITH_COMPLICATION": "",
-        "PATIENT_HAS_CONDITION": "",
-        "COADMINISTERED_WITH": "",
-        "MEDIATES_EFFECT": "",
-        "DRIVES_ACTIVATION": "",
-        "REDUCES_CIRCULATING_LEVEL": "",
-        "PREDICTS_RESPONSE": "",
-        "PRESERVES_FUNCTION": ""
+        "SPANS_NETWORK_DISEASE": "",
+        "MEDIATING_PATHWAYS_IDENTIFICATION": "",
+        "IMPAIRMENTS_ACTIVATION": "",
+        "METHODS_INTEGRATION": "",
+        "PREDICTION_EVALUATION": "",
+        "ASSOCIATES_WITH": "",
+        "CORRELATION_WITH": "",
+        "PARTIAL_MEDIATION": "",
+        "MEDIATION_OF_RELATIONSHIP": "",
+        "LOWER_PROGRESSIONS_EXHIBITION": "",
+        "HIGHER_RATES_ASSOCIATION": "",
+        "MECHANISTIC_NETWORK_SUPPORT": "",
+        "RENAL_INJURY_ACCELERATION": "",
+        "HEART_FAILURE_CONTRIBUTION": "",
+        "CYTOKINES_DRIVEN": "",
+        "LEUKOCYTE_RECRUITMENT_AMPLIFICATION": ""
       },
       "topics": [
         {
-          "topic_id": "diabetes_and_ckd",
-          "label": "Diabetes and Chronic Kidney Disease",
-          "description": "The relationship between type 2 diabetes and the progression of chronic kidney disease.",
-          "entity_count": 14,
-          "keywords": [
-            "diabetes",
-            "ckd",
-            "albuminuria",
-            "egfr",
-            "renal injury"
-          ]
-        },
-        {
-          "topic_id": "obesity_and_cardiovascular_risk",
-          "label": "Obesity and Cardiovascular Risk",
-          "description": "How obesity contributes to cardiovascular disease and related complications.",
-          "entity_count": 23,
-          "keywords": [
-            "obesity",
-            "cardiovascular disease",
-            "heart failure",
-            "microvascular dysfunction"
-          ]
-        },
-        {
-          "topic_id": "renal_phenotyping",
-          "label": "Renal Phenotyping",
-          "description": "Characterizing kidney function and disease progression through various measurements.",
+          "topic_id": "chronic_metabolic_inflammation",
+          "label": "Chronic Metabolic Inflammation",
+          "description": "Investigates the role of chronic metabolic inflammation in various diseases and its systemic effects.",
           "entity_count": 1,
           "keywords": [
-            "renal phenotyping",
-            "uacr",
-            "egfr",
-            "kidney injury"
+            "chronic inflammation",
+            "metabolic syndrome",
+            "adipose tissue"
           ]
         },
         {
-          "topic_id": "cardiac_remodeling",
-          "label": "Cardiac Remodeling",
-          "description": "Changes in the structure and function of the heart, particularly in response to metabolic and renal stress.",
-          "entity_count": 6,
+          "topic_id": "innate_immunity",
+          "label": "Innate Immunity",
+          "description": "Explores the role of innate immune responses in metabolic inflammation and related diseases.",
+          "entity_count": 1,
           "keywords": [
-            "lv remodeling",
-            "myocardial remodeling",
-            "cardiac mri"
+            "innate immunity",
+            "immune response",
+            "cytokines"
           ]
         }
       ]
     },
     {
-      "domain_id": "inflammation_and_immunity",
-      "label": "Inflammation and Immune Response",
-      "description": "This domain focuses on the innate and adaptive immune responses, inflammatory pathways, and their role in cardio-renal disease. It includes biomarkers and processes related to inflammation.",
-      "entity_count": 74,
+      "domain_id": "cardiovascular_health",
+      "label": "Cardiovascular Health",
+      "description": "This domain encompasses conditions affecting the heart and blood vessels, including heart failure and microvascular dysfunction. It examines the interplay between metabolic factors and cardiovascular outcomes.",
+      "entity_count": 38,
       "entities": [
-        "circulating_soluble_icam1",
-        "endothelial_adhesion",
-        "complement_mediated_microvascular_protection",
-        "e_selectin",
-        "mcp",
-        "sc5b",
-        "iess",
+        "Our findings",
+        "15",
+        "complement",
+        "adipose tissue",
+        "innate immunity",
+        "plasma proteomics",
+        "coronary flow reserve (CFR)",
+        "transcriptomic signatures of monocyte activation (S100A8/S100A9, LST1)",
+        "complement activation (C3a, C5a)",
+        "endothelial dysfunction",
+        "LV remodeling",
+        "complement activation",
+        "early kidney injury",
+        "endothelial activation",
+        "IL-6",
+        "kidney",
         "albuminuria",
-        "endothelial_activation",
-        "factor_b",
-        "adhesion_molecules",
-        "cardio_renal_immune_crosstalk",
-        "inflammation",
-        "c5ar1",
-        "s100a9",
-        "galectin-3_levels",
-        "lst1",
-        "il_6_signaling",
-        "mannose_binding_lectin",
-        "insulin_resistance"
+        "leukocyte recruitment",
+        "transient eGFR dip",
+        "whole-blood transcriptomics"
       ],
       "relation_schema": {
-        "ACTIVATES_PROCESS": "",
-        "ASSOCIATED_WITH": "",
-        "AFFECTS_BIOMARKER": "",
-        "DRUG_LOWERS_MEASUREMENT": "",
-        "CONTRIBUTES_TO": "",
-        "INHIBITOR_TARGETS_PATHWAY": "",
-        "STUDY_EXAMINES_EFFECT": "",
-        "TREATS_DISEASE": "",
-        "REDUCES_CIRCULATING_LEVEL": "",
-        "MEDIATES_EFFECT": "",
-        "VARIANT_AFFECTS_RESPONSE": "",
-        "DRIVES_ACTIVATION": "",
-        "OCCURRENCE_RATE_DIFFERENCE": "",
-        "PREDICTS_RESPONSE": "",
-        "TARGETS_PATHWAY": "",
-        "PRESERVES_FUNCTION": ""
+        "HEART_FAILURE_CONTRIBUTION": "",
+        "LOWER_PROGRESSIONS_EXHIBITION": "",
+        "MEDIATION_OF_RELATIONSHIP": "",
+        "SPANS_NETWORK_DISEASE": "",
+        "METHODS_INTEGRATION": "",
+        "MEDIATING_PATHWAYS_IDENTIFICATION": "",
+        "PREDICTION_EVALUATION": "",
+        "ASSOCIATES_WITH": "",
+        "CORRELATION_WITH": "",
+        "PARTIAL_MEDIATION": "",
+        "HIGHER_RATES_ASSOCIATION": "",
+        "MECHANISTIC_NETWORK_SUPPORT": "",
+        "IMPAIRMENTS_ACTIVATION": "",
+        "RENAL_INJURY_ACCELERATION": "",
+        "CYTOKINES_DRIVEN": "",
+        "LEUKOCYTE_RECRUITMENT_AMPLIFICATION": ""
       },
       "topics": [
         {
-          "topic_id": "complement_activation",
-          "label": "Complement Activation",
-          "description": "The role of the complement system in inflammation and disease progression.",
-          "entity_count": 18,
+          "topic_id": "heart_failure",
+          "label": "Heart Failure",
+          "description": "Focuses on the mechanisms and risk factors contributing to heart failure, particularly in the context of metabolic diseases.",
+          "entity_count": 1,
           "keywords": [
-            "complement",
-            "c3a",
-            "c5a",
-            "inflammation"
+            "heart failure",
+            "ejection fraction",
+            "cardiac function"
           ]
         },
         {
-          "topic_id": "monocyte_and_endothelial_interaction",
-          "label": "Monocyte and Endothelial Interaction",
-          "description": "How monocytes and endothelial cells interact in the context of inflammation and vascular dysfunction.",
-          "entity_count": 10,
+          "topic_id": "microvascular_dysfunction",
+          "label": "Microvascular Dysfunction",
+          "description": "Examines the impact of metabolic conditions on microvascular health and its implications for cardiovascular disease.",
+          "entity_count": 2,
           "keywords": [
-            "monocyte activation",
-            "endothelial adhesion",
-            "vcam",
-            "icam"
-          ]
-        },
-        {
-          "topic_id": "inflammatory_biomarkers",
-          "label": "Inflammatory Biomarkers",
-          "description": "Specific biomarkers used to assess inflammation and its impact on cardio-renal health.",
-          "entity_count": 34,
-          "keywords": [
-            "il-6",
-            "tnf-alpha",
-            "s100a8",
-            "s100a9"
+            "microvascular",
+            "dysfunction",
+            "vascular health"
           ]
         }
       ]
     },
     {
-      "domain_id": "omcis_and_data_analysis",
-      "label": "Omics and Data Analysis",
-      "description": "This domain covers the various 'omics' technologies used to study cardio-renal disease, as well as the data types and analytical methods employed.",
-      "entity_count": 16,
+      "domain_id": "research_methods",
+      "label": "Research Methods",
+      "description": "This domain covers various research methodologies and techniques used to study metabolic inflammation and its effects on health. It includes observational studies and advanced diagnostic techniques.",
+      "entity_count": 40,
       "entities": [
-        "plasma_proteomics",
-        "multi_omic_data",
-        "mendelian_randomization",
-        "endothelial_transcriptomic_analysis",
-        "targeted_metabolomics",
-        "genotype_phenotype_patterns",
-        "mediation_analysis",
-        "transcriptomic_modules",
-        "confounder_adjustment",
-        "icam1",
-        "sele",
-        "vcam1",
-        "c3ar1",
-        "network_topology",
-        "whole_blood_transcriptomics",
-        "phenotype_clusters"
-      ],
-      "relation_schema": {
-        "USES_METHOD": "",
-        "REDUCES_CIRCULATING_LEVEL": ""
-      },
-      "topics": [
-        {
-          "topic_id": "multi_omic_integration",
-          "label": "Multi-Omic Integration",
-          "description": "Combining data from genomics, transcriptomics, proteomics, and metabolomics to gain a comprehensive understanding of disease.",
-          "entity_count": 10,
-          "keywords": [
-            "multi-omic data",
-            "genomics",
-            "transcriptomics",
-            "proteomics",
-            "metabolomics"
-          ]
-        },
-        {
-          "topic_id": "data_analysis_methods",
-          "label": "Data Analysis Methods",
-          "description": "Statistical and computational methods used to analyze omics data.",
-          "entity_count": 6,
-          "keywords": [
-            "network topology",
-            "mendelian randomization",
-            "composite score"
-          ]
-        }
-      ]
-    },
-    {
-      "domain_id": "therapeutic_interventions",
-      "label": "Therapeutic Interventions",
-      "description": "This domain focuses on the medications and procedures used to treat cardio-renal disease and improve patient outcomes.",
-      "entity_count": 45,
-      "entities": [
-        "cardio_renal_benefit",
-        "complement_mediated_microvascular_protection",
-        "liraglutide",
-        "il6r_asp358ala",
-        "complement-modulating_effects",
-        "atorvastatin",
-        "mineralocorticoid_receptor_antagonists",
-        "complement_suppression",
-        "standard_care",
-        "statins",
-        "genital_mycotic_infection",
-        "cabg",
-        "galectin-3_levels",
-        "empagliflozin",
-        "coronary_microvascular_dysfunction",
-        "patients",
-        "tnf_alpha",
-        "kidney_injury_progression",
-        "il_6",
-        "finerenone"
-      ],
-      "relation_schema": {
-        "DRUG_LOWERS_MEASUREMENT": "",
-        "TREATS_DISEASE": "",
-        "ACTIVATES_PROCESS": "",
-        "ASSOCIATED_WITH": "",
-        "TESTS_EFFECT_ON": "",
-        "INHIBITOR_TARGETS_PATHWAY": "",
-        "STUDY_EXAMINES_EFFECT": "",
-        "PATIENT_HAS_CONDITION": "",
-        "COADMINISTERED_WITH": "",
-        "MEDIATES_EFFECT": "",
-        "CONTRIBUTES_TO": "",
-        "VARIANT_AFFECTS_RESPONSE": "",
-        "DRIVES_ACTIVATION": "",
-        "REDUCES_CIRCULATING_LEVEL": "",
-        "OCCURRENCE_RATE_DIFFERENCE": "",
-        "PREDICTS_RESPONSE": "",
-        "TARGETS_PATHWAY": "",
-        "PRESERVES_FUNCTION": ""
-      },
-      "topics": [
-        {
-          "topic_id": "sglt2_inhibitors_and_ckd",
-          "label": "SGLT2 Inhibitors and CKD",
-          "description": "The use of SGLT2 inhibitors in the treatment of chronic kidney disease and heart failure.",
-          "entity_count": 41,
-          "keywords": [
-            "sglt2 inhibitors",
-            "empagliflozin",
-            "dapagliflozin",
-            "egfr"
-          ]
-        },
-        {
-          "topic_id": "revascularization_procedures",
-          "label": "Revascularization Procedures",
-          "description": "Surgical procedures to restore blood flow to the heart.",
-          "entity_count": 4,
-          "keywords": [
-            "pci",
-            "cabg",
-            "coronary flow reserve"
-          ]
-        }
-      ]
-    },
-    {
-      "domain_id": "clinical_assessment",
-      "label": "Clinical Assessment and Monitoring",
-      "description": "This domain covers the clinical measurements and imaging techniques used to assess cardiovascular and renal function.",
-      "entity_count": 52,
-      "entities": [
-        "these_changes",
-        "ckd_epi_creatinine",
-        "myocardial_fibrosis",
-        "cardiac_magnetic_resonance",
-        "left_ventricular_extracellular_volume_fraction",
+        "Our findings",
+        "8",
+        "complement",
+        "adipose tissue",
+        "innate immunity",
+        "plasma proteomics",
+        "coronary flow reserve (CFR)",
+        "transcriptomic signatures of monocyte activation (S100A8/S100A9, LST1)",
+        "complement activation (C3a, C5a)",
+        "endothelial dysfunction",
+        "LV remodeling",
+        "complement activation",
+        "early kidney injury",
+        "endothelial activation",
+        "IL-6",
+        "kidney",
         "albuminuria",
-        "egfr",
-        "lv",
-        "uacr_elevation",
-        "complement_suppression",
-        "myocardial_perfusion_reserve_index",
-        "microvascular_function",
-        "insulin_resistance",
-        "coronary_microvascular_dysfunction",
-        "urinary_albumin_to_creatinine_ratio",
-        "stress_perfusion",
-        "endothelium",
-        "native_t1",
-        "semaglutide",
-        "il_6"
+        "leukocyte recruitment",
+        "transient eGFR dip",
+        "whole-blood transcriptomics"
       ],
       "relation_schema": {
-        "ESTIMATES_VALUE": "",
-        "MEASURES_ATTRIBUTE": "",
-        "ASSOCIATED_WITH": "",
-        "ACTIVATES_PROCESS": "",
-        "DRUG_LOWERS_MEASUREMENT": "",
-        "AFFECTS_BIOMARKER": "",
-        "CONTRIBUTES_TO": "",
-        "TESTS_EFFECT_ON": "",
-        "INDICATES_PROGRESSION": "",
-        "INHIBITOR_TARGETS_PATHWAY": "",
-        "STUDY_EXAMINES_EFFECT": "",
-        "TREATS_DISEASE": "",
-        "MEDIATES_EFFECT": "",
-        "DRIVES_ACTIVATION": "",
-        "REDUCES_CIRCULATING_LEVEL": "",
-        "CORRELATES_WITH_IMPROVEMENT": "",
-        "PREDICTS_RESPONSE": "",
-        "PRESERVES_FUNCTION": ""
+        "METHODS_INTEGRATION": "",
+        "PREDICTION_EVALUATION": "",
+        "MEDIATING_PATHWAYS_IDENTIFICATION": "",
+        "SPANS_NETWORK_DISEASE": "",
+        "ASSOCIATES_WITH": "",
+        "CORRELATION_WITH": "",
+        "PARTIAL_MEDIATION": "",
+        "MEDIATION_OF_RELATIONSHIP": "",
+        "LOWER_PROGRESSIONS_EXHIBITION": "",
+        "HIGHER_RATES_ASSOCIATION": "",
+        "MECHANISTIC_NETWORK_SUPPORT": "",
+        "IMPAIRMENTS_ACTIVATION": "",
+        "RENAL_INJURY_ACCELERATION": "",
+        "HEART_FAILURE_CONTRIBUTION": "",
+        "CYTOKINES_DRIVEN": "",
+        "LEUKOCYTE_RECRUITMENT_AMPLIFICATION": ""
       },
       "topics": [
         {
-          "topic_id": "cardiac_mri_assessment",
-          "label": "Cardiac MRI Assessment",
-          "description": "Using cardiac MRI to evaluate cardiac structure, function, and perfusion.",
-          "entity_count": 33,
+          "topic_id": "multi_center_studies",
+          "label": "Multi-Center Studies",
+          "description": "Focuses on the design and implementation of multi-center observational studies to gather comprehensive data.",
+          "entity_count": 1,
           "keywords": [
-            "cardiac magnetic resonance",
-            "lv extracellular volume fraction",
-            "myocardial perfusion reserve index"
+            "multi-center",
+            "observational study",
+            "data collection"
           ]
         },
         {
-          "topic_id": "renal_function_monitoring",
-          "label": "Renal Function Monitoring",
-          "description": "Tracking kidney function using laboratory measurements.",
-          "entity_count": 19,
+          "topic_id": "diagnostic_techniques",
+          "label": "Diagnostic Techniques",
+          "description": "Explores various diagnostic imaging and research techniques used to assess cardiovascular and metabolic health.",
+          "entity_count": 2,
           "keywords": [
-            "urinary albumin to creatinine ratio",
-            "estimated glomerular filtration rate",
-            "ldl cholesterol"
+            "diagnostic imaging",
+            "plasma proteomics",
+            "transcriptomics"
           ]
         }
       ]
     },
     {
-      "domain_id": "patient_characteristics",
-      "label": "Patient Characteristics",
-      "description": "This domain includes demographic and behavioral factors that can influence cardio-renal disease risk and outcomes.",
-      "entity_count": 24,
+      "domain_id": "renal_health",
+      "label": "Renal Health",
+      "description": "This domain focuses on kidney health and diseases, including early kidney injury and its relationship with metabolic conditions. It examines how metabolic inflammation can accelerate renal injury.",
+      "entity_count": 38,
       "entities": [
-        "adipose_tissue",
-        "il6r_asp358ala",
-        "sc5b",
-        "smoking_status",
-        "body_mass_index",
-        "age",
-        "patients",
-        "cardiovascular_disease",
-        "empagliflozin",
-        "icam",
-        "sex",
-        "obesity",
-        "arginine",
-        "chronic_kidney_disease",
-        "hyperkalemia",
-        "c5a",
-        "adma",
-        "vcam",
-        "type_2_diabetes",
-        "c3a"
+        "Our findings",
+        "complement",
+        "adipose tissue",
+        "innate immunity",
+        "6",
+        "plasma proteomics",
+        "coronary flow reserve (CFR)",
+        "transcriptomic signatures of monocyte activation (S100A8/S100A9, LST1)",
+        "complement activation (C3a, C5a)",
+        "endothelial dysfunction",
+        "LV remodeling",
+        "complement activation",
+        "early kidney injury",
+        "endothelial activation",
+        "IL-6",
+        "kidney",
+        "albuminuria",
+        "leukocyte recruitment",
+        "transient eGFR dip",
+        "whole-blood transcriptomics"
       ],
       "relation_schema": {
-        "ASSOCIATED_WITH": "",
-        "ACTIVATES_PROCESS": "",
-        "AFFECTS_BIOMARKER": "",
-        "ASSOCIATED_WITH_COMPLICATION": "",
-        "PATIENT_HAS_CONDITION": "",
-        "COADMINISTERED_WITH": "",
-        "VARIANT_AFFECTS_RESPONSE": "",
-        "MEDIATES_EFFECT": "",
-        "REDUCES_CIRCULATING_LEVEL": "",
-        "OCCURRENCE_RATE_DIFFERENCE": "",
-        "RARE_IN_CONTEXT": "",
-        "CONTRIBUTES_TO": "",
-        "TARGETS_PATHWAY": ""
+        "RENAL_INJURY_ACCELERATION": "",
+        "MEDIATION_OF_RELATIONSHIP": "",
+        "HIGHER_RATES_ASSOCIATION": "",
+        "SPANS_NETWORK_DISEASE": "",
+        "METHODS_INTEGRATION": "",
+        "MEDIATING_PATHWAYS_IDENTIFICATION": "",
+        "PREDICTION_EVALUATION": "",
+        "ASSOCIATES_WITH": "",
+        "CORRELATION_WITH": "",
+        "PARTIAL_MEDIATION": "",
+        "LOWER_PROGRESSIONS_EXHIBITION": "",
+        "MECHANISTIC_NETWORK_SUPPORT": "",
+        "IMPAIRMENTS_ACTIVATION": "",
+        "HEART_FAILURE_CONTRIBUTION": "",
+        "CYTOKINES_DRIVEN": "",
+        "LEUKOCYTE_RECRUITMENT_AMPLIFICATION": ""
       },
       "topics": [
         {
-          "topic_id": "risk_factors",
-          "label": "Risk Factors",
-          "description": "Identifying factors that contribute to the development of cardio-renal disease.",
-          "entity_count": 24,
+          "topic_id": "early_kidney_injury",
+          "label": "Early Kidney Injury",
+          "description": "Investigates the early signs and risk factors for kidney injury in the context of metabolic diseases.",
+          "entity_count": 1,
           "keywords": [
-            "age",
-            "smoking",
-            "diabetes",
-            "obesity"
+            "kidney injury",
+            "early detection",
+            "renal health"
+          ]
+        },
+        {
+          "topic_id": "insulin_resistance",
+          "label": "Insulin Resistance",
+          "description": "Explores the relationship between insulin resistance and kidney health, particularly in metabolic syndrome.",
+          "entity_count": 1,
+          "keywords": [
+            "insulin resistance",
+            "metabolic syndrome",
+            "renal function"
           ]
         }
       ]
-    },
-    {
-      "domain_id": "miscellaneous",
-      "label": "Miscellaneous",
-      "description": "This domain captures entities that don't neatly fit into the other domains.",
-      "entity_count": 7,
-      "entities": [
-        "these_changes",
-        "hyperkalemia",
-        "empagliflozin",
-        "native_t1_mapping",
-        "volume_depletion",
-        "genital_mycotic_infection",
-        "both_groups"
-      ],
-      "relation_schema": {
-        "VARIANT_AFFECTS_RESPONSE": "",
-        "MEDIATES_EFFECT": "",
-        "REDUCES_CIRCULATING_LEVEL": "",
-        "OCCURRENCE_RATE_DIFFERENCE": "",
-        "RARE_IN_CONTEXT": "",
-        "CORRELATES_WITH_IMPROVEMENT": "",
-        "CONTRIBUTES_TO": "",
-        "TARGETS_PATHWAY": ""
-      },
-      "topics": []
     }
   ],
-  "cross_domain_relations": 25
+  "cross_domain_relations": 0
 }
