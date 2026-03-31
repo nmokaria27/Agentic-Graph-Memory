@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
 from multi_agent_kg.core.domain_experts import neighbourhood
+from multi_agent_kg.core.kg_operations import normalize_entity_name
 
 from .atomic_decomposer import AtomicDecomposer, AtomicFact
 from .triple_verifier import TripleVerifier, VerificationResult, Verdict
@@ -464,20 +465,16 @@ class KGAFEEvaluator:
 
     def _get_relevant_evidence(self, question: str, answer: str) -> str:
         """Gather relevant KG evidence for the judge panel."""
-        import re
-
-        # Extract entity mentions from both question and answer
-        text = f"{question} {answer}".lower()
+        text_norm = normalize_entity_name(f"{question} {answer}")
         relevant_triples = []
 
         for eid, entity in self.kg.entities.items():
             names = [eid.replace("_", " ")] + entity.labels
             for n in names:
-                if len(n) < 3:
+                n_norm = normalize_entity_name(n)
+                if len(n_norm) < 3:
                     continue
-                pattern = r'\b' + re.escape(n.lower()) + r'\b'
-                if re.search(pattern, text):
-                    # Get neighbourhood
+                if n_norm in text_norm:
                     nbr = neighbourhood(self.kg, eid, hops=2)
                     relevant_triples.extend(nbr)
                     break
@@ -499,17 +496,17 @@ class KGAFEEvaluator:
 
     def _estimate_coverage(self, question: str, answer: str) -> float:
         """Estimate answer coverage when no gold triples are available."""
-        import re
-        text = f"{question}".lower()
+        text_norm = normalize_entity_name(question)
 
         # Find entities mentioned in the question
         query_entities = []
         for eid, entity in self.kg.entities.items():
             names = [eid.replace("_", " ")] + entity.labels
             for n in names:
-                if len(n) < 3:
+                n_norm = normalize_entity_name(n)
+                if len(n_norm) < 3:
                     continue
-                if re.search(r'\b' + re.escape(n.lower()) + r'\b', text):
+                if n_norm in text_norm:
                     query_entities.append(eid)
                     break
 
@@ -517,15 +514,15 @@ class KGAFEEvaluator:
             return 0.5  # Can't estimate
 
         # Count how many triples involving query entities are reflected in the answer
-        answer_lower = answer.lower()
+        answer_norm = normalize_entity_name(answer)
         relevant = 0
         mentioned = 0
         for t in self.kg.triples:
             if t.subject in query_entities or t.object in query_entities:
                 relevant += 1
-                subj_label = self._entity_label(t.subject).lower()
-                obj_label = self._entity_label(t.object).lower()
-                if subj_label in answer_lower or obj_label in answer_lower:
+                subj_norm = normalize_entity_name(self._entity_label(t.subject))
+                obj_norm = normalize_entity_name(self._entity_label(t.object))
+                if subj_norm in answer_norm or obj_norm in answer_norm:
                     mentioned += 1
 
         return mentioned / max(relevant, 1)

@@ -12,10 +12,12 @@ This script produces demo_results.json with all outputs for inspection.
 
 import json
 import os
+import sys
 import time
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(PROJECT_ROOT)
+sys.path.insert(0, PROJECT_ROOT)
 
 from dotenv import load_dotenv
 

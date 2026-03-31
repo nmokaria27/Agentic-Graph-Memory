@@ -62,6 +62,7 @@ from multi_agent_kg.core.kg_operations import (
     load_kg,
     save_kg,
     find_entity_matches,
+    normalize_entity_name,
 )
 from multi_agent_kg.core.incremental_enrichment import (
     IncrementalEnricher,

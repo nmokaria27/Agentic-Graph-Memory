@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
 from multi_agent_kg.core.domain_experts import find_paths, neighbourhood
+from multi_agent_kg.core.kg_operations import normalize_entity_name
 from multi_agent_kg.llm.openai_client import chat_completion_json
 
 
@@ -97,7 +98,7 @@ class TripleVerifier:
         for eid, entity in self.kg.entities.items():
             names = [eid, eid.replace("_", " ")] + entity.labels
             for name in names:
-                key = name.lower().strip()
+                key = normalize_entity_name(name)
                 if key:
                     index.setdefault(key, []).append(eid)
         return index
@@ -112,16 +113,16 @@ class TripleVerifier:
 
     def _resolve_entity(self, name: str) -> List[str]:
         """Resolve an entity name to KG entity IDs (fuzzy matching)."""
-        name_lower = name.lower().strip()
+        norm = normalize_entity_name(name)
 
-        # Exact match
-        if name_lower in self._entity_name_to_id:
-            return self._entity_name_to_id[name_lower]
+        # Exact normalized match
+        if norm in self._entity_name_to_id:
+            return self._entity_name_to_id[norm]
 
-        # Substring match (entity name contains query or vice versa)
+        # Substring match on normalized forms
         matches = []
         for key, eids in self._entity_name_to_id.items():
-            if name_lower in key or key in name_lower:
+            if norm in key or key in norm:
                 matches.extend(eids)
 
         return list(set(matches))
@@ -217,9 +218,9 @@ class TripleVerifier:
                                (t.subject == eid_b and t.object == eid_a):
                                 # If relation is specified, check it matches
                                 if relation_implied:
-                                    rel_lower = t.relation.lower().replace("_", " ")
-                                    impl_lower = relation_implied.lower().replace("_", " ")
-                                    if impl_lower in rel_lower or rel_lower in impl_lower:
+                                    rel_norm = normalize_entity_name(t.relation)
+                                    impl_norm = normalize_entity_name(relation_implied)
+                                    if impl_norm in rel_norm or rel_norm in impl_norm:
                                         supporting_triples.append(t)
                                 else:
                                     supporting_triples.append(t)

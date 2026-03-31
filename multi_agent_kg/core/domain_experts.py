@@ -180,17 +180,18 @@ def find_paths(
         adj.setdefault(t.subject, []).append(t)
         adj.setdefault(t.object, []).append(t)
 
-    # Normalise names to lower for fuzzy matching
-    source_l = source.lower().strip()
-    target_l = target.lower().strip()
+    # Normalise names for fuzzy matching (hyphens, underscores, case)
+    from multi_agent_kg.core.kg_operations import normalize_entity_name
+    source_n = normalize_entity_name(source)
+    target_n = normalize_entity_name(target)
 
     def _match(eid: str, query: str) -> bool:
-        el = eid.lower().strip()
-        return el == query or query in el or el in query
+        en = normalize_entity_name(eid)
+        return en == query or query in en or en in query
 
     # Identify actual node IDs matching source / target
-    source_ids = {eid for eid in adj if _match(eid, source_l)}
-    target_ids = {eid for eid in adj if _match(eid, target_l)}
+    source_ids = {eid for eid in adj if _match(eid, source_n)}
+    target_ids = {eid for eid in adj if _match(eid, target_n)}
 
     if not source_ids or not target_ids:
         return []

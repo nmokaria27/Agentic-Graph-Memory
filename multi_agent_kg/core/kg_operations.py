@@ -30,6 +30,28 @@ def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text)
 
 
+_GREEK_TO_ASCII = {
+    "α": "alpha", "β": "beta", "γ": "gamma", "δ": "delta",
+    "ε": "epsilon", "κ": "kappa", "λ": "lambda", "μ": "mu",
+    "ω": "omega", "τ": "tau", "σ": "sigma",
+}
+
+
+def normalize_entity_name(name: str) -> str:
+    """Canonical entity name normalization for matching.
+
+    Converts hyphens, underscores, and extra spaces to a single space,
+    lowercases, strips, and normalizes Greek letters (α→alpha, etc.).
+    This ensures that ``IL-6``, ``il_6``, ``il 6`` all map to ``il 6``
+    and ``TNF-α`` matches ``tnf_alpha``.
+    """
+    name = name.lower().strip()
+    for greek, ascii_ in _GREEK_TO_ASCII.items():
+        name = name.replace(greek, " " + ascii_ + " ")
+    name = re.sub(r"[-_]+", " ", name)
+    return re.sub(r"\s+", " ", name).strip()
+
+
 def fuzzy_entity_match(
     a: str,
     b: str,

@@ -76,6 +76,7 @@ from multi_agent_kg.core.domain_experts import (
     neighbourhood,
     paths_to_text,
 )
+from multi_agent_kg.core.kg_operations import normalize_entity_name
 from multi_agent_kg.llm.openai_client import chat_completion, chat_completion_json
 
 
@@ -523,12 +524,12 @@ Return ONLY the JSON."""
 
     def _resolve_entity_name(self, name: str) -> List[str]:
         """Fuzzy-resolve an entity name to KG entity IDs."""
-        name_lower = name.lower().strip()
+        norm = normalize_entity_name(name)
         matches = []
         for eid, entity in self.full_kg.entities.items():
-            names = [eid.replace("_", " ").lower()] + [l.lower() for l in entity.labels]
-            for n in names:
-                if name_lower in n or n in name_lower:
+            candidates = [normalize_entity_name(eid)] + [normalize_entity_name(l) for l in entity.labels]
+            for n in candidates:
+                if norm in n or n in norm:
                     matches.append(eid)
                     break
         return matches
@@ -1267,13 +1268,13 @@ Return ONLY the JSON."""
             for t in self.org_chart.cross_domain_relations[:30]:
                 lines.append(f"  ({t.subject}) -[{t.relation}]-> ({t.object})")
 
-        import re
-        query_lower = question.lower()
+        query_norm = normalize_entity_name(question)
         matched_entities = []
         for eid, entity in self.full_kg.entities.items():
             names = [eid.replace("_", " ")] + entity.labels
             for n in names:
-                if len(n) > 2 and re.search(r'\b' + re.escape(n.lower()) + r'\b', query_lower):
+                n_norm = normalize_entity_name(n)
+                if len(n_norm) > 2 and n_norm in query_norm:
                     matched_entities.append(eid)
                     break
 
@@ -1438,10 +1439,11 @@ Return ONLY the JSON."""
             # Find supporting triples
             supporting = []
             for eid_name in entities:
+                norm_name = normalize_entity_name(eid_name)
                 # Resolve to KG entity
                 for eid, entity in self.full_kg.entities.items():
-                    names = [eid.replace("_", " ").lower()] + [l.lower() for l in entity.labels]
-                    if eid_name.lower() in names or any(eid_name.lower() in n for n in names):
+                    candidates = [normalize_entity_name(eid)] + [normalize_entity_name(l) for l in entity.labels]
+                    if norm_name in candidates or any(norm_name in c or c in norm_name for c in candidates):
                         for t in self.full_kg.triples:
                             if t.subject == eid or t.object == eid:
                                 supporting.append(t)
@@ -1469,7 +1471,7 @@ Return ONLY the JSON."""
     def _get_relevant_evidence(self, question: str, answer: str) -> str:
         """Gather KG evidence for critic review."""
         import re
-        text = f"{question} {answer}".lower()
+        text_norm = normalize_entity_name(f"{question} {answer}")
         relevant = []
 
         for eid, entity in self.full_kg.entities.items():
@@ -1477,7 +1479,8 @@ Return ONLY the JSON."""
             for n in names:
                 if len(n) < 3:
                     continue
-                if re.search(r'\b' + re.escape(n.lower()) + r'\b', text):
+                n_norm = normalize_entity_name(n)
+                if n_norm and n_norm in text_norm:
                     nbr = neighbourhood(self.full_kg, eid, hops=2)
                     relevant.extend(nbr)
                     break
