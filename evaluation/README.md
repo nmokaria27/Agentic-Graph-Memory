@@ -1,144 +1,48 @@
-# Evaluation Framework for Multi-Agent KG Extraction
+# Evaluation Framework
 
-This directory contains tools for evaluating the multi-agent knowledge graph
-extraction pipeline against gold-standard benchmarks.
+Two evaluation frameworks: **SciERC** for benchmarking KG extraction quality,
+and **KGAFE** for evaluating QA answer faithfulness against the KG.
 
 ## Directory Structure
 
 ```
 evaluation/
-  evaluate_kg.py           # Core evaluation metrics (P/R/F1, hallucination, etc.)
-  run_evaluation.py        # End-to-end runner: load data, run pipeline, evaluate
-  README.md                # This file
+  evaluate_kg.py           # KG extraction metrics (P/R/F1, hallucination, etc.)
+  run_evaluation.py        # SciERC end-to-end runner
   adapters/
     scierc_adapter.py      # Converts SciERC data to pipeline format
   datasets/
-    scierc/                # SciERC benchmark data (350 train / 50 dev / 100 test)
-  results/                 # Per-document pipeline outputs (created at runtime)
-  kgafe/                   # KG-Grounded Atomic Fact Evaluation framework
+    scierc/                # SciERC benchmark (350 train / 50 dev / 100 test)
+  results/                 # Per-document outputs (created at runtime)
+  kgafe/                   # KG-Grounded Atomic Fact Evaluation
     evaluator.py           # Main KGAFE evaluator (orchestrates the pipeline)
     atomic_decomposer.py   # Decomposes answers into atomic facts
     triple_verifier.py     # 3-tier verification (exact, path-based, semantic)
-    judge_panel.py         # Multi-judge evaluation (correctness, completeness, groundedness)
+    judge_panel.py         # Multi-judge panel (correctness, completeness, groundedness)
     benchmark_generator.py # Auto-generates QA benchmarks from KG structure
     run_kgafe.py           # CLI runner for KGAFE evaluation
 ```
 
-## Available Datasets
+---
 
-### SciERC
+## SciERC Benchmark
 
-The SciERC dataset (Luan et al., 2018) contains 500 scientific abstracts from
-AI conference/workshop proceedings, annotated with:
-
-- **6 entity types:** Task, Method, Metric, Material, OtherScientificTerm, Generic
-- **7 relation types:** Used-for, Feature-of, Part-of, Compare, Hyponym-of,
-  Conjunction, Evaluate-for
-
-Split sizes: 350 train / 50 dev / 100 test documents.
-
-Source: http://nlp.cs.washington.edu/sciIE/
-
-## Quick Start
-
-### 1. Evaluate pre-computed results
-
-If you have already run the pipeline and saved per-document JSON files in
-`evaluation/results/`:
+Evaluates KG extraction against the SciERC dataset (Luan et al., 2018) --
+500 scientific abstracts annotated with 6 entity types and 7 relation types.
 
 ```bash
+# Quick test (5 documents)
+python evaluation/run_evaluation.py --max-docs 5
+
+# Full test set
+python evaluation/run_evaluation.py
+
+# Evaluate pre-computed results
 python evaluation/run_evaluation.py --skip-pipeline --results-dir evaluation/results/
 ```
 
-### 2. Run the full pipeline and evaluate
-
-```bash
-# Run on 5 test documents (for quick testing):
-python evaluation/run_evaluation.py --max-docs 5
-
-# Full test set:
-python evaluation/run_evaluation.py
-```
-
-### 3. Evaluate a single kg_export.json against a single gold document
-
-```bash
-python evaluation/evaluate_kg.py \
-    --gold evaluation/datasets/scierc/test.json \
-    --predicted kg_export.json
-```
-
-### 4. Convert SciERC data for inspection
-
-```bash
-python evaluation/adapters/scierc_adapter.py \
-    --input evaluation/datasets/scierc/test.json \
-    --output-pipeline pipeline_input.json \
-    --output-gold gold_standard.json \
-    --max-docs 5
-```
-
-## Metrics
-
-The evaluation framework computes:
-
-| Metric | Description |
-|--------|-------------|
-| **Entity P/R/F1 (strict)** | Exact normalised text match |
-| **Entity P/R/F1 (partial)** | Token-overlap Jaccard >= 0.5 |
-| **Entity type accuracy** | Of matched entities, fraction with correct type |
-| **Entity hallucination rate** | Fraction of predicted entities with no gold match |
-| **Triple P/R/F1 (strict)** | Exact match on (subject, relation, object) |
-| **Triple P/R/F1 (fuzzy)** | Fuzzy subject/object match, exact relation |
-| **Triple hallucination rate** | Fraction of predicted triples with no gold match |
-| **Per-type breakdowns** | P/R/F1 broken down by entity type and relation type |
-
-## Command-Line Options
-
-### evaluate_kg.py
-
-| Flag | Description |
-|------|-------------|
-| `--gold PATH` | Path to gold standard (SciERC JSON-lines or converted array) |
-| `--predicted PATH` | Path to predicted kg_export.json or directory of per-doc JSONs |
-| `--fuzzy-threshold F` | Similarity threshold for fuzzy matching (default: 0.8) |
-| `--max-docs N` | Limit evaluation to first N gold documents |
-| `--output-json PATH` | Write metrics to JSON file |
-
-### run_evaluation.py
-
-| Flag | Description |
-|------|-------------|
-| `--split {train,dev,test}` | SciERC split (default: test) |
-| `--max-docs N` | Limit to N documents |
-| `--skip-pipeline` | Only evaluate pre-computed results |
-| `--results-dir PATH` | Directory for per-document results |
-| `--model NAME` | LLM model to use (default: gemma3:27b) |
-| `--fuzzy-threshold F` | Fuzzy matching threshold (default: 0.8) |
-| `--include-generic` | Include Generic entities in evaluation |
-| `--output-json PATH` | Save metrics as JSON |
-
-## Pipeline Output Format
-
-The pipeline produces `kg_export.json` with this structure:
-
-```json
-{
-  "knowledge_graph": {
-    "entities": [
-      {"id": "entity_name", "type": "Method", "labels": [...], "metadata": {...}}
-    ],
-    "triples": [
-      {
-        "subject": "entity_a",
-        "relation": "Used-for",
-        "object": "entity_b",
-        "confidence": 0.85
-      }
-    ]
-  }
-}
-```
+Metrics: Entity P/R/F1 (strict + partial), type accuracy, triple P/R/F1
+(strict + fuzzy), hallucination rates, per-type breakdowns.
 
 ---
 
@@ -146,31 +50,63 @@ The pipeline produces `kg_export.json` with this structure:
 
 KGAFE evaluates QA answers by decomposing them into atomic facts and verifying
 each one against the knowledge graph. It combines structural graph verification
-with LLM-based judgment.
+with LLM-based judgment to produce a comprehensive faithfulness score.
 
-### How it works
+### Pipeline
 
-1. **Atomic Decomposition** -- Break the answer into independently verifiable
-   facts (e.g., "HOMA-IR is a marker of insulin resistance").
+```
+Answer --> [Atomic Decomposer] --> [Three-Tier Verifier] --> [Judge Panel] --> KGAFE Score
+```
 
-2. **Three-Tier Verification** -- Each fact is checked in a cascade:
-   - **Tier 1 (Exact Match)**: Direct KG triple lookup. No LLM needed.
-   - **Tier 2 (Path-Based)**: Multi-hop paths (up to 3 hops) between entities,
-     then LLM checks if the path logically entails the fact.
-   - **Tier 3 (Semantic)**: 2-hop entity neighbourhood + LLM semantic judgment.
+**1. Atomic Decomposition**
 
-3. **Judge Panel** -- Three independent LLM judges score the answer:
-   - Correctness (35% weight): Are the facts accurate?
-   - Completeness (25% weight): Does the answer cover the question?
-   - Groundedness (40% weight): Are claims traceable to KG triples?
+Breaks the answer into independently verifiable facts following the FActScore
+principle. Each fact is a single claim mentioning at least one KG entity.
 
-4. **KGAFE Score** -- Weighted composite:
-   ```
-   KGAFE = 0.30 * KG_Faithfulness + 0.25 * (1 - Hallucination_Rate)
-         + 0.20 * Groundedness + 0.15 * Coverage + 0.10 * Correctness
-   ```
+Example: "HOMA-IR, a marker of insulin resistance, mediates microvascular dysfunction" becomes:
+- "HOMA-IR is a marker of insulin resistance" (definition)
+- "HOMA-IR mediates microvascular dysfunction" (claim)
 
-### Quick start
+**2. Three-Tier Verification**
+
+Each fact is checked in a cascade -- the most precise method first, falling back
+to broader ones:
+
+| Tier | Method | How it works | LLM needed? |
+|------|--------|-------------|-------------|
+| **Tier 1** | Exact Match | Direct KG triple lookup between resolved entities | No |
+| **Tier 2** | Path-Based | Find multi-hop paths (up to 3 hops), LLM checks if the path entails the fact | Yes |
+| **Tier 3** | Semantic | Gather 2-hop entity neighbourhood, LLM judges semantic entailment | Yes |
+
+Each fact gets a verdict: **supported**, **contradicted**, **partially supported**, or **unverifiable**.
+
+Entity resolution uses aggressive normalization (`normalize_for_matching()`) to
+bridge entity IDs (`homair`), display names (`HOMA-IR`), and snake_case (`homa_ir`).
+
+**3. Judge Panel**
+
+Three independent LLM judges evaluate the full answer:
+
+| Judge | Weight | Question |
+|-------|--------|----------|
+| Correctness | 35% | Are the facts accurate compared to KG evidence? |
+| Completeness | 25% | Does the answer cover all relevant aspects? |
+| Groundedness | 40% | Is every claim traceable to KG triples? |
+
+A meta-judge aggregates the weighted scores. Overall pass requires all three
+judges to pass their binary thresholds AND a weighted score >= 0.65.
+
+**4. KGAFE Score**
+
+```
+KGAFE = 0.30 * KG_Faithfulness + 0.25 * (1 - Hallucination_Rate)
+      + 0.20 * Groundedness + 0.15 * Coverage + 0.10 * Correctness
+```
+
+Weighting prioritizes faithfulness and anti-hallucination (55% combined),
+then groundedness (20%), coverage (15%), and correctness (10%).
+
+### Usage
 
 ```bash
 # Evaluate a single question/answer pair
@@ -195,26 +131,37 @@ python -m evaluation.kgafe.run_kgafe \
   --kg-path kg_export.json --benchmark --output results/kgafe_benchmark.json
 ```
 
-### KGAFE metrics
+### Metrics
 
 | Metric | Description |
 |--------|-------------|
 | **KG Faithfulness** | Fraction of atomic facts supported by the KG |
-| **Hallucination Rate** | Fraction of facts that are contradicted or unverifiable |
-| **Groundedness** | Judge panel score for how traceable claims are to KG triples |
+| **Hallucination Rate** | Fraction of facts contradicted or unverifiable |
+| **Groundedness** | Judge score for how traceable claims are to KG triples |
 | **Coverage** | How much of the relevant KG content the answer mentions |
-| **Correctness** | Judge panel score for factual accuracy |
-| **Completeness** | Judge panel score for question coverage |
+| **Correctness** | Judge score for factual accuracy |
+| **Completeness** | Judge score for question coverage |
 | **KGAFE Score** | Weighted composite of all metrics (0-1) |
 | **Tier Distribution** | How many facts verified at each tier (exact/path/semantic) |
 | **Verdict Distribution** | Counts of supported/contradicted/unverifiable facts |
 
-### Sample results
+### Auto-Benchmark Generator
+
+KGAFE can auto-generate QA benchmarks directly from KG structure with provably
+correct gold answers (no human annotation needed):
+
+- **Single-hop**: Direct triple-based Q&A
+- **Multi-hop**: Path-based reasoning (2-3 hop chains)
+- **Aggregation**: "What are all the things that X relates to?"
+- **Comparison**: "Compare X and Y"
+- **Negative**: "Does X relate to Z?" (when it doesn't)
+
+### Sample Results
 
 See `kgafe_results_fixed.json` in the repo root for a full evaluation run
-(4 questions, 97 atomic facts, 96 supported, 0 contradicted). See
-`demo_results.json` for the complete QA pipeline output including expert
-responses, debate transcripts, and provenance chains.
+(4 questions, 97 atomic facts, 96 supported, 0 contradicted, avg KGAFE 0.90).
+See `demo_results.json` for the complete QA pipeline output including expert
+responses, debate transcripts, critic reviews, and provenance chains.
 
 ---
 
