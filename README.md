@@ -28,14 +28,33 @@ A multi-agent system that builds knowledge graphs from unstructured text and ans
 pip install -e .
 
 # Extract a KG from text
-python run_pipeline_on_text.py
+python scripts/run_pipeline.py
 
-# Ask questions over it
-python run_domain_qa.py
+# Run the full demo (QA + KGAFE evaluation)
+python scripts/run_demo.py
 
-# Or spin up the QA server for the interactive explorer
-python qa_server.py
-# then open kg_explorer.html in your browser
+# Spin up the QA server for the interactive explorer
+python scripts/qa_server.py
+```
+
+## Project structure
+
+```
+multi_agent_kg/              # core package
+  agents/                    # 9 extraction pipeline agents
+  core/                      # orchestrator, QA system, KG data structures, memory
+  llm/                       # LLM client (Ollama / OpenAI)
+  utils/                     # visualizer, debug logger
+evaluation/                  # evaluation framework
+  kgafe/                     # KG-grounded atomic fact evaluation
+  adapters/                  # dataset adapters (SciERC)
+  datasets/                  # benchmark data
+scripts/                     # entry points
+  run_pipeline.py            # extract KG from text
+  run_demo.py                # full demo: QA + KGAFE eval
+  run_full_test.py           # incremental enrichment + QA
+  qa_server.py               # HTTP QA server
+  extract_pdf.py             # PDF text extraction utility
 ```
 
 ## Architecture

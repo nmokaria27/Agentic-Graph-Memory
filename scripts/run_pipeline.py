@@ -1,10 +1,16 @@
 """
 Run the multi-agent pipeline on pre-extracted text.
-Assumes article_text.txt exists from running extract_pdf.py
+Assumes a text file exists in the project root (from extract_pdf.py or manually).
 """
 
-from dotenv import load_dotenv
 import os
+import sys
+
+# Resolve project root so file paths work from any working directory
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(PROJECT_ROOT)
+
+from dotenv import load_dotenv
 from multi_agent_kg.core import LLMConfig, DeliberativeOrchestrator, KnowledgeGraph
 from multi_agent_kg.utils.debug_logger import DebugLogger
 

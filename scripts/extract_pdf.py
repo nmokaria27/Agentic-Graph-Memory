@@ -3,6 +3,11 @@ Extract text from PDF and save to file for inspection.
 Simple script to verify PDF extraction works correctly.
 """
 
+import os
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(PROJECT_ROOT)
+
 from pypdf import PdfReader
 
 pdf_path = "1-s2.0-S0140673625025036-main.pdf"

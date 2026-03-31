@@ -2,8 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
 
 # Distribution / packaging
@@ -28,7 +26,7 @@ wheels/
 venv/
 env/
 ENV/
-.venv
+.venv/
 
 # IDE
 .vscode/
@@ -51,7 +49,7 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Generated outputs
+# Generated pipeline outputs
 kg_export.json
 kg_enriched.json
 kg_interactive.html
@@ -60,7 +58,11 @@ kg_static.png
 qa_results.json
 org_chart.json
 org_chart_cache.json
-pipeline_debug.log
+demo_results.json
+
+# Input data files (not shipped with repo)
+*.txt
+*.pdf
 
 # Large datasets (download separately)
 evaluation/datasets/scierc/raw_data/

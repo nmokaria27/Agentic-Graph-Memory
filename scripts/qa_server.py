@@ -22,6 +22,10 @@ import hashlib
 import os
 import argparse
 from http.server import HTTPServer, BaseHTTPRequestHandler
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+os.chdir(PROJECT_ROOT)
+
 from dotenv import load_dotenv
 
 load_dotenv()
