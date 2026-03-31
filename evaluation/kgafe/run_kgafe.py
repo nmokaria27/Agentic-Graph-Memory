@@ -24,32 +24,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Entity, Triple
 from multi_agent_kg.core.config import LLMConfig
+from multi_agent_kg.core.kg_operations import load_kg
 from evaluation.kgafe.evaluator import KGAFEEvaluator
-
-
-def load_kg(path: str) -> KnowledgeGraph:
-    """Load a KnowledgeGraph from a JSON export file."""
-    with open(path) as f:
-        data = json.load(f)
-
-    kg = KnowledgeGraph()
-    for e in data.get("entities", []):
-        kg.add_entity(
-            entity_id=e["id"],
-            labels=e.get("labels", []),
-            entity_type=e.get("type"),
-            metadata=e.get("metadata", {}),
-        )
-    for t in data.get("triples", []):
-        kg.add_triple(
-            subject=t["subject"],
-            relation=t["relation"],
-            obj=t["object"],
-            confidence=t.get("confidence"),
-            source=t.get("source"),
-            metadata=t.get("metadata", {}),
-        )
-    return kg
 
 
 def load_qa_system(kg, org_chart_path=None):

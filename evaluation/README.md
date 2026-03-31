@@ -13,13 +13,15 @@ evaluation/
   adapters/
     scierc_adapter.py      # Converts SciERC data to pipeline format
   datasets/
-    scierc/
-      train.json           # SciERC training set (350 abstracts)
-      dev.json             # SciERC development set (50 abstracts)
-      test.json            # SciERC test set (100 abstracts)
-      raw_data/            # Raw SciERC text files and annotations
-      processed_data/      # Original processed SciERC directory
+    scierc/                # SciERC benchmark data (350 train / 50 dev / 100 test)
   results/                 # Per-document pipeline outputs (created at runtime)
+  kgafe/                   # KG-Grounded Atomic Fact Evaluation framework
+    evaluator.py           # Main KGAFE evaluator (orchestrates the pipeline)
+    atomic_decomposer.py   # Decomposes answers into atomic facts
+    triple_verifier.py     # 3-tier verification (exact, path-based, semantic)
+    judge_panel.py         # Multi-judge evaluation (correctness, completeness, groundedness)
+    benchmark_generator.py # Auto-generates QA benchmarks from KG structure
+    run_kgafe.py           # CLI runner for KGAFE evaluation
 ```
 
 ## Available Datasets
@@ -137,6 +139,84 @@ The pipeline produces `kg_export.json` with this structure:
   }
 }
 ```
+
+---
+
+## KGAFE: KG-Grounded Atomic Fact Evaluation
+
+KGAFE evaluates QA answers by decomposing them into atomic facts and verifying
+each one against the knowledge graph. It combines structural graph verification
+with LLM-based judgment.
+
+### How it works
+
+1. **Atomic Decomposition** -- Break the answer into independently verifiable
+   facts (e.g., "HOMA-IR is a marker of insulin resistance").
+
+2. **Three-Tier Verification** -- Each fact is checked in a cascade:
+   - **Tier 1 (Exact Match)**: Direct KG triple lookup. No LLM needed.
+   - **Tier 2 (Path-Based)**: Multi-hop paths (up to 3 hops) between entities,
+     then LLM checks if the path logically entails the fact.
+   - **Tier 3 (Semantic)**: 2-hop entity neighbourhood + LLM semantic judgment.
+
+3. **Judge Panel** -- Three independent LLM judges score the answer:
+   - Correctness (35% weight): Are the facts accurate?
+   - Completeness (25% weight): Does the answer cover the question?
+   - Groundedness (40% weight): Are claims traceable to KG triples?
+
+4. **KGAFE Score** -- Weighted composite:
+   ```
+   KGAFE = 0.30 * KG_Faithfulness + 0.25 * (1 - Hallucination_Rate)
+         + 0.20 * Groundedness + 0.15 * Coverage + 0.10 * Correctness
+   ```
+
+### Quick start
+
+```bash
+# Evaluate a single question/answer pair
+python -m evaluation.kgafe.run_kgafe \
+  --kg-path kg_export.json \
+  --question "What is HOMA-IR?" \
+  --answer "HOMA-IR is a marker of insulin resistance."
+
+# Skip judge panel for faster evaluation (verification only)
+python -m evaluation.kgafe.run_kgafe \
+  --kg-path kg_export.json \
+  --question "What is HOMA-IR?" \
+  --answer "HOMA-IR is a marker of insulin resistance." \
+  --no-judge
+
+# Run full auto-benchmark (generates questions from KG, evaluates QA system)
+python -m evaluation.kgafe.run_kgafe \
+  --kg-path kg_export.json --benchmark --n-questions 20
+
+# Save results to file
+python -m evaluation.kgafe.run_kgafe \
+  --kg-path kg_export.json --benchmark --output results/kgafe_benchmark.json
+```
+
+### KGAFE metrics
+
+| Metric | Description |
+|--------|-------------|
+| **KG Faithfulness** | Fraction of atomic facts supported by the KG |
+| **Hallucination Rate** | Fraction of facts that are contradicted or unverifiable |
+| **Groundedness** | Judge panel score for how traceable claims are to KG triples |
+| **Coverage** | How much of the relevant KG content the answer mentions |
+| **Correctness** | Judge panel score for factual accuracy |
+| **Completeness** | Judge panel score for question coverage |
+| **KGAFE Score** | Weighted composite of all metrics (0-1) |
+| **Tier Distribution** | How many facts verified at each tier (exact/path/semantic) |
+| **Verdict Distribution** | Counts of supported/contradicted/unverifiable facts |
+
+### Sample results
+
+See `kgafe_results_fixed.json` in the repo root for a full evaluation run
+(4 questions, 97 atomic facts, 96 supported, 0 contradicted). See
+`demo_results.json` for the complete QA pipeline output including expert
+responses, debate transcripts, and provenance chains.
+
+---
 
 ## References
 

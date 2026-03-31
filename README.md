@@ -76,8 +76,12 @@ All agents share memory (episodic/semantic/procedural), a blackboard for hypothe
 # Run SciERC evaluation
 python evaluation/run_evaluation.py --max-docs 5 --fixed-schema
 
-# Run KGAFE evaluation on your QA system
-python evaluation/kgafe/run_kgafe.py --kg kg_export.json --n-questions 20
+# Run KGAFE evaluation on a single question/answer
+python -m evaluation.kgafe.run_kgafe --kg-path kg_export.json \
+  --question "What is HOMA-IR?" --answer "HOMA-IR is a marker of insulin resistance."
+
+# Run full KGAFE auto-benchmark
+python -m evaluation.kgafe.run_kgafe --kg-path kg_export.json --benchmark --n-questions 20
 ```
 
 ## Sample results
