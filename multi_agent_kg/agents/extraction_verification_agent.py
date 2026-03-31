@@ -42,11 +42,18 @@ For each triple, verify:
 4. Is the triple consistent with the text's content and domain?
 5. Is the confidence score reasonable?
 
+REJECT if subject or object is:
+- A single common word (e.g., "study", "result", "data", "method", "analysis")
+- A generic phrase (e.g., "the study", "the authors", "the results", "these patients")
+- A bare number without context (e.g., "42", "0.85")
+- A pronoun or article (e.g., "it", "this", "the", "they")
+- An adjective alone (e.g., "significant", "high", "low")
+
 IMPORTANT:
 - Accept BOTH explicit AND reasonably inferred relationships
 - Focus on whether the triple captures real knowledge from the domain
 - Accept if the triple is consistent with the text, even if not explicitly stated
-- Only reject if clearly contradicted or completely unrelated to the text
+- Only reject if clearly contradicted, completely unrelated, or contains garbage entities
 - Partial support counts as valid - mark as "partial" with slightly lower confidence
 - Inferred relationships between domain entities are valuable knowledge
 - Different entity/relation types are OK if they capture the domain correctly
@@ -278,7 +285,7 @@ class ExtractionVerificationAgent(BaseAgent):
         print(f"  Final Approved: {len(approved)}")
         print(f"  Total Rejected: {len(rejected)}")
         
-        summary = verification_result.get("verification_summary", {})
+        summary = verification_result.get("verification_summary", {}) if isinstance(verification_result, dict) else {}
         self.log(
             f"Verified: {len(verified)}, Approved: {len(approved)}, "
             f"Rejected: {len(rejected)}"
@@ -341,8 +348,12 @@ class ExtractionVerificationAgent(BaseAgent):
                 max_tokens=4096,
             )
 
-            all_verified.extend(result.get("verified_triples", []))
-            batch_summary = result.get("verification_summary", {})
+            if isinstance(result, list):
+                all_verified.extend(result)
+                batch_summary = {}
+            else:
+                all_verified.extend(result.get("verified_triples", []))
+                batch_summary = result.get("verification_summary", {})
             for key in summary_totals:
                 summary_totals[key] += batch_summary.get(key, 0)
 
@@ -396,7 +407,7 @@ class ExtractionVerificationAgent(BaseAgent):
         )
         
         # Apply consistency results
-        consistency_results = result.get("consistency_results", [])
+        consistency_results = result if isinstance(result, list) else result.get("consistency_results", [])
         
         filtered = []
         for triple in triples:

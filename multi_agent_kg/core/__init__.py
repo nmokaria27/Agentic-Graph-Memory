@@ -78,6 +78,15 @@ from multi_agent_kg.core.domain_experts import (
     paths_to_text,
     neighbourhood,
 )
+from multi_agent_kg.core.advanced_qa import (
+    AdvancedQAOrchestrator,
+    ActiveExplorerExpert,
+    CriticAgent,
+    DebateArena,
+    SessionMemory,
+    ProvenanceChain,
+    ProvenanceRecord,
+)
 
 __all__ = [
     # Knowledge Graph
@@ -139,4 +148,12 @@ __all__ = [
     "find_paths",
     "paths_to_text",
     "neighbourhood",
+    # Advanced QA System
+    "AdvancedQAOrchestrator",
+    "ActiveExplorerExpert",
+    "CriticAgent",
+    "DebateArena",
+    "SessionMemory",
+    "ProvenanceChain",
+    "ProvenanceRecord",
 ]

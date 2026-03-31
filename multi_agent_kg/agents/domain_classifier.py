@@ -167,6 +167,7 @@ class DomainClassifier(BaseAgent):
         confidence_threshold: float = 0.7,
         max_entity_types: int = 15,
         max_relation_types: int = 15,
+        use_self_consistency: bool = True,
     ):
         super().__init__(
             name="DomainClassifier",
@@ -180,6 +181,7 @@ class DomainClassifier(BaseAgent):
         )
         self.max_entity_types = max_entity_types
         self.max_relation_types = max_relation_types
+        self.use_self_consistency = use_self_consistency
 
     def run(
         self,
@@ -318,23 +320,34 @@ class DomainClassifier(BaseAgent):
         Uses self-consistency with multiple samples for reliable classification.
         """
         prompt = DOMAIN_ANALYSIS_PROMPT.format(text=text)
-        
-        analysis, confidence = self.call_llm_with_self_consistency(
-            prompt=prompt,
-            system_prompt=(
-                "You are an expert at discovering knowledge structures from scratch. "
-                "NEVER use predefined schemas or standard taxonomies. "
-                "Your task is to READ the document carefully and INVENT a custom schema that fits THIS content. "
-                "Focus on WHAT IS ACTUALLY DISCUSSED, not what category you think it fits into. "
-                "Create entity types that capture the KEY CONCEPTS in this text. "
-                "Create relation types that capture the KEY RELATIONSHIPS in this text. "
-                "Be specific and descriptive - avoid generic types. "
-                "Entity and relation types should be in UPPER_SNAKE_CASE format."
-            ),
-            tier=ModelTier.MEDIUM,  # 13B per spec
-            n_samples=3,
-            temperature=0.4,
+
+        system_prompt = (
+            "You are an expert at discovering knowledge structures from scratch. "
+            "NEVER use predefined schemas or standard taxonomies. "
+            "Your task is to READ the document carefully and INVENT a custom schema that fits THIS content. "
+            "Focus on WHAT IS ACTUALLY DISCUSSED, not what category you think it fits into. "
+            "Create entity types that capture the KEY CONCEPTS in this text. "
+            "Create relation types that capture the KEY RELATIONSHIPS in this text. "
+            "Be specific and descriptive - avoid generic types. "
+            "Entity and relation types should be in UPPER_SNAKE_CASE format."
         )
+
+        if self.use_self_consistency:
+            analysis, confidence = self.call_llm_with_self_consistency(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                tier=ModelTier.MEDIUM,
+                n_samples=3,
+                temperature=0.4,
+            )
+        else:
+            analysis = self.call_llm(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                tier=ModelTier.MEDIUM,
+                max_tokens=4096,
+            )
+            confidence = 0.7
         
         if analysis:
             # Validate and normalize the response
@@ -535,6 +548,93 @@ class DomainClassifier(BaseAgent):
             needs_escalation=True,
             escalation_reason="Classification failed - using fallback schema",
         )
+
+    def build_fixed_schema(
+        self,
+        schema_override: Dict[str, Any],
+        document_id: str,
+    ) -> Dict[str, Any]:
+        """
+        Build a domain context from a fixed schema override instead of
+        dynamic discovery. Used for benchmark evaluation with known schemas.
+
+        Args:
+            schema_override: Dict with "entity_types" and "relation_types" lists.
+                Each type is {"type": "TYPE_NAME", "description": "..."}.
+            document_id: Document identifier.
+
+        Returns:
+            Domain context dict in the same format as dynamic classification.
+        """
+        entity_types = schema_override.get("entity_types", [])
+        relation_types = schema_override.get("relation_types", [])
+
+        # Normalize to expected format — preserve original casing for fixed schemas
+        normalized_ents = []
+        for et in entity_types:
+            if isinstance(et, str):
+                normalized_ents.append({
+                    "type": et,
+                    "description": f"Entity of type {et}",
+                    "priority": "high",
+                })
+            elif isinstance(et, dict):
+                normalized_ents.append({
+                    "type": et.get("type", "ENTITY"),
+                    "description": et.get("description", ""),
+                    "priority": et.get("priority", "high"),
+                    "examples_from_text": et.get("examples_from_text", []),
+                })
+
+        normalized_rels = []
+        for rt in relation_types:
+            if isinstance(rt, str):
+                normalized_rels.append({
+                    "type": rt,
+                    "description": f"Relation of type {rt}",
+                    "source_types": [],
+                    "target_types": [],
+                    "priority": "high",
+                })
+            elif isinstance(rt, dict):
+                normalized_rels.append({
+                    "type": rt.get("type", "RELATED_TO"),
+                    "description": rt.get("description", ""),
+                    "source_types": rt.get("source_types", []),
+                    "target_types": rt.get("target_types", []),
+                    "priority": rt.get("priority", "high"),
+                })
+
+        domain_context = {
+            "primary_domain": schema_override.get("domain", "FixedSchema"),
+            "sub_domains": schema_override.get("sub_domains", ["FixedSchema"]),
+            "domain_description": schema_override.get("description", "Fixed schema for benchmark evaluation"),
+            "confidence": 0.95,
+            "reasoning": "Using fixed schema override",
+            "key_indicators": [],
+            "entity_types": normalized_ents,
+            "relation_types": normalized_rels,
+            "entity_type_names": [et["type"] for et in normalized_ents],
+            "relation_type_names": [rt["type"] for rt in normalized_rels],
+            "entity_examples": schema_override.get("entity_examples", []),
+            "relation_examples": schema_override.get("relation_examples", []),
+            "extraction_parameters": {
+                "complexity": "medium",
+                "knowledge_density": "moderate",
+                "recommended_chunk_size": 512,
+                "requires_coreference": True,
+                "has_temporal_relations": False,
+                "has_hierarchical_entities": False,
+            },
+            "document_id": document_id,
+        }
+
+        self.log(
+            f"Fixed schema: {len(normalized_ents)} entity types, "
+            f"{len(normalized_rels)} relation types"
+        )
+
+        return domain_context
 
     def _store_domain_context(
         self,

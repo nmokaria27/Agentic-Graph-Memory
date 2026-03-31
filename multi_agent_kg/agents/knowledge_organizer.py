@@ -58,10 +58,16 @@ RELATION_NORMALIZATION_PROMPT = """Normalize these relation types to a canonical
 RELATIONS USED:
 {relations_json}
 
-Look for:
-1. Synonymous relations (e.g., "works_at" vs "employed_by")
-2. Inverse relations (e.g., "parent_of" vs "child_of")
-3. Relations that should be standardized
+RULES:
+1. Only merge relations that are TRUE SYNONYMS (e.g., "works_at" and "employed_by")
+2. Do NOT merge relations that have different semantics even if they seem related
+   - "ASSOCIATED_WITH" and "CAUSES" are DIFFERENT — keep them separate
+   - "TREATS" and "AFFECTS" are DIFFERENT — keep them separate
+   - "CONTRIBUTES_TO" and "ASSOCIATED_WITH" are DIFFERENT — keep them separate
+   - "IS_MARKER_FOR" and "ASSOCIATED_WITH" are DIFFERENT — keep them separate
+3. Preserve semantic granularity — it is better to have too many relation types than too few
+4. Identify true inverse relations (e.g., "parent_of" vs "child_of")
+5. Only include relations that ACTUALLY NEED normalizing in the output. If a relation is already in good form, do NOT include it.
 
 Return:
 {{
@@ -70,7 +76,7 @@ Return:
             "original": "<original relation>",
             "normalized": "<canonical form>",
             "is_inverse": <true/false>,
-            "reason": "<normalization reason>"
+            "reason": "<why these are truly synonymous>"
         }}
     ],
     "canonical_relations": ["<relation1>", "<relation2>", ...]
@@ -251,7 +257,13 @@ class KnowledgeOrganizer(BaseAgent):
                 max_tokens=4096,
             )
             
-            merge_groups = result.get("merge_groups", [])
+            # Handle both dict and list responses from LLM
+            if isinstance(result, dict):
+                merge_groups = result.get("merge_groups", [])
+            elif isinstance(result, list):
+                merge_groups = result  # LLM returned list directly
+            else:
+                merge_groups = []
             
             # Apply merges
             for group in merge_groups:
@@ -362,6 +374,23 @@ class KnowledgeOrganizer(BaseAgent):
         # ── Filter garbage entities ──────────────────────────────────
         import re
         clean_entities = []
+        _GARBAGE_PHRASES = {
+            "our findings", "this study", "we", "they", "it", "its",
+            "the study", "results", "data", "analysis", "the method",
+            "the procedure", "the results", "the analysis", "the model",
+            "the approach", "the system", "the technique", "the treatment",
+            "the patient", "the patients", "the group", "the sample",
+            "the outcome", "the effect", "the association", "the relationship",
+            "these findings", "these results", "our study", "our results",
+            "the present study", "the current study", "previous studies",
+            "a study", "a method", "an approach", "the authors",
+            "placebo", "control group", "baseline", "follow-up",
+            # Pronoun / reference phrases that coreference failed to resolve
+            "our approach", "this method", "this approach", "this system",
+            "this information", "this technique", "this model",
+            "a set of rules", "these methods", "these models",
+            "the proposed method", "the proposed approach",
+        }
         for entity in entities:
             eid = entity.get("id", entity.get("text", ""))
             etext = entity.get("text", eid)
@@ -373,14 +402,44 @@ class KnowledgeOrganizer(BaseAgent):
                 # Numeric-only ID *and* numeric-only text → garbage
                 if re.fullmatch(r'\d+', eid):
                     continue
-            if stripped.lower() in {
-                "our findings", "this study", "we", "they", "it",
-                "the study", "results", "data", "analysis",
-            }:
+            if stripped.lower() in _GARBAGE_PHRASES:
                 continue
             if len(stripped) < 2:
                 continue
+            # Skip entities with garbage types
+            etype = entity.get("type", "").upper()
+            if etype in {
+                "STATISTICAL_METHOD", "STUDY_DESIGN", "ANALYSIS_TECHNIQUE",
+                "STATISTICAL_MODEL", "UNRESOLVED",
+            }:
+                continue
             clean_entities.append(entity)
+        # ── Consolidate entity types ─────────────────────────────────
+        _TYPE_CONSOLIDATION = {
+            "CLINICAL_BIOMARKER": "BIOLOGICAL_MARKER",
+            "BIOMARKER": "BIOLOGICAL_MARKER",
+            "IMMUNE_PROCESS": "BIOLOGICAL_PROCESS",
+            "PATHOLOGICAL_PROCESS": "BIOLOGICAL_PROCESS",
+            "COMPLEMENT_PATHWAY": "BIOLOGICAL_PROCESS",
+            "BIOLOGICAL_PATHWAY": "BIOLOGICAL_PROCESS",
+            "PHYSIOLOGICAL_MEASUREMENT": "CARDIOVASCULAR_MEASUREMENT",
+            "IMAGING_MEASUREMENT": "CARDIOVASCULAR_MEASUREMENT",
+            "PHYSIOLOGICAL_PARAMETER": "CARDIOVASCULAR_MEASUREMENT",
+            "METABOLIC_MEASUREMENT": "CARDIOVASCULAR_MEASUREMENT",
+            "VASCULAR_CONDITION": "METABOLIC_CONDITION",
+            "PATHOLOGICAL_CONDITION": "METABOLIC_CONDITION",
+            "CARDIOVASCULAR_DISEASE": "METABOLIC_CONDITION",
+            "RENAL_CONDITION": "METABOLIC_CONDITION",
+            "BIOLOGICAL_TISSUE": "ANATOMICAL_STRUCTURE",
+            "ORGAN": "ANATOMICAL_STRUCTURE",
+            "DRUG": "MEDICATION",
+            "THERAPEUTIC_AGENT": "MEDICATION",
+        }
+        for entity in clean_entities:
+            etype = entity.get("type", "")
+            if etype in _TYPE_CONSOLIDATION:
+                entity["original_type"] = etype
+                entity["type"] = _TYPE_CONSOLIDATION[etype]
 
         print(f"  Filtered entities: {len(entities)} → {len(clean_entities)} "
               f"(removed {len(entities) - len(clean_entities)} garbage)")
@@ -437,11 +496,31 @@ class KnowledgeOrganizer(BaseAgent):
                 name_to_id[old_id] = entity_id
                 for mention in entity.get("mentions", []):
                     name_to_id[mention.lower().strip()] = entity_id
+            else:
+                # Clean up _1, _group suffixes from entity IDs
+                clean_id = re.sub(r'(?<=\w{3})_\d+$', '', entity_id)
+                clean_id = re.sub(r'_group$', '', clean_id)
+                if clean_id != entity_id and clean_id not in self.knowledge_graph.entities:
+                    name_to_id[entity_id.lower().strip()] = clean_id
+                    entity_id = clean_id
 
             if entity_id not in self.knowledge_graph.entities:
+                # Build labels from all available sources: text, mentions, labels
+                entity_labels = []
+                if etext:
+                    entity_labels.append(etext)
+                for lbl in entity.get("labels", []):
+                    if lbl and lbl not in entity_labels:
+                        entity_labels.append(lbl)
+                for mention in entity.get("mentions", []):
+                    if mention and mention not in entity_labels:
+                        entity_labels.append(mention)
+                if not entity_labels:
+                    entity_labels = [entity_id]
+
                 self.knowledge_graph.add_entity(
                     entity_id=entity_id,
-                    labels=[etext] if etext != entity_id else [entity_id],
+                    labels=entity_labels,
                     entity_type=entity.get("type", "UNKNOWN"),
                     metadata={
                         "source_document": document_id,
@@ -451,12 +530,20 @@ class KnowledgeOrganizer(BaseAgent):
                 added_entities += 1
 
         # ── Add triples (with entity resolution) ─────────────────────
+        # Filter out meaningless relation types
+        _BAD_RELATIONS = {
+            "DRUG_EXAMPLE", "EXAMPLE_OF", "SAME_AS", "SIMILAR_TO",
+            "INSTANCE_OF", "IS_A", "TYPE_OF", "RELATED_TO",
+        }
         for triple in triples:
             raw_subj = triple.get("subject", "")
             raw_obj = triple.get("object", "")
             relation = triple.get("relation", "")
 
             if not raw_subj or not raw_obj or not relation:
+                skipped_triples += 1
+                continue
+            if relation.upper() in _BAD_RELATIONS:
                 skipped_triples += 1
                 continue
 
@@ -558,22 +645,33 @@ class KnowledgeOrganizer(BaseAgent):
         if not self.knowledge_graph:
             return {"entities": [], "triples": []}
         
+        # Build entity ID -> readable text lookup
+        entity_text_map = {}
         entities = []
         for entity_id, entity in self.knowledge_graph.entities.items():
+            # Use first label if available, otherwise convert ID to readable text
+            text = entity.labels[0] if entity.labels else entity_id.replace("_", " ")
+            entity_text_map[entity_id] = text
             entities.append({
                 "id": entity_id,
+                "text": text,
                 "labels": entity.labels,
                 "type": entity.type,
                 "metadata": entity.metadata,
             })
-        
+
         triples = []
         for i, triple in enumerate(self.knowledge_graph.triples):
+            # Use readable text for subject/object so evaluators can match
+            subj_text = entity_text_map.get(triple.subject, triple.subject.replace("_", " "))
+            obj_text = entity_text_map.get(triple.object, triple.object.replace("_", " "))
             triples.append({
                 "id": f"triple_{i}",
-                "subject": triple.subject,
+                "subject": subj_text,
                 "relation": triple.relation,
-                "object": triple.object,
+                "object": obj_text,
+                "subject_id": triple.subject,
+                "object_id": triple.object,
                 "confidence": triple.confidence,
                 "source": triple.source,
             })

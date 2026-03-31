@@ -53,10 +53,19 @@ DISCOVER relations from scratch by analyzing the actual text:
 - What ACTIONS or ASSOCIATIONS are mentioned?
 
 DO NOT use predefined relation taxonomies - CREATE types specific to this content.
+Extract as MANY distinct relation types as exist — do not merge different relationships into one type.
 
 DOMAIN: {domain}
 
 SUGGESTED TYPES (if any): {suggested_types}
+
+EXAMPLE:
+Text: "Metformin reduces HbA1c in patients with T2D. The WHO recommends metformin as first-line therapy. Side effects include lactic acidosis."
+Relations found:
+- REDUCES_BIOMARKER: "A therapeutic agent reduces a clinical measurement" (e.g., Metformin reduces HbA1c)
+- RECOMMENDED_BY: "A treatment is recommended by an authority" (e.g., Metformin recommended by WHO)
+- TREATS_CONDITION: "A drug treats a disease" (e.g., Metformin treats T2D)
+- HAS_SIDE_EFFECT: "A drug has a known adverse effect" (e.g., Metformin has side effect lactic acidosis)
 
 TEXT:
 {text}
@@ -123,6 +132,22 @@ HEAD BINDINGS (subject-relation pairs):
 
 For each head binding, identify what entity is the OBJECT (tail) of that relation.
 
+CRITICAL RULES:
+- The OBJECT must be a DIFFERENT entity from the SUBJECT. A triple like (X, relation, X) is INVALID.
+- The object must be an entity from the ENTITIES list or clearly mentioned in the text.
+- If you cannot find a valid, distinct object entity, SKIP that head binding entirely.
+- Focus on what the subject ACTS ON, RELATES TO, or AFFECTS — that target is the object.
+
+EXAMPLES:
+Head binding: {{"relation_type": "REDUCES_BIOMARKER", "head_entity": "Metformin", "context": "Metformin reduces HbA1c levels"}}
+Completed triple: {{"subject": "Metformin", "relation": "REDUCES_BIOMARKER", "object": "HbA1c", "confidence": 0.95, "evidence": "Metformin reduces HbA1c levels"}}
+
+Head binding: {{"relation_type": "ASSOCIATED_WITH", "head_entity": "IL-6", "context": "Elevated IL-6 was associated with reduced coronary flow reserve"}}
+Completed triple: {{"subject": "IL-6", "relation": "ASSOCIATED_WITH", "object": "coronary flow reserve", "confidence": 0.90, "evidence": "Elevated IL-6 was associated with reduced coronary flow reserve"}}
+
+WRONG (do NOT do this):
+{{"subject": "IL-6", "relation": "BIOMARKER_ASSOCIATED_WITH_CONDITION", "object": "IL-6"}} ← INVALID, subject equals object
+
 Return:
 {{
     "triples": [
@@ -130,10 +155,49 @@ Return:
             "subject": "<head entity>",
             "subject_id": "<head entity id>",
             "relation": "<relation type>",
-            "object": "<tail entity>",
+            "object": "<DIFFERENT tail entity>",
             "object_id": "<tail entity id>",
             "confidence": <0.0-1.0>,
             "evidence": "<supporting text snippet>"
+        }}
+    ]
+}}"""
+
+
+CONNECTIVITY_PASS_PROMPT = """You are given a document and a knowledge graph that was extracted from it.
+Many entities are DISCONNECTED (they appear in the document but have no relations in the graph).
+Your job is to find relations that connect these disconnected entities to the rest of the graph.
+
+DOCUMENT TEXT:
+{text}
+
+DISCONNECTED ENTITIES (no relations yet — find relations for these):
+{disconnected_entities}
+
+CONNECTED ENTITIES (already in the graph — can serve as relation partners):
+{connected_entities}
+
+KNOWN RELATION TYPES in this graph:
+{relation_types}
+
+INSTRUCTIONS:
+1. For each disconnected entity, look for ANY relationship it has with connected entities OR other disconnected entities in the document text.
+2. You may use the known relation types above OR create new descriptive relation types in UPPER_SNAKE_CASE.
+3. Every triple MUST involve at least one disconnected entity.
+4. Subject and object MUST be DIFFERENT entities. (X, relation, X) is INVALID.
+5. Only extract relations that are supported by the document text.
+
+Return:
+{{
+    "triples": [
+        {{
+            "subject": "<entity text>",
+            "subject_id": "<entity id if known>",
+            "relation": "<RELATION_TYPE>",
+            "object": "<entity text>",
+            "object_id": "<entity id if known>",
+            "confidence": <0.0-1.0>,
+            "evidence": "<supporting text from document>"
         }}
     ]
 }}"""
@@ -186,6 +250,7 @@ class RelationExtractor(BaseAgent):
         
         # Track discovered relation types
         self.discovered_relations: Dict[str, DiscoveredRelation] = {}
+        self.domain_relations: Dict[str, List[str]] = {}
 
     def _normalize_relation_types(self, relation_types_raw: Any) -> List[str]:
         """Normalize relation types from various formats to List[str]."""
@@ -255,31 +320,44 @@ class RelationExtractor(BaseAgent):
         for text, segment_id in texts_to_process:
             if not text or len(text) < 20:
                 continue
-            
+
+            # Filter entities to those relevant to this segment
+            segment_entities = [
+                e for e in entities
+                if e.get("source_segment") == segment_id
+                or e.get("text", "") in text
+            ]
+            # Fallback: if no segment match, use entities whose text appears in segment
+            if not segment_entities:
+                segment_entities = [
+                    e for e in entities
+                    if e.get("text", "") and e.get("text", "") in text
+                ]
+
             # RHF Pipeline
             # Stage 1: Relation Identification
             relations_found = self._stage1_identify_relations(
-                text, 
-                entities,
+                text,
+                segment_entities,
                 suggested_types,
                 context.domain,
             )
-            
+
             # Track new relation types
             for rel in relations_found:
                 if rel.get("is_new_type"):
                     new_relations_discovered.append(rel)
                     self._register_new_relation(rel, context.document_id)
-            
+
             relation_types = [r["relation_type"] for r in relations_found]
-            
+
             if not relation_types:
                 continue
-            
+
             # Stage 2: Head Entity Binding
             head_bindings = self._stage2_head_binding(
                 text,
-                entities,
+                segment_entities,
                 relation_types,
             )
             
@@ -289,18 +367,23 @@ class RelationExtractor(BaseAgent):
             # Stage 3: Tail Entity Binding
             triples = self._stage3_tail_binding(
                 text,
-                entities,
+                segment_entities,
                 head_bindings,
             )
             
-            # Add segment info and separate by confidence
+            # Include ALL triples in output; filter self-referencing and track low-confidence
             for triple in triples:
+                # Filter self-referencing triples (subject == object)
+                subj = (triple.get("subject") or "").strip().lower()
+                obj = (triple.get("object") or "").strip().lower()
+                subj_id = (triple.get("subject_id") or "").strip().lower()
+                obj_id = (triple.get("object_id") or "").strip().lower()
+                if subj and obj and (subj == obj or (subj_id and obj_id and subj_id == obj_id)):
+                    continue
                 triple["source_segment"] = segment_id
                 triple["document_id"] = context.document_id
-                
-                if triple.get("confidence", 0) >= self.quality_threshold:
-                    all_triples.append(triple)
-                else:
+                all_triples.append(triple)
+                if triple.get("confidence", 0) < self.quality_threshold:
                     low_confidence_triples.append(triple)
         
         # Handle low confidence triples
@@ -374,7 +457,12 @@ class RelationExtractor(BaseAgent):
             for mem in memories:
                 if "discovered_relations" in mem.content:
                     types.extend(mem.content["discovered_relations"])
-        
+                # Also extract relation types from stored triples
+                for stored_triple in mem.content.get("triples", []):
+                    rel = stored_triple.get("relation", "")
+                    if rel and rel not in types:
+                        types.append(rel)
+
         return list(set(types))
 
     def _stage1_identify_relations(
@@ -386,13 +474,34 @@ class RelationExtractor(BaseAgent):
     ) -> List[Dict[str, Any]]:
         """Stage 1: Identify relation types in text."""
         entities_str = ", ".join(e.get("text", str(e)) for e in entities)
-        
-        prompt = RELATION_IDENTIFICATION_PROMPT.format(
-            text=text,
-            entities=entities_str,
-            suggested_types=", ".join(suggested_types) if suggested_types else "none provided (discover new types)",
-            domain=domain or "general",
-        )
+
+        # If open_world is disabled, we're in fixed-schema mode — force the types
+        if not self.enable_open_world and suggested_types:
+            prompt = (
+                f"Identify which of these SPECIFIC relation types are present in the text.\n\n"
+                f"ALLOWED RELATION TYPES (use ONLY these, do NOT invent new types):\n"
+                + "\n".join(f"- {t}" for t in suggested_types) +
+                f"\n\nTEXT:\n{text}\n\n"
+                f"ENTITIES FOUND:\n{entities_str}\n\n"
+                f"For each relation type that is present, provide examples from the text.\n\n"
+                f"Return:\n{{\n"
+                f'    "relations_found": [\n'
+                f"        {{\n"
+                f'            "relation_type": "<one of the allowed types above>",\n'
+                f'            "definition": "<what this relation means>",\n'
+                f'            "count_in_text": <count>,\n'
+                f'            "example_text": "<example>"\n'
+                f"        }}\n"
+                f"    ]\n"
+                f"}}"
+            )
+        else:
+            prompt = RELATION_IDENTIFICATION_PROMPT.format(
+                text=text,
+                entities=entities_str,
+                suggested_types=", ".join(suggested_types) if suggested_types else "none provided (discover new types)",
+                domain=domain or "general",
+            )
         
         if self.use_self_consistency:
             result, confidence = self.call_llm_with_self_consistency(
@@ -409,6 +518,8 @@ class RelationExtractor(BaseAgent):
                 max_tokens=4096,
             )
         
+        if isinstance(result, list):
+            return result
         return result.get("relations_found", [])
 
     def _stage2_head_binding(
@@ -435,7 +546,9 @@ class RelationExtractor(BaseAgent):
             tier=ModelTier.MEDIUM,
             max_tokens=4096,
         )
-        
+
+        if isinstance(result, list):
+            return result
         return result.get("head_bindings", [])
 
     def _stage3_tail_binding(
@@ -473,7 +586,7 @@ class RelationExtractor(BaseAgent):
                 )
                 
                 # Adjust confidences based on consistency
-                triples = result.get("triples", [])
+                triples = result if isinstance(result, list) else result.get("triples", [])
                 for t in triples:
                     # Combine LLM confidence with self-consistency
                     t["confidence"] = (t.get("confidence", 0.7) + confidence) / 2
@@ -485,8 +598,9 @@ class RelationExtractor(BaseAgent):
                     tier=ModelTier.MEDIUM,
                     max_tokens=4096,
                 )
-                all_triples.extend(result.get("triples", []))
-        
+                triples = result if isinstance(result, list) else result.get("triples", [])
+                all_triples.extend(triples)
+
         return all_triples
 
     def _register_new_relation(
@@ -610,29 +724,49 @@ class RelationExtractor(BaseAgent):
         triple: Dict[str, Any],
         context: Optional[AgentContext],
     ) -> Tuple:
-        """Vote on a triple hypothesis."""
+        """Vote on a triple hypothesis, consulting memory for known patterns."""
         from multi_agent_kg.core.deliberation import VoteType
-        
+
         subject = triple.get("subject", "")
-        relation = triple.get("relation", "") or triple.get("relation_type", "")
+        relation = triple.get("relation", "") or triple.get("relation_type", "") or triple.get("predicate", "")
         obj = triple.get("object", "")
-        
+
         # Basic validation
         if not subject or not relation or not obj:
             return VoteType.REJECT, 0.9, "Triple missing subject, relation, or object"
-        
-        # Check if relation type is known
+
+        # Check if relation type is known from discovered relations
         known_relations = list(self.discovered_relations.keys()) + self.domain_relations.get("general", [])
-        if relation.lower() in [r.lower() for r in known_relations]:
+
+        # Also check SharedMemory for relation types from stored triples
+        if self.shared_memory:
+            memories = self.retrieve_from_memory(memory_type=MemoryType.SEMANTIC, limit=10)
+            for mem in memories:
+                if "discovered_relations" in mem.content:
+                    known_relations.extend(mem.content["discovered_relations"])
+                for stored_triple in mem.content.get("triples", []):
+                    rel = stored_triple.get("relation", "")
+                    if rel:
+                        known_relations.append(rel)
+
+        known_lower = [r.lower() for r in known_relations]
+        if relation.lower() in known_lower:
             return VoteType.ACCEPT, 0.8, f"Known relation type: {relation}"
-        
+
         # Check for common sense relation patterns
         relation_lower = relation.lower().replace("_", " ")
-        common_patterns = ["is a", "works for", "located in", "part of", "born in", 
-                          "founded", "married to", "has", "owns", "created", "leads"]
+        common_patterns = ["is a", "works for", "located in", "part of", "born in",
+                          "founded", "married to", "has", "owns", "created", "leads",
+                          "associated with", "related to", "causes", "treats", "reduces",
+                          "increases", "affects", "regulates", "inhibits", "activates"]
         if any(p in relation_lower for p in common_patterns):
-            return VoteType.WEAK_ACCEPT, 0.7, f"Relation follows common pattern"
-        
+            return VoteType.WEAK_ACCEPT, 0.7, "Relation follows common pattern"
+
+        # Domain-specific relations in UPPER_SNAKE_CASE are likely valid
+        import re
+        if re.match(r'^[A-Z][A-Z0-9_]*$', relation) and len(relation) > 3:
+            return VoteType.WEAK_ACCEPT, 0.65, f"Well-formed domain relation: {relation}"
+
         # Unknown relation - weak reject
         return VoteType.WEAK_REJECT, 0.6, f"Unknown relation type: {relation}"
 
@@ -693,3 +827,100 @@ class RelationExtractor(BaseAgent):
     def get_discovered_relations(self) -> Dict[str, DiscoveredRelation]:
         """Get all discovered relation types."""
         return self.discovered_relations
+
+    def extract_connectivity_relations(
+        self,
+        text: str,
+        entities: List[Dict[str, Any]],
+        triples: List[Dict[str, Any]],
+        relation_types: Optional[List[str]] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Connectivity pass: find relations for disconnected entities.
+
+        Args:
+            text: Full document text
+            entities: All extracted entities
+            triples: Already-extracted triples
+            relation_types: Known relation types from initial extraction
+
+        Returns:
+            List of new triple dicts involving previously disconnected entities
+        """
+        # Identify connected vs disconnected entities
+        connected_ids = set()
+        for t in triples:
+            subj_id = t.get("subject_id") or t.get("subject", "")
+            obj_id = t.get("object_id") or t.get("object", "")
+            connected_ids.add(subj_id)
+            connected_ids.add(obj_id)
+
+        disconnected = []
+        connected = []
+        for e in entities:
+            eid = e.get("id", e.get("text", ""))
+            if eid in connected_ids:
+                connected.append(e)
+            else:
+                disconnected.append(e)
+
+        if not disconnected:
+            print("  Connectivity pass: all entities already connected!")
+            return []
+
+        print(f"  Connectivity pass: {len(disconnected)} disconnected, {len(connected)} connected entities")
+
+        # Gather known relation types
+        if not relation_types:
+            relation_types = list(set(
+                t.get("relation", "") for t in triples if t.get("relation")
+            ))
+
+        # Process disconnected entities in batches
+        batch_size = 10
+        all_new_triples = []
+
+        for i in range(0, len(disconnected), batch_size):
+            batch = disconnected[i:i + batch_size]
+
+            # Format entities for prompt
+            disc_str = "\n".join(
+                f"- {e.get('id', '?')}: \"{e.get('text', e.get('labels', ['?'])[0] if e.get('labels') else '?')}\" (type: {e.get('type', '?')})"
+                for e in batch
+            )
+
+            # Find nearest connected entities by text proximity
+            nearby_connected = connected[:20]  # Cap to avoid prompt overflow
+            conn_str = "\n".join(
+                f"- {e.get('id', '?')}: \"{e.get('text', e.get('labels', ['?'])[0] if e.get('labels') else '?')}\" (type: {e.get('type', '?')})"
+                for e in nearby_connected
+            )
+
+            prompt = CONNECTIVITY_PASS_PROMPT.format(
+                text=text[:6000],  # Cap text length
+                disconnected_entities=disc_str,
+                connected_entities=conn_str,
+                relation_types=", ".join(relation_types) if relation_types else "none discovered yet",
+            )
+
+            result = self.call_llm(
+                prompt=prompt,
+                system_prompt="You are an expert at discovering relationships between entities in text. Be thorough — find every relationship you can.",
+                tier=ModelTier.MEDIUM,
+                max_tokens=4096,
+            )
+
+            new_triples = result if isinstance(result, list) else result.get("triples", [])
+
+            # Filter self-referencing triples
+            for t in new_triples:
+                subj = (t.get("subject") or "").strip().lower()
+                obj = (t.get("object") or "").strip().lower()
+                subj_id = (t.get("subject_id") or "").strip().lower()
+                obj_id = (t.get("object_id") or "").strip().lower()
+                if subj and obj and subj != obj and not (subj_id and obj_id and subj_id == obj_id):
+                    t["source"] = "connectivity_pass"
+                    all_new_triples.append(t)
+
+        print(f"  Connectivity pass: found {len(all_new_triples)} new triples")
+        return all_new_triples

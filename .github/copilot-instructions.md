@@ -16,5 +16,4 @@ Python project using OpenAI SDK for multi-agent knowledge graph enrichment.
 - Python 3.11+
 - Type hints and docstrings required
 - Clean, explicit code preferred
-- Use OpenAI SDK for all LLM interactions
 - Environment-based configuration

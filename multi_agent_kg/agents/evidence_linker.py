@@ -32,6 +32,8 @@ if TYPE_CHECKING:
 
 EVIDENCE_LINKING_PROMPT = """Link each triple to its supporting evidence in the text.
 
+DOMAIN: {domain}
+
 TEXT:
 {text}
 
@@ -42,6 +44,8 @@ For each triple, find:
 1. The exact sentence(s) that support it
 2. The strength of the evidence (explicit, implicit, or inferred)
 3. Any contradicting evidence
+
+For domain-specific triples, domain knowledge counts as implicit evidence.
 
 Return:
 {{
@@ -154,9 +158,13 @@ class EvidenceLinker(BaseAgent):
             ExtractionResult with evidence-linked triples
         """
         self.stats["calls"] += 1
-        
+
+        # Extract domain_config if provided
+        domain_config = kwargs.get("domain_config")
+        self._current_domain = domain_config.get("domain", "general") if domain_config else (context.domain or "general")
+
         triples = triples or context.relations or []
-        
+
         if not triples:
             return ExtractionResult(
                 items=[],
@@ -261,6 +269,7 @@ class EvidenceLinker(BaseAgent):
             prompt = EVIDENCE_LINKING_PROMPT.format(
                 text=text[:4000],  # Limit text length
                 triples_json=triples_json,
+                domain=getattr(self, '_current_domain', 'general'),
             )
             
             result = self.call_llm(
@@ -270,7 +279,7 @@ class EvidenceLinker(BaseAgent):
                 max_tokens=4096,
             )
             
-            linked = result.get("linked_triples", [])
+            linked = result if isinstance(result, list) else result.get("linked_triples", [])
             
             # Merge back with original triple data
             for j, linked_triple in enumerate(linked):
@@ -341,7 +350,7 @@ class EvidenceLinker(BaseAgent):
             max_tokens=4096,
         )
         
-        cross_refs = result.get("cross_references", [])
+        cross_refs = result if isinstance(result, list) else result.get("cross_references", [])
         
         # Apply cross-reference results
         for i, xref in enumerate(cross_refs):
@@ -357,41 +366,50 @@ class EvidenceLinker(BaseAgent):
         self,
         triple: Dict[str, Any],
     ) -> float:
-        """Calculate final confidence based on all factors."""
+        """Calculate final confidence using weighted average (not multiplicative).
+
+        Weighted average prevents confidence crushing:
+        - 40% base extraction confidence
+        - 30% evidence type score
+        - 30% evidence strength
+        + cross-reference and contradiction adjustments
+        """
         # Start with extraction confidence
         base_confidence = triple.get("confidence", 0.7)
-        
-        # Adjust based on evidence type
+
+        # Evidence type as a score (not a multiplier)
         evidence_type = triple.get("evidence_type", "inferred")
-        evidence_multiplier = {
-            "explicit": 1.0,
-            "implicit": 0.85,
-            "inferred": 0.7,
-        }.get(evidence_type, 0.7)
-        
-        # Adjust based on evidence strength
+        evidence_type_score = {
+            "explicit": 0.95,
+            "implicit": 0.75,
+            "inferred": 0.55,
+        }.get(evidence_type, 0.55)
+
+        # Evidence strength
         evidence_strength = triple.get("evidence_strength", 0.7)
-        
-        # Adjust based on cross-reference
+
+        # Weighted average of the three components
+        final = (
+            0.4 * base_confidence
+            + 0.3 * evidence_type_score
+            + 0.3 * evidence_strength
+        )
+
+        # Cross-reference adjustment
         xref_status = triple.get("cross_reference_status", "novel")
         xref_adjustment = {
-            "supported": 0.15,
-            "contradicted": -0.3,
+            "supported": 0.10,
+            "contradicted": -0.20,
             "novel": 0.0,
-            "refined": 0.1,
+            "refined": 0.05,
         }.get(xref_status, 0)
-        
-        # Check for contradictions
+        final += xref_adjustment
+
+        # Contradiction penalty
         contradictions = triple.get("contradictions", [])
         if contradictions:
-            xref_adjustment -= 0.1 * len(contradictions)
-        
-        # Calculate final
-        final = (
-            base_confidence * evidence_multiplier * evidence_strength 
-            + xref_adjustment
-        )
-        
+            final -= 0.05 * min(len(contradictions), 3)
+
         return max(0.0, min(1.0, final))
 
     def _handle_needs_review(
@@ -480,18 +498,34 @@ class EvidenceLinker(BaseAgent):
         triple: Dict[str, Any],
         context: Optional[AgentContext],
     ) -> Tuple:
-        """Vote on triple based on evidence quality."""
+        """Vote on triple based on evidence quality, consulting memory."""
         from multi_agent_kg.core.deliberation import VoteType
-        
+
         evidence_sentences = triple.get("evidence_sentences", [])
         evidence_type = triple.get("evidence_type", "unknown")
         evidence_strength = triple.get("evidence_strength", 0.5)
         contradictions = triple.get("contradictions", [])
-        
+
         # Strong reject if contradictions exist
         if contradictions:
             return VoteType.REJECT, 0.8, f"Evidence contradicted: {contradictions[0][:50]}..."
-        
+
+        # Check SharedMemory for previously linked evidence matching this triple
+        subject = triple.get("subject", "")
+        obj = triple.get("object", "")
+        if self.shared_memory and (subject or obj):
+            memories = self.retrieve_from_memory(memory_type=MemoryType.SEMANTIC, limit=10)
+            for mem in memories:
+                for linked in mem.content.get("evidence_linked_triples", []):
+                    linked_subj = linked.get("subject", linked.get("triple", {}).get("subject", ""))
+                    linked_obj = linked.get("object", linked.get("triple", {}).get("object", ""))
+                    linked_etype = linked.get("evidence_type", "")
+                    if ((subject and subject.lower() == str(linked_subj).lower()) or
+                            (obj and obj.lower() == str(linked_obj).lower())):
+                        if linked_etype == "explicit":
+                            return VoteType.STRONG_ACCEPT, 0.9, "Explicit evidence found in memory for related triple"
+                        return VoteType.ACCEPT, 0.8, "Related evidence found in memory"
+
         # Vote based on evidence type and strength
         if evidence_type == "explicit" and evidence_strength > 0.7:
             return VoteType.STRONG_ACCEPT, 0.9, "Strong explicit evidence"
@@ -500,12 +534,12 @@ class EvidenceLinker(BaseAgent):
         elif evidence_type == "implicit" and evidence_strength > 0.6:
             return VoteType.WEAK_ACCEPT, 0.7, "Implicit evidence present"
         elif evidence_type == "inferred":
-            return VoteType.WEAK_REJECT, 0.6, "Only inferred evidence"
-        
+            return VoteType.WEAK_ACCEPT, 0.6, "Inferred evidence (acceptable)"
+
         # Check if evidence sentences exist
         if evidence_sentences:
             return VoteType.WEAK_ACCEPT, 0.6, f"Has {len(evidence_sentences)} evidence sentences"
-        
+
         return VoteType.WEAK_REJECT, 0.6, "No clear evidence for triple"
 
     def _store_evidence_links(

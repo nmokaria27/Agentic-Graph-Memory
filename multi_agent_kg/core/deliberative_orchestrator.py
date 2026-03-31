@@ -105,10 +105,11 @@ class DeliberativeOrchestrator:
         enable_deliberation: bool = True,
         model_tiers: Optional[Dict[ModelTier, str]] = None,
         debug_logger = None,
+        schema_override: Optional[Dict[str, Any]] = None,
     ):
         """
         Initialize the deliberative orchestrator.
-        
+
         Args:
             llm_config: Base LLM configuration
             knowledge_graph: Existing KG or creates new
@@ -120,6 +121,10 @@ class DeliberativeOrchestrator:
             enable_deliberation: Enable multi-agent voting and debate
             model_tiers: Custom model tier mapping
             debug_logger: Debug logger for tracking communications
+            schema_override: If provided, skip dynamic schema discovery and
+                use these fixed entity_types and relation_types. Format:
+                {"entity_types": [{"type": "...", "description": "..."}],
+                 "relation_types": [{"type": "...", "description": "..."}]}
         """
         self.llm_config = llm_config or LLMConfig()
         self.knowledge_graph = knowledge_graph or KnowledgeGraph()
@@ -130,6 +135,7 @@ class DeliberativeOrchestrator:
         self.enable_cross_document = enable_cross_document
         self.enable_deliberation = enable_deliberation
         self.debug_logger = debug_logger
+        self.schema_override = schema_override
         
         # Model tier configuration
         self.model_tiers = model_tiers or {
@@ -179,6 +185,7 @@ class DeliberativeOrchestrator:
             shared_memory=self.shared_memory,
             message_bus=self.message_bus,
             llm_config=self.llm_config,
+            use_self_consistency=self.enable_self_consistency,
         )
         
         self.entity_extractor = EntityExtractor(
@@ -339,11 +346,21 @@ class DeliberativeOrchestrator:
             self.debug_logger.log_stage_header(2, "Domain Classification")
         print("\n[2/9] Domain Classification")
         print("-" * 50)
-        domain_result = self.domain_classifier.run(context, segments=segments)
-        domain_config = domain_result.items[0] if domain_result.items else {}
+        if self.schema_override:
+            # Use fixed schema instead of dynamic discovery
+            domain_config = self.domain_classifier.build_fixed_schema(
+                self.schema_override, context.document_id
+            )
+            domain_result_confidence = 0.95
+            print(f"  Using fixed schema override ({len(domain_config.get('entity_types', []))} entity types, "
+                  f"{len(domain_config.get('relation_types', []))} relation types)")
+        else:
+            domain_result = self.domain_classifier.run(context, segments=segments)
+            domain_config = domain_result.items[0] if domain_result.items else {}
+            domain_result_confidence = domain_result.confidence
         context.domain = domain_config.get("domain", "general")
         results["domain"] = context.domain
-        print(f"  Domain: {context.domain} (confidence: {domain_result.confidence:.2f})")
+        print(f"  Domain: {context.domain} (confidence: {domain_result_confidence:.2f})")
         
         # Step 3: Entity Extraction
         if self.debug_logger:
@@ -379,7 +396,45 @@ class DeliberativeOrchestrator:
         print(f"  Triples: {len(triples)} (confidence: {relation_result.confidence:.2f})")
         if relation_result.metadata.get("new_relations_discovered"):
             print(f"  New Relation Types: {relation_result.metadata['new_relations_discovered']}")
-        
+
+        # Step 4b: Connectivity Pass — find relations for disconnected entities
+        connected_ids = set()
+        for t in triples:
+            connected_ids.add(t.get("subject_id") or t.get("subject", ""))
+            connected_ids.add(t.get("object_id") or t.get("object", ""))
+        disconnected_count = sum(
+            1 for e in entities
+            if (e.get("id", e.get("text", "")) not in connected_ids)
+        )
+        if disconnected_count > 5:
+            if self.debug_logger:
+                self.debug_logger.log_stage_header(4, "Connectivity Pass")
+            print(f"\n[4b/9] Connectivity Pass ({disconnected_count} disconnected entities)")
+            print("-" * 50)
+            connectivity_triples = self.relation_extractor.extract_connectivity_relations(
+                text=context.text,
+                entities=entities,
+                triples=triples,
+                relation_types=relation_result.metadata.get("relation_types_used"),
+            )
+            if connectivity_triples:
+                triples.extend(connectivity_triples)
+                context.relations = triples
+                results["triples_extracted"] = len(triples)
+                # Recount connected
+                connected_after = set()
+                for t in triples:
+                    connected_after.add(t.get("subject_id") or t.get("subject", ""))
+                    connected_after.add(t.get("object_id") or t.get("object", ""))
+                disconnected_after = sum(
+                    1 for e in entities
+                    if (e.get("id", e.get("text", "")) not in connected_after)
+                )
+                print(f"  Total triples now: {len(triples)}")
+                print(f"  Disconnected entities: {disconnected_count} → {disconnected_after}")
+        else:
+            print(f"\n[4b/9] Connectivity Pass — skipped ({disconnected_count} disconnected, threshold=5)")
+
         # Step 5: Evidence Linking
         if self.debug_logger:
             self.debug_logger.log_stage_header(5, "Evidence Linking")
@@ -389,6 +444,7 @@ class DeliberativeOrchestrator:
             context,
             triples=triples,
             segments=segments,
+            domain_config=domain_config,
         )
         linked_triples = evidence_result.items
         results["triples_linked"] = len(linked_triples)
@@ -431,31 +487,24 @@ class DeliberativeOrchestrator:
         print(f"  Rejected by Vote: {results['items_rejected_by_vote']}")
         
         # ===== COORDINATOR AGENTS =====
-        
-        # Step 7: Extraction Validation
+
+        # Step 7: Extraction Validation (skip — consolidated into verification)
         if self.debug_logger:
-            self.debug_logger.log_stage_header(7, "Extraction Validation (Iterative Refinement)")
-        print("\n[7/9] Extraction Validation (Iterative Refinement)")
+            self.debug_logger.log_stage_header(7, "Extraction Validation (Skipped — consolidated)")
+        print("\n[7/9] Extraction Validation (Skipped — consolidated into verification)")
         print("-" * 50)
-        validation_result = self.extraction_validator.run(
-            context,
-            entities=entities,
-            triples=linked_triples,
-        )
-        validated = validation_result.items
-        results["refinement_iterations"] = validation_result.metadata.get("refinement_iterations", 0)
-        print(f"  Iterations: {results['refinement_iterations']}")
-        print(f"  Quality: {validation_result.confidence:.2f}")
-        
-        # Step 8: Verification
+        print("  Skipped: validation consolidated into verification step")
+        results["refinement_iterations"] = 0
+
+        # Step 8: Verification (single quality gate)
         if self.debug_logger:
             self.debug_logger.log_stage_header(8, "Extraction Verification")
         print("\n[8/9] Extraction Verification")
         print("-" * 50)
         verification_result = self.verification_agent.run(
             context,
-            entities=validated.get("entities", entities),
-            triples=validated.get("triples", linked_triples),
+            entities=entities,
+            triples=linked_triples,
         )
         verified = verification_result.items
         results["approved_triples"] = len(verified.get("approved_triples", []))
@@ -551,7 +600,7 @@ class DeliberativeOrchestrator:
         # Entities ≥ 0.65 are accepted directly; entities < 0.35 are rejected outright.
         # This prevents hundreds of pre-baked identical votes for items that are
         # clearly acceptable (confidence ~0.70) from flooding the log.
-        ENTITY_UNCERTAIN_LOW  = 0.35
+        ENTITY_UNCERTAIN_LOW  = 0.15
         ENTITY_UNCERTAIN_HIGH = 0.65
         low_confidence_entities = [
             e for e in entities
@@ -593,7 +642,7 @@ class DeliberativeOrchestrator:
                 self._collect_entity_votes(hyp_id, entity, context)
         
         # === TRIPLE DELIBERATION ===
-        TRIPLE_UNCERTAIN_LOW  = 0.35
+        TRIPLE_UNCERTAIN_LOW  = 0.15
         TRIPLE_UNCERTAIN_HIGH = 0.65
         low_confidence_triples = [
             t for t in triples
@@ -612,9 +661,11 @@ class DeliberativeOrchestrator:
             print(f"  Deliberating on {len(low_confidence_triples)} low-confidence triples...")
             
             for triple in low_confidence_triples:
-                subj = triple.get("subject", {}).get("name", "?")
-                pred = triple.get("predicate", "?")
-                obj = triple.get("object", {}).get("name", "?")
+                subj_raw = triple.get("subject", "?")
+                subj = subj_raw.get("name", "?") if isinstance(subj_raw, dict) else str(subj_raw)
+                pred = triple.get("predicate", triple.get("relation", "?"))
+                obj_raw = triple.get("object", "?")
+                obj = obj_raw.get("name", "?") if isinstance(obj_raw, dict) else str(obj_raw)
                 
                 hyp_id = self.deliberation_coordinator.submit_hypothesis(
                     author="RelationExtractor",
@@ -706,81 +757,72 @@ class DeliberativeOrchestrator:
         
         return results
 
+    def _get_agent_by_name(self, name: str):
+        """Get agent instance by name."""
+        agent_map = {
+            "EntityExtractor": self.entity_extractor,
+            "RelationExtractor": self.relation_extractor,
+            "EvidenceLinker": self.evidence_linker,
+        }
+        return agent_map.get(name)
+
+    def _collect_votes_from_agents(
+        self,
+        hypothesis_id: str,
+        hypothesis_content: Dict[str, Any],
+        hypothesis_type: str,
+        author: str,
+        context: Any,
+    ) -> None:
+        """Collect real votes from agents on a hypothesis.
+
+        Calls each voting agent's evaluate_hypothesis_for_vote() method
+        instead of fabricating votes with hardcoded if/else logic.
+        """
+        from multi_agent_kg.core.deliberation import VoteType
+
+        voting_agents = ["EntityExtractor", "RelationExtractor", "EvidenceLinker"]
+        for agent_name in voting_agents:
+            if agent_name == author:
+                continue  # don't self-vote
+            agent = self._get_agent_by_name(agent_name)
+            if agent is None:
+                continue
+            try:
+                vote_type, confidence, rationale = agent.evaluate_hypothesis_for_vote(
+                    hypothesis_content, hypothesis_type, context,
+                )
+                if vote_type != VoteType.ABSTAIN:
+                    self.deliberation_coordinator.receive_vote(
+                        hypothesis_id=hypothesis_id,
+                        voter=agent_name,
+                        vote_type=vote_type,
+                        confidence=confidence,
+                        rationale=rationale,
+                    )
+            except Exception as e:
+                self.deliberation_coordinator.receive_vote(
+                    hypothesis_id=hypothesis_id,
+                    voter=agent_name,
+                    vote_type=VoteType.ABSTAIN,
+                    confidence=0.5,
+                    rationale=f"Error during voting: {str(e)[:80]}",
+                )
+
     def _collect_entity_votes(
         self,
         hypothesis_id: str,
         entity: Dict[str, Any],
         context: Any,
     ) -> None:
-        """Collect votes from agents on an entity hypothesis."""
-        from multi_agent_kg.core.deliberation import VoteType
-        
-        confidence = entity.get("confidence", 0.5)
-        has_evidence = bool(entity.get("evidence") or entity.get("source_spans"))
-        entity_type = entity.get("type", "").lower()
-        
-        # Vote from DomainClassifier
-        domain = getattr(context, "domain", "general")
-        if domain == "scientific" and entity_type in ["protein", "gene", "chemical", "organism"]:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="DomainClassifier",
-                vote_type=VoteType.ACCEPT,
-                confidence=0.8,
-                rationale=f"Entity type '{entity_type}' fits scientific domain",
-            )
-        elif confidence > 0.6:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="DomainClassifier",
-                vote_type=VoteType.WEAK_ACCEPT,
-                confidence=0.6,
-                rationale=f"Confidence {confidence:.2f} acceptable",
-            )
-        else:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="DomainClassifier",
-                vote_type=VoteType.ABSTAIN,
-                confidence=0.5,
-                rationale=f"Low confidence {confidence:.2f}, uncertain",
-            )
-        
-        # Vote from EvidenceLinker
-        if has_evidence:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="EvidenceLinker",
-                vote_type=VoteType.ACCEPT,
-                confidence=0.85,
-                rationale="Entity has supporting evidence",
-            )
-        else:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="EvidenceLinker",
-                vote_type=VoteType.WEAK_REJECT,
-                confidence=0.6,
-                rationale="No evidence linked to entity",
-            )
-        
-        # Vote from RelationExtractor
-        if confidence >= 0.5:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="RelationExtractor",
-                vote_type=VoteType.WEAK_ACCEPT,
-                confidence=0.7,
-                rationale=f"Entity may participate in valid relations",
-            )
-        else:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="RelationExtractor",
-                vote_type=VoteType.ABSTAIN,
-                confidence=0.4,
-                rationale="Cannot assess entity for relation extraction",
-            )
+        """Collect real votes from agents on an entity hypothesis."""
+        self._collect_votes_from_agents(
+            hypothesis_id=hypothesis_id,
+            hypothesis_content=entity,
+            hypothesis_type="entity",
+            author="EntityExtractor",
+            context=context,
+        )
 
     def _collect_triple_votes(
         self,
@@ -788,129 +830,52 @@ class DeliberativeOrchestrator:
         triple: Dict[str, Any],
         context: Any,
     ) -> None:
-        """Collect votes from agents on a triple hypothesis."""
-        from multi_agent_kg.core.deliberation import VoteType
-        
-        confidence = triple.get("confidence", 0.5)
-        has_evidence = bool(triple.get("evidence") or triple.get("source_spans"))
-        subj_conf = triple.get("subject", {}).get("confidence", 0.5)
-        obj_conf = triple.get("object", {}).get("confidence", 0.5)
-        
-        # Vote from EntityExtractor
-        if subj_conf > 0.6 and obj_conf > 0.6:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="EntityExtractor",
-                vote_type=VoteType.ACCEPT,
-                confidence=0.8,
-                rationale="Both subject and object are valid entities",
-            )
-        else:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="EntityExtractor",
-                vote_type=VoteType.WEAK_REJECT,
-                confidence=0.6,
-                rationale=f"Subject ({subj_conf:.2f}) or object ({obj_conf:.2f}) has low confidence",
-            )
-        
-        # Vote from EvidenceLinker
-        if has_evidence:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="EvidenceLinker",
-                vote_type=VoteType.ACCEPT,
-                confidence=0.9,
-                rationale="Triple has strong supporting evidence",
-            )
-        else:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="EvidenceLinker",
-                vote_type=VoteType.REJECT,
-                confidence=0.75,
-                rationale="No evidence supports this triple",
-            )
-        
-        # Vote from ExtractionValidator
-        if confidence >= 0.55 and has_evidence:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="ExtractionValidator",
-                vote_type=VoteType.ACCEPT,
-                confidence=0.85,
-                rationale="Triple meets quality standards",
-            )
-        elif confidence < 0.4:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="ExtractionValidator",
-                vote_type=VoteType.REJECT,
-                confidence=0.8,
-                rationale=f"Triple confidence {confidence:.2f} too low",
-            )
-        else:
-            self.deliberation_coordinator.receive_vote(
-                hypothesis_id=hypothesis_id,
-                voter="ExtractionValidator",
-                vote_type=VoteType.ABSTAIN,
-                confidence=0.5,
-                rationale="Borderline quality, defer to other agents",
-            )
+        """Collect real votes from agents on a triple hypothesis."""
+        self._collect_votes_from_agents(
+            hypothesis_id=hypothesis_id,
+            hypothesis_content=triple,
+            hypothesis_type="triple",
+            author="RelationExtractor",
+            context=context,
+        )
 
     def _run_hypothesis_debate(self, hypothesis_id: str) -> None:
-        """Run a debate on a hypothesis by collecting arguments."""
+        """Run a debate on a hypothesis using real agent evaluations.
+
+        Each voting agent re-evaluates the hypothesis and provides a
+        debate argument based on its own logic and memory.
+        """
+        from multi_agent_kg.core.deliberation import VoteType
+
         hypothesis = self.deliberation_coordinator.hypotheses.get(hypothesis_id)
         if not hypothesis:
             return
-        
-        # Collect debate arguments from participating agents
-        if hypothesis.hypothesis_type == "entity":
-            # EntityExtractor supports
-            self.deliberation_coordinator.receive_debate_argument(
-                hypothesis_id=hypothesis_id,
-                agent="EntityExtractor",
-                position="support",
-                argument=f"Entity was extracted with initial confidence {hypothesis.initial_confidence:.2f}",
-            )
-            # EvidenceLinker based on evidence
-            if hypothesis.evidence:
+
+        voting_agents = ["EntityExtractor", "RelationExtractor", "EvidenceLinker"]
+        for agent_name in voting_agents:
+            agent = self._get_agent_by_name(agent_name)
+            if agent is None:
+                continue
+            try:
+                vote_type, confidence, rationale = agent.evaluate_hypothesis_for_vote(
+                    hypothesis.content, hypothesis.hypothesis_type, None,
+                )
+                # Map vote to debate position
+                if vote_type in (VoteType.STRONG_ACCEPT, VoteType.ACCEPT, VoteType.WEAK_ACCEPT):
+                    position = "support"
+                elif vote_type in (VoteType.REJECT, VoteType.STRONG_REJECT, VoteType.WEAK_REJECT):
+                    position = "oppose"
+                else:
+                    continue  # skip abstentions in debate
+
                 self.deliberation_coordinator.receive_debate_argument(
                     hypothesis_id=hypothesis_id,
-                    agent="EvidenceLinker",
-                    position="support",
-                    argument=f"Entity has {len(hypothesis.evidence)} supporting evidence spans",
+                    agent=agent_name,
+                    position=position,
+                    argument=f"[{vote_type.value}, conf={confidence:.2f}] {rationale}",
                 )
-            else:
-                self.deliberation_coordinator.receive_debate_argument(
-                    hypothesis_id=hypothesis_id,
-                    agent="EvidenceLinker",
-                    position="oppose",
-                    argument="Entity lacks supporting evidence in the document",
-                )
-        else:  # triple
-            # RelationExtractor supports
-            self.deliberation_coordinator.receive_debate_argument(
-                hypothesis_id=hypothesis_id,
-                agent="RelationExtractor",
-                position="support",
-                argument=f"Relation extracted with confidence {hypothesis.initial_confidence:.2f}",
-            )
-            # EvidenceLinker based on evidence
-            if hypothesis.evidence:
-                self.deliberation_coordinator.receive_debate_argument(
-                    hypothesis_id=hypothesis_id,
-                    agent="EvidenceLinker",
-                    position="support",
-                    argument=f"Relation has {len(hypothesis.evidence)} supporting evidence spans",
-                )
-            else:
-                self.deliberation_coordinator.receive_debate_argument(
-                    hypothesis_id=hypothesis_id,
-                    agent="EvidenceLinker",
-                    position="oppose",
-                    argument="Relation lacks textual evidence",
-                )
+            except Exception:
+                pass
 
     def process_corpus(
         self,
@@ -970,10 +935,53 @@ class DeliberativeOrchestrator:
         return aggregate
 
     def _resolve_cross_document_entities(self) -> None:
-        """Resolve entities across documents."""
-        # This uses the shared memory's entity alias system
+        """Resolve entities across documents using fuzzy matching.
+
+        Uses find_entity_matches() from kg_operations to detect duplicate
+        entities, registers aliases in SharedMemory, and remaps triples
+        to canonical entity IDs.
+        """
+        from multi_agent_kg.core.kg_operations import find_entity_matches
+
+        kg = self.knowledge_graph
+        entities = kg.entities
+
+        if len(entities) < 2:
+            print("  Not enough entities for cross-document resolution")
+            return
+
+        # Find entity matches (self-match to detect duplicates within the KG)
+        # Split entities into groups by document to compare across docs
+        matches = find_entity_matches(entities, entities, threshold=0.80)
+
+        aliases_registered = 0
+        remapped_triples = 0
+
+        for source_id, target_id in matches.items():
+            if source_id == target_id:
+                continue  # skip self-matches
+
+            # Register alias in SharedMemory
+            self.shared_memory.register_entity_alias(source_id, target_id)
+            aliases_registered += 1
+
+        # Remap triples to use canonical entity IDs
+        alias_map = self.shared_memory.entity_aliases
+        if alias_map:
+            for triple in kg.triples:
+                new_subj = alias_map.get(triple.subject)
+                new_obj = alias_map.get(triple.object)
+                if new_subj and new_subj != triple.subject:
+                    triple.subject = new_subj
+                    remapped_triples += 1
+                if new_obj and new_obj != triple.object:
+                    triple.object = new_obj
+                    remapped_triples += 1
+
         stats = self.shared_memory.get_stats()
         print(f"  Entity aliases registered: {stats.get('entity_aliases', 0)}")
+        print(f"  New aliases from resolution: {aliases_registered}")
+        print(f"  Triples remapped: {remapped_triples}")
         print(f"  Unique entities tracked: {stats.get('unique_entities', 0)}")
 
     def get_stats(self) -> Dict[str, Any]:

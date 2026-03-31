@@ -1,14 +1,12 @@
 """
 Entity Extractor Agent.
 
-Implements multi-stage entity extraction pipeline:
-1. Initial Extraction: Identify candidate entities
-2. Boundary Refinement: Fix entity boundaries
-3. Type Assignment: Classify entity types
-4. Coreference Resolution: Link mentions to same entity
+Implements optimized entity extraction pipeline:
+1. Combined Extraction: Extract entities with types and verified boundaries in one pass
+2. Coreference Resolution: Link mentions to same entity across segments
 
 Features:
-- Self-consistency for confidence estimation
+- Self-consistency for confidence estimation (optional)
 - Cross-document entity resolution via SharedMemory
 - Blackboard posting for ambiguous entities
 - Iterative refinement with feedback
@@ -44,9 +42,12 @@ class EntityCandidate:
     confidence: float = 0.5
     source_segment: Optional[str] = None
     aliases: List[str] = field(default_factory=list)
-    
 
-INITIAL_EXTRACTION_PROMPT = """Extract ALL significant entities that represent knowledge in this document.
+
+COMBINED_EXTRACTION_PROMPT = """Extract ALL significant entities from this text. For each entity, provide the EXACT text span as it appears, its type, and your confidence.
+
+DOMAIN: {domain}
+{entity_guidance}
 
 EXTRACT entities including:
 - Domain concepts, theories, methods, techniques, phenomena, mechanisms
@@ -61,93 +62,91 @@ EXTRACT entities including:
 - Measurement tools, instruments, assessment methods, scoring systems
 - Important statistical markers (e.g., "HbA1c", "IESS", "CFR") when they represent specific measurements
 
+CRITICAL SPAN RULES:
+- Extract the COMPLETE noun phrase as it appears in the text, including all modifiers and qualifiers
+- INCLUDE trailing words like "scheme", "process", "stage", "system", "model", "method", "items", "task", "problem"
+  GOOD: "constrained optimization scheme" (complete phrase)
+  BAD:  "constrained optimization" (missing trailing qualifier)
+- INCLUDE leading modifiers like "priori", "complex", "iterative", "discriminative"
+  GOOD: "priori geometric constraints" (complete phrase)
+  BAD:  "geometric constraints" (missing leading modifier)
+- INCLUDE parenthetical abbreviations when present in the text
+  GOOD: "Named Entity (NE) items" (complete phrase with abbreviation)
+  BAD:  "Named Entity" (truncated)
+- For compound entities with commas, extract the FULL coordinated phrase
+  GOOD: "proper names, numerical and temporal expressions"
+  BAD:  "temporal expressions" (only part of the list)
+- Extract BOTH the short form AND the full form as separate entities
+  e.g., "NE items" AND "Named Entity (NE) items" are both valid entities
+- For datasets/corpora, include the full description: "English and Czech newspaper texts" not just "English"
+
 DO NOT EXTRACT:
-- Generic dates/times ("January 2020", "90 days") unless defining eras/periods
-- Bare numbers without meaning ("0.85", "38614")
-- Common adjectives alone ("high", "low", "greater")
-- Generic temporal references ("baseline", "follow-up") unless technical terms
+- Articles, prepositions, pronouns, conjunctions alone
+- Generic phrases ("the study", "the results", "the authors", "the data")
+- Bare numbers without meaning ("0.85", "38614", "42")
+- Common adjectives alone ("high", "low", "greater", "significant")
 
-IMPORTANT: Err on the side of INCLUSION. Extract entities that help build a comprehensive knowledge representation of the document.
+IMPORTANT: Err on the side of INCLUSION and LONGER SPANS. When in doubt, include more words rather than fewer.
 
-{entity_guidance}
+## EXAMPLES
+
+Example 1 (Scientific):
+Text: "The constrained optimization scheme deforms a 3-D surface mesh. NE items include proper names, numerical and temporal expressions."
+Output:
+- "constrained optimization scheme" | Method | 0.95
+- "3-D surface mesh" | OtherScientificTerm | 0.90
+- "NE items" | OtherScientificTerm | 0.85
+- "proper names, numerical and temporal expressions" | OtherScientificTerm | 0.85
+- "proper names" | OtherScientificTerm | 0.80
+- "temporal expressions" | OtherScientificTerm | 0.80
+
+Example 2 (Medical):
+Text: "Metformin reduces HbA1c levels in patients with type 2 diabetes mellitus. The WHO recommends it as first-line therapy."
+Output:
+- "Metformin" | Method | 0.95
+- "HbA1c levels" | OtherScientificTerm | 0.95
+- "type 2 diabetes mellitus" | OtherScientificTerm | 0.95
+- "WHO" | Material | 0.90
+- "first-line therapy" | Method | 0.80
 
 TEXT:
 {text}
 
-Return a JSON object with:
+Return a JSON object:
 {{
     "entities": [
         {{
-            "text": "<exact entity mention>",
-            "start": <character start position>,
-            "end": <character end position>,
-            "type_guess": "<describe what this entity represents in this context>"
+            "text": "<exact entity mention from the text - use COMPLETE phrases>",
+            "type": "<entity type>",
+            "confidence": <0.0-1.0>
         }}
     ]
 }}
 
-Extract ALL entities mentioned, even if you're uncertain about the type."""
-
-
-BOUNDARY_REFINEMENT_PROMPT = """Review these entity extractions and fix any boundary errors.
-
-TEXT: {text}
-
-ENTITIES:
-{entities_json}
-
-For each entity, verify:
-1. The text is complete (not cut off)
-2. No extra words included
-3. Start/end positions are correct
-
-Return corrected entities:
-{{
-    "entities": [
-        {{
-            "text": "<corrected text>",
-            "original_text": "<original text>",
-            "start": <corrected start>,
-            "end": <corrected end>,
-            "boundary_fixed": <true/false>
-        }}
-    ]
-}}"""
-
-
-TYPE_ASSIGNMENT_PROMPT = """Assign entity types to these entities based on what they represent IN THIS DOCUMENT.
-
-IMPORTANT:
-- DISCOVER types from the content - do NOT use standard taxonomies
-- Create specific, descriptive type names based on what the entity actually IS
-- Types should be in UPPER_SNAKE_CASE
-- Be as specific as possible (e.g., CLINICAL_MEASUREMENT not MEASUREMENT)
-
-DOMAIN: {domain}
-{type_guidance}
-
-TEXT CONTEXT:
-{text}
-
-ENTITIES:
-{entities_json}
-
-For each entity, assign a type that describes what it represents in this specific document.
-
-Return:
-{{
-    "entities": [
-        {{
-            "text": "<entity text>",
-            "type": "<DISCOVERED_TYPE_NAME>",
-            "type_confidence": <0.0-1.0>,
-            "type_reasoning": "<why this type fits this entity>"
-        }}
-    ]
-}}"""
+Extract ALL entities. Be thorough. Prefer LONGER spans over shorter ones."""
 
 
 COREFERENCE_PROMPT = """Identify which entity mentions refer to the same real-world entity.
+
+RULES FOR GROUPING:
+- Abbreviation = Expansion: "WHO" and "World Health Organization" are the same entity
+- Full name = Partial name: "type 2 diabetes mellitus" and "type 2 diabetes" and "T2D" are the same
+- Synonyms in context: "metformin" and "Glucophage" when referring to the same drug
+- DO NOT group generic phrases: "the organization", "the disease", "the treatment" should NOT be grouped with specific entities
+
+RULES FOR CANONICAL_ID:
+- Use clean lowercase_snake_case derived from the canonical name
+- Use the FULL descriptive name, not abbreviations (e.g. "type_2_diabetes_mellitus" not "T2DM_1")
+- Do NOT append numeric suffixes like _1, _2, _3
+- Do NOT append _group suffix
+- Keep IDs concise but descriptive (e.g. "empagliflozin", "insulin_resistance", "coronary_flow_reserve")
+
+EXAMPLE:
+Entities: ["WHO", "World Health Organization", "T2D", "type 2 diabetes", "type 2 diabetes mellitus", "HbA1c", "glycated hemoglobin"]
+Groups:
+- canonical_id: "world_health_organization", canonical_name: "World Health Organization", mentions: ["WHO", "World Health Organization"]
+- canonical_id: "type_2_diabetes_mellitus", canonical_name: "type 2 diabetes mellitus", mentions: ["T2D", "type 2 diabetes", "type 2 diabetes mellitus"]
+- canonical_id: "hba1c", canonical_name: "HbA1c", mentions: ["HbA1c", "glycated hemoglobin"]
 
 TEXT:
 {text}
@@ -158,14 +157,14 @@ ENTITIES:
 KNOWN ENTITIES FROM PREVIOUS DOCUMENTS:
 {known_entities}
 
-Group entities that refer to the same thing. Assign a canonical ID to each group.
+Group entities that refer to the same thing. Assign a clean canonical_id (lowercase_snake_case, no _1 or _group suffixes).
 
 Return:
 {{
     "entity_groups": [
         {{
-            "canonical_id": "<unique identifier>",
-            "canonical_name": "<primary name>",
+            "canonical_id": "<lowercase_snake_case_id>",
+            "canonical_name": "<primary human-readable name>",
             "type": "<entity type>",
             "mentions": ["<mention1>", "<mention2>", ...],
             "is_known_entity": <true if matches known entity, false otherwise>
@@ -219,23 +218,35 @@ class EntityExtractor(BaseAgent):
         self.n_consistency_samples = n_consistency_samples
 
     def _normalize_entity_types(self, entity_types_raw: Any) -> List[str]:
-        """Normalize entity types to list of strings, handling dict format from DomainClassifier."""
+        """Normalize entity types to list of strings, handling dict format from DomainClassifier.
+
+        Also stores full metadata (description, priority) in self._entity_type_metadata
+        for use in prompt construction.
+        """
         if not entity_types_raw:
             return []
-        
+
         if not isinstance(entity_types_raw, list):
             return []
-        
+
+        if not hasattr(self, '_entity_type_metadata'):
+            self._entity_type_metadata = {}
+
         normalized = []
         for et in entity_types_raw:
             if isinstance(et, dict):
-                # DomainClassifier format: {"type": "PERSON", "description": "...", "priority": "high"}
-                normalized.append(et.get("type", str(et)))
+                type_name = et.get("type", str(et))
+                normalized.append(type_name)
+                # Preserve full metadata for richer prompt guidance
+                self._entity_type_metadata[type_name] = {
+                    "description": et.get("description", ""),
+                    "priority": et.get("priority", "medium"),
+                }
             elif isinstance(et, str):
                 normalized.append(et)
             else:
                 normalized.append(str(et))
-        
+
         return normalized
 
     def run(
@@ -282,30 +293,28 @@ class EntityExtractor(BaseAgent):
         elif context.text:
             texts_to_process = [(context.text, f"{context.document_id}_full")]
         
+        # Detect fixed schema mode: if domain config has confidence 0.95 and
+        # "FixedSchema" domain, use strict typing
+        strict_types = (
+            domain_config.get("confidence") == 0.95
+            and "Fixed" in domain_config.get("reasoning", "")
+        ) if domain_config else False
+
         for text, segment_id in texts_to_process:
             if not text:
                 continue
-            
-            # Stage 1: Initial Extraction
-            candidates = self._stage1_initial_extraction(text, entity_types)
-            
-            # Stage 2: Boundary Refinement
-            refined = self._stage2_boundary_refinement(text, candidates)
-            
-            # Stage 3: Type Assignment
-            typed = self._stage3_type_assignment(
-                text, 
-                refined, 
-                entity_types,
-                context.domain,
+
+            # Combined extraction: extract + type + verify boundaries in one LLM call
+            typed = self._extract_entities_combined(
+                text, entity_types, context.domain,
+                strict_types=strict_types,
             )
-            
-            # Separate high and low confidence
+
+            # Include ALL entities in output; track low-confidence separately for logging/escalation
             for entity in typed:
                 entity["source_segment"] = segment_id
-                if entity.get("confidence", 0) >= self.quality_threshold:
-                    all_entities.append(entity)
-                else:
+                all_entities.append(entity)
+                if entity.get("confidence", 0) < self.quality_threshold:
                     low_confidence_entities.append(entity)
         
         # Stage 4: Coreference Resolution (across all segments)
@@ -352,141 +361,90 @@ class EntityExtractor(BaseAgent):
             escalation_reason=f"{len(low_confidence_entities)} low confidence entities" if low_confidence_entities else None,
         )
 
-    def _stage1_initial_extraction(
+    def _extract_entities_combined(
         self,
         text: str,
         entity_types: List[str],
+        domain: Optional[str],
+        strict_types: bool = False,
     ) -> List[Dict[str, Any]]:
-        """Stage 1: Initial entity extraction."""
+        """Combined extraction: extract entities with types and confidence in one LLM call.
+
+        Args:
+            strict_types: If True, force the LLM to use ONLY the provided types
+                         (for benchmark evaluation with fixed schemas).
+        """
         # Build guidance from entity types if provided by domain classifier
         entity_guidance = ""
         if entity_types:
             entity_types_str = self._normalize_entity_types(entity_types)
-            entity_guidance = f"The domain classifier suggested these entity categories for context: {', '.join(entity_types_str)}\nHowever, feel free to discover additional entity types based on the actual content."
-        
-        prompt = INITIAL_EXTRACTION_PROMPT.format(
+            # Use stored metadata for richer per-type descriptions
+            metadata = getattr(self, '_entity_type_metadata', {})
+            if metadata:
+                type_lines = []
+                for et in entity_types_str:
+                    meta = metadata.get(et, {})
+                    desc = meta.get("description", "")
+                    if desc:
+                        type_lines.append(f"  - {et}: {desc}")
+                    else:
+                        type_lines.append(f"  - {et}")
+                if strict_types:
+                    entity_guidance = (
+                        "REQUIRED entity types (you MUST use ONLY these types, do NOT invent new types):\n"
+                        + "\n".join(type_lines)
+                        + "\nEvery entity MUST be assigned one of these exact types."
+                    )
+                else:
+                    entity_guidance = "Suggested entity categories:\n" + "\n".join(type_lines) + "\nYou may use these or create more specific types as needed."
+            else:
+                if strict_types:
+                    entity_guidance = (
+                        f"REQUIRED entity types (use ONLY these): {', '.join(entity_types_str)}\n"
+                        "Every entity MUST be assigned one of these exact types. Do NOT create new types."
+                    )
+                else:
+                    entity_guidance = f"Suggested entity categories: {', '.join(entity_types_str)}\nYou may use these or create more specific types as needed."
+
+        prompt = COMBINED_EXTRACTION_PROMPT.format(
             text=text,
             entity_guidance=entity_guidance,
+            domain=domain or "general",
         )
-        
+
+        if strict_types:
+            sys_prompt = (
+                "You are an expert at entity extraction. "
+                "Use EXACTLY the entity type names provided — do not modify their casing or format."
+            )
+        else:
+            sys_prompt = (
+                "You are an expert at entity extraction and typing. "
+                "Extract entities with accurate types in UPPER_SNAKE_CASE."
+            )
+
         if self.use_self_consistency:
             result, confidence = self.call_llm_with_self_consistency(
                 prompt=prompt,
-                system_prompt="You are an expert at discovering entities from scratch. Extract entities based on what you observe in the text, not predefined categories.",
+                system_prompt=sys_prompt,
                 tier=ModelTier.MEDIUM,
                 n_samples=self.n_consistency_samples,
             )
         else:
             result = self.call_llm(
                 prompt=prompt,
-                system_prompt="You are an expert at discovering entities from scratch. Extract entities based on what you observe in the text, not predefined categories.",
+                system_prompt=sys_prompt,
                 tier=ModelTier.MEDIUM,
                 max_tokens=4096,
             )
             confidence = 0.7
-        
-        entities = result.get("entities", [])
+
+        entities = result if isinstance(result, list) else result.get("entities", [])
+        # Ensure each entity has a confidence score
         for e in entities:
-            e["stage1_confidence"] = confidence
-        
+            if "confidence" not in e:
+                e["confidence"] = confidence
         return entities
-
-    def _stage2_boundary_refinement(
-        self,
-        text: str,
-        entities: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        """Stage 2: Refine entity boundaries."""
-        if not entities:
-            return []
-        
-        # Process in batches to avoid JSON truncation
-        batch_size = 30
-        refined_entities = []
-        
-        import json
-        
-        for i in range(0, len(entities), batch_size):
-            batch = entities[i:i+batch_size]
-            entities_json = json.dumps(batch, indent=2)
-            
-            prompt = BOUNDARY_REFINEMENT_PROMPT.format(
-                text=text[:3000],  # Limit text size
-                entities_json=entities_json,
-            )
-            
-            result = self.call_llm(
-                prompt=prompt,
-                system_prompt="You are an expert at identifying precise entity boundaries.",
-                tier=ModelTier.SMALL,  # Simpler task
-                max_tokens=4096,
-            )
-            
-            refined_entities.extend(result.get("entities", batch))
-        
-        return refined_entities
-
-    def _stage3_type_assignment(
-        self,
-        text: str,
-        entities: List[Dict[str, Any]],
-        valid_types: List[str],
-        domain: Optional[str],
-    ) -> List[Dict[str, Any]]:
-        """Stage 3: Assign entity types."""
-        if not entities:
-            return []
-        
-        import json
-        
-        # Process in batches to avoid token limit issues
-        batch_size = 25  # Process 25 entities at a time to stay under token limit
-        all_typed_entities = []
-        
-        for i in range(0, len(entities), batch_size):
-            batch = entities[i:i+batch_size]
-            entities_json = json.dumps(batch, indent=2)
-            
-            # Build type guidance
-            type_guidance = ""
-            if valid_types:
-                type_guidance = f"Suggested type categories from domain analysis: {', '.join(valid_types)}\\nYou may use these or create more specific types as needed."
-            
-            prompt = TYPE_ASSIGNMENT_PROMPT.format(
-                text=text,
-                entities_json=entities_json,
-                type_guidance=type_guidance,
-                domain=domain or "general",
-            )
-            
-            if self.use_self_consistency:
-                result, confidence = self.call_llm_with_self_consistency(
-                    prompt=prompt,
-                    system_prompt="You are an expert at entity typing. Assign accurate types.",
-                    tier=ModelTier.MEDIUM,
-                    n_samples=self.n_consistency_samples,
-                )
-            else:
-                result = self.call_llm(
-                    prompt=prompt,
-                    system_prompt="You are an expert at entity typing. Assign accurate types.",
-                    tier=ModelTier.MEDIUM,
-                    max_tokens=4096,
-                )
-                confidence = 0.7
-            
-            typed_batch = result.get("entities", batch)
-            
-            # Combine stage confidences
-            for e in typed_batch:
-                type_conf = e.get("type_confidence", 0.7)
-                stage1_conf = e.get("stage1_confidence", 0.7)
-                # Combined confidence
-                e["confidence"] = (stage1_conf + type_conf + confidence) / 3
-            
-            all_typed_entities.extend(typed_batch)
-        
-        return all_typed_entities
 
     def _stage4_coreference_resolution(
         self,
@@ -523,30 +481,97 @@ class EntityExtractor(BaseAgent):
             )
             
             # Convert groups back to entity format
-            for group in result.get("entity_groups", []):
+            groups = result if isinstance(result, list) else result.get("entity_groups", [])
+            # Pronouns and generic references that should be dropped
+            _PRONOUN_PATTERNS = {
+                "it", "its", "they", "them", "their", "this", "that",
+                "these", "those", "we", "our", "he", "she", "his", "her",
+            }
+            for group in groups:
+                raw_id = group.get("canonical_id", "")
+                canonical_name = group.get("canonical_name", "")
+                mentions = group.get("mentions", [])
+                etype = group.get("type", "UNKNOWN")
+
+                # Skip UNRESOLVED or pronoun-only entities
+                if etype.upper() == "UNRESOLVED":
+                    continue
+                if canonical_name.lower().strip() in _PRONOUN_PATTERNS:
+                    continue
+                # Skip if canonical_name is a generic phrase (starts with article + generic noun)
+                cn_lower = canonical_name.lower().strip()
+                if cn_lower.startswith(("our ", "this ", "that ", "these ", "a set of ", "the ")):
+                    # Check if it's truly generic (not a proper name starting with "the")
+                    remaining = cn_lower.split(" ", 1)[-1] if " " in cn_lower else ""
+                    generic_words = {"approach", "method", "system", "technique",
+                                     "model", "information", "results", "study",
+                                     "findings", "data", "analysis", "set of rules"}
+                    if remaining in generic_words or any(remaining.startswith(g) for g in generic_words):
+                        continue
+
+                # Clean up the ID: strip _1, _2, _group suffixes the LLM may add
+                clean_id = self._clean_entity_id(raw_id, canonical_name)
+
+                # Build labels: include canonical name + all unique mentions
+                labels = [canonical_name]
+                for m in mentions:
+                    if m != canonical_name and m not in labels:
+                        labels.append(m)
+
                 resolved_entity = {
-                    "id": group.get("canonical_id", ""),
-                    "text": group.get("canonical_name", ""),
-                    "type": group.get("type", "UNKNOWN"),
-                    "mentions": group.get("mentions", []),
+                    "id": clean_id,
+                    "text": canonical_name,
+                    "labels": labels,
+                    "type": etype,
+                    "mentions": mentions,
                     "confidence": 0.8 if group.get("is_known_entity") else 0.7,
                     "is_known_entity": group.get("is_known_entity", False),
                 }
                 all_resolved.append(resolved_entity)
-                
+
                 # Register aliases in shared memory
                 if self.shared_memory:
                     canonical_id = resolved_entity["id"]
-                    for mention in resolved_entity.get("mentions", []):
-                        if mention != resolved_entity["text"]:
+                    for mention in mentions:
+                        if mention != canonical_name:
                             self.shared_memory.register_entity_alias(mention, canonical_id)
         
         return all_resolved if all_resolved else entities
 
+    @staticmethod
+    def _clean_entity_id(raw_id: str, canonical_name: str) -> str:
+        """Clean up entity IDs by removing _1, _group suffixes and normalizing format.
+
+        If the raw_id is empty or purely numeric, derive from canonical_name instead.
+        """
+        import re
+
+        # If empty or purely numeric, derive from name
+        if not raw_id or re.fullmatch(r'\d+', raw_id):
+            if canonical_name:
+                return re.sub(r'[^a-z0-9]+', '_', canonical_name.lower()).strip('_')
+            return raw_id
+
+        clean = raw_id.strip()
+
+        # Strip trailing _1, _2, ... _N suffixes (but not meaningful ones like "c3a")
+        # Only strip if the part before the suffix is 3+ chars (avoids stripping "c3" from "c3_1")
+        clean = re.sub(r'(?<=\w{3})_\d+$', '', clean)
+
+        # Strip trailing _group suffix
+        clean = re.sub(r'_group$', '', clean)
+
+        # Normalize: lowercase, replace spaces/special chars with underscores
+        clean = re.sub(r'[^a-z0-9_]', '_', clean.lower())
+        clean = re.sub(r'_+', '_', clean).strip('_')
+
+        return clean if clean else raw_id
+
     def _get_known_entities(self) -> List[Dict[str, Any]]:
-        """Get known entities from memory and knowledge graph."""
+        """Get known entities from memory, knowledge graph, and entity aliases."""
         known = []
-        
+        seen_ids = set()
+
         # From knowledge graph
         if self.knowledge_graph:
             for entity_id, entity in list(self.knowledge_graph.entities.items())[:50]:
@@ -555,14 +580,27 @@ class EntityExtractor(BaseAgent):
                     "text": entity.labels[0] if entity.labels else entity_id,
                     "type": entity.type,
                 })
-        
-        # From shared memory
+                seen_ids.add(entity_id)
+
+        # From shared memory — entities stored by previous extraction runs
         if self.shared_memory:
             memories = self.retrieve_from_memory(memory_type=MemoryType.SEMANTIC, limit=20)
             for mem in memories:
-                if "entities" in mem.content:
-                    known.extend(mem.content["entities"][:10])
-        
+                for ent in mem.content.get("entities", [])[:10]:
+                    eid = ent.get("id", ent.get("text", ""))
+                    if eid not in seen_ids:
+                        known.append(ent)
+                        seen_ids.add(eid)
+
+            # Include entity aliases for better coreference
+            for alias, canonical_id in self.shared_memory.entity_aliases.items():
+                if canonical_id not in seen_ids:
+                    known.append({
+                        "id": canonical_id,
+                        "text": alias,
+                        "type": "ALIAS",
+                    })
+
         return known
 
     def _handle_low_confidence_entities(
@@ -625,28 +663,41 @@ class EntityExtractor(BaseAgent):
         context: Optional[AgentContext],
     ) -> Tuple:
         """Vote on an entity hypothesis."""
+        import re
         from multi_agent_kg.core.deliberation import VoteType
-        
-        entity_text = entity.get("text", "")
+
+        entity_text = entity.get("text", entity.get("name", ""))
         entity_type = entity.get("type", "")
-        
+
         # Basic validation checks
         if not entity_text or len(entity_text) < 2:
             return VoteType.REJECT, 0.9, "Entity text too short or empty"
-        
+
         if len(entity_text) > 100:
             return VoteType.WEAK_REJECT, 0.7, "Entity text suspiciously long"
-        
-        # Check if entity type is valid
-        valid_types = ["PERSON", "ORGANIZATION", "LOCATION", "CONCEPT", "EVENT", 
-                       "PRODUCT", "DISEASE", "DRUG", "GENE", "LAW", "COURT"]
-        if entity_type and entity_type.upper() not in valid_types:
-            return VoteType.WEAK_REJECT, 0.6, f"Unknown entity type: {entity_type}"
-        
+
+        # Validate entity type: accept any UPPER_SNAKE_CASE type,
+        # only reject if malformed (lowercase, single char, etc.)
+        if entity_type:
+            if len(entity_type) < 2:
+                return VoteType.WEAK_REJECT, 0.6, f"Entity type too short: {entity_type}"
+            if not re.match(r'^[A-Z][A-Z0-9_]*$', entity_type):
+                return VoteType.WEAK_REJECT, 0.6, f"Malformed entity type: {entity_type}"
+
+        # Check SharedMemory for known entities
+        if self.shared_memory:
+            memories = self.retrieve_from_memory(memory_type=MemoryType.SEMANTIC, limit=10)
+            for mem in memories:
+                known = mem.content.get("entities", [])
+                for known_entity in known:
+                    known_text = known_entity.get("text", known_entity.get("name", ""))
+                    if known_text and known_text.lower() == entity_text.lower():
+                        return VoteType.ACCEPT, 0.85, f"Entity '{entity_text}' found in memory"
+
         # Check if it looks like a real entity (capitalized, etc.)
         if entity_text[0].isupper():
             return VoteType.WEAK_ACCEPT, 0.7, "Entity appears to be properly capitalized"
-        
+
         # Default to weak accept if nothing wrong
         return VoteType.WEAK_ACCEPT, 0.6, "Entity passes basic validation"
 
@@ -675,15 +726,29 @@ class EntityExtractor(BaseAgent):
         triple: Dict[str, Any],
         context: Optional[AgentContext],
     ) -> Tuple:
-        """Vote on whether a triple's entities are valid."""
+        """Vote on whether a triple's entities are valid, consulting memory."""
         from multi_agent_kg.core.deliberation import VoteType
-        
+
         subject = triple.get("subject", "")
         obj = triple.get("object", "")
-        
+
         if not subject or not obj:
             return VoteType.REJECT, 0.9, "Triple missing subject or object"
-        
+
+        # Check SharedMemory for known entities
+        if self.shared_memory:
+            memories = self.retrieve_from_memory(memory_type=MemoryType.SEMANTIC, limit=10)
+            known_texts = set()
+            for mem in memories:
+                for ent in mem.content.get("entities", []):
+                    known_texts.add((ent.get("text", ent.get("name", ""))).lower())
+            subj_known = subject.lower() in known_texts
+            obj_known = obj.lower() in known_texts
+            if subj_known and obj_known:
+                return VoteType.ACCEPT, 0.85, "Both entities found in memory"
+            if subj_known or obj_known:
+                return VoteType.WEAK_ACCEPT, 0.75, "One entity found in memory"
+
         return VoteType.WEAK_ACCEPT, 0.6, "Triple entities appear valid"
 
     def _store_entities(

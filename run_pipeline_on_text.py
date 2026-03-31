@@ -60,7 +60,7 @@ print("\nInitializing orchestrator...")
 orchestrator = DeliberativeOrchestrator(
     llm_config=llm_config,
     knowledge_graph=KnowledgeGraph(),
-    quality_threshold=0.6,  # Lowered from 0.7 for less harsh filtering
+    quality_threshold=0.5,  # Lowered for maximum recall; garbage filtered by verification
     max_refinement_iterations=1,
     enable_self_consistency=False,
     enable_open_world=True,
@@ -128,8 +128,13 @@ try:
     import json
     with open("kg_export.json", "w", encoding="utf-8") as f:
         json.dump(export, f, indent=2, default=str)
-    
+
     print("\nFull knowledge graph saved to: kg_export.json")
+
+    # Invalidate org chart cache since KG changed
+    if os.path.exists("org_chart_cache.json"):
+        os.remove("org_chart_cache.json")
+        print("  (org_chart_cache.json removed — will rebuild on next qa_server start)")
     
     # Generate visualizations
     print("\n" + "=" * 70)
@@ -152,7 +157,7 @@ try:
         height="800px"
     )
     print(f"✓ Interactive visualization: {viz_html}")
-    
+
     # Static PNG visualization
     visualizer.visualize_static(
         output_file=viz_png,
@@ -160,11 +165,72 @@ try:
         figsize=(20, 16)
     )
     print(f"✓ Static visualization: {viz_png}")
-    
+
+    # ═══════════════════════════════════════════════════════════════
+    # QA DEMO
+    # ═══════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("QA DEMO")
+    print("=" * 70)
+
+    from multi_agent_kg.core import load_kg, DomainBuilder
+    from multi_agent_kg.core.advanced_qa import AdvancedQAOrchestrator
+
+    # Build domain structure from KG
+    kg_for_qa = load_kg("kg_export.json")
+    kg_qa_stats = kg_for_qa.get_stats()
+    print(f"\nKG for QA: {kg_qa_stats['num_entities']} entities, {kg_qa_stats['num_triples']} triples")
+
+    print("\nBuilding domain structure...")
+    builder = DomainBuilder(llm_config)
+    org_chart = builder.build(kg_for_qa)
+    print(f"\n{org_chart.domain_summary()}")
+
+    qa = AdvancedQAOrchestrator(
+        org_chart=org_chart,
+        full_kg=kg_for_qa,
+        llm_config=llm_config,
+    )
+
+    test_questions = [
+        "How does insulin resistance lead to microvascular dysfunction?",
+        "What biomarkers are associated with endothelial dysfunction?",
+        "What is the relationship between IL-6 signaling and cardiovascular outcomes?",
+        "What role do SGLT2 inhibitors play in cardiovascular protection?",
+    ]
+
+    qa_results_list = []
+    for q in test_questions:
+        print(f"\n{'─' * 60}")
+        print(f"Q: {q}")
+        print(f"{'─' * 60}")
+        result = qa.query(q)
+        qa_results_list.append(result)
+        print(f"\nA: {result['final_answer'][:600]}")
+        print(f"Coverage: {result['overall_coverage']:.2f}  Confidence: {result['overall_confidence']:.2f}")
+
+    with open("qa_results.json", "w", encoding="utf-8") as f:
+        json.dump(qa_results_list, f, indent=2, default=str)
+    print(f"\nQA results saved to: qa_results.json")
+
+    # ═══════════════════════════════════════════════════════════════
+    # ENHANCED VISUALIZER WITH QA
+    # ═══════════════════════════════════════════════════════════════
+    print("\n" + "=" * 70)
+    print("GENERATING ENHANCED EXPLORER")
+    print("=" * 70)
+
+    explorer_html = "kg_explorer.html"
+    visualizer.visualize_interactive_enhanced(
+        output_file=explorer_html,
+        qa_results=qa_results_list,
+    )
+    print(f"✓ Enhanced explorer: {explorer_html}")
+
     print("\n" + "=" * 70)
     print("COMPLETE")
     print("=" * 70)
-    print(f"\nOpen {viz_html} in your browser to explore the knowledge graph!")
+    print(f"\nOpen {explorer_html} in your browser to explore the knowledge graph with QA!")
 
 except Exception as e:
     print("\n" + "=" * 70)

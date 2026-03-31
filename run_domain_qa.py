@@ -27,8 +27,8 @@ from multi_agent_kg.core import (
     LLMConfig,
     load_kg,
     DomainBuilder,
-    QAOrchestrator,
 )
+from multi_agent_kg.core.advanced_qa import AdvancedQAOrchestrator
 
 
 def main():
@@ -91,7 +91,7 @@ def main():
     print("\nOrg chart saved to: org_chart.json")
 
     # ── 3. Initialize QA Orchestrator ────────────────────────────────────
-    qa = QAOrchestrator(
+    qa = AdvancedQAOrchestrator(
         org_chart=org_chart,
         full_kg=kg,
         llm_config=llm_config,

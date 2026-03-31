@@ -195,6 +195,7 @@ class DebugLogger:
         
         # Terminal output (concise)
         conf_str = f"conf={confidence:.2f}" if confidence is not None else ""
+        reasoning = reasoning or ""
         terminal_msg = f"[{timestamp}] [{agent}] {decision_type.upper()}: {decision} ({conf_str}) - {reasoning[:60]}..."
         
         if self.verbose:

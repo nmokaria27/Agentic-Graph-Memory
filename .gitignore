@@ -50,3 +50,19 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated outputs
+kg_export.json
+kg_enriched.json
+kg_interactive.html
+kg_explorer.html
+kg_static.png
+qa_results.json
+org_chart.json
+org_chart_cache.json
+pipeline_debug.log
+
+# Large datasets (download separately)
+evaluation/datasets/scierc/raw_data/
+evaluation/datasets/scierc/processed_data/
+evaluation/results/

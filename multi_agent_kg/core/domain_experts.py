@@ -406,6 +406,20 @@ Return ONLY the JSON array. Be thorough — every entity should fit into at leas
             return assignments
 
         # ── Pass 0: Filter garbage entities ──────────────────────────
+        _GARBAGE_PHRASES = {
+            "our findings", "this study", "we", "they", "it", "its",
+            "the study", "results", "data", "analysis", "the method",
+            "the procedure", "the results", "the analysis", "the model",
+            "the approach", "the system", "the technique", "the treatment",
+            "the patient", "the patients", "the group", "the sample",
+            "these findings", "these results", "our study", "our results",
+            "the present study", "the current study", "previous studies",
+            "placebo", "control group", "baseline", "follow-up",
+            "patients", "both groups", "both_groups", "these changes",
+            "these_changes", "standard care", "standard_care", "",
+        }
+        _SKIP_TYPES = {"STATISTICAL_METHOD", "STUDY_DESIGN", "ANALYSIS_TECHNIQUE",
+                        "STATISTICAL_MODEL", "ORGANIZATION"}
         valid_entities: List[str] = []
         for eid, entity in kg.entities.items():
             text = (entity.labels[0] if entity.labels else eid).strip()
@@ -413,30 +427,32 @@ Return ONLY the JSON array. Be thorough — every entity should fit into at leas
                 continue
             if re.fullmatch(r'\d+', text) and re.fullmatch(r'\d+', eid):
                 continue
-            if text.lower() in {
-                "our findings", "this study", "we", "they", "it",
-                "the study", "results", "data", "analysis", "",
-            }:
+            if text.lower() in _GARBAGE_PHRASES:
                 continue
             if len(text) < 2:
+                continue
+            if (entity.type or "").upper() in _SKIP_TYPES:
                 continue
             valid_entities.append(eid)
 
         if not valid_entities:
             return assignments
 
-        # ── Pass 1: LLM assigns primary domain ──────────────────────
+        # ── Pass 1: LLM assigns primary domain (batched) ─────────────
         domain_descriptions = "\n".join(
             f"  {d['domain_id']}: {d.get('label', d['domain_id'])} — {d.get('description', '')}"
             for d in domains_raw
         )
-        entity_list = "\n".join(
-            f"  {eid}: {kg.entities[eid].labels[0] if kg.entities[eid].labels else eid}"
-            f" [{kg.entities[eid].type or 'untyped'}]"
-            for eid in valid_entities[:120]  # Cap for token safety
-        )
+        batch_size = 80  # Process in batches to avoid token limits
+        for batch_start in range(0, len(valid_entities), batch_size):
+            batch = valid_entities[batch_start:batch_start + batch_size]
+            entity_list = "\n".join(
+                f"  {eid}: {kg.entities[eid].labels[0] if kg.entities[eid].labels else eid}"
+                f" [{kg.entities[eid].type or 'untyped'}]"
+                for eid in batch
+            )
 
-        prompt = f"""Assign each entity to exactly ONE primary domain.
+            prompt = f"""Assign each entity to exactly ONE primary domain.
 
 DOMAINS:
 {domain_descriptions}
@@ -444,8 +460,13 @@ DOMAINS:
 ENTITIES:
 {entity_list}
 
-For each entity, choose the single most fitting domain. Every entity must
-be assigned to exactly one domain.
+RULES:
+- Every entity MUST be assigned to exactly one domain
+- Match entities to domains based on semantic relevance, not just keyword overlap
+- Genetic variants (mutations, polymorphisms, alleles) → the genetics/molecular domain if available
+- Medications and drugs → therapeutic interventions domain
+- Anatomical structures and tissues → anatomical domain
+- Distribute entities reasonably — avoid putting everything in one domain
 
 Return JSON:
 {{
@@ -456,50 +477,75 @@ Return JSON:
 
 Return ONLY the JSON."""
 
-        try:
-            result = chat_completion_json(
-                messages=[
-                    {"role": "system", "content": "You are a knowledge organization expert. Return only valid JSON."},
-                    {"role": "user", "content": prompt},
-                ],
-                model=self.llm_config.model,
-                temperature=0.1,
-            )
-            for item in result.get("assignments", []):
-                did = item.get("domain_id", "")
-                eid = item.get("entity_id", "")
-                if did in assignments and eid in kg.entities:
-                    assignments[did].append(eid)
-        except Exception:
-            # Fallback: round-robin
-            for i, eid in enumerate(valid_entities):
-                did = domains_raw[i % len(domains_raw)]["domain_id"]
-                assignments[did].append(eid)
+            try:
+                result = chat_completion_json(
+                    messages=[
+                        {"role": "system", "content": "You are a knowledge organization expert. Return only valid JSON."},
+                        {"role": "user", "content": prompt},
+                    ],
+                    model=self.llm_config.model,
+                    temperature=0.1,
+                )
+                for item in result.get("assignments", []):
+                    did = item.get("domain_id", "")
+                    eid = item.get("entity_id", "")
+                    if did in assignments and eid in kg.entities:
+                        assignments[did].append(eid)
+            except Exception:
+                # Fallback: use entity type to assign to best-fit domain
+                for eid in batch:
+                    etype = (kg.entities[eid].type or "").upper()
+                    # Simple type-based heuristic as fallback
+                    assigned = False
+                    for d in domains_raw:
+                        for key_type in d.get("key_entity_types", []):
+                            if key_type.upper() == etype:
+                                assignments[d["domain_id"]].append(eid)
+                                assigned = True
+                                break
+                        if assigned:
+                            break
+                    if not assigned:
+                        assignments[domains_raw[0]["domain_id"]].append(eid)
 
-        # Catch any unassigned entities → first domain
+        # Catch any unassigned entities — distribute by type similarity, not dump into first
         assigned_eids = {eid for eids in assignments.values() for eid in eids}
         for eid in valid_entities:
             if eid not in assigned_eids:
-                assignments[domains_raw[0]["domain_id"]].append(eid)
+                # Try to find best domain by entity type match
+                etype = (kg.entities[eid].type or "").upper()
+                best_domain = domains_raw[0]["domain_id"]
+                for d in domains_raw:
+                    for key_type in d.get("key_entity_types", []):
+                        if key_type.upper() == etype or etype in key_type.upper():
+                            best_domain = d["domain_id"]
+                            break
+                assignments[best_domain].append(eid)
 
         # ── Pass 2: Add secondary memberships via graph bridges ──────
         # An entity gets a *secondary* membership in another domain only
-        # if it participates in a triple whose other endpoint is primary
-        # to that domain.
+        # if it participates in 2+ triples with entities primary to that domain.
+        # This prevents every cross-domain entity from appearing everywhere.
         primary_domain_of: Dict[str, str] = {}
         for did, eids in assignments.items():
             for eid in eids:
                 primary_domain_of[eid] = did
 
+        # Count how many triples each entity has with each foreign domain
+        from collections import Counter
+        foreign_triple_count: Dict[str, Counter] = {}  # entity -> Counter(domain -> count)
         for t in kg.triples:
             subj_d = primary_domain_of.get(t.subject)
             obj_d = primary_domain_of.get(t.object)
             if subj_d and obj_d and subj_d != obj_d:
-                # Add subject to object's domain as secondary (and vice versa)
-                if t.subject not in assignments.get(obj_d, []):
-                    assignments.setdefault(obj_d, []).append(t.subject)
-                if t.object not in assignments.get(subj_d, []):
-                    assignments.setdefault(subj_d, []).append(t.object)
+                foreign_triple_count.setdefault(t.subject, Counter())[obj_d] += 1
+                foreign_triple_count.setdefault(t.object, Counter())[subj_d] += 1
+
+        # Only add secondary membership if entity has 2+ triples with that domain
+        for eid, domain_counts in foreign_triple_count.items():
+            for did, count in domain_counts.items():
+                if count >= 2 and eid not in assignments.get(did, []):
+                    assignments.setdefault(did, []).append(eid)
 
         return assignments
 
@@ -725,9 +771,9 @@ If the query asks about things outside your domain, say so and set coverage acco
 Respond in JSON:
 {{
     "answer": "...",
-    "coverage": 0.85,
+    "coverage": 0.65,
     "evidence": ["(entity1) -[relation]-> (entity2)", ...],
-    "confidence": 0.9,
+    "confidence": 0.7,
     "out_of_scope_aspects": ["list of query aspects not in this domain"]
 }}
 
@@ -761,16 +807,78 @@ Return ONLY the JSON."""
         result["domain_id"] = self.domain.domain_id
         result["topics_used"] = topic_names
         result["multi_hop_paths"] = multi_hop_text if multi_hop_text else "none"
+
+        # Override LLM-guessed coverage/confidence with computed values
+        computed = self._compute_coverage_confidence(query, query_entities)
+        if computed["entity_coverage"] > 0 or computed["triple_coverage"] > 0:
+            result["coverage"] = computed["coverage"]
+            result["confidence"] = computed["confidence"]
+
         return result
 
+    def _compute_coverage_confidence(
+        self, query: str, query_entities: List[str]
+    ) -> Dict[str, float]:
+        """Compute coverage and confidence from actual KG data.
+
+        coverage = avg(entity_coverage, triple_coverage)
+        entity_coverage = fraction of query entities found in domain
+        triple_coverage = relevant_triples / max(query_entities, 1)
+        confidence = avg triple confidence weighted by coverage
+        """
+        entities_in_domain = self.domain.entity_ids
+        if not query_entities:
+            query_entities = self._extract_query_entities(query)
+
+        # Entity coverage: how many query entities exist in this domain
+        found = sum(1 for qe in query_entities if qe in entities_in_domain)
+        entity_coverage = found / max(len(query_entities), 1)
+
+        # Triple coverage: relevant triples for the query entities
+        _, domain_triples = self.domain.get_subgraph(self.full_kg)
+        relevant_triples = [
+            t for t in domain_triples
+            if any(
+                qe.lower() in t.subject.lower() or qe.lower() in t.object.lower()
+                for qe in query_entities
+            )
+        ] if query_entities else domain_triples
+        triple_coverage = min(1.0, len(relevant_triples) / max(len(query_entities), 1))
+
+        coverage = (entity_coverage + triple_coverage) / 2.0
+
+        # Confidence: average triple confidence weighted by coverage
+        if relevant_triples:
+            avg_conf = sum(
+                t.confidence for t in relevant_triples if t.confidence
+            ) / len(relevant_triples)
+        else:
+            avg_conf = 0.0
+        confidence = avg_conf * coverage
+
+        return {
+            "entity_coverage": entity_coverage,
+            "triple_coverage": triple_coverage,
+            "coverage": round(coverage, 3),
+            "confidence": round(confidence, 3),
+        }
+
     def _extract_query_entities(self, query: str) -> List[str]:
-        """Extract entity IDs from the query by fuzzy-matching KG entities."""
+        """Extract entity IDs from the query by word-boundary matching against KG entities."""
+        import re
         query_lower = query.lower()
         matched = []
         for eid, entity in self.full_kg.entities.items():
-            names = [eid] + entity.labels
+            names = [eid.replace("_", " ")] + entity.labels
             for n in names:
-                if len(n) > 2 and n.lower() in query_lower:
+                n_lower = n.lower()
+                if len(n_lower) < 3:
+                    continue
+                # Require word-boundary match to avoid partial substring matches
+                # e.g. "insulin" shouldn't match in "insulin resistance" unless
+                # "insulin" is the actual entity name
+                pattern = r'\b' + re.escape(n_lower) + r'\b'
+                if re.search(pattern, query_lower):
                     matched.append(eid)
                     break
         return matched
@@ -850,8 +958,9 @@ class QAOrchestrator:
         sub_questions = routing.get("sub_questions", [])
         print(f"  Decomposed into {len(sub_questions)} sub-questions")
 
-        # Step 2: Dispatch to domain experts
+        # Step 2: Dispatch to domain experts (avoid duplicate domain calls)
         domain_responses: List[Dict[str, Any]] = []
+        called_domains: set = set()  # Track (domain_id, sub_question) to avoid duplicates
         for sq in sub_questions:
             sq_text = sq.get("question", question)
             target_domains = sq.get("target_domains", [])
@@ -861,11 +970,18 @@ class QAOrchestrator:
             print(f"  → Routing to: {target_domains}")
 
             for domain_id in target_domains:
+                # Skip if we already called this domain for a very similar sub-question
+                call_key = domain_id  # One call per domain per query
+                if call_key in called_domains:
+                    print(f"    [{domain_id}] skipped (already called)")
+                    continue
+
                 expert = self.experts.get(domain_id)
                 if expert:
                     response = expert.answer(sq_text, context=sq_context)
                     response["sub_question"] = sq_text
                     domain_responses.append(response)
+                    called_domains.add(call_key)
                     print(f"    [{domain_id}] coverage={response.get('coverage', 0):.2f}, "
                           f"confidence={response.get('confidence', 0):.2f}")
 
@@ -963,12 +1079,14 @@ Return ONLY the JSON."""
                 lines.append(f"  ({t.subject}) -[{t.relation}]-> ({t.object})")
 
         # Multi-hop: find paths between entities mentioned in the question
+        import re as _re
         query_lower = question.lower()
         matched_entities = []
         for eid, entity in self.full_kg.entities.items():
-            names = [eid] + entity.labels
+            names = [eid.replace("_", " ")] + entity.labels
             for n in names:
-                if len(n) > 2 and n.lower() in query_lower:
+                n_lower = n.lower()
+                if len(n_lower) > 2 and _re.search(r'\b' + _re.escape(n_lower) + r'\b', query_lower):
                     matched_entities.append(eid)
                     break
 
