@@ -76,7 +76,7 @@ from multi_agent_kg.core.domain_experts import (
     neighbourhood,
     paths_to_text,
 )
-from multi_agent_kg.core.kg_operations import normalize_entity_name
+from multi_agent_kg.core.kg_operations import normalize_entity_name, normalize_for_matching
 from multi_agent_kg.llm.openai_client import chat_completion, chat_completion_json
 
 
@@ -523,15 +523,26 @@ Return ONLY the JSON."""
         return "\n".join(new_evidence_lines)
 
     def _resolve_entity_name(self, name: str) -> List[str]:
-        """Fuzzy-resolve an entity name to KG entity IDs."""
+        """Fuzzy-resolve an entity name to KG entity IDs.
+
+        Uses aggressive normalization to bridge the gap between user-facing
+        names (``HOMA-IR``) and internal entity IDs (``homair``).
+        """
+        agg = normalize_for_matching(name)
         norm = normalize_entity_name(name)
         matches = []
         for eid, entity in self.full_kg.entities.items():
-            candidates = [normalize_entity_name(eid)] + [normalize_entity_name(l) for l in entity.labels]
-            for n in candidates:
-                if norm in n or n in norm:
-                    matches.append(eid)
-                    break
+            candidates_agg = {normalize_for_matching(eid)}
+            candidates_std = {normalize_entity_name(eid)}
+            for label in entity.labels:
+                candidates_agg.add(normalize_for_matching(label))
+                candidates_std.add(normalize_entity_name(label))
+            # Aggressive exact match first
+            if agg in candidates_agg:
+                matches.append(eid)
+            # Substring match on standard forms as fallback
+            elif any(len(norm) >= 3 and (norm in c or c in norm) for c in candidates_std):
+                matches.append(eid)
         return matches
 
 
@@ -611,6 +622,14 @@ For each issue found, rate severity:
 - major: Factually wrong or significantly misleading
 - critical: Fundamentally incorrect, answer should be rewritten
 
+SEVERITY CALIBRATION (follow these rules strictly):
+- "missing_info" should be "minor" unless the omission makes the answer factually WRONG
+  or dangerously misleading. Summarization that drops non-essential detail is acceptable.
+- "misattribution" where the meaning is preserved (e.g., "impacts" vs "affects") should be "minor".
+- Reserve "major" for claims that are genuinely wrong, misleading, or contradict the KG.
+- Reserve "critical" for answers that are fundamentally incorrect or contain dangerous misinformation.
+- If ALL issues are minor, set "approved": true and "overall_severity": "minor".
+
 Return JSON:
 {{
     "approved": true/false,
@@ -627,7 +646,8 @@ Return JSON:
     "reasoning": "Overall assessment of answer quality"
 }}
 
-Return ONLY the JSON. Be strict — it's better to flag a minor issue than miss a major one."""
+Return ONLY the JSON. Be thorough but fair — flag real issues at their true severity.
+Summarization that omits non-essential detail is acceptable and should be rated "minor", not "major"."""
 
         result = chat_completion_json(
             messages=[
@@ -1431,23 +1451,49 @@ Return ONLY the JSON."""
             temperature=0.1,
         )
 
-        # Match claims to KG triples
+        # Match claims to KG triples using aggressive normalization.
+        # Triples store display names (e.g. "HOMA-IR") while entity IDs
+        # use snake_case or stripped forms (e.g. "homair"), so we normalise
+        # both sides before comparison.
         for claim_data in result.get("claims", []):
             claim_text = claim_data.get("claim", "")
             entities = claim_data.get("entities", [])
 
-            # Find supporting triples
-            supporting = []
+            # Resolve each mentioned entity to a set of normalised keys
+            # that cover both entity IDs and display names in triples.
+            resolved_norms: set = set()
             for eid_name in entities:
-                norm_name = normalize_entity_name(eid_name)
-                # Resolve to KG entity
+                agg_name = normalize_for_matching(eid_name)
                 for eid, entity in self.full_kg.entities.items():
-                    candidates = [normalize_entity_name(eid)] + [normalize_entity_name(l) for l in entity.labels]
-                    if norm_name in candidates or any(norm_name in c or c in norm_name for c in candidates):
-                        for t in self.full_kg.triples:
-                            if t.subject == eid or t.object == eid:
-                                supporting.append(t)
+                    candidates = {normalize_for_matching(eid)}
+                    for label in entity.labels:
+                        candidates.add(normalize_for_matching(label))
+                    if agg_name in candidates or any(
+                        len(agg_name) >= 3 and (agg_name in c or c in agg_name)
+                        for c in candidates
+                    ):
+                        resolved_norms.add(normalize_for_matching(eid))
+                        for label in entity.labels:
+                            resolved_norms.add(normalize_for_matching(label))
                         break
+
+            # Find supporting triples — match using normalised forms
+            supporting = []
+            for t in self.full_kg.triples:
+                subj_n = normalize_for_matching(t.subject)
+                obj_n = normalize_for_matching(t.object)
+                if subj_n in resolved_norms or obj_n in resolved_norms:
+                    supporting.append(t)
+
+            # For multi-entity claims, prefer triples that connect 2+ resolved entities
+            if len(entities) >= 2 and supporting:
+                connecting = [
+                    t for t in supporting
+                    if normalize_for_matching(t.subject) in resolved_norms
+                    and normalize_for_matching(t.object) in resolved_norms
+                ]
+                if connecting:
+                    supporting = connecting
 
             # Find source domain
             source_domain = ""

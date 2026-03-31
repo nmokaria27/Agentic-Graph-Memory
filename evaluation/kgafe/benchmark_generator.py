@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
 from multi_agent_kg.core.domain_experts import find_paths
+from multi_agent_kg.core.kg_operations import normalize_for_matching
 from multi_agent_kg.llm.openai_client import chat_completion_json
 
 
@@ -378,10 +379,14 @@ class BenchmarkGenerator:
 
             e1, e2 = self.rng.sample(entities, 2)
 
-            # Check that there's NO direct triple between them
+            # Check that there's NO direct triple between them.
+            # Use normalised comparison since triples may store display
+            # names while entity keys use snake_case IDs.
+            e1_n = normalize_for_matching(e1)
+            e2_n = normalize_for_matching(e2)
             has_direct = any(
-                (t.subject == e1 and t.object == e2) or
-                (t.subject == e2 and t.object == e1)
+                (normalize_for_matching(t.subject) == e1_n and normalize_for_matching(t.object) == e2_n) or
+                (normalize_for_matching(t.subject) == e2_n and normalize_for_matching(t.object) == e1_n)
                 for t in self.kg.triples
             )
 

@@ -80,6 +80,17 @@ python evaluation/run_evaluation.py --max-docs 5 --fixed-schema
 python evaluation/kgafe/run_kgafe.py --kg kg_export.json --n-questions 20
 ```
 
+## Sample results
+
+The repo includes sample outputs so you can see what a full run looks like without running the pipeline yourself:
+
+- **`demo_results.json`** -- Full QA pipeline output for 4 questions, including expert responses, debate transcripts, critic reviews, provenance chains, and KGAFE evaluation scores.
+- **`kgafe_results_fixed.json`** -- KGAFE evaluation results with per-fact verification details (97 atomic facts, 96 supported, 0 contradicted).
+- **`kg_explorer.html`** -- Interactive knowledge graph visualizer. Open in a browser to explore the extracted KG (183 entities, 159 triples) with search, filtering, and graph layout.
+- **`kg_export.json`** -- The raw knowledge graph export used by the QA and evaluation systems.
+
+To visualize the KG, just open `kg_explorer.html` in your browser -- no server needed.
+
 ## Config
 
 Uses local Ollama LLMs by default (gemma3:27b). Set `LLM_BACKEND=openai` and `OPENAI_API_KEY` in `.env` to use OpenAI models instead.

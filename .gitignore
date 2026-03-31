@@ -49,16 +49,13 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Generated pipeline outputs
-kg_export.json
+# Generated pipeline outputs (except sample results we ship)
 kg_enriched.json
 kg_interactive.html
-kg_explorer.html
 kg_static.png
 qa_results.json
 org_chart.json
 org_chart_cache.json
-demo_results.json
 
 # Input data files (not shipped with repo)
 *.txt

@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
 from multi_agent_kg.core.domain_experts import find_paths, neighbourhood
-from multi_agent_kg.core.kg_operations import normalize_entity_name
+from multi_agent_kg.core.kg_operations import normalize_entity_name, normalize_for_matching
 from multi_agent_kg.llm.openai_client import chat_completion_json
 
 
@@ -93,14 +93,50 @@ class TripleVerifier:
         self._relation_index = self._build_relation_index()
 
     def _build_entity_index(self) -> Dict[str, List[str]]:
-        """Map normalized entity names/labels to entity IDs."""
+        """Map normalized entity names/labels to entity IDs.
+
+        Uses both standard normalization (for backward compat) and
+        aggressive normalization (strips all non-alphanumeric) so that
+        entity IDs like ``homair`` match display names like ``HOMA-IR``.
+        Also indexes names that appear as triple subjects/objects, since
+        triples may use display names rather than entity IDs.
+        """
         index: Dict[str, List[str]] = {}
+
+        # Phase 1: index entity IDs and their labels
         for eid, entity in self.kg.entities.items():
             names = [eid, eid.replace("_", " ")] + entity.labels
             for name in names:
+                # Standard normalization
                 key = normalize_entity_name(name)
                 if key:
                     index.setdefault(key, []).append(eid)
+                # Aggressive normalization
+                agg_key = normalize_for_matching(name)
+                if agg_key and agg_key != key:
+                    index.setdefault(agg_key, []).append(eid)
+
+        # Phase 2: index names as they appear in triple subjects/objects.
+        # This handles cases where triples store display names that don't
+        # exactly match any entity ID or label after normalization.
+        triple_name_to_entity: Dict[str, str] = {}
+        for t in self.kg.triples:
+            for name in (t.subject, t.object):
+                agg = normalize_for_matching(name)
+                if agg not in triple_name_to_entity:
+                    triple_name_to_entity[agg] = name
+
+        for agg_key, raw_name in triple_name_to_entity.items():
+            if agg_key not in index:
+                # No entity ID maps here — find the closest entity
+                std_key = normalize_entity_name(raw_name)
+                if std_key in index:
+                    index[agg_key] = index[std_key]
+
+        # Deduplicate entity ID lists
+        for key in index:
+            index[key] = list(dict.fromkeys(index[key]))
+
         return index
 
     def _build_relation_index(self) -> Dict[str, List[Triple]]:
@@ -112,17 +148,28 @@ class TripleVerifier:
         return index
 
     def _resolve_entity(self, name: str) -> List[str]:
-        """Resolve an entity name to KG entity IDs (fuzzy matching)."""
+        """Resolve an entity name to KG entity IDs.
+
+        Tries, in order:
+        1. Standard normalization exact match
+        2. Aggressive normalization exact match (catches ID-vs-label mismatches)
+        3. Substring match on standard normalized forms
+        """
         norm = normalize_entity_name(name)
 
-        # Exact normalized match
+        # 1. Exact standard match
         if norm in self._entity_name_to_id:
             return self._entity_name_to_id[norm]
 
-        # Substring match on normalized forms
+        # 2. Exact aggressive match
+        agg = normalize_for_matching(name)
+        if agg in self._entity_name_to_id:
+            return self._entity_name_to_id[agg]
+
+        # 3. Substring match on standard normalized forms
         matches = []
         for key, eids in self._entity_name_to_id.items():
-            if norm in key or key in norm:
+            if len(norm) >= 3 and (norm in key or key in norm):
                 matches.extend(eids)
 
         return list(set(matches))
@@ -188,10 +235,8 @@ class TripleVerifier:
         """
         Tier 1: Check if the fact directly corresponds to a KG triple.
 
-        Looks for triples where:
-        - Subject matches one mentioned entity
-        - Object matches another mentioned entity
-        - Relation matches the implied relation (if provided)
+        Uses aggressive normalization so entity IDs (``homair``) match
+        triple display names (``HOMA-IR``).
         """
         entity_id_lists = list(resolved_entities.values())
         if len(entity_id_lists) < 2:
@@ -203,27 +248,39 @@ class TripleVerifier:
                 reasoning="Need at least 2 resolved entities for exact triple match",
             )
 
+        # Collect all normalised forms for each entity group so we can
+        # match against triple subjects/objects (which use display names).
+        entity_norm_sets: List[set] = []
+        for eids in entity_id_lists:
+            norms = set()
+            for eid in eids:
+                norms.add(normalize_for_matching(eid))
+                # Also add label normalisations for this entity
+                if eid in self.kg.entities:
+                    for label in self.kg.entities[eid].labels:
+                        norms.add(normalize_for_matching(label))
+            entity_norm_sets.append(norms)
+
         supporting_triples = []
 
-        # Check all pairs of resolved entities
-        for i, eids_a in enumerate(entity_id_lists):
-            for j, eids_b in enumerate(entity_id_lists):
+        for i, norms_a in enumerate(entity_norm_sets):
+            for j, norms_b in enumerate(entity_norm_sets):
                 if i == j:
                     continue
-                for eid_a in eids_a:
-                    for eid_b in eids_b:
-                        # Find triples connecting these entities
-                        for t in self.kg.triples:
-                            if (t.subject == eid_a and t.object == eid_b) or \
-                               (t.subject == eid_b and t.object == eid_a):
-                                # If relation is specified, check it matches
-                                if relation_implied:
-                                    rel_norm = normalize_entity_name(t.relation)
-                                    impl_norm = normalize_entity_name(relation_implied)
-                                    if impl_norm in rel_norm or rel_norm in impl_norm:
-                                        supporting_triples.append(t)
-                                else:
+                for t in self.kg.triples:
+                    subj_n = normalize_for_matching(t.subject)
+                    obj_n = normalize_for_matching(t.object)
+                    if (subj_n in norms_a and obj_n in norms_b) or \
+                       (subj_n in norms_b and obj_n in norms_a):
+                        if relation_implied:
+                            rel_norm = normalize_for_matching(t.relation)
+                            impl_norm = normalize_for_matching(relation_implied)
+                            if impl_norm in rel_norm or rel_norm in impl_norm:
+                                if t not in supporting_triples:
                                     supporting_triples.append(t)
+                        else:
+                            if t not in supporting_triples:
+                                supporting_triples.append(t)
 
         if supporting_triples:
             avg_confidence = sum(

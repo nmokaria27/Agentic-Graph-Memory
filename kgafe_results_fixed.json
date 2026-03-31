@@ -1,0 +1,3424 @@
+{
+  "kgafe_results": [
+    {
+      "question": "How does insulin resistance contribute to endothelial dysfunction?",
+      "answer": "Insulin resistance contributes to endothelial dysfunction through multiple interconnected pathways. HOMA-IR, a marker of insulin resistance, directly mediates the relationship with microvascular dysfunction. Insulin resistance is associated with increased levels of IL-6 and TNF-\u03b1, both of which contribute to microvascular dysfunction. Furthermore, insulin resistance is associated with VCAM-1, a marker of endothelial stress, and this association extends to C3a. Obesity, often linked to insulin resistance, affects biomarkers such as ADMA, C3a, C5a, and sC5b-9, and is also associated with the Inflammatory Endothelial Stress Score (IESS). The IESS is associated with microvascular dysfunction and predicts uACR progression. Complement activation, mediated by insulin resistance and metabolic inflammation through pathways including IL-6 receptor signaling and direct targeting of the endothelium, also plays a significant role in microvascular dysfunction. Alterations in the arginine/ADMA ratio, impacting nitric oxide bioavailability, further contribute to microvascular dysfunction. Specifically, insulin resistance is associated with changes in this ratio, and the arginine/ADMA ratio serves as a surrogate for microvascular dysfunction. These factors collectively contribute to endothelial stress and ultimately, microvascular dysfunction.",
+      "gold_answer": null,
+      "metrics": {
+        "kgafe_score": 1.0,
+        "kg_faithfulness": 1.0,
+        "kg_precision": 1.0,
+        "hallucination_rate": 0.0,
+        "path_validity": 0.5185,
+        "coverage": 1.0,
+        "groundedness_score": 1.0,
+        "correctness_score": 1.0,
+        "completeness_score": 0.75,
+        "judge_overall": 0.938,
+        "tier_distribution": {
+          "exact_match": 11,
+          "path_based": 14,
+          "semantic": 2
+        },
+        "verdict_distribution": {
+          "supported": 27,
+          "contradicted": 0,
+          "partially_supported": 0,
+          "unverifiable": 0,
+          "total": 27
+        }
+      },
+      "atomic_facts": [
+        {
+          "fact_id": "af_000",
+          "text": "Insulin resistance contributes to endothelial dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "insulin resistance",
+            "endothelial dysfunction"
+          ],
+          "relation_implied": "contributes_to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_001",
+          "text": "HOMA-IR is a marker of insulin resistance.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "HOMA-IR",
+            "insulin resistance"
+          ],
+          "relation_implied": "is_a",
+          "fact_type": "definition"
+        },
+        {
+          "fact_id": "af_002",
+          "text": "HOMA-IR directly mediates the relationship between insulin resistance and microvascular dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "HOMA-IR",
+            "insulin resistance",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "mediates",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_003",
+          "text": "Insulin resistance is associated with increased levels of IL-6.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "insulin resistance",
+            "IL-6"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_004",
+          "text": "Insulin resistance is associated with increased levels of TNF-\u03b1.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "insulin resistance",
+            "TNF-\u03b1"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_005",
+          "text": "IL-6 contributes to microvascular dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "IL-6",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "contributes_to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_006",
+          "text": "TNF-\u03b1 contributes to microvascular dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "TNF-\u03b1",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "contributes_to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_007",
+          "text": "Insulin resistance is associated with VCAM-1.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "insulin resistance",
+            "VCAM-1"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_008",
+          "text": "VCAM-1 is a marker of endothelial stress.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "VCAM-1",
+            "endothelial stress"
+          ],
+          "relation_implied": "is_a",
+          "fact_type": "definition"
+        },
+        {
+          "fact_id": "af_009",
+          "text": "Insulin resistance is associated with C3a.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "insulin resistance",
+            "C3a"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_010",
+          "text": "Obesity is often linked to insulin resistance.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "insulin resistance"
+          ],
+          "relation_implied": "linked_to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_011",
+          "text": "Obesity affects ADMA.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "ADMA"
+          ],
+          "relation_implied": "affects",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_012",
+          "text": "Obesity affects C3a.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "C3a"
+          ],
+          "relation_implied": "affects",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_013",
+          "text": "Obesity affects C5a.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "C5a"
+          ],
+          "relation_implied": "affects",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_014",
+          "text": "Obesity affects sC5b-9.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "sC5b-9"
+          ],
+          "relation_implied": "affects",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_015",
+          "text": "Obesity is associated with the Inflammatory Endothelial Stress Score (IESS).",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "Inflammatory Endothelial Stress Score"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_016",
+          "text": "The IESS is associated with microvascular dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "Inflammatory Endothelial Stress Score",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_017",
+          "text": "The IESS predicts uACR progression.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "Inflammatory Endothelial Stress Score",
+            "uACR progression"
+          ],
+          "relation_implied": "predicts",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_018",
+          "text": "Complement activation is mediated by insulin resistance.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "complement activation",
+            "insulin resistance"
+          ],
+          "relation_implied": "mediated_by",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_019",
+          "text": "Complement activation is mediated by metabolic inflammation.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "complement activation",
+            "metabolic inflammation"
+          ],
+          "relation_implied": "mediated_by",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_020",
+          "text": "Complement activation contributes to microvascular dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "complement activation",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "contributes_to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_021",
+          "text": "IL-6 receptor signaling is a pathway involved in complement activation.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "IL-6 receptor signaling",
+            "complement activation"
+          ],
+          "relation_implied": "involved_in",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_022",
+          "text": "Direct targeting of the endothelium is a pathway involved in complement activation.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "endothelium",
+            "complement activation"
+          ],
+          "relation_implied": "involved_in",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_023",
+          "text": "Alterations in the arginine/ADMA ratio impact nitric oxide bioavailability.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "arginine/ADMA ratio",
+            "nitric oxide bioavailability"
+          ],
+          "relation_implied": "impacts",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_024",
+          "text": "Alterations in the arginine/ADMA ratio contribute to microvascular dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "arginine/ADMA ratio",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "contributes_to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_025",
+          "text": "Insulin resistance is associated with changes in the arginine/ADMA ratio.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "insulin resistance",
+            "arginine/ADMA ratio"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_026",
+          "text": "The arginine/ADMA ratio serves as a surrogate for microvascular dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "arginine/ADMA ratio",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "is_a",
+          "fact_type": "definition"
+        }
+      ],
+      "verification_results": [
+        {
+          "fact_id": "af_000",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.765,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(metabolic disease) -[MANIFESTS_AS_SYMPTOM]-> (insulin resistance)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (HOMA-IR)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (left ventricular extracellular volume fraction)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (LV mass index)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (insulin resistance)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The evidence shows that insulin resistance is associated with conditions (like obesity) that lead to IL-6 and TNF-alpha. Both IL-6 and TNF-alpha are associated with microvascular dysfunction. VCAM-1 is also associated with insulin resistance and contributes to endothelial activation and stress, which are components of endothelial dysfunction. HOMA-IR, associated with insulin resistance, mediates microvascular dysfunction. Therefore, insulin resistance contributes to conditions that ultimately lead to endothelial dysfunction.",
+          "matched_entities": [
+            "insulin_resistance",
+            "endothelial_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_001",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (HOMA-IR)",
+            "(HOMA-IR) -[MEASURED_BY_PROTOCOL]-> (HOMA-IR calculated from fasting insulin and glucose)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (HOMA-IR)",
+            "(HOMA-IR) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)"
+          ],
+          "supporting_paths": [
+            [
+              "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (HOMA-IR)"
+            ]
+          ],
+          "reasoning": "Multiple paths demonstrate a relationship between HOMA-IR and insulin resistance. Paths 1 and 2 directly link HOMA-IR to insulin resistance, while paths 3, 4, and 5 show indirect connections through other conditions or mediators. The consistent association across these paths strongly supports the fact.",
+          "matched_entities": [
+            "homair",
+            "homa_ir",
+            "insulin_resistance"
+          ]
+        },
+        {
+          "fact_id": "af_002",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(HOMA-IR) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "homair",
+            "homa_ir",
+            "insulin_resistance",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_003",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "insulin_resistance",
+            "il_6"
+          ]
+        },
+        {
+          "fact_id": "af_004",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "insulin_resistance",
+            "tnf_alpha"
+          ]
+        },
+        {
+          "fact_id": "af_005",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(IL-6 receptor signaling) -[MEDIATED_BY]-> (complement activation)",
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states IL-6 is associated with microvascular dysfunction. Path 2, 3, 4, and 5 provide indirect support by showing IL-6 is part of a chain of events leading to microvascular dysfunction. While indirect, these paths strengthen the claim.",
+          "matched_entities": [
+            "il_6",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_006",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that TNF-\u03b1 is associated with microvascular dysfunction, directly supporting the fact. Paths 2-5 provide indirect support by showing TNF-\u03b1 as a link in a chain of associations leading to microvascular dysfunction, establishing a causal or correlational relationship.",
+          "matched_entities": [
+            "tnf_alpha",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_007",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "insulin_resistance",
+            "vcam"
+          ]
+        },
+        {
+          "fact_id": "af_008",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(VCAM-1) -[ASSOCIATED_WITH_CONDITION]-> (endothelial stress)",
+            "(soluble VCAM-1) -[ASSOCIATED_WITH_CONDITION]-> (Endothelial stress biomarkers)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)"
+          ],
+          "supporting_paths": [
+            [
+              "(VCAM-1) -[ASSOCIATED_WITH_CONDITION]-> (endothelial stress)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states VCAM-1 is associated with endothelial stress, directly supporting the fact. Path 2 also supports the fact, though less directly, by associating soluble VCAM-1 with endothelial stress biomarkers. Paths 3, 4, and 5 provide indirect connections but don't directly confirm the core relationship.",
+          "matched_entities": [
+            "vcam",
+            "endothelial_stress"
+          ]
+        },
+        {
+          "fact_id": "af_009",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(insulin resistance and metabolic inflammation) -[MEDIATED_BY]-> (complement activation)",
+            "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (C3a)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C3a)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(VCAM-1) -[ASSOCIATED_WITH_CONDITION]-> (C3a)"
+          ],
+          "supporting_paths": [
+            [
+              "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+              "(obesity) -[AFFECTS_BIOMARKER]-> (C3a)"
+            ]
+          ],
+          "reasoning": "Multiple paths demonstrate a connection between insulin resistance and C3a, either directly or through intermediate nodes. Paths 1, 2, 3, 4, and 5 all link insulin resistance to C3a through various mechanisms (complement activation, obesity, VCAM-1, IL-6, TNF-alpha). This establishes a clear association.",
+          "matched_entities": [
+            "insulin_resistance",
+            "c3a"
+          ]
+        },
+        {
+          "fact_id": "af_010",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)"
+          ],
+          "supporting_paths": [
+            [
+              "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)"
+            ]
+          ],
+          "reasoning": "Multiple paths demonstrate a link between obesity and insulin resistance, either directly (Path 1) or through intermediary conditions/biomarkers (Paths 2, 3, 4, and 5). The relationships 'ASSOCIATED_WITH_CONDITION' and 'ASSOCIATED_WITH_DISEASE' strongly suggest a connection, supporting the stated fact.",
+          "matched_entities": [
+            "obesity",
+            "insulin_resistance"
+          ]
+        },
+        {
+          "fact_id": "af_011",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(obesity) -[AFFECTS_BIOMARKER]-> (ADMA)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "obesity",
+            "adma"
+          ]
+        },
+        {
+          "fact_id": "af_012",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C3a)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "obesity",
+            "c3a"
+          ]
+        },
+        {
+          "fact_id": "af_013",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C5a)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "obesity",
+            "c5a"
+          ]
+        },
+        {
+          "fact_id": "af_014",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(obesity) -[AFFECTS_BIOMARKER]-> (sC5b-9)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "obesity",
+            "sc5b"
+          ]
+        },
+        {
+          "fact_id": "af_015",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "obesity",
+            "inflammatory_endothelial_stress_score"
+          ]
+        },
+        {
+          "fact_id": "af_016",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "inflammatory_endothelial_stress_score",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_017",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.825,
+          "supporting_triples": [
+            "(Inflammatory Endothelial Stress Score (IESS)) -[PREDICTS_OUTCOME]-> (uACR progression)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[PREDICTS_PROGRESSION]-> (uACR progression)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 2 triple(s) directly support this fact",
+          "matched_entities": [
+            "inflammatory_endothelial_stress_score",
+            "uacr_progression"
+          ]
+        },
+        {
+          "fact_id": "af_018",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(insulin resistance and metabolic inflammation) -[MEDIATED_BY]-> (complement activation)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (insulin resistance)",
+            "(intermediate CFR and uACR) -[ASSOCIATED_WITH_CONDITION]-> (complement activation)",
+            "(intermediate CFR and uACR) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)"
+          ],
+          "supporting_paths": [
+            [
+              "(insulin resistance and metabolic inflammation) -[MEDIATED_BY]-> (complement activation)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that complement activation is mediated by insulin resistance, thus supporting the fact. Path 2 suggests the reverse, but doesn't contradict the original statement. Paths 3, 4, and 5 provide indirect links through other factors, but don't directly support the core relationship.",
+          "matched_entities": [
+            "complement_activation",
+            "insulin_resistance"
+          ]
+        },
+        {
+          "fact_id": "af_019",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(insulin resistance and metabolic inflammation) -[MEDIATED_BY]-> (complement activation)",
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(insulin resistance and metabolic inflammation) -[MEDIATED_BY]-> (complement activation)"
+            ]
+          ],
+          "reasoning": "Path 1 directly supports the fact by stating that 'insulin resistance and metabolic inflammation' mediates 'complement activation', which is a restatement of the fact. While other paths involve complement activation and inflammation, Path 1 is the most direct evidence.",
+          "matched_entities": [
+            "complement_activation",
+            "metabolic_inflammation"
+          ]
+        },
+        {
+          "fact_id": "af_020",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(endothelium) -[TARGETS_PATHWAY]-> (complement activation)",
+            "(endothelium) -[IMPAIRED_BY_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that complement activation mediates microvascular dysfunction, directly supporting the fact. Path 2 also supports this, specifying high complement activation. Path 3 and 4 provide indirect support by showing complement activation's relationship to endothelium which is then impaired leading to microvascular dysfunction. Path 5 provides a more complex, indirect link, but still connects complement activation to microvascular dysfunction through intermediate factors.",
+          "matched_entities": [
+            "complement_activation",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_021",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(IL-6 receptor signaling) -[MEDIATED_BY]-> (complement activation)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (insulin resistance)",
+            "(intermediate CFR and uACR) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(intermediate CFR and uACR) -[ASSOCIATED_WITH_CONDITION]-> (complement activation)"
+          ],
+          "supporting_paths": [
+            [
+              "(IL-6 receptor signaling) -[MEDIATED_BY]-> (complement activation)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that IL-6 receptor signaling mediates complement activation, directly supporting the fact. Paths 2, 3, 4, and 5 provide indirect support by linking IL-6 (closely related to IL-6 receptor signaling) to complement activation through various intermediate nodes and relationships.",
+          "matched_entities": [
+            "il_6_receptor_signaling",
+            "complement_activation"
+          ]
+        },
+        {
+          "fact_id": "af_022",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(endothelium) -[TARGETS_PATHWAY]-> (complement activation)",
+            "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (endothelium)",
+            "(endothelium) -[IMPAIRED_BY_CONDITION]-> (microvascular dysfunction)",
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(endothelium) -[TARGETS_PATHWAY]-> (complement activation)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that the endothelium targets the complement activation pathway, which directly supports the fact. Path 3 and 4 show indirect relationships involving microvascular dysfunction, but Path 1 provides the most direct support.",
+          "matched_entities": [
+            "endothelium",
+            "complement_activation"
+          ]
+        },
+        {
+          "fact_id": "af_023",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.855,
+          "supporting_triples": [
+            "(arginine/ADMA ratio) -[SURROGATE_FOR_FUNCTION]-> (microvascular dysfunction)",
+            "(arginine/ADMA ratio) -[SURROGATE_FOR_FUNCTION]-> (nitric oxide bioavailability surrogates)",
+            "(arginine/ADMA ratio) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(acylcarnitines) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(microvascular dysfunction) -[PROCESS_IMPAIRS_FUNCTION]-> (microvascular dysfunction)",
+            "(nitric oxide bioavailability surrogates) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(HOMA-IR) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(LV remodeling) -[MEDIATED_BY]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The knowledge graph explicitly states that the 'arginine/ADMA ratio' -[SURROGATE_FOR_FUNCTION]-> 'nitric oxide bioavailability surrogates'. This directly supports the claim that alterations in the arginine/ADMA ratio impact nitric oxide bioavailability, as surrogates are indicators of the function itself.",
+          "matched_entities": [
+            "arginine_adma_ratio",
+            "nitric_oxide_bioavailability"
+          ]
+        },
+        {
+          "fact_id": "af_024",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+              "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+              "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Multiple paths (1, 2, 3, 4, and 5) demonstrate a connection between ADMA and microvascular dysfunction, often mediated by inflammatory factors. While the fact specifically mentions the arginine/ADMA *ratio*, the paths establish a link between ADMA and the condition, which supports the broader claim. The paths show ADMA is associated with conditions that lead to microvascular dysfunction.",
+          "matched_entities": [
+            "arginine_adma_ratio",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_025",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.7,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (ADMA)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)"
+          ],
+          "supporting_paths": [
+            [
+              "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+              "(obesity) -[AFFECTS_BIOMARKER]-> (ADMA)"
+            ]
+          ],
+          "reasoning": "Multiple paths (1, 2, 3, 4, and 5) demonstrate a connection between insulin resistance and ADMA, often mediated through obesity. While not directly stating a change in the arginine/ADMA *ratio*, the association with ADMA supports the fact that insulin resistance is linked to changes involving ADMA. Paths 2 and 4 are the most direct.",
+          "matched_entities": [
+            "insulin_resistance",
+            "arginine_adma_ratio"
+          ]
+        },
+        {
+          "fact_id": "af_026",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.7,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+              "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+              "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "The paths demonstrate that ADMA is associated with conditions that lead to microvascular dysfunction. While the fact specifically mentions the arginine/ADMA *ratio*, the paths establish a link between ADMA and microvascular dysfunction, suggesting ADMA plays a role, and thus supporting the idea that something related to ADMA (like a ratio involving it) could be a surrogate marker. The paths don't directly prove the ratio is the surrogate, but they provide supporting evidence for a relationship between ADMA and microvascular dysfunction.",
+          "matched_entities": [
+            "arginine_adma_ratio",
+            "microvascular_dysfunction"
+          ]
+        }
+      ],
+      "judge_verdict": {
+        "individual_verdicts": [
+          {
+            "dimension": "correctness",
+            "score": 1.0,
+            "binary_verdict": true,
+            "reasoning": "The answer accurately reflects the relationships described in the knowledge graph. It correctly identifies insulin resistance as a contributor to microvascular dysfunction and details several pathways involved, including IL-6, TNF-\u03b1, VCAM-1, C3a, C5a, ADMA, arginine/ADMA ratio, and complement activation. The connections between these factors and microvascular dysfunction are all supported by the KG evidence. The mention of HOMA-IR as a marker of insulin resistance and its link to microvascular dysfunction is also accurate. The IESS and its association with uACR progression are also correctly stated. No contradictions or inaccuracies were found.",
+            "issues": []
+          },
+          {
+            "dimension": "completeness",
+            "score": 0.75,
+            "binary_verdict": true,
+            "reasoning": "The question asks how insulin resistance contributes to endothelial dysfunction. The KG evidence details several pathways, including complement activation, inflammatory markers (IL-6, TNF-\u03b1), VCAM-1, arginine/ADMA ratio, and the Inflammatory Endothelial Stress Score (IESS). The answer covers many of these pathways, focusing on IL-6, TNF-\u03b1, VCAM-1, arginine/ADMA ratio, and the link to microvascular dysfunction. However, it doesn't explicitly mention complement activation as a key pathway, nor does it detail the role of C3a/C5a. It also doesn't mention the connection to kidney injury or the use of biomarkers like sC5b-9. The answer primarily focuses on the inflammatory and nitric oxide-related aspects, while the KG evidence also highlights the systemic nature of the problem (affecting adipose tissue, myocardium, kidney) and the potential for therapeutic intervention (lisinopril, losartan).",
+            "issues": [
+              "Complement activation pathway",
+              "Specific complement factors (C3a, C5a, sC5b-9)",
+              "Systemic involvement (adipose tissue, myocardium, kidney)",
+              "Potential therapeutic interventions (lisinopril, losartan)",
+              "Link to kidney injury/albuminuria"
+            ]
+          },
+          {
+            "dimension": "groundedness",
+            "score": 1.0,
+            "binary_verdict": true,
+            "reasoning": "The answer presents a detailed explanation of how insulin resistance contributes to endothelial dysfunction, referencing several biomarkers and pathways. Each claim was meticulously checked against the provided knowledge graph. All claims are directly supported by the KG evidence, detailing associations between insulin resistance, inflammatory markers (IL-6, TNF-\u03b1), endothelial stress markers (VCAM-1), complement activation, arginine/ADMA ratio, and microvascular dysfunction. The KG provides evidence for the relationships between these entities, confirming the validity of each statement in the answer.",
+            "issues": []
+          }
+        ],
+        "overall_score": 0.938,
+        "overall_pass": true,
+        "meta_reasoning": "CORRECTNESS: PASS (1.00) | COMPLETENESS: PASS (0.75) |   Issues: Complement activation pathway; Specific complement factors (C3a, C5a, sC5b-9); Systemic involvement (adipose tissue, myocardium, kidney) | GROUNDEDNESS: PASS (1.00)"
+      },
+      "duration_seconds": 189.87
+    },
+    {
+      "question": "What is the relationship between IL-6 signaling, complement activation, and cardiovascular outcomes?",
+      "answer": "IL-6 receptor signaling is mediated by complement activation, as demonstrated by the knowledge graph. Complement activation is associated with the endothelium and can mediate microvascular dysfunction, a process occurring within a broader network disease context. The endothelium targets the complement activation pathway, and complement activation contributes to microvascular dysfunction. Obesity and insulin resistance are associated with increased levels of IL-6 and TNF-\u03b1, and affect biomarkers of complement activation, including C3a and C5a. Complement activation is also linked to leukocyte recruitment. Microvascular dysfunction is further associated with TNF-\u03b1, acylcarnitines, and inflammation. Several factors mediate the relationship between microvascular dysfunction and other conditions, including HOMA-IR, urinary albumin creatinine ratio, and immune\u2013endothelial pathways. The network disease impacts systems including the endothelium, adipose tissue, innate immunity, myocardium, and kidney.",
+      "gold_answer": null,
+      "metrics": {
+        "kgafe_score": 0.85,
+        "kg_faithfulness": 1.0,
+        "kg_precision": 1.0,
+        "hallucination_rate": 0.0,
+        "path_validity": 0.44,
+        "coverage": 0.0,
+        "groundedness_score": 1.0,
+        "correctness_score": 1.0,
+        "completeness_score": 0.7,
+        "judge_overall": 0.925,
+        "tier_distribution": {
+          "exact_match": 11,
+          "path_based": 11,
+          "semantic": 3
+        },
+        "verdict_distribution": {
+          "supported": 25,
+          "contradicted": 0,
+          "partially_supported": 0,
+          "unverifiable": 0,
+          "total": 25
+        }
+      },
+      "atomic_facts": [
+        {
+          "fact_id": "af_000",
+          "text": "IL-6 receptor signaling is mediated by complement activation.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "IL-6 receptor signaling",
+            "complement activation"
+          ],
+          "relation_implied": "mediated_by",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_001",
+          "text": "Complement activation is associated with the endothelium.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "complement activation",
+            "endothelium"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_002",
+          "text": "Complement activation can mediate microvascular dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "complement activation",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "mediates",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_003",
+          "text": "Microvascular dysfunction occurs within a network disease context.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "microvascular dysfunction",
+            "network disease"
+          ],
+          "relation_implied": "occurs_within",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_004",
+          "text": "The endothelium targets the complement activation pathway.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "endothelium",
+            "complement activation pathway"
+          ],
+          "relation_implied": "targets",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_005",
+          "text": "Complement activation contributes to microvascular dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "complement activation",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "contributes_to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_006",
+          "text": "Obesity is associated with increased levels of IL-6.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "IL-6"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_007",
+          "text": "Obesity is associated with increased levels of TNF-\u03b1.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "TNF-\u03b1"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_008",
+          "text": "Insulin resistance is associated with increased levels of IL-6.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "insulin resistance",
+            "IL-6"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_009",
+          "text": "Insulin resistance is associated with increased levels of TNF-\u03b1.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "insulin resistance",
+            "TNF-\u03b1"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_010",
+          "text": "IL-6 and TNF-\u03b1 affect biomarkers of complement activation.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "IL-6",
+            "TNF-\u03b1",
+            "biomarkers of complement activation"
+          ],
+          "relation_implied": "affects",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_011",
+          "text": "C3a is a biomarker of complement activation.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "C3a",
+            "biomarkers of complement activation"
+          ],
+          "relation_implied": "is_a",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_012",
+          "text": "C5a is a biomarker of complement activation.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "C5a",
+            "biomarkers of complement activation"
+          ],
+          "relation_implied": "is_a",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_013",
+          "text": "Complement activation is linked to leukocyte recruitment.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "complement activation",
+            "leukocyte recruitment"
+          ],
+          "relation_implied": "linked_to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_014",
+          "text": "Microvascular dysfunction is associated with TNF-\u03b1.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "microvascular dysfunction",
+            "TNF-\u03b1"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_015",
+          "text": "Microvascular dysfunction is associated with acylcarnitines.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "microvascular dysfunction",
+            "acylcarnitines"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_016",
+          "text": "Microvascular dysfunction is associated with inflammation.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "microvascular dysfunction",
+            "inflammation"
+          ],
+          "relation_implied": "associated_with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_017",
+          "text": "HOMA-IR mediates the relationship between microvascular dysfunction and other conditions.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "HOMA-IR",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "mediates",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_018",
+          "text": "Urinary albumin creatinine ratio mediates the relationship between microvascular dysfunction and other conditions.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "urinary albumin creatinine ratio",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "mediates",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_019",
+          "text": "Immune\u2013endothelial pathways mediate the relationship between microvascular dysfunction and other conditions.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "immune\u2013endothelial pathways",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "mediates",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_020",
+          "text": "The network disease impacts the endothelium.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "network disease",
+            "endothelium"
+          ],
+          "relation_implied": "impacts",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_021",
+          "text": "The network disease impacts adipose tissue.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "network disease",
+            "adipose tissue"
+          ],
+          "relation_implied": "impacts",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_022",
+          "text": "The network disease impacts innate immunity.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "network disease",
+            "innate immunity"
+          ],
+          "relation_implied": "impacts",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_023",
+          "text": "The network disease impacts the myocardium.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "network disease",
+            "myocardium"
+          ],
+          "relation_implied": "impacts",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_024",
+          "text": "The network disease impacts the kidney.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "network disease",
+            "kidney"
+          ],
+          "relation_implied": "impacts",
+          "fact_type": "claim"
+        }
+      ],
+      "verification_results": [
+        {
+          "fact_id": "af_000",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(IL-6 receptor signaling) -[MEDIATED_BY]-> (complement activation)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "il_6_receptor_signaling",
+            "complement_activation"
+          ]
+        },
+        {
+          "fact_id": "af_001",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (endothelium)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "complement_activation",
+            "endothelium"
+          ]
+        },
+        {
+          "fact_id": "af_002",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "complement_activation",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_003",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(endothelium) -[IMPAIRED_BY_CONDITION]-> (microvascular dysfunction)",
+            "(network disease) -[PART_OF_SYSTEM]-> (endothelium)",
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(endothelium) -[TARGETS_PATHWAY]-> (complement activation)",
+            "(network disease) -[PART_OF_SYSTEM]-> (endothelium)",
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (endothelium)",
+            "(network disease) -[PART_OF_SYSTEM]-> (endothelium)"
+          ],
+          "supporting_paths": [
+            [
+              "(endothelium) -[IMPAIRED_BY_CONDITION]-> (microvascular dysfunction)",
+              "(network disease) -[PART_OF_SYSTEM]-> (endothelium)"
+            ]
+          ],
+          "reasoning": "Path 1 directly shows microvascular dysfunction linked to network disease. Path 2 and 3, while more complex, also establish a connection between microvascular dysfunction and network disease through intermediary nodes and relationships. The cyclical nature of some paths doesn't negate the core relationship.",
+          "matched_entities": [
+            "microvascular_dysfunction",
+            "network_disease"
+          ]
+        },
+        {
+          "fact_id": "af_004",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(endothelium) -[TARGETS_PATHWAY]-> (complement activation)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "endothelium",
+            "complement",
+            "complement_activation"
+          ]
+        },
+        {
+          "fact_id": "af_005",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(endothelium) -[TARGETS_PATHWAY]-> (complement activation)",
+            "(endothelium) -[IMPAIRED_BY_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that complement activation mediates microvascular dysfunction, directly supporting the fact. Path 2 also supports the fact, indicating high complement activation mediates microvascular dysfunction. Path 3 and 4 provide indirect support by showing complement activation's relationship to endothelium which is impaired in microvascular dysfunction. Path 5 provides a more complex, indirect link, but still suggests a connection.",
+          "matched_entities": [
+            "complement_activation",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_006",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "obesity",
+            "il_6"
+          ]
+        },
+        {
+          "fact_id": "af_007",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "obesity",
+            "tnf_alpha"
+          ]
+        },
+        {
+          "fact_id": "af_008",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "insulin_resistance",
+            "il_6"
+          ]
+        },
+        {
+          "fact_id": "af_009",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "insulin_resistance",
+            "tnf_alpha"
+          ]
+        },
+        {
+          "fact_id": "af_010",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.765,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(intermediate CFR and uACR) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(plasma proteomics) -[USED_TO_MEASURE]-> (IL-6)",
+            "(targeted metabolomics) -[USED_TO_MEASURE]-> (IL-6)",
+            "(whole-blood transcriptomics) -[USED_TO_MEASURE]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ICAM-1)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The evidence shows that both IL-6 and TNF-\u03b1 are associated with conditions that affect biomarkers of complement activation. Specifically, 'obesity' is associated with both IL-6 and TNF-\u03b1, and also affects biomarkers C3a, C5a, and sC5b-9 (complement activation biomarkers). Additionally, 'intermediate CFR and uACR' is associated with both IL-6 and TNF-\u03b1, and also with 'complement activation'. Finally, 'complement activation' mediates relationship with microvascular dysfunction, which is associated with both IL-6 and TNF-\u03b1.",
+          "matched_entities": [
+            "il_6",
+            "tnf_alpha",
+            "complement",
+            "complement_activation"
+          ]
+        },
+        {
+          "fact_id": "af_011",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (C3a)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C3a)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (insulin resistance)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C3a)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C5a)",
+            "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (C5a)"
+          ],
+          "supporting_paths": [
+            [
+              "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (C3a)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that complement activation is associated with C3a, which supports the fact that C3a is a biomarker of complement activation. Paths 2, 3, 4, and 5 also link C3a to complement activation, though indirectly through other conditions and biomarkers.",
+          "matched_entities": [
+            "c3a",
+            "complement",
+            "complement_activation"
+          ]
+        },
+        {
+          "fact_id": "af_012",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (C5a)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C5a)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (insulin resistance)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C5a)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C3a)",
+            "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (C3a)"
+          ],
+          "supporting_paths": [
+            [
+              "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (C5a)"
+            ]
+          ],
+          "reasoning": "Paths 1 and 4 directly state that complement activation is associated with C5a, which supports the fact that C5a is a biomarker of complement activation. Paths 2, 3, and 5 provide indirect support by linking C5a to complement activation through other conditions and biomarkers.",
+          "matched_entities": [
+            "c5a",
+            "complement",
+            "complement_activation"
+          ]
+        },
+        {
+          "fact_id": "af_013",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(complement activation) -[MEDIATED_BY]-> (leukocyte recruitment)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(complement activation) -[MEDIATED_BY]-> (leukocyte recruitment)"
+          ],
+          "supporting_paths": [
+            [
+              "(complement activation) -[MEDIATED_BY]-> (leukocyte recruitment)"
+            ]
+          ],
+          "reasoning": "Both paths demonstrate a direct link between complement activation and leukocyte recruitment. Path 1 directly states complement activation mediates leukocyte recruitment. Path 2, while more complex, ultimately shows complement activation leading to leukocyte recruitment through a series of related events, reinforcing the connection.",
+          "matched_entities": [
+            "complement_activation",
+            "leukocyte_recruitment"
+          ]
+        },
+        {
+          "fact_id": "af_014",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.85,
+          "supporting_triples": [
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "microvascular_dysfunction",
+            "tnf_alpha"
+          ]
+        },
+        {
+          "fact_id": "af_015",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.85,
+          "supporting_triples": [
+            "(acylcarnitines) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "microvascular_dysfunction",
+            "acylcarnitines"
+          ]
+        },
+        {
+          "fact_id": "af_016",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (coronary microvascular dysfunction)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (coronary microvascular dysfunction)",
+            "(monocyte_chemotactic_protein) -[CONTRIBUTES_TO_DISEASE]-> (inflammation)"
+          ],
+          "supporting_paths": [
+            [
+              "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that inflammation mediates microvascular dysfunction, which is equivalent to saying microvascular dysfunction is associated with inflammation. Path 2 and 3 also show a connection between inflammation and microvascular dysfunction, though indirectly. Path 4 and 5 are less direct but still suggest a relationship through related conditions.",
+          "matched_entities": [
+            "microvascular_dysfunction",
+            "inflammation"
+          ]
+        },
+        {
+          "fact_id": "af_017",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(HOMA-IR) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "homair",
+            "homa_ir",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_018",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.855,
+          "supporting_triples": [
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(acylcarnitines) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(microvascular dysfunction) -[PROCESS_IMPAIRS_FUNCTION]-> (microvascular dysfunction)",
+            "(nitric oxide bioavailability surrogates) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(HOMA-IR) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(LV remodeling) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(arginine/ADMA ratio) -[SURROGATE_FOR_FUNCTION]-> (microvascular dysfunction)",
+            "(endothelium) -[IMPAIRED_BY_CONDITION]-> (microvascular dysfunction)",
+            "(urinary albumin creatinine ratio) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The knowledge graph explicitly states that 'urinary albumin creatinine ratio' -[MEDIATES_RELATIONSHIP]-> 'microvascular dysfunction'. This directly supports the claim that urinary albumin creatinine ratio mediates the relationship between microvascular dysfunction and other conditions, as 'other conditions' are implicitly linked to microvascular dysfunction through the various associations present in the graph.",
+          "matched_entities": [
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_019",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.81,
+          "supporting_triples": [
+            "(immune\u2013endothelial pathways) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(acylcarnitines) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(microvascular dysfunction) -[PROCESS_IMPAIRS_FUNCTION]-> (microvascular dysfunction)",
+            "(nitric oxide bioavailability surrogates) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(HOMA-IR) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(LV remodeling) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(arginine/ADMA ratio) -[SURROGATE_FOR_FUNCTION]-> (microvascular dysfunction)",
+            "(endothelium) -[IMPAIRED_BY_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The claim states that immune\u2013endothelial pathways mediate the relationship between microvascular dysfunction and other conditions. The knowledge graph contains the triple '(immune\u2013endothelial pathways) -[MEDIATED_BY]-> (microvascular dysfunction)', which directly supports this claim. Additionally, several other triples show various factors (IL-6, TNF-\u03b1, complement activation, inflammation, HOMA-IR, urinary albumin creatinine ratio) mediating relationships with microvascular dysfunction, indicating that immune-endothelial pathways are involved in linking these conditions to microvascular dysfunction.",
+          "matched_entities": [
+            "immune_endothelial_pathways",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_020",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(network disease) -[PART_OF_SYSTEM]-> (endothelium)"
+          ],
+          "supporting_paths": [
+            [
+              "(network disease) -[PART_OF_SYSTEM]-> (endothelium)"
+            ]
+          ],
+          "reasoning": "Path 1 indicates that the network disease is a part of the endothelium, which directly relates to the fact that the network disease impacts the endothelium. While 'part of' doesn't strictly mean 'impacts', it's a reasonable connection in a biological context.",
+          "matched_entities": [
+            "network_disease",
+            "endothelium"
+          ]
+        },
+        {
+          "fact_id": "af_021",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.85,
+          "supporting_triples": [
+            "(network disease) -[PART_OF_SYSTEM]-> (adipose tissue)"
+          ],
+          "supporting_paths": [
+            [
+              "(network disease) -[PART_OF_SYSTEM]-> (adipose tissue)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that the network disease is a PART_OF_SYSTEM of adipose tissue, indicating an impact on it.",
+          "matched_entities": [
+            "network_disease",
+            "adipose_tissue"
+          ]
+        },
+        {
+          "fact_id": "af_022",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.85,
+          "supporting_triples": [
+            "(network disease) -[PART_OF_SYSTEM]-> (innate immunity)"
+          ],
+          "supporting_paths": [
+            [
+              "(network disease) -[PART_OF_SYSTEM]-> (innate immunity)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that the network disease is a PART_OF_SYSTEM of innate immunity, indicating an impact on it. This directly supports the fact.",
+          "matched_entities": [
+            "network_disease",
+            "innate_immunity"
+          ]
+        },
+        {
+          "fact_id": "af_023",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(network disease) -[PART_OF_SYSTEM]-> (myocardium)"
+          ],
+          "supporting_paths": [
+            [
+              "(network disease) -[PART_OF_SYSTEM]-> (myocardium)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that the network disease is a part of the myocardium, which implies it impacts the myocardium.",
+          "matched_entities": [
+            "network_disease",
+            "myocardium"
+          ]
+        },
+        {
+          "fact_id": "af_024",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(network disease) -[PART_OF_SYSTEM]-> (kidney)"
+          ],
+          "supporting_paths": [
+            [
+              "(network disease) -[PART_OF_SYSTEM]-> (kidney)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that the network disease is PART_OF_SYSTEM of the kidney, indicating an impact on the kidney.",
+          "matched_entities": [
+            "network_disease",
+            "kidney"
+          ]
+        }
+      ],
+      "judge_verdict": {
+        "individual_verdicts": [
+          {
+            "dimension": "correctness",
+            "score": 1.0,
+            "binary_verdict": true,
+            "reasoning": "The answer accurately reflects the relationships described in the knowledge graph. It correctly states that IL-6 receptor signaling is mediated by complement activation, and that complement activation is associated with the endothelium and microvascular dysfunction. It also accurately links obesity and insulin resistance to increased IL-6 and TNF-\u03b1 levels, and their effect on complement activation biomarkers (C3a and C5a). The answer also correctly identifies the involvement of various factors and systems, including adipose tissue, innate immunity, myocardium, and kidney, in the network disease context. No contradictions or inaccuracies were found.",
+            "issues": []
+          },
+          {
+            "dimension": "completeness",
+            "score": 0.7,
+            "binary_verdict": true,
+            "reasoning": "The question asks about the relationship between IL-6 signaling, complement activation, and cardiovascular outcomes. The KG evidence details connections between these elements and microvascular dysfunction, which is a key component of cardiovascular disease. The answer focuses heavily on the IL-6/complement/microvascular dysfunction pathway, but doesn't explicitly mention 'cardiovascular outcomes' as a direct result, only implying it through microvascular dysfunction. It also doesn't fully explore the systemic involvement (adipose tissue, myocardium, kidney) as indicated by the KG.",
+            "issues": [
+              "Explicit connection between microvascular dysfunction and broader cardiovascular outcomes (e.g., heart failure, myocardial infarction).",
+              "The role of the systems impacted by the network disease (adipose tissue, myocardium, kidney) in the overall relationship.",
+              "Specific biomarkers (C3a, C5a) and their connection to cardiovascular risk.",
+              "The impact of interventions (lisinopril, losartan) on the pathway.",
+              "Details on how complement activation mediates the relationship between IL-6 and microvascular dysfunction."
+            ]
+          },
+          {
+            "dimension": "groundedness",
+            "score": 1.0,
+            "binary_verdict": true,
+            "reasoning": "The answer consists of several claims about the relationships between IL-6 signaling, complement activation, and cardiovascular outcomes, as well as their connections to various biomarkers and conditions. Each claim was checked against the provided knowledge graph to determine if it is supported by the available evidence. All 25 atomic facts were verified as supported by the KG.",
+            "issues": []
+          }
+        ],
+        "overall_score": 0.925,
+        "overall_pass": true,
+        "meta_reasoning": "CORRECTNESS: PASS (1.00) | COMPLETENESS: PASS (0.70) |   Issues: Explicit connection between microvascular dysfunction and broader cardiovascular outcomes (e.g., heart failure, myocardial infarction).; The role of the systems impacted by the network disease (adipose tissue, myocardium, kidney) in the overall relationship.; Specific biomarkers (C3a, C5a) and their connection to cardiovascular risk. | GROUNDEDNESS: PASS (1.00)"
+      },
+      "duration_seconds": 149.27
+    },
+    {
+      "question": "Which SGLT2 inhibitors are mentioned and what are their cardiovascular effects?",
+      "answer": "The knowledge graph indicates that both SGLT2 inhibitors as a class and empagliflozin reduce the progression of urinary albumin creatinine ratio (uACR). The knowledge graph does not directly identify SGLT2 inhibitors as a class, but does show a relationship between SGLT2 inhibitors and uACR reduction. The graph also details connections between inflammation, microvascular dysfunction, and cardiovascular disease. Specifically, inflammation is associated with cardiovascular disease and type 2 diabetes mellitus, and can contribute to microvascular dysfunction. Several biomarkers, including MCP-1, IL-6, and TNF-\u03b1, are associated with both inflammation and microvascular dysfunction. These pathways are also linked to conditions like obesity and insulin resistance. While the knowledge graph does not explicitly state the cardiovascular effects of specific SGLT2 inhibitors beyond their impact on uACR, the interconnectedness of these pathways suggests a potential link between SGLT2 inhibitors, inflammation, microvascular dysfunction, and ultimately, cardiovascular health. Further research would be needed to establish a direct causal relationship.",
+      "gold_answer": null,
+      "metrics": {
+        "kgafe_score": 0.835,
+        "kg_faithfulness": 1.0,
+        "kg_precision": 1.0,
+        "hallucination_rate": 0.0,
+        "path_validity": 0.6429,
+        "coverage": 0.0,
+        "groundedness_score": 1.0,
+        "correctness_score": 0.85,
+        "completeness_score": 0.6,
+        "judge_overall": 0.848,
+        "tier_distribution": {
+          "exact_match": 0,
+          "path_based": 9,
+          "semantic": 5
+        },
+        "verdict_distribution": {
+          "supported": 14,
+          "contradicted": 0,
+          "partially_supported": 0,
+          "unverifiable": 0,
+          "total": 14
+        }
+      },
+      "atomic_facts": [
+        {
+          "fact_id": "af_000",
+          "text": "SGLT2 inhibitors reduce the progression of urinary albumin creatinine ratio (uACR).",
+          "source_sentence": "The knowledge graph indicates that both SGLT2 inhibitors as a class and empagliflozin reduce the progression of urinary albumin creatinine ratio (uACR).",
+          "entities_mentioned": [
+            "SGLT2 inhibitors",
+            "urinary albumin creatinine ratio"
+          ],
+          "relation_implied": "reduces progression of",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_001",
+          "text": "Empagliflozin reduces the progression of urinary albumin creatinine ratio (uACR).",
+          "source_sentence": "The knowledge graph indicates that both SGLT2 inhibitors as a class and empagliflozin reduce the progression of urinary albumin creatinine ratio (uACR).",
+          "entities_mentioned": [
+            "empagliflozin",
+            "urinary albumin creatinine ratio"
+          ],
+          "relation_implied": "reduces progression of",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_002",
+          "text": "SGLT2 inhibitors are related to uACR reduction.",
+          "source_sentence": "The knowledge graph does not directly identify SGLT2 inhibitors as a class, but does show a relationship between SGLT2 inhibitors and uACR reduction.",
+          "entities_mentioned": [
+            "SGLT2 inhibitors",
+            "uACR reduction"
+          ],
+          "relation_implied": "is related to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_003",
+          "text": "Inflammation is associated with cardiovascular disease.",
+          "source_sentence": "The graph also details connections between inflammation, microvascular dysfunction, and cardiovascular disease. Specifically, inflammation is associated with cardiovascular disease and type 2 diabetes mellitus, and can contribute to microvascular dysfunction.",
+          "entities_mentioned": [
+            "inflammation",
+            "cardiovascular disease"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_004",
+          "text": "Inflammation is associated with type 2 diabetes mellitus.",
+          "source_sentence": "The graph also details connections between inflammation, microvascular dysfunction, and cardiovascular disease. Specifically, inflammation is associated with cardiovascular disease and type 2 diabetes mellitus, and can contribute to microvascular dysfunction.",
+          "entities_mentioned": [
+            "inflammation",
+            "type 2 diabetes mellitus"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_005",
+          "text": "Inflammation can contribute to microvascular dysfunction.",
+          "source_sentence": "The graph also details connections between inflammation, microvascular dysfunction, and cardiovascular disease. Specifically, inflammation is associated with cardiovascular disease and type 2 diabetes mellitus, and can contribute to microvascular dysfunction.",
+          "entities_mentioned": [
+            "inflammation",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "contributes to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_006",
+          "text": "MCP-1 is associated with inflammation.",
+          "source_sentence": "Several biomarkers, including MCP-1, IL-6, and TNF-\u03b1, are associated with both inflammation and microvascular dysfunction.",
+          "entities_mentioned": [
+            "MCP-1",
+            "inflammation"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_007",
+          "text": "IL-6 is associated with inflammation.",
+          "source_sentence": "Several biomarkers, including MCP-1, IL-6, and TNF-\u03b1, are associated with both inflammation and microvascular dysfunction.",
+          "entities_mentioned": [
+            "IL-6",
+            "inflammation"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_008",
+          "text": "TNF-\u03b1 is associated with inflammation.",
+          "source_sentence": "Several biomarkers, including MCP-1, IL-6, and TNF-\u03b1, are associated with both inflammation and microvascular dysfunction.",
+          "entities_mentioned": [
+            "TNF-\u03b1",
+            "inflammation"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_009",
+          "text": "MCP-1 is associated with microvascular dysfunction.",
+          "source_sentence": "Several biomarkers, including MCP-1, IL-6, and TNF-\u03b1, are associated with both inflammation and microvascular dysfunction.",
+          "entities_mentioned": [
+            "MCP-1",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_010",
+          "text": "IL-6 is associated with microvascular dysfunction.",
+          "source_sentence": "Several biomarkers, including MCP-1, IL-6, and TNF-\u03b1, are associated with both inflammation and microvascular dysfunction.",
+          "entities_mentioned": [
+            "IL-6",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_011",
+          "text": "TNF-\u03b1 is associated with microvascular dysfunction.",
+          "source_sentence": "Several biomarkers, including MCP-1, IL-6, and TNF-\u03b1, are associated with both inflammation and microvascular dysfunction.",
+          "entities_mentioned": [
+            "TNF-\u03b1",
+            "microvascular dysfunction"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_012",
+          "text": "Obesity is linked to these pathways.",
+          "source_sentence": "These pathways are also linked to conditions like obesity and insulin resistance.",
+          "entities_mentioned": [
+            "obesity"
+          ],
+          "relation_implied": "is linked to pathways",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_013",
+          "text": "Insulin resistance is linked to these pathways.",
+          "source_sentence": "These pathways are also linked to conditions like obesity and insulin resistance.",
+          "entities_mentioned": [
+            "insulin resistance"
+          ],
+          "relation_implied": "is linked to pathways",
+          "fact_type": "claim"
+        }
+      ],
+      "verification_results": [
+        {
+          "fact_id": "af_000",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.855,
+          "supporting_triples": [
+            "(SGLT2 inhibitors) -[DRUG_LOWERS_MEASUREMENT]-> (uacr)",
+            "(SGLT2 inhibitors) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)",
+            "(empagliflozin) -[REDUCES_PROGRESSION]-> (uacr)",
+            "(liraglutide) -[REDUCES_PROGRESSION]-> (uacr)",
+            "(atorvastatin) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)",
+            "(rosuvastatin) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)",
+            "(mineralocorticoid receptor antagonists) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The triple '(SGLT2 inhibitors) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)' directly supports the claim that SGLT2 inhibitors affect the progression of uACR. The triple '(SGLT2 inhibitors) -[DRUG_LOWERS_MEASUREMENT]-> (uacr)' further supports the claim by indicating a reduction in uACR, which implies a reduction in its progression.",
+          "matched_entities": [
+            "sglt2_inhibitors"
+          ]
+        },
+        {
+          "fact_id": "af_001",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(empagliflozin) -[REDUCES_PROGRESSION]-> (uacr)",
+            "(SGLT2 inhibitors) -[DRUG_LOWERS_MEASUREMENT]-> (uacr)",
+            "(SGLT2 inhibitors) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)",
+            "(liraglutide) -[REDUCES_PROGRESSION]-> (uacr)",
+            "(atorvastatin) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)",
+            "(rosuvastatin) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)",
+            "(mineralocorticoid receptor antagonists) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The triple '(empagliflozin) -[REDUCES_PROGRESSION]-> (uacr)' directly supports the claim that empagliflozin reduces the progression of uACR.",
+          "matched_entities": [
+            "empagliflozin"
+          ]
+        },
+        {
+          "fact_id": "af_002",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(SGLT2 inhibitors) -[DRUG_LOWERS_MEASUREMENT]-> (uacr)",
+            "(SGLT2 inhibitors) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)",
+            "(empagliflozin) -[REDUCES_PROGRESSION]-> (uacr)",
+            "(liraglutide) -[REDUCES_PROGRESSION]-> (uacr)",
+            "(atorvastatin) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)",
+            "(rosuvastatin) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)",
+            "(mineralocorticoid receptor antagonists) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The triples '(SGLT2 inhibitors) -[DRUG_LOWERS_MEASUREMENT]-> (uacr)' and '(SGLT2 inhibitors) -[DRUG_AFFECTS_PROGRESSION]-> (uacr)' directly support the claim that SGLT2 inhibitors are related to uACR reduction. 'Lowers measurement' and 'affects progression' both imply a relationship with uACR.",
+          "matched_entities": [
+            "sglt2_inhibitors",
+            "urinary_albumin_to_creatinine_ratio"
+          ]
+        },
+        {
+          "fact_id": "af_003",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(inflammation) -[CONTRIBUTES_TO_DISEASE]-> (cardiovascular disease)",
+            "(metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (cardiovascular disease)",
+            "(inflammation) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)",
+            "(Metabolic syndrome) -[ASSOCIATED_WITH_DISEASE]-> (type 2 diabetes mellitus)",
+            "(Metabolic syndrome) -[ASSOCIATED_WITH_DISEASE]-> (cardiovascular disease)"
+          ],
+          "supporting_paths": [
+            [
+              "(inflammation) -[CONTRIBUTES_TO_DISEASE]-> (cardiovascular disease)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that inflammation contributes to cardiovascular disease, directly supporting the fact. Path 2 also directly supports the fact. Paths 3, 4, and 5, while more complex, demonstrate inflammation being linked to conditions that lead to cardiovascular disease, providing indirect support.",
+          "matched_entities": [
+            "inflammation",
+            "cardiovascular_disease"
+          ]
+        },
+        {
+          "fact_id": "af_004",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(inflammation) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)",
+            "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (type 2 diabetes mellitus)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)"
+          ],
+          "supporting_paths": [
+            [
+              "(inflammation) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)"
+            ]
+          ],
+          "reasoning": "Multiple paths directly link inflammation to type 2 diabetes mellitus, either through 'ASSOCIATED_WITH_CONDITION' or 'ASSOCIATED_WITH_DISEASE'. Path 1 provides the most direct support. Paths 2-5 offer supporting evidence through intermediate nodes, demonstrating inflammation's role in the disease process.",
+          "matched_entities": [
+            "inflammation",
+            "type_2_diabetes_mellitus"
+          ]
+        },
+        {
+          "fact_id": "af_005",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (coronary microvascular dysfunction)",
+            "(monocyte_chemotactic_protein) -[CONTRIBUTES_TO_DISEASE]-> (inflammation)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (coronary microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that inflammation mediates microvascular dysfunction, directly supporting the fact. Path 4 and Path 5 provide indirect support by linking inflammation to microvascular dysfunction through intermediate nodes. Path 2 and 3 show inflammation is associated with microvascular dysfunction, but the relationship is not as direct as Path 1.",
+          "matched_entities": [
+            "inflammation",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_006",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 1.0,
+          "supporting_triples": [
+            "(MCP-1 (CCL2)) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)"
+          ],
+          "supporting_paths": [
+            [
+              "(MCP-1 (CCL2)) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that MCP-1 is associated with inflammation, which directly supports the fact.",
+          "matched_entities": [
+            "mcp",
+            "inflammation"
+          ]
+        },
+        {
+          "fact_id": "af_007",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (obesity)",
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(IL-6 receptor signaling) -[MEDIATED_BY]-> (endothelial activation)",
+            "(insulin resistance and metabolic inflammation) -[MEDIATED_BY]-> (endothelial activation)"
+          ],
+          "supporting_paths": [
+            [
+              "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+              "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 2 directly links IL-6 to inflammation through a chain of relationships: IL-6 is associated with microvascular dysfunction, which leads to inflammation. This provides direct evidence supporting the fact.",
+          "matched_entities": [
+            "il_6",
+            "inflammation"
+          ]
+        },
+        {
+          "fact_id": "af_008",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (obesity)",
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (obesity)"
+          ],
+          "supporting_paths": [
+            [
+              "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+              "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 2 directly links TNF-\u03b1 to inflammation through a chain of associations: TNF-\u03b1 is associated with microvascular dysfunction, which is linked to inflammation. This provides direct evidence supporting the fact.",
+          "matched_entities": [
+            "tnf_alpha",
+            "inflammation"
+          ]
+        },
+        {
+          "fact_id": "af_009",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(MCP-1 (CCL2)) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+            "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(MCP-1 (CCL2)) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (coronary microvascular dysfunction)",
+            "(MCP-1 (CCL2)) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+            "(monocyte_chemotactic_protein) -[CONTRIBUTES_TO_DISEASE]-> (inflammation)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (coronary microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(MCP-1 (CCL2)) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+              "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 1 directly links MCP-1 to inflammation, which then leads to microvascular dysfunction. Path 2 and 3 link MCP-1 to inflammation and then to coronary microvascular dysfunction, a specific type of microvascular dysfunction. Therefore, the paths support the fact.",
+          "matched_entities": [
+            "mcp",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_010",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(IL-6 receptor signaling) -[MEDIATED_BY]-> (complement activation)",
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states IL-6 is associated with microvascular dysfunction. Path 2, 3, 4, and 5 provide indirect support by showing IL-6 is linked to factors that lead to microvascular dysfunction, establishing a causal chain. Path 1 provides the most direct evidence.",
+          "matched_entities": [
+            "il_6",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_011",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that TNF-\u03b1 is associated with microvascular dysfunction. Paths 2, 3, 4, and 5 provide indirect support by demonstrating TNF-\u03b1's involvement in pathways leading to microvascular dysfunction, establishing a transitive relationship.",
+          "matched_entities": [
+            "tnf_alpha",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_012",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.855,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ICAM-1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C3a)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C5a)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (sC5b-9)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (ADMA)",
+            "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (obesity)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The claim states that obesity is linked to pathways. The knowledge graph shows multiple associations between obesity and various conditions/biomarkers which can be considered pathways. Specifically, obesity is directly associated with ADMA, IL-6, TNF-\u03b1, ICAM-1, C3a, C5a, and sC5b-9. These associations demonstrate that obesity is indeed linked to these pathways.",
+          "matched_entities": [
+            "obesity"
+          ]
+        },
+        {
+          "fact_id": "af_013",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.855,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(metabolic disease) -[MANIFESTS_AS_SYMPTOM]-> (insulin resistance)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (HOMA-IR)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (left ventricular extracellular volume fraction)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (LV mass index)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (insulin resistance)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The claim states that insulin resistance is linked to pathways. The knowledge graph shows insulin resistance is associated with IL-6, TNF-\u03b1, obesity, HOMA-IR, VCAM-1, and affects biomarkers like TNF-\u03b1, left ventricular extracellular volume fraction, and LV mass index. These associations demonstrate links to various pathways involving these entities and biomarkers, thus supporting the claim.",
+          "matched_entities": [
+            "insulin_resistance"
+          ]
+        }
+      ],
+      "judge_verdict": {
+        "individual_verdicts": [
+          {
+            "dimension": "correctness",
+            "score": 0.85,
+            "binary_verdict": true,
+            "reasoning": "The answer states that both SGLT2 inhibitors as a class and empagliflozin reduce the progression of urinary albumin creatinine ratio (uACR). The knowledge graph does not explicitly state that SGLT2 inhibitors *as a class* reduce uACR, but it *does* state that SGLT2 inhibitor use is associated with lower Inflammatory Endothelial Stress Score (IESS), which predicts uACR progression. The answer also states the graph details connections between inflammation, microvascular dysfunction, and cardiovascular disease, which is supported by the KG evidence. The answer correctly identifies relationships between biomarkers and inflammation/microvascular dysfunction. The answer correctly notes the KG does not explicitly state cardiovascular effects of specific SGLT2 inhibitors beyond uACR impact. The answer is generally consistent with the KG, but the claim about SGLT2 inhibitors as a class directly reducing uACR is not directly supported; the KG shows an association through IESS and uACR progression.",
+            "issues": [
+              "The claim that SGLT2 inhibitors as a class reduce uACR is not directly supported by the KG. The KG shows SGLT2 inhibitor use is associated with lower IESS, which predicts uACR progression, but doesn't directly state uACR reduction."
+            ]
+          },
+          {
+            "dimension": "completeness",
+            "score": 0.6,
+            "binary_verdict": true,
+            "reasoning": "The question asks for SGLT2 inhibitors mentioned in the KG and their cardiovascular effects. The KG primarily focuses on the relationship between SGLT2 inhibitors and the Inflammatory Endothelial Stress Score (IESS) and uACR, and links these to microvascular dysfunction and cardiovascular risk factors. The answer identifies empagliflozin and mentions the reduction of uACR. It also discusses the pathways linking inflammation, microvascular dysfunction, and cardiovascular disease. However, it doesn't explicitly list *all* SGLT2 inhibitors mentioned (only empagliflozin), and the direct cardiovascular effects are inferred rather than stated as facts from the KG. The KG shows SGLT2 inhibitors *lower* IESS, which is a key finding not fully highlighted in the answer.",
+            "issues": [
+              "Does not list all SGLT2 inhibitors mentioned (the KG only mentions SGLT2 inhibitors as a class and empagliflozin).",
+              "Fails to explicitly state the KG's finding that SGLT2 inhibitor use is associated with lower IESS (a key indicator of cardiovascular health).",
+              "Does not directly state the cardiovascular effects, relying on inference from related pathways."
+            ]
+          },
+          {
+            "dimension": "groundedness",
+            "score": 1.0,
+            "binary_verdict": true,
+            "reasoning": "The answer states that both SGLT2 inhibitors as a class and empagliflozin reduce the progression of uACR, which is supported by the KG (SGLT2 inhibitor use -> exhibits lower IESS -> predicts outcome uACR progression). The answer also mentions relationships between inflammation, microvascular dysfunction, and cardiovascular disease, which are all present in the KG. The claim about biomarkers (MCP-1, IL-6, TNF-\u03b1) being associated with inflammation and microvascular dysfunction is also supported. The answer correctly notes the KG doesn't explicitly state cardiovascular effects of specific SGLT2 inhibitors beyond uACR, and frames further effects as potential links and needing further research. All claims are traceable to the KG, even the speculative ones are appropriately caveated.",
+            "issues": []
+          }
+        ],
+        "overall_score": 0.848,
+        "overall_pass": true,
+        "meta_reasoning": "CORRECTNESS: PASS (0.85) |   Issues: The claim that SGLT2 inhibitors as a class reduce uACR is not directly supported by the KG. The KG shows SGLT2 inhibitor use is associated with lower IESS, which predicts uACR progression, but doesn't directly state uACR reduction. | COMPLETENESS: PASS (0.60) |   Issues: Does not list all SGLT2 inhibitors mentioned (the KG only mentions SGLT2 inhibitors as a class and empagliflozin).; Fails to explicitly state the KG's finding that SGLT2 inhibitor use is associated with lower IESS (a key indicator of cardiovascular health).; Does not directly state the cardiovascular effects, relying on inference from related pathways. | GROUNDEDNESS: PASS (1.00)"
+      },
+      "duration_seconds": 150.45
+    },
+    {
+      "question": "What biomarkers are associated with the conditions you just described?",
+      "answer": "Several biomarkers are associated with insulin resistance and related conditions. HOMA-IR is associated with insulin resistance (metabolic disease). Chronic metabolic inflammation is associated with obesity, and consequently, obesity is correlated with ADMA, IL-6, TNF-\u03b1, and ICAM-1. Obesity also affects biomarkers C3a, C5a, and sC5b-9. IL-1 beta is associated with obesity, and monocyte chemotactic protein is linked to type 2 diabetes mellitus, a condition frequently associated with chronic metabolic inflammation. Insulin resistance is also associated with VCAM-1. Complement activation is associated with both the endothelium and insulin resistance-related microvascular dysfunction. IL-6 and TNF-\u03b1 can be measured using plasma proteomics, targeted metabolomics, and whole-blood transcriptomics. HbA1c is associated with risk of type 2 diabetes mellitus. The Inflammatory Endothelial Stress Score (IESS) is associated with obesity and type 2 diabetes mellitus. IESS is also associated with left ventricular extracellular volume fraction and LV mass index. SGLT2 inhibitor use is associated with reduced progression of urinary albumin creatinine ratio (uACR), which manifests as albuminuria and is associated with renal and kidney injury.",
+      "gold_answer": null,
+      "metrics": {
+        "kgafe_score": 0.9073,
+        "kg_faithfulness": 0.9677,
+        "kg_precision": 0.9677,
+        "hallucination_rate": 0.0323,
+        "path_validity": 0.8065,
+        "coverage": 0.5,
+        "groundedness_score": 1.0,
+        "correctness_score": 1.0,
+        "completeness_score": 0.75,
+        "judge_overall": 0.938,
+        "tier_distribution": {
+          "exact_match": 3,
+          "path_based": 25,
+          "semantic": 3
+        },
+        "verdict_distribution": {
+          "supported": 30,
+          "contradicted": 0,
+          "partially_supported": 0,
+          "unverifiable": 1,
+          "total": 31
+        }
+      },
+      "atomic_facts": [
+        {
+          "fact_id": "af_000",
+          "text": "HOMA-IR is associated with insulin resistance.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "HOMA-IR",
+            "insulin resistance"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_001",
+          "text": "Insulin resistance is a metabolic disease.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "insulin resistance",
+            "metabolic disease"
+          ],
+          "relation_implied": "is a",
+          "fact_type": "definition"
+        },
+        {
+          "fact_id": "af_002",
+          "text": "Chronic metabolic inflammation is associated with obesity.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "chronic metabolic inflammation",
+            "obesity"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_003",
+          "text": "Obesity is correlated with ADMA.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "ADMA"
+          ],
+          "relation_implied": "is correlated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_004",
+          "text": "Obesity is correlated with IL-6.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "IL-6"
+          ],
+          "relation_implied": "is correlated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_005",
+          "text": "Obesity is correlated with TNF-\u03b1.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "TNF-\u03b1"
+          ],
+          "relation_implied": "is correlated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_006",
+          "text": "Obesity is correlated with ICAM-1.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "ICAM-1"
+          ],
+          "relation_implied": "is correlated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_007",
+          "text": "Obesity affects C3a.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "C3a"
+          ],
+          "relation_implied": "affects",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_008",
+          "text": "Obesity affects C5a.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "C5a"
+          ],
+          "relation_implied": "affects",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_009",
+          "text": "Obesity affects sC5b-9.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "obesity",
+            "sC5b-9"
+          ],
+          "relation_implied": "affects",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_010",
+          "text": "IL-1 beta is associated with obesity.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "IL-1 beta",
+            "obesity"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_011",
+          "text": "Monocyte chemotactic protein is linked to type 2 diabetes mellitus.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "monocyte chemotactic protein",
+            "type 2 diabetes mellitus"
+          ],
+          "relation_implied": "is linked to",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_012",
+          "text": "Type 2 diabetes mellitus is frequently associated with chronic metabolic inflammation.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "type 2 diabetes mellitus",
+            "chronic metabolic inflammation"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_013",
+          "text": "Insulin resistance is associated with VCAM-1.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "insulin resistance",
+            "VCAM-1"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_014",
+          "text": "Complement activation is associated with the endothelium.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "complement activation",
+            "endothelium"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_015",
+          "text": "Complement activation is associated with insulin resistance-related microvascular dysfunction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "complement activation",
+            "insulin resistance-related microvascular dysfunction"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_016",
+          "text": "IL-6 can be measured using plasma proteomics.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "IL-6",
+            "plasma proteomics"
+          ],
+          "relation_implied": "can be measured using",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_017",
+          "text": "IL-6 can be measured using targeted metabolomics.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "IL-6",
+            "targeted metabolomics"
+          ],
+          "relation_implied": "can be measured using",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_018",
+          "text": "IL-6 can be measured using whole-blood transcriptomics.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "IL-6",
+            "whole-blood transcriptomics"
+          ],
+          "relation_implied": "can be measured using",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_019",
+          "text": "TNF-\u03b1 can be measured using plasma proteomics.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "TNF-\u03b1",
+            "plasma proteomics"
+          ],
+          "relation_implied": "can be measured using",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_020",
+          "text": "TNF-\u03b1 can be measured using targeted metabolomics.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "TNF-\u03b1",
+            "targeted metabolomics"
+          ],
+          "relation_implied": "can be measured using",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_021",
+          "text": "TNF-\u03b1 can be measured using whole-blood transcriptomics.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "TNF-\u03b1",
+            "whole-blood transcriptomics"
+          ],
+          "relation_implied": "can be measured using",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_022",
+          "text": "HbA1c is associated with risk of type 2 diabetes mellitus.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "HbA1c",
+            "type 2 diabetes mellitus"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_023",
+          "text": "The Inflammatory Endothelial Stress Score (IESS) is associated with obesity.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "Inflammatory Endothelial Stress Score (IESS)",
+            "obesity"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_024",
+          "text": "The Inflammatory Endothelial Stress Score (IESS) is associated with type 2 diabetes mellitus.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "Inflammatory Endothelial Stress Score (IESS)",
+            "type 2 diabetes mellitus"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_025",
+          "text": "IESS is associated with left ventricular extracellular volume fraction.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "IESS",
+            "left ventricular extracellular volume fraction"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_026",
+          "text": "IESS is associated with LV mass index.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "IESS",
+            "LV mass index"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_027",
+          "text": "SGLT2 inhibitor use is associated with reduced progression of urinary albumin creatinine ratio (uACR).",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "SGLT2 inhibitor use",
+            "urinary albumin creatinine ratio (uACR)"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_028",
+          "text": "Urinary albumin creatinine ratio (uACR) manifests as albuminuria.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "urinary albumin creatinine ratio (uACR)",
+            "albuminuria"
+          ],
+          "relation_implied": "manifests as",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_029",
+          "text": "Albuminuria is associated with renal injury.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "albuminuria",
+            "renal injury"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        },
+        {
+          "fact_id": "af_030",
+          "text": "Albuminuria is associated with kidney injury.",
+          "source_sentence": "",
+          "entities_mentioned": [
+            "albuminuria",
+            "kidney injury"
+          ],
+          "relation_implied": "is associated with",
+          "fact_type": "claim"
+        }
+      ],
+      "verification_results": [
+        {
+          "fact_id": "af_000",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (HOMA-IR)",
+            "(HOMA-IR) -[MEASURED_BY_PROTOCOL]-> (HOMA-IR calculated from fasting insulin and glucose)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (HOMA-IR)",
+            "(HOMA-IR) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)"
+          ],
+          "supporting_paths": [
+            [
+              "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (HOMA-IR)"
+            ]
+          ],
+          "reasoning": "Multiple paths demonstrate an association between HOMA-IR and insulin resistance. Path 1 directly states this association. Path 2 and others show HOMA-IR being used to assess or relate to conditions linked to insulin resistance, establishing a connection. While some paths involve intermediaries, the core relationship is consistently present.",
+          "matched_entities": [
+            "homair",
+            "homa_ir",
+            "insulin_resistance"
+          ]
+        },
+        {
+          "fact_id": "af_001",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.81,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(metabolic disease) -[MANIFESTS_AS_SYMPTOM]-> (insulin resistance)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (HOMA-IR)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (left ventricular extracellular volume fraction)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (LV mass index)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (insulin resistance)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The knowledge graph contains the triple '(metabolic disease) -[MANIFESTS_AS_SYMPTOM]-> (insulin resistance)'. This directly implies that insulin resistance is a manifestation of a metabolic disease, which is equivalent to saying it *is* a metabolic disease. Therefore, the claim is supported.",
+          "matched_entities": [
+            "insulin_resistance",
+            "metabolic_disease"
+          ]
+        },
+        {
+          "fact_id": "af_002",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (obesity)",
+            "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(TNF-\u03b1) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)"
+          ],
+          "supporting_paths": [
+            [
+              "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (obesity)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that chronic metabolic inflammation is associated with obesity. Paths 2-5, while more complex, also demonstrate connections between inflammation and obesity, providing further support, even if indirect. Path 1 is the most direct evidence.",
+          "matched_entities": [
+            "chronic_metabolic_inflammation",
+            "obesity"
+          ]
+        },
+        {
+          "fact_id": "af_003",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (ADMA)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(IL-6) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(arginine/ADMA ratio) -[SURROGATE_FOR_FUNCTION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ADMA)"
+            ]
+          ],
+          "reasoning": "Paths 1 and 2 directly state associations between obesity and ADMA, supporting the fact that obesity is correlated with ADMA. Paths 3, 4, and 5, while more complex, also link obesity to ADMA through intermediate nodes, further reinforcing the correlation.",
+          "matched_entities": [
+            "obesity",
+            "adma"
+          ]
+        },
+        {
+          "fact_id": "af_004",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)"
+          ],
+          "supporting_paths": [
+            [
+              "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)"
+            ]
+          ],
+          "reasoning": "Multiple paths demonstrate a direct or indirect association between obesity and IL-6. Path 1 provides a direct link. Paths 2-5 establish connections through intermediate nodes, supporting the correlation.",
+          "matched_entities": [
+            "obesity",
+            "il_6"
+          ]
+        },
+        {
+          "fact_id": "af_005",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (TNF-\u03b1)"
+          ],
+          "supporting_paths": [
+            [
+              "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states obesity is associated with TNF-\u03b1, directly supporting the fact. Paths 2, 3, 4, and 5 provide indirect support through intermediate nodes and relationships, establishing a correlation, even if complex.",
+          "matched_entities": [
+            "obesity",
+            "tnf_alpha"
+          ]
+        },
+        {
+          "fact_id": "af_006",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 1.0,
+          "supporting_triples": [
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ICAM-1)"
+          ],
+          "supporting_paths": [
+            [
+              "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (ICAM-1)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that obesity is associated with ICAM-1, which directly supports the fact that obesity is correlated with ICAM-1.",
+          "matched_entities": [
+            "obesity",
+            "icam"
+          ]
+        },
+        {
+          "fact_id": "af_007",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C3a)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "obesity",
+            "c3a"
+          ]
+        },
+        {
+          "fact_id": "af_008",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C5a)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "obesity",
+            "c5a"
+          ]
+        },
+        {
+          "fact_id": "af_009",
+          "verdict": "supported",
+          "tier": 1,
+          "confidence": 0.8,
+          "supporting_triples": [
+            "(obesity) -[AFFECTS_BIOMARKER]-> (sC5b-9)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "Exact match: 1 triple(s) directly support this fact",
+          "matched_entities": [
+            "obesity",
+            "sc5b"
+          ]
+        },
+        {
+          "fact_id": "af_010",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 1.0,
+          "supporting_triples": [
+            "(il_1_beta) -[ASSOCIATED_WITH_CONDITION]-> (obesity)"
+          ],
+          "supporting_paths": [
+            [
+              "(il_1_beta) -[ASSOCIATED_WITH_CONDITION]-> (obesity)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that il_1_beta is associated with obesity, which directly supports the fact.",
+          "matched_entities": [
+            "il_1b",
+            "il_1_beta",
+            "obesity"
+          ]
+        },
+        {
+          "fact_id": "af_011",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (coronary microvascular dysfunction)",
+            "(type 2 diabetes) -[ASSOCIATED_WITH_DISEASE]-> (coronary microvascular dysfunction)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)",
+            "(inflammation) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)"
+          ],
+          "supporting_paths": [
+            [
+              "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)"
+            ]
+          ],
+          "reasoning": "Multiple paths demonstrate a link between monocyte chemotactic protein and type 2 diabetes mellitus, either directly or through intermediary conditions like inflammation or coronary microvascular dysfunction. Paths 1, 3, and 4 directly or indirectly link the protein to the disease. Path 2, while involving a loop, still establishes a connection.",
+          "matched_entities": [
+            "monocyte_chemotactic_protein",
+            "type_2_diabetes_mellitus"
+          ]
+        },
+        {
+          "fact_id": "af_012",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (type 2 diabetes mellitus)",
+            "(inflammation) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)",
+            "(monocyte_chemotactic_protein) -[ASSOCIATED_WITH_CONDITION]-> (inflammation)"
+          ],
+          "supporting_paths": [
+            [
+              "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (type 2 diabetes mellitus)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that chronic metabolic inflammation is associated with type 2 diabetes mellitus, directly supporting the fact. Path 2 also supports the fact, though less specifically. Paths 3, 4, and 5 provide indirect support through related concepts and associations, but are less direct.",
+          "matched_entities": [
+            "type_2_diabetes_mellitus",
+            "chronic_metabolic_inflammation"
+          ]
+        },
+        {
+          "fact_id": "af_013",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(insulin resistance and metabolic inflammation) -[MEDIATED_BY]-> (endothelial activation)",
+            "(VCAM1) -[ASSOCIATED_WITH_CONDITION]-> (endothelial activation)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (HOMA-IR)",
+            "(HOMA-IR) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)"
+          ],
+          "supporting_paths": [
+            [
+              "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)"
+            ]
+          ],
+          "reasoning": "Multiple paths directly link insulin resistance to VCAM-1 through 'ASSOCIATED_WITH_CONDITION' or a chain of relationships that ultimately connect them. Paths 1, 3, 4, and 5 all demonstrate this connection, providing strong support for the fact.",
+          "matched_entities": [
+            "insulin_resistance",
+            "vcam"
+          ]
+        },
+        {
+          "fact_id": "af_014",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(endothelium) -[TARGETS_PATHWAY]-> (complement activation)",
+            "(complement activation) -[ASSOCIATED_WITH_CONDITION]-> (endothelium)",
+            "(complement activation) -[MEDIATES_RELATIONSHIP]-> (microvascular dysfunction)",
+            "(endothelium) -[IMPAIRED_BY_CONDITION]-> (microvascular dysfunction)"
+          ],
+          "supporting_paths": [
+            [
+              "(endothelium) -[TARGETS_PATHWAY]-> (complement activation)"
+            ]
+          ],
+          "reasoning": "Paths 1 and 2 directly state an association between complement activation and the endothelium, with both directions of the relationship present. Path 3, 4, and 5 provide indirect support through microvascular dysfunction, but the core relationship is established by paths 1 and 2.",
+          "matched_entities": [
+            "complement_activation",
+            "endothelium"
+          ]
+        },
+        {
+          "fact_id": "af_015",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.85,
+          "supporting_triples": [
+            "(insulin resistance and metabolic inflammation) -[MEDIATED_BY]-> (complement activation)",
+            "(high complement activation) -[MEDIATES_RELATIONSHIP]-> (insulin resistance)",
+            "(intermediate CFR and uACR) -[ASSOCIATED_WITH_CONDITION]-> (complement activation)",
+            "(intermediate CFR and uACR) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)"
+          ],
+          "supporting_paths": [
+            [
+              "(insulin resistance and metabolic inflammation) -[MEDIATED_BY]-> (complement activation)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states complement activation is mediated by insulin resistance and metabolic inflammation, implying an association. Path 2 shows complement activation mediates a relationship with insulin resistance. Paths 3, 4, and 5 demonstrate a connection between complement activation and insulin resistance through intermediate factors (CFR, uACR, IL-6, TNF-\u03b1), establishing an indirect link. Collectively, these paths provide strong evidence supporting the fact.",
+          "matched_entities": [
+            "complement_activation",
+            "insulin_resistance",
+            "microvascular_dysfunction"
+          ]
+        },
+        {
+          "fact_id": "af_016",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 1.0,
+          "supporting_triples": [
+            "(plasma proteomics) -[USED_TO_MEASURE]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(plasma proteomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(plasma proteomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)"
+          ],
+          "supporting_paths": [
+            [
+              "(plasma proteomics) -[USED_TO_MEASURE]-> (IL-6)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that plasma proteomics is used to measure IL-6, which directly supports the fact.",
+          "matched_entities": [
+            "il_6",
+            "plasma_proteomics"
+          ]
+        },
+        {
+          "fact_id": "af_017",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 1.0,
+          "supporting_triples": [
+            "(targeted metabolomics) -[USED_TO_MEASURE]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(targeted metabolomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(targeted metabolomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)"
+          ],
+          "supporting_paths": [
+            [
+              "(targeted metabolomics) -[USED_TO_MEASURE]-> (IL-6)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that targeted metabolomics is used to measure IL-6, which directly supports the fact.",
+          "matched_entities": [
+            "il_6",
+            "targeted_metabolomics"
+          ]
+        },
+        {
+          "fact_id": "af_018",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 1.0,
+          "supporting_triples": [
+            "(whole-blood transcriptomics) -[USED_TO_MEASURE]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(whole-blood transcriptomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(whole-blood transcriptomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)"
+          ],
+          "supporting_paths": [
+            [
+              "(whole-blood transcriptomics) -[USED_TO_MEASURE]-> (IL-6)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that whole-blood transcriptomics is used to measure IL-6, directly supporting the fact.",
+          "matched_entities": [
+            "il_6",
+            "whole_blood_transcriptomics"
+          ]
+        },
+        {
+          "fact_id": "af_019",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 1.0,
+          "supporting_triples": [
+            "(plasma proteomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(plasma proteomics) -[USED_TO_MEASURE]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(plasma proteomics) -[USED_TO_MEASURE]-> (IL-6)"
+          ],
+          "supporting_paths": [
+            [
+              "(plasma proteomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that plasma proteomics is used to measure TNF-\u03b1, which directly supports the fact.",
+          "matched_entities": [
+            "tnf_alpha",
+            "plasma_proteomics"
+          ]
+        },
+        {
+          "fact_id": "af_020",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 1.0,
+          "supporting_triples": [
+            "(targeted metabolomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(targeted metabolomics) -[USED_TO_MEASURE]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(targeted metabolomics) -[USED_TO_MEASURE]-> (IL-6)"
+          ],
+          "supporting_paths": [
+            [
+              "(targeted metabolomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that targeted metabolomics is used to measure TNF-\u03b1, which directly supports the fact.",
+          "matched_entities": [
+            "tnf_alpha",
+            "targeted_metabolomics"
+          ]
+        },
+        {
+          "fact_id": "af_021",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 1.0,
+          "supporting_triples": [
+            "(whole-blood transcriptomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (TNF-\u03b1)",
+            "(obesity) -[ASSOCIATED_WITH_CONDITION]-> (IL-6)",
+            "(whole-blood transcriptomics) -[USED_TO_MEASURE]-> (IL-6)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (TNF-\u03b1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_DISEASE]-> (IL-6)",
+            "(whole-blood transcriptomics) -[USED_TO_MEASURE]-> (IL-6)"
+          ],
+          "supporting_paths": [
+            [
+              "(whole-blood transcriptomics) -[USED_TO_MEASURE]-> (TNF-\u03b1)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that whole-blood transcriptomics is used to measure TNF-\u03b1, directly supporting the fact.",
+          "matched_entities": [
+            "tnf_alpha",
+            "whole_blood_transcriptomics"
+          ]
+        },
+        {
+          "fact_id": "af_022",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(HbA1c) -[ASSOCIATED_WITH_RISK]-> (type 2 diabetes mellitus)",
+            "(HbA1c) -[ASSOCIATED_WITH_RISK]-> (cardiovascular disease)",
+            "(Metabolic syndrome) -[ASSOCIATED_WITH_DISEASE]-> (cardiovascular disease)",
+            "(Metabolic syndrome) -[ASSOCIATED_WITH_DISEASE]-> (type 2 diabetes mellitus)",
+            "(HbA1c) -[ASSOCIATED_WITH_RISK]-> (cardiovascular disease)",
+            "(inflammation) -[CONTRIBUTES_TO_DISEASE]-> (cardiovascular disease)",
+            "(inflammation) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)"
+          ],
+          "supporting_paths": [
+            [
+              "(HbA1c) -[ASSOCIATED_WITH_RISK]-> (type 2 diabetes mellitus)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states HbA1c is associated with risk of type 2 diabetes mellitus. Paths 2 and 3, while more complex, demonstrate HbA1c's association with conditions that lead to type 2 diabetes mellitus, establishing an indirect but logical link.",
+          "matched_entities": [
+            "hba1c",
+            "type_2_diabetes_mellitus"
+          ]
+        },
+        {
+          "fact_id": "af_023",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(VCAM-1) -[ASSOCIATED_WITH_CONDITION]-> (endothelial stress)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(VCAM-1) -[ASSOCIATED_WITH_CONDITION]-> (endothelial stress)",
+            "(VCAM-1) -[ASSOCIATED_WITH_CONDITION]-> (C3a)",
+            "(obesity) -[AFFECTS_BIOMARKER]-> (C3a)"
+          ],
+          "supporting_paths": [
+            [
+              "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states the IESS is associated with obesity. Paths 2, 3, 4, and 5 provide indirect support through multiple relationships linking IESS to obesity, establishing a chain of association.",
+          "matched_entities": [
+            "inflammatory_endothelial_stress_score",
+            "obesity"
+          ]
+        },
+        {
+          "fact_id": "af_024",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (obesity)",
+            "(Chronic metabolic inflammation) -[ASSOCIATED_WITH_DISEASE]-> (type 2 diabetes mellitus)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(inflammation) -[MEDIATED_BY]-> (microvascular dysfunction)",
+            "(inflammation) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)"
+          ],
+          "supporting_paths": [
+            [
+              "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (type 2 diabetes mellitus)"
+            ]
+          ],
+          "reasoning": "All three paths demonstrate a connection between the Inflammatory Endothelial Stress Score (IESS) and type 2 diabetes mellitus. Path 1 is a direct association. Paths 2 and 3 show indirect associations through intermediate conditions and relationships, establishing a logical link.",
+          "matched_entities": [
+            "inflammatory_endothelial_stress_score",
+            "type_2_diabetes_mellitus"
+          ]
+        },
+        {
+          "fact_id": "af_025",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(VCAM-1) -[ASSOCIATED_WITH_CONDITION]-> (endothelial stress)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (left ventricular extracellular volume fraction)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (left ventricular extracellular volume fraction)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(cardiac magnetic resonance (CMR)) -[QUANTIFIES_CONDITION]-> (microvascular dysfunction)",
+            "(left ventricular extracellular volume fraction) -[MEASURED_BY_PROTOCOL]-> (cardiac magnetic resonance (CMR))"
+          ],
+          "supporting_paths": [
+            [
+              "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+              "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+              "(insulin resistance) -[AFFECTS_BIOMARKER]-> (left ventricular extracellular volume fraction)"
+            ]
+          ],
+          "reasoning": "Paths 2, 3, 4, and 5 directly link 'Inflammatory Endothelial Stress Score (IESS)' to 'left ventricular extracellular volume fraction' through various intermediary nodes (obesity, insulin resistance, microvascular dysfunction, CMR). This establishes a clear association, supporting the stated fact.",
+          "matched_entities": [
+            "inflammatory_endothelial_stress_score",
+            "iess",
+            "left_ventricular_extracellular_volume_fraction"
+          ]
+        },
+        {
+          "fact_id": "af_026",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(VCAM-1) -[ASSOCIATED_WITH_CONDITION]-> (endothelial stress)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (VCAM-1)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (LV mass index)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+            "(insulin resistance) -[AFFECTS_BIOMARKER]-> (LV mass index)",
+            "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (microvascular dysfunction)",
+            "(cardiac magnetic resonance (CMR)) -[QUANTIFIES_CONDITION]-> (microvascular dysfunction)",
+            "(LV mass index) -[MEASURED_BY_PROTOCOL]-> (cardiac magnetic resonance (CMR))"
+          ],
+          "supporting_paths": [
+            [
+              "(Inflammatory Endothelial Stress Score (IESS)) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+              "(insulin resistance) -[ASSOCIATED_WITH_CONDITION]-> (obesity)",
+              "(insulin resistance) -[AFFECTS_BIOMARKER]-> (LV mass index)"
+            ]
+          ],
+          "reasoning": "Paths 2, 4, and 5 directly link IESS (Inflammatory Endothelial Stress Score) to LV mass index through a chain of associations and effects. Specifically, IESS is associated with conditions that affect biomarkers related to LV mass index. Paths 1 and 3 provide indirect support, though less direct than 2, 4, and 5.",
+          "matched_entities": [
+            "inflammatory_endothelial_stress_score",
+            "iess",
+            "lv_mass_index"
+          ]
+        },
+        {
+          "fact_id": "af_027",
+          "verdict": "unverifiable",
+          "tier": 3,
+          "confidence": 0.0,
+          "supporting_triples": [],
+          "supporting_paths": [],
+          "reasoning": "No KG entities could be resolved from the fact",
+          "matched_entities": [
+            "sglt2_inhibitor",
+            "urinary_albumin_to_creatinine_ratio"
+          ]
+        },
+        {
+          "fact_id": "af_028",
+          "verdict": "supported",
+          "tier": 3,
+          "confidence": 0.855,
+          "supporting_triples": [
+            "(renal injury) -[MANIFESTS_AS_SYMPTOM]-> (albuminuria)",
+            "(Mediation analyses) -[MEDIATES_RELATIONSHIP]-> (albuminuria)",
+            "(Kidney injury) -[MANIFESTS_AS_SYMPTOM]-> (albuminuria)",
+            "(renal injury) -[MANIFESTS_AS_SYMPTOM]-> (eGFR dip)",
+            "(urinary albumin creatinine ratio) -[ASSOCIATED_WITH_CONDITION]-> (renal injury)",
+            "(high ECV) -[ASSOCIATED_WITH_CONDITION]-> (renal injury)",
+            "(Mediation analyses) -[MEDIATES_RELATIONSHIP]-> (complement activation)",
+            "(confounder adjustment) -[STATISTICAL_METHOD_FOR]-> (Mediation analyses)",
+            "(urinary albumin creatinine ratio) -[RENAL_PARAMETER_ASSOCIATED_WITH]-> (Kidney injury)",
+            "(estimated glomerular filtration rate) -[RENAL_PARAMETER_ASSOCIATED_WITH]-> (Kidney injury)"
+          ],
+          "supporting_paths": [],
+          "reasoning": "The evidence states that 'renal injury' and 'Kidney injury' manifest as 'albuminuria'. The evidence also states that 'urinary albumin creatinine ratio' is associated with 'renal injury' and 'Kidney injury'. Therefore, uACR is associated with conditions that manifest as albuminuria, supporting the claim that uACR manifests as albuminuria.",
+          "matched_entities": [
+            "urinary_albumin_to_creatinine_ratio",
+            "albuminuria"
+          ]
+        },
+        {
+          "fact_id": "af_029",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.95,
+          "supporting_triples": [
+            "(renal injury) -[MANIFESTS_AS_SYMPTOM]-> (albuminuria)",
+            "(Kidney injury) -[MANIFESTS_AS_SYMPTOM]-> (albuminuria)",
+            "(urinary albumin creatinine ratio) -[RENAL_PARAMETER_ASSOCIATED_WITH]-> (Kidney injury)",
+            "(urinary albumin creatinine ratio) -[ASSOCIATED_WITH_CONDITION]-> (renal injury)"
+          ],
+          "supporting_paths": [
+            [
+              "(renal injury) -[MANIFESTS_AS_SYMPTOM]-> (albuminuria)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states that renal injury manifests as albuminuria, indicating an association. Path 2 establishes a more complex relationship where albuminuria is linked to kidney injury (a form of renal injury) and vice versa, further supporting the association.",
+          "matched_entities": [
+            "albuminuria",
+            "renal_injury"
+          ]
+        },
+        {
+          "fact_id": "af_030",
+          "verdict": "supported",
+          "tier": 2,
+          "confidence": 0.9,
+          "supporting_triples": [
+            "(Kidney injury) -[MANIFESTS_AS_SYMPTOM]-> (albuminuria)",
+            "(renal injury) -[MANIFESTS_AS_SYMPTOM]-> (albuminuria)",
+            "(urinary albumin creatinine ratio) -[ASSOCIATED_WITH_CONDITION]-> (renal injury)",
+            "(urinary albumin creatinine ratio) -[RENAL_PARAMETER_ASSOCIATED_WITH]-> (Kidney injury)"
+          ],
+          "supporting_paths": [
+            [
+              "(Kidney injury) -[MANIFESTS_AS_SYMPTOM]-> (albuminuria)"
+            ]
+          ],
+          "reasoning": "Path 1 directly states kidney injury manifests as albuminuria, indicating an association. Path 2, while more complex, also demonstrates a strong link between kidney injury and albuminuria through multiple relationships involving urinary albumin and renal injury.",
+          "matched_entities": [
+            "albuminuria",
+            "kidney_injury"
+          ]
+        }
+      ],
+      "judge_verdict": {
+        "individual_verdicts": [
+          {
+            "dimension": "correctness",
+            "score": 1.0,
+            "binary_verdict": true,
+            "reasoning": "The answer lists several biomarkers and their associations with conditions like insulin resistance, obesity, and type 2 diabetes. I will check each claim against the knowledge graph to identify any factual errors.\n\n1. HOMA-IR is associated with insulin resistance: Correct, KG shows 'insulin resistance -[ASSOCIATED_WITH_CONDITION]-> HOMA-IR'.\n2. Chronic metabolic inflammation is associated with obesity: Correct, KG shows 'Chronic metabolic inflammation -[ASSOCIATED_WITH_DISEASE]-> obesity'.\n3. Obesity is correlated with ADMA, IL-6, TNF-\u03b1, and ICAM-1: Correct, KG shows 'obesity -[ASSOCIATED_WITH_CONDITION]-> ADMA', 'obesity -[ASSOCIATED_WITH_CONDITION]-> IL-6', 'obesity -[ASSOCIATED_WITH_CONDITION]-> TNF-\u03b1', and 'obesity -[ASSOCIATED_WITH_CONDITION]-> ICAM-1'.\n4. Obesity affects biomarkers C3a, C5a, and sC5b-9: Correct, KG shows 'obesity -[AFFECTS_BIOMARKER]-> C3a', 'obesity -[AFFECTS_BIOMARKER]-> C5a', and 'obesity -[AFFECTS_BIOMARKER]-> sC5b-9'.\n5. IL-1 beta is associated with obesity: The KG does not explicitly state this, but it does show 'il_1_beta -[ASSOCIATED_WITH_CONDITION]-> obesity'.\n6. Monocyte chemotactic protein is linked to type 2 diabetes mellitus: Correct, KG shows 'monocyte_chemotactic_protein -[ASSOCIATED_WITH_CONDITION]-> type 2 diabetes mellitus'.\n7. Insulin resistance is also associated with VCAM-1: Correct, KG shows 'insulin resistance -[ASSOCIATED_WITH_CONDITION]-> VCAM-1'.\n8. Complement activation is associated with both the endothelium and insulin resistance-related microvascular dysfunction: Correct, KG shows relationships between complement activation, endothelium, and microvascular dysfunction.\n9. IL-6 and TNF-\u03b1 can be measured using plasma proteomics, targeted metabolomics, and whole-blood transcriptomics: Correct, KG shows 'plasma proteomics -[USED_TO_MEASURE]-> IL-6', 'targeted metabolomics -[USED_TO_MEASURE]-> IL-6', 'whole-blood transcriptomics -[USED_TO_MEASURE]-> IL-6', and similar for TNF-\u03b1.\n10. HbA1c is associated with risk of type 2 diabetes mellitus: Correct, KG shows 'HbA1c -[ASSOCIATED_WITH_RISK]-> type 2 diabetes mellitus'.\n11. The Inflammatory Endothelial Stress Score (IESS) is associated with obesity and type 2 diabetes mellitus: Correct, KG shows 'Inflammatory Endothelial Stress Score (IESS) -[ASSOCIATED_WITH_CONDITION]-> obesity' and 'Inflammatory Endothelial Stress Score (IESS) -[ASSOCIATED_WITH_CONDITION]-> type 2 diabetes mellitus'.\n12. IESS is also associated with left ventricular extracellular volume fraction and LV mass index: Correct, KG shows 'Inflammatory Endothelial Stress Score (IESS) -[ASSOCIATED_WITH_MEASUREMENT]-> left ventricular (LV) extracellular volume fraction (ECV)' and 'insulin resistance -[AFFECTS_BIOMARKER]-> left ventricular extracellular volume fraction'.\n13. SGLT2 inhibitor use is associated with reduced progression of urinary albumin creatinine ratio (uACR), which manifests as albuminuria and is associated with renal and kidney injury: Correct, KG shows 'Inflammatory Endothelial Stress Score (IESS) -[PREDICTS_OUTCOME]-> uACR progression' and 'SGLT2 inhibitor users -[EXHIBITS_LOWER]-> Inflammatory Endothelial Stress Score (IESS)'.",
+            "issues": []
+          },
+          {
+            "dimension": "completeness",
+            "score": 0.75,
+            "binary_verdict": true,
+            "reasoning": "The question asks for biomarkers associated with the conditions described (insulin resistance, obesity, type 2 diabetes, chronic metabolic inflammation). The KG provides a wealth of information on these associations. The answer covers many of the biomarkers, but not all. It focuses heavily on inflammation-related biomarkers (IL-6, TNF-alpha, ICAM-1, C3a, C5a, sC5b-9) and some key metabolic markers (HOMA-IR, HbA1c, uACR, IESS). However, it misses some connections, like the association of VCAM-1 with C3a, the role of monocyte chemotactic protein, and the connection between complement activation and several biomarkers. It also doesn't mention acylcarnitines or nitric oxide bioavailability surrogates.",
+            "issues": [
+              "VCAM-1 association with C3a",
+              "detailed connection of monocyte chemotactic protein to inflammation and microvascular dysfunction",
+              "complement factors associated with complement activation",
+              "acylcarnitines associated with microvascular dysfunction",
+              "nitric oxide bioavailability surrogates associated with microvascular dysfunction",
+              "IL-6 and TNF-alpha association with microvascular dysfunction",
+              "relationship between intermediate CFR/uACR and IL-6/TNF-alpha/complement activation"
+            ]
+          },
+          {
+            "dimension": "groundedness",
+            "score": 1.0,
+            "binary_verdict": true,
+            "reasoning": "The answer provides a list of biomarkers associated with various conditions. I have verified each claim against the provided knowledge graph. The claim 'HOMA-IR is associated with insulin resistance (metabolic disease)' is supported. 'Chronic metabolic inflammation is associated with obesity' is supported. 'Obesity is correlated with ADMA, IL-6, TNF-\u03b1, and ICAM-1' is supported. 'Obesity also affects biomarkers C3a, C5a, and sC5b-9' is supported. 'IL-1 beta is associated with obesity' is not directly present in the KG, but 'il_1_beta' is associated with obesity. 'Monocyte chemotactic protein is linked to type 2 diabetes mellitus' is supported. 'Insulin resistance is also associated with VCAM-1' is supported. 'Complement activation is associated with both the endothelium and insulin resistance-related microvascular dysfunction' is supported. 'IL-6 and TNF-\u03b1 can be measured using plasma proteomics, targeted metabolomics, and whole-blood transcriptomics' is supported. 'HbA1c is associated with risk of type 2 diabetes mellitus' is supported. 'The Inflammatory Endothelial Stress Score (IESS) is associated with obesity and type 2 diabetes mellitus' is supported. 'IESS is also associated with left ventricular extracellular volume fraction and LV mass index' is supported. 'SGLT2 inhibitor use is associated with reduced progression of urinary albumin creatinine ratio (uACR), which manifests as albuminuria and is associated with renal and kidney injury' is supported.",
+            "issues": []
+          }
+        ],
+        "overall_score": 0.938,
+        "overall_pass": true,
+        "meta_reasoning": "CORRECTNESS: PASS (1.00) | COMPLETENESS: PASS (0.75) |   Issues: VCAM-1 association with C3a; detailed connection of monocyte chemotactic protein to inflammation and microvascular dysfunction; complement factors associated with complement activation | GROUNDEDNESS: PASS (1.00)"
+      },
+      "duration_seconds": 233.42
+    }
+  ],
+  "aggregate_kgafe": {
+    "num_questions": 4,
+    "avg_kgafe_score": 0.8981,
+    "avg_kg_faithfulness": 0.9919,
+    "avg_kg_precision": 0.9919,
+    "avg_hallucination_rate": 0.0081,
+    "avg_coverage": 0.375,
+    "avg_groundedness": 1.0,
+    "total_facts": 97,
+    "total_supported": 96,
+    "total_contradicted": 0,
+    "total_unverifiable": 1
+  }
+}

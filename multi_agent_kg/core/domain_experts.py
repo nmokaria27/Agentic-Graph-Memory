@@ -236,24 +236,44 @@ def paths_to_text(paths: List[List[Triple]]) -> str:
 
 
 def neighbourhood(kg: KnowledgeGraph, entity_id: str, hops: int = 2) -> List[Triple]:
-    """Return all triples within *hops* of *entity_id* (BFS expansion)."""
+    """Return all triples within *hops* of *entity_id* (BFS expansion).
+
+    Uses aggressive normalization so that entity IDs (``homair``),
+    display names (``HOMA-IR``), and snake_case forms (``homa_ir``)
+    all match correctly against triple subjects/objects.
+    """
     from collections import deque
+    from multi_agent_kg.core.kg_operations import normalize_for_matching
+
+    # Pre-build normalized adjacency for fast lookup.
+    # Triples may use display names while callers pass entity IDs,
+    # so we normalise both sides to a common key.
+    adj: Dict[str, List[Tuple[Triple, str]]] = {}  # norm_name → [(triple, other_raw_name)]
+    for t in kg.triples:
+        sn = normalize_for_matching(t.subject)
+        on = normalize_for_matching(t.object)
+        adj.setdefault(sn, []).append((t, t.object))
+        adj.setdefault(on, []).append((t, t.subject))
+
+    seed = normalize_for_matching(entity_id)
     visited: Set[str] = set()
-    frontier: deque = deque([(entity_id, 0)])
+    frontier: deque = deque([(seed, 0)])
     collected: List[Triple] = []
+    seen_triples: Set[int] = set()
 
     while frontier:
-        node, depth = frontier.popleft()
-        if node in visited or depth > hops:
+        node_norm, depth = frontier.popleft()
+        if node_norm in visited or depth > hops:
             continue
-        visited.add(node)
-        for t in kg.triples:
-            if t.subject == node or t.object == node:
-                if t not in collected:
-                    collected.append(t)
-                nxt = t.object if t.subject == node else t.subject
-                if nxt not in visited and depth + 1 <= hops:
-                    frontier.append((nxt, depth + 1))
+        visited.add(node_norm)
+        for triple, other_raw in adj.get(node_norm, []):
+            tid = id(triple)
+            if tid not in seen_triples:
+                seen_triples.add(tid)
+                collected.append(triple)
+            other_norm = normalize_for_matching(other_raw)
+            if other_norm not in visited and depth + 1 <= hops:
+                frontier.append((other_norm, depth + 1))
     return collected
 
 

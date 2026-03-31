@@ -52,6 +52,31 @@ def normalize_entity_name(name: str) -> str:
     return re.sub(r"\s+", " ", name).strip()
 
 
+def normalize_for_matching(name: str) -> str:
+    """Aggressive normalization that strips ALL non-alphanumeric characters.
+
+    This ensures that entity IDs (``homair``), display names (``HOMA-IR``),
+    and snake_case IDs (``homa_ir``) all collapse to the same key
+    (``homair``).  Use this when comparing entity names across boundaries
+    where one side uses IDs and the other uses labels/display names.
+
+    Examples::
+
+        normalize_for_matching("HOMA-IR")          -> "homair"
+        normalize_for_matching("homair")            -> "homair"
+        normalize_for_matching("homa_ir")           -> "homair"
+        normalize_for_matching("IL-6")              -> "il6"
+        normalize_for_matching("il_6")              -> "il6"
+        normalize_for_matching("TNF-α")             -> "tnfalpha"
+        normalize_for_matching("insulin resistance") -> "insulinresistance"
+        normalize_for_matching("insulin_resistance") -> "insulinresistance"
+    """
+    name = name.lower().strip()
+    for greek, ascii_ in _GREEK_TO_ASCII.items():
+        name = name.replace(greek, ascii_)
+    return re.sub(r"[^a-z0-9]", "", name)
+
+
 def fuzzy_entity_match(
     a: str,
     b: str,
