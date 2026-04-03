@@ -11,7 +11,7 @@ Responsible for:
 This is the final coordinator - the output stage.
 """
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 import json
 from collections import defaultdict
 
@@ -180,6 +180,14 @@ class KnowledgeOrganizer(BaseAgent):
             self.integration_stats["relations_normalized"] += normalized_count
             print(f"  After normalization: {len(triples)} (normalized: {normalized_count})")
         
+        # Step 2.5: Triple deduplication (alias-aware)
+        print(f"\n[ORGANIZER DEBUG] Triple Deduplication")
+        print(f"  Input triples: {len(triples)}")
+
+        if triples:
+            triples, dedup_count = self._deduplicate_triples(triples, entities)
+            print(f"  After deduplication: {len(triples)} (removed: {dedup_count})")
+
         # Step 3: Integrate into knowledge graph
         print(f"\n[ORGANIZER DEBUG] KG Integration")
         print(f"  Entities to add: {len(entities)}")
@@ -342,6 +350,102 @@ class KnowledgeOrganizer(BaseAgent):
                     normalized_count += 1
         
         return triples, normalized_count
+
+    def _deduplicate_triples(
+        self,
+        triples: List[Dict[str, Any]],
+        entities: List[Dict[str, Any]],
+    ) -> Tuple[List[Dict[str, Any]], int]:
+        """Deduplicate triples and normalize entity references to canonical names.
+
+        Steps:
+        1. Build alias → canonical mapping from the entities list.
+        2. Normalize subject and object fields to canonical names.
+        3. Remove exact duplicates (case-insensitive on subject, relation, object).
+
+        Returns:
+            (deduplicated_triples, removed_count)
+        """
+        # ── Build alias → canonical mapping ──────────────────────────
+        alias_to_canonical: Dict[str, str] = {}
+        for entity in entities:
+            canonical = entity.get("text", "").strip()
+            if not canonical:
+                continue
+            canonical_lower = canonical.lower()
+            # The canonical name maps to itself
+            alias_to_canonical[canonical_lower] = canonical
+            # Map every alias to the canonical form
+            for alias in entity.get("aliases", []):
+                alias_lower = alias.strip().lower()
+                if alias_lower:
+                    alias_to_canonical[alias_lower] = canonical
+            # Also map mentions (some pipelines store aliases there)
+            for mention in entity.get("mentions", []):
+                mention_lower = mention.strip().lower()
+                if mention_lower:
+                    alias_to_canonical[mention_lower] = canonical
+
+        # Also pull aliases from shared memory if available
+        if self.shared_memory and hasattr(self.shared_memory, "entity_aliases"):
+            for alias, canonical_id in self.shared_memory.entity_aliases.items():
+                alias_lower = alias.strip().lower()
+                # Resolve canonical_id to a text name if possible
+                canonical_text = None
+                for entity in entities:
+                    eid = entity.get("id", entity.get("text", ""))
+                    if eid == canonical_id:
+                        canonical_text = entity.get("text", eid).strip()
+                        break
+                if canonical_text:
+                    alias_to_canonical[alias_lower] = canonical_text
+
+        def _canonicalize(name: str) -> str:
+            """Return the canonical form of an entity name, or the original
+            (stripped) name if no alias mapping exists."""
+            key = name.strip().lower()
+            return alias_to_canonical.get(key, name.strip())
+
+        # ── Normalize subjects/objects and deduplicate ───────────────
+        seen: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
+        deduplicated: List[Dict[str, Any]] = []
+        removed = 0
+
+        for triple in triples:
+            subj = triple.get("subject", "")
+            rel = triple.get("relation", "")
+            obj = triple.get("object", "")
+
+            # Normalize to canonical names
+            canon_subj = _canonicalize(subj)
+            canon_obj = _canonicalize(obj)
+
+            # Write the canonical names back into the triple
+            if canon_subj != subj:
+                triple["original_subject"] = subj
+                triple["subject"] = canon_subj
+            if canon_obj != obj:
+                triple["original_object"] = obj
+                triple["object"] = canon_obj
+
+            # Dedup key is case-insensitive
+            key = (canon_subj.lower(), rel.lower(), canon_obj.lower())
+
+            if key in seen:
+                # Keep the triple with higher confidence
+                existing = seen[key]
+                existing_conf = existing.get("final_confidence", existing.get("confidence", 0.0))
+                new_conf = triple.get("final_confidence", triple.get("confidence", 0.0))
+                if new_conf > existing_conf:
+                    # Replace with higher-confidence version
+                    deduplicated = [t if t is not existing else triple for t in deduplicated]
+                    seen[key] = triple
+                removed += 1
+            else:
+                seen[key] = triple
+                deduplicated.append(triple)
+
+        return deduplicated, removed
 
     def _integrate_to_kg(
         self,

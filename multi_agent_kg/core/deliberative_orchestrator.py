@@ -1,31 +1,33 @@
 """
 Deliberative Multi-Agent Orchestrator.
 
-This orchestrator implements the full integrated pipeline with:
-- SharedMemory for cross-document context and blackboard voting
-- MessageBus for inter-agent communication
-- DeliberationCoordinator for multi-agent voting and debate
-- Tiered model selection
-- Iterative refinement with quality thresholds
-- Escalation and deliberation mechanisms
+Research-driven pipeline integrating:
+- Adaptive planning (Phase 8) — selects strategy per document
+- Constrained decoding via Pydantic schemas (eliminates JSON failures)
+- GLiNER/GLiREL zero-cost first pass (Phase 2)
+- Consolidated extraction + GraphRAG-style gleaning (Phase 3)
+- KGGen entity resolution clustering (Phase 4)
+- FinReflectKG critic-corrector verification loop (Phase 5)
+- Triplex parallel extraction + schema alignment (Phase 6)
 
-Architecture:
-  Workers: DocumentProcessor -> DomainClassifier -> EntityExtractor -> 
-           RelationExtractor -> EvidenceLinker
-  Coordinators: ExtractionValidator -> ExtractionVerificationAgent -> 
-                KnowledgeOrganizer
-
-Novel Features:
-- Multi-agent deliberation with voting and debate
-- Blackboard pattern for hypothesis posting
-- Self-consistency for confidence estimation
-- Cross-document entity resolution
-- Open-world relation discovery
+Architecture (11 stages):
+  [1]  AdaptivePlanner          -> strategy selection (batch size, gleaning, etc.)
+  [2]  DocumentProcessor        -> segments (10% overlap)
+  [3]  DomainClassifier         -> domain + schema (<=7 entity types, <=15 relations)
+  [4]  FastExtractor (optional) -> baseline entities + triples (GLiNER, no LLM)
+  [5]  EntityExtractor          -> refined entities (consolidated + gleaning)
+  [6]  EntityResolver           -> deduplicated entities (KGGen clustering)
+  [7]  RelationExtractor        -> triples (consolidated + gleaning)
+  [8]  Triplex + SchemaAligner  -> merged parallel extractions (optional)
+  [9]  CriticCorrectorLoop      -> verified entities + triples (1-2 iterations)
+  [10] OrphanLinker             -> rescue disconnected entities (link/reify/prune)
+  [11] KnowledgeOrganizer       -> final KG
 """
 
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 import hashlib
+import os
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.core.memory import SharedMemory, MemoryType
@@ -42,6 +44,33 @@ from multi_agent_kg.agents.evidence_linker import EvidenceLinker
 from multi_agent_kg.agents.extraction_validator import ExtractionValidator
 from multi_agent_kg.agents.extraction_verification_agent import ExtractionVerificationAgent
 from multi_agent_kg.agents.knowledge_organizer import KnowledgeOrganizer
+from multi_agent_kg.agents.entity_resolver import EntityResolver
+from multi_agent_kg.agents.critic_agent import CriticAgent
+from multi_agent_kg.agents.corrector_agent import CorrectorAgent
+from multi_agent_kg.agents.orphan_linker import OrphanLinker
+from multi_agent_kg.core.relation_library import RelationLibrary
+from multi_agent_kg.core.adaptive_planner import AdaptivePlanner
+from multi_agent_kg.utils.progress import PipelineProgress
+
+# Optional: GLiNER-based fast extractor
+try:
+    from multi_agent_kg.agents.fast_extractor import FastExtractor
+    FAST_EXTRACTOR_AVAILABLE = True
+except ImportError:
+    FAST_EXTRACTOR_AVAILABLE = False
+
+# Optional: Triplex parallel extractor + Schema Aligner (Phase 6)
+try:
+    from multi_agent_kg.agents.triplex_extractor import TriplexExtractor
+    TRIPLEX_AVAILABLE = True
+except ImportError:
+    TRIPLEX_AVAILABLE = False
+
+try:
+    from multi_agent_kg.agents.schema_aligner import SchemaAligner
+    SCHEMA_ALIGNER_AVAILABLE = True
+except ImportError:
+    SCHEMA_ALIGNER_AVAILABLE = False
 
 try:
     from multi_agent_kg.utils.kg_visualizer import KGVisualizer
@@ -98,11 +127,13 @@ class DeliberativeOrchestrator:
         llm_config: Optional[LLMConfig] = None,
         knowledge_graph: Optional[KnowledgeGraph] = None,
         quality_threshold: float = 0.60,
-        max_refinement_iterations: int = 4,
+        max_refinement_iterations: int = 2,
         enable_self_consistency: bool = True,
         enable_open_world: bool = True,
         enable_cross_document: bool = True,
         enable_deliberation: bool = True,
+        enable_fast_first_pass: bool = True,
+        enable_critic_corrector: bool = True,
         model_tiers: Optional[Dict[ModelTier, str]] = None,
         debug_logger = None,
     ):
@@ -129,7 +160,24 @@ class DeliberativeOrchestrator:
         self.enable_open_world = enable_open_world
         self.enable_cross_document = enable_cross_document
         self.enable_deliberation = enable_deliberation
+        self.enable_fast_first_pass = enable_fast_first_pass
+        self.enable_critic_corrector = enable_critic_corrector
+        self.enable_triplex = TRIPLEX_AVAILABLE
         self.debug_logger = debug_logger
+
+        # Adaptive planner — selects strategy per document
+        self.adaptive_planner = AdaptivePlanner()
+
+        # Relation Library: persistent cross-document relation catalog
+        self.relation_library = RelationLibrary()
+        relation_library_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..", "..", "relation_library.json",
+        )
+        self._relation_library_path = os.path.normpath(relation_library_path)
+        if os.path.exists(self._relation_library_path):
+            self.relation_library = RelationLibrary.load(self._relation_library_path)
+            print(f"  Loaded Relation Library: {self.relation_library.size} known relation types")
         
         # Model tier configuration
         self.model_tiers = model_tiers or {
@@ -160,7 +208,9 @@ class DeliberativeOrchestrator:
         self.document_count = 0
         self.session_start = datetime.now()
         self.processing_history = []
-        
+
+        # Rich progress display
+        self.progress = PipelineProgress(total_stages=11)
         self._print_header()
 
     def _init_agents(self) -> None:
@@ -234,9 +284,67 @@ class DeliberativeOrchestrator:
             llm_config=self.llm_config,
         )
         
+        # New agents (Phases 2, 4, 5)
+        self.fast_extractor = None
+        if self.enable_fast_first_pass and FAST_EXTRACTOR_AVAILABLE:
+            self.fast_extractor = FastExtractor(
+                knowledge_graph=self.knowledge_graph,
+                shared_memory=self.shared_memory,
+                message_bus=self.message_bus,
+                llm_config=self.llm_config,
+            )
+
+        self.entity_resolver = EntityResolver(
+            knowledge_graph=self.knowledge_graph,
+            shared_memory=self.shared_memory,
+            message_bus=self.message_bus,
+            llm_config=self.llm_config,
+        )
+
+        self.critic_agent = CriticAgent(
+            knowledge_graph=self.knowledge_graph,
+            shared_memory=self.shared_memory,
+            message_bus=self.message_bus,
+            llm_config=self.llm_config,
+        )
+
+        self.corrector_agent = CorrectorAgent(
+            knowledge_graph=self.knowledge_graph,
+            shared_memory=self.shared_memory,
+            message_bus=self.message_bus,
+            llm_config=self.llm_config,
+        )
+
+        # Orphan Linker: rescues disconnected entities post-verification
+        self.orphan_linker = OrphanLinker(
+            knowledge_graph=self.knowledge_graph,
+            shared_memory=self.shared_memory,
+            message_bus=self.message_bus,
+            llm_config=self.llm_config,
+        )
+
+        # Phase 6: Triplex + SchemaAligner (optional)
+        self.triplex_extractor = None
+        if self.enable_triplex and TRIPLEX_AVAILABLE:
+            self.triplex_extractor = TriplexExtractor(
+                knowledge_graph=self.knowledge_graph,
+                shared_memory=self.shared_memory,
+                message_bus=self.message_bus,
+                llm_config=self.llm_config,
+            )
+
+        self.schema_aligner = None
+        if SCHEMA_ALIGNER_AVAILABLE:
+            self.schema_aligner = SchemaAligner(
+                knowledge_graph=self.knowledge_graph,
+                shared_memory=self.shared_memory,
+                message_bus=self.message_bus,
+                llm_config=self.llm_config,
+            )
+
         # Visualizer will be initialized on-demand when export() is called
         self.visualizer = None
-        
+
         # Set deliberation coordinator on all agents
         if self.deliberation_coordinator:
             self._setup_deliberation()
@@ -258,31 +366,25 @@ class DeliberativeOrchestrator:
             agent.set_deliberation_coordinator(self.deliberation_coordinator)
 
     def _print_header(self) -> None:
-        """Print orchestrator header."""
-        print("\n" + "=" * 70)
-        print("DELIBERATIVE MULTI-AGENT KNOWLEDGE GRAPH FRAMEWORK")
-        print("=" * 70)
-        print(f"Model Tiers (default mapping):")
-        for tier, model in self.model_tiers.items():
-            print(f"  {tier.value}: {model}")
-        if AGENT_MODEL_OVERRIDES:
-            print(f"\nPer-agent model overrides:")
-            for agent_name, model in sorted(AGENT_MODEL_OVERRIDES.items()):
-                print(f"  {agent_name}: {model}")
-        print(f"\nFeatures:")
-        print(f"  Self-Consistency: {'Enabled' if self.enable_self_consistency else 'Disabled'}")
-        print(f"  Open-World Relations: {'Enabled' if self.enable_open_world else 'Disabled'}")
-        print(f"  Cross-Document Resolution: {'Enabled' if self.enable_cross_document else 'Disabled'}")
-        print(f"  Multi-Agent Deliberation: {'Enabled' if self.enable_deliberation else 'Disabled'}")
-        print(f"\nQuality Settings:")
-        print(f"  Threshold: {self.quality_threshold}")
-        print(f"  Max Refinement Iterations: {self.max_refinement_iterations}")
-        if self.enable_deliberation:
-            print(f"\nDeliberation Settings:")
-            print(f"  Voting Agents: EntityExtractor, RelationExtractor, EvidenceLinker")
-            print(f"  Consensus Threshold: 0.6")
-            print(f"  Min Votes Required: 2")
-        print("=" * 70 + "\n")
+        """Print orchestrator header using Rich progress display."""
+        self.progress.print_header({
+            "model_tiers": {t.value: m for t, m in self.model_tiers.items()},
+            "agent_models": {k: v for k, v in sorted(AGENT_MODEL_OVERRIDES.items()) if v},
+            "features": {
+                "Self-Consistency": self.enable_self_consistency,
+                "Open-World Relations": self.enable_open_world,
+                "Cross-Document Resolution": self.enable_cross_document,
+                "Multi-Agent Deliberation": self.enable_deliberation,
+                "Fast First Pass (GLiNER)": self.enable_fast_first_pass,
+                "Triplex Parallel Extraction": self.enable_triplex,
+                "Critic-Corrector Loop": self.enable_critic_corrector,
+                "Adaptive Planning": True,
+            },
+            "quality": {
+                "Threshold": self.quality_threshold,
+                "Max Iterations": self.max_refinement_iterations,
+            },
+        })
 
     def process_document(
         self,
@@ -312,9 +414,7 @@ class DeliberativeOrchestrator:
             doc_hash = hashlib.md5(content.encode()).hexdigest()[:8]
             document_id = f"doc_{self.document_count}_{doc_hash}"
         
-        print(f"\n{'='*70}")
-        print(f"Processing Document: {document_id}")
-        print(f"{'='*70}")
+        self.progress.print_document_header(document_id, self.document_count, self.document_count)
         
         # Create context
         context = AgentContext(
@@ -325,185 +425,361 @@ class DeliberativeOrchestrator:
         )
         
         results = {}
-        
-        # ===== WORKER AGENTS =====
-        
-        # Step 1: Document Processing
+
+        p = self.progress
+
+        # ===== STEP 1: Adaptive Planning =====
+        p.stage_start(1, "Adaptive Planning")
+        strategy = self.adaptive_planner.analyze(text or "", num_documents=1)
+        results["strategy"] = strategy.name
+        p.stage_complete(1, {"Strategy": strategy.name, "Reason": strategy.reasoning[:60]})
+
+        # Apply strategy overrides
+        effective_gleanings = strategy.max_gleanings
+        effective_critic_iters = strategy.max_critic_iterations
+
+        # ===== STEP 2: Document Processing =====
         if self.debug_logger:
-            self.debug_logger.log_stage_header(1, "Document Processing")
-        print("\n[1/9] Document Processing")
-        print("-" * 50)
+            self.debug_logger.log_stage_header(2, "Document Processing")
+        p.stage_start(2, "Document Processing")
         doc_result = self.document_processor.run(context, source_path=source_path)
         segments = doc_result.items
         results["segments"] = len(segments)
-        print(f"  Segments: {len(segments)}")
-        
-        # Step 2: Domain Classification
+        p.stage_complete(2, {"Segments": len(segments)})
+
+        # ===== STEP 3: Domain Classification =====
         if self.debug_logger:
-            self.debug_logger.log_stage_header(2, "Domain Classification")
-        print("\n[2/9] Domain Classification")
-        print("-" * 50)
+            self.debug_logger.log_stage_header(3, "Domain Classification")
+        p.stage_start(3, "Domain Classification")
         domain_result = self.domain_classifier.run(context, segments=segments)
         domain_config = domain_result.items[0] if domain_result.items else {}
-        context.domain = domain_config.get("domain", "general")
+        context.domain = domain_config.get("primary_domain", domain_config.get("domain", "general"))
         results["domain"] = context.domain
-        print(f"  Domain: {context.domain} (confidence: {domain_result.confidence:.2f})")
-        
-        # Step 3: Entity Extraction
+        entity_type_count = len(domain_config.get("entity_types", []))
+        relation_type_count = len(domain_config.get("relation_types", []))
+        p.stage_complete(3, {
+            "Domain": context.domain,
+            "Schema": f"{entity_type_count} entity types, {relation_type_count} relations",
+        })
+
+        # ===== STEP 4: Fast First Pass (GLiNER/GLiREL, optional) =====
+        prior_entities = None
+        prior_triples = None
+        if self.fast_extractor:
+            if self.debug_logger:
+                self.debug_logger.log_stage_header(4, "Fast First Pass (GLiNER/GLiREL)")
+            p.stage_start(4, "Fast First Pass", "GLiNER/GLiREL zero-cost extraction")
+            fast_result = self.fast_extractor.run(
+                context, segments=segments, domain_config=domain_config,
+            )
+            prior_entities = fast_result.items if fast_result.items else None
+            prior_triples = fast_result.metadata.get("triples", None)
+            results["fast_entities"] = len(prior_entities or [])
+            results["fast_triples"] = len(prior_triples or [])
+            p.stage_complete(4, {
+                "Entities": len(prior_entities or []),
+                "Triples": len(prior_triples or []),
+            })
+        else:
+            p.stage_start(4, "Fast First Pass", "skipped (GLiNER not installed)")
+            results["fast_entities"] = 0
+            results["fast_triples"] = 0
+            p.stage_complete(4, {"Status": "skipped"})
+
+        # ===== STEP 5: Entity Extraction (consolidated + gleaning) =====
         if self.debug_logger:
-            self.debug_logger.log_stage_header(3, "Entity Extraction (Multi-Stage)")
-        print("\n[3/9] Entity Extraction (Multi-Stage)")
-        print("-" * 50)
+            self.debug_logger.log_stage_header(5, "Entity Extraction")
+        p.stage_start(5, "Entity Extraction", "consolidated + gleaning")
         entity_result = self.entity_extractor.run(
-            context, 
+            context,
             segments=segments,
             domain_config=domain_config,
+            prior_entities=prior_entities,
         )
         entities = entity_result.items
         context.entities = entities
         results["entities_extracted"] = len(entities)
-        print(f"  Entities: {len(entities)} (confidence: {entity_result.confidence:.2f})")
-        if entity_result.needs_escalation:
-            print(f"  Escalation: {entity_result.escalation_reason}")
-        
-        # Step 4: Relation Extraction (RHF)
+        p.stage_complete(5, {
+            "Entities": len(entities),
+            "Confidence": f"{entity_result.confidence:.2f}",
+        })
+
+        # ===== STEP 6: Entity Resolution (KGGen clustering) =====
         if self.debug_logger:
-            self.debug_logger.log_stage_header(4, "Relation Extraction (RHF Pipeline)")
-        print("\n[4/9] Relation Extraction (RHF Pipeline)")
-        print("-" * 50)
+            self.debug_logger.log_stage_header(6, "Entity Resolution")
+        p.stage_start(6, "Entity Resolution", "KGGen clustering + canonicalization")
+        resolve_result = self.entity_resolver.run(
+            context,
+            entities=entities,
+            domain_config=domain_config,
+        )
+        resolved_entities = resolve_result.items
+        context.entities = resolved_entities
+        results["entities_resolved"] = len(resolved_entities)
+        results["entities_merged"] = len(entities) - len(resolved_entities)
+        p.stage_complete(6, {
+            "Resolved": len(resolved_entities),
+            "Merged": results["entities_merged"],
+        })
+
+        # ===== STEP 7: Relation Extraction (consolidated + gleaning) =====
+        if self.debug_logger:
+            self.debug_logger.log_stage_header(7, "Relation Extraction")
+        p.stage_start(7, "Relation Extraction", "consolidated + gleaning")
         relation_result = self.relation_extractor.run(
             context,
             segments=segments,
-            entities=entities,
+            entities=resolved_entities,
             domain_config=domain_config,
+            prior_triples=prior_triples,
         )
         triples = relation_result.items
         context.relations = triples
         results["triples_extracted"] = len(triples)
-        print(f"  Triples: {len(triples)} (confidence: {relation_result.confidence:.2f})")
-        if relation_result.metadata.get("new_relations_discovered"):
-            print(f"  New Relation Types: {relation_result.metadata['new_relations_discovered']}")
-        
-        # Step 5: Evidence Linking
-        if self.debug_logger:
-            self.debug_logger.log_stage_header(5, "Evidence Linking")
-        print("\n[5/9] Evidence Linking")
-        print("-" * 50)
-        evidence_result = self.evidence_linker.run(
-            context,
-            triples=triples,
-            segments=segments,
-        )
-        linked_triples = evidence_result.items
-        results["triples_linked"] = len(linked_triples)
-        print(f"  Linked: {len(linked_triples)} (confidence: {evidence_result.confidence:.2f})")
-        
-        # Step 6: Multi-Agent Deliberation
-        if self.debug_logger:
-            self.debug_logger.log_stage_header(6, "Multi-Agent Deliberation")
-        print("\n[6/9] Multi-Agent Deliberation")
-        print("-" * 50)
-        
-        if self.enable_deliberation and self.deliberation_coordinator:
-            deliberation_results = self._run_deliberation_phase(
-                context=context,
-                entities=entities,
-                triples=linked_triples,
-                segments=segments,
+
+        # Populate Relation Library
+        for triple in triples:
+            rel_name = triple.get("relation", "")
+            if rel_name:
+                self.relation_library.register(
+                    name=rel_name,
+                    document_id=document_id,
+                    example={
+                        "subject": triple.get("subject", ""),
+                        "object": triple.get("object", ""),
+                        "evidence": triple.get("evidence", ""),
+                    },
+                )
+        # Merge similar relations in the library
+        self.relation_library.merge_similar()
+        p.stage_complete(7, {
+            "Triples": len(triples),
+            "Relation types": self.relation_library.size,
+        })
+
+        # ===== STEP 8: Triplex + Schema Alignment (optional, Phase 6) =====
+        triplex_entities = []
+        triplex_triples = []
+        if self.triplex_extractor and strategy.enable_triplex:
+            if self.debug_logger:
+                self.debug_logger.log_stage_header(8, "Triplex + Schema Alignment")
+            p.stage_start(8, "Triplex + Schema Alignment", "parallel extraction merge")
+            triplex_result = self.triplex_extractor.run(
+                context, segments=segments, domain_config=domain_config,
             )
-            results["voting_sessions"] = deliberation_results.get("voting_sessions", 0)
-            results["debates_triggered"] = deliberation_results.get("debates_triggered", 0)
-            results["items_accepted_by_vote"] = deliberation_results.get("accepted", 0)
-            results["items_rejected_by_vote"] = deliberation_results.get("rejected", 0)
-            
-            # Update entities/triples based on deliberation
-            if deliberation_results.get("refined_entities"):
-                entities = deliberation_results["refined_entities"]
-                context.entities = entities
-            if deliberation_results.get("refined_triples"):
-                linked_triples = deliberation_results["refined_triples"]
+            # Separate entities and triples from triplex items
+            for item in (triplex_result.items or []):
+                if item.get("item_type") == "entity":
+                    triplex_entities.append(item)
+                elif item.get("item_type") == "triple":
+                    triplex_triples.append(item)
+            results["triplex_entities"] = len(triplex_entities)
+            results["triplex_triples"] = len(triplex_triples)
+
+            # Merge via SchemaAligner if available
+            if self.schema_aligner and (triplex_entities or triplex_triples):
+                align_result = self.schema_aligner.run(
+                    context,
+                    main_entities=resolved_entities,
+                    main_triples=triples,
+                    triplex_entities=triplex_entities,
+                    triplex_triples=triplex_triples,
+                )
+                merged = align_result.items
+                if isinstance(merged, dict):
+                    resolved_entities = merged.get("entities", resolved_entities)
+                    triples = merged.get("triples", triples)
+                    context.entities = resolved_entities
+                    context.relations = triples
+                results["aligned_entities"] = len(resolved_entities)
+                results["aligned_triples"] = len(triples)
+            p.stage_complete(8, {
+                "Triplex entities": len(triplex_entities),
+                "Triplex triples": len(triplex_triples),
+            })
         else:
-            results["voting_sessions"] = 0
-            results["debates_triggered"] = 0
-            results["items_accepted_by_vote"] = 0
-            results["items_rejected_by_vote"] = 0
-            print("  Deliberation disabled - skipping")
-        
-        print(f"  Voting Sessions: {results['voting_sessions']}")
-        print(f"  Debates Triggered: {results['debates_triggered']}")
-        print(f"  Accepted by Vote: {results['items_accepted_by_vote']}")
-        print(f"  Rejected by Vote: {results['items_rejected_by_vote']}")
-        
-        # ===== COORDINATOR AGENTS =====
-        
-        # Step 7: Extraction Validation
+            p.stage_start(8, "Triplex + Schema Alignment", "skipped")
+            results["triplex_entities"] = 0
+            results["triplex_triples"] = 0
+            p.stage_complete(8, {"Status": "skipped"})
+
+        # ===== STEP 9: Critic-Corrector Verification Loop =====
         if self.debug_logger:
-            self.debug_logger.log_stage_header(7, "Extraction Validation (Iterative Refinement)")
-        print("\n[7/9] Extraction Validation (Iterative Refinement)")
-        print("-" * 50)
-        validation_result = self.extraction_validator.run(
-            context,
-            entities=entities,
-            triples=linked_triples,
-        )
-        validated = validation_result.items
-        results["refinement_iterations"] = validation_result.metadata.get("refinement_iterations", 0)
-        print(f"  Iterations: {results['refinement_iterations']}")
-        print(f"  Quality: {validation_result.confidence:.2f}")
-        
-        # Step 8: Verification
+            self.debug_logger.log_stage_header(9, "Critic-Corrector Verification")
+        p.stage_start(9, "Verification", "critic-corrector reflection loop")
+
+        verified_entities = resolved_entities
+        verified_triples = triples
+        results["critic_iterations"] = 0
+
+        if self.enable_critic_corrector:
+            verified_entities, verified_triples, iterations = self._run_critic_corrector_loop(
+                context, resolved_entities, triples,
+            )
+            results["critic_iterations"] = iterations
+            results["approved_triples"] = len(verified_triples)
+            results["rejected_triples"] = len(triples) - len(verified_triples)
+            p.stage_complete(9, {
+                "Iterations": iterations,
+                "Approved triples": len(verified_triples),
+            })
+        else:
+            validation_result = self.extraction_validator.run(
+                context, entities=resolved_entities, triples=triples,
+            )
+            validated = validation_result.items
+            verification_result = self.verification_agent.run(
+                context,
+                entities=validated.get("entities", resolved_entities),
+                triples=validated.get("triples", triples),
+            )
+            verified = verification_result.items
+            verified_entities = verified.get("entities", resolved_entities)
+            verified_triples = verified.get("approved_triples", triples)
+            results["approved_triples"] = len(verified_triples)
+            results["rejected_triples"] = len(verified.get("rejected_triples", []))
+            p.stage_complete(9, {"Approved (legacy)": results["approved_triples"]})
+
+        # ===== STEP 10: Orphan Linker =====
         if self.debug_logger:
-            self.debug_logger.log_stage_header(8, "Extraction Verification")
-        print("\n[8/9] Extraction Verification")
-        print("-" * 50)
-        verification_result = self.verification_agent.run(
-            context,
-            entities=validated.get("entities", entities),
-            triples=validated.get("triples", linked_triples),
-        )
-        verified = verification_result.items
-        results["approved_triples"] = len(verified.get("approved_triples", []))
-        results["rejected_triples"] = len(verified.get("rejected_triples", []))
-        print(f"  Approved: {results['approved_triples']}")
-        print(f"  Rejected: {results['rejected_triples']}")
-        
-        # Step 9: Knowledge Organization
+            self.debug_logger.log_stage_header(10, "Orphan Linking")
+        p.stage_start(10, "Orphan Linking", "rescuing disconnected entities")
+
+        try:
+            orphan_result = self.orphan_linker.run(
+                context,
+                entities=verified_entities,
+                triples=verified_triples,
+            )
+            orphan_items = orphan_result.items
+            verified_entities = orphan_items.get("entities", verified_entities)
+            verified_triples = orphan_items.get("triples", verified_triples)
+            orphan_meta = orphan_result.metadata
+            results["orphans_found"] = orphan_meta.get("orphans_found", 0)
+            results["orphans_linked"] = orphan_meta.get("linked", 0)
+            results["orphans_reified"] = orphan_meta.get("reified", 0)
+            results["orphans_pruned"] = orphan_meta.get("pruned", 0)
+            results["orphan_new_triples"] = orphan_meta.get("new_triples_added", 0)
+            p.stage_complete(10, {
+                "Orphans found": results["orphans_found"],
+                "Linked": results["orphans_linked"],
+                "Reified": results["orphans_reified"],
+                "Pruned": results["orphans_pruned"],
+                "New triples": results["orphan_new_triples"],
+            })
+        except Exception as exc:
+            # Safe fallback: if orphan linker fails, proceed without it
+            if self.debug_logger:
+                self.debug_logger.log(f"OrphanLinker failed, proceeding without: {exc}")
+            else:
+                print(f"  [WARN] OrphanLinker failed, proceeding without: {exc}")
+            results["orphans_found"] = 0
+            p.stage_complete(10, {"Status": "skipped (error)"})
+
+        # ===== STEP 11: Knowledge Organization =====
         if self.debug_logger:
-            self.debug_logger.log_stage_header(9, "Knowledge Graph Integration")
-        print("\n[9/9] Knowledge Graph Integration")
-        print("-" * 50)
+            self.debug_logger.log_stage_header(11, "Knowledge Graph Integration")
+        p.stage_start(11, "Knowledge Graph Integration")
         integration_result = self.knowledge_organizer.run(
             context,
-            entities=verified.get("entities", entities),
-            triples=verified.get("approved_triples", []),
+            entities=verified_entities,
+            triples=verified_triples,
         )
         kg_stats = integration_result.metadata.get("kg_stats", {})
         results["kg_entities"] = kg_stats.get("total_entities", 0)
         results["kg_triples"] = kg_stats.get("total_triples", 0)
-        print(f"  KG Entities: {results['kg_entities']}")
-        print(f"  KG Triples: {results['kg_triples']}")
-        
+        p.stage_complete(11, {
+            "KG Entities": results["kg_entities"],
+            "KG Triples": results["kg_triples"],
+        })
+
         # Summary
         elapsed = (datetime.now() - start_time).total_seconds()
         results["processing_time_seconds"] = elapsed
-        
-        print(f"\n{'='*70}")
-        print("PROCESSING COMPLETE")
-        print(f"{'='*70}")
-        print(f"Document: {document_id}")
-        print(f"Time: {elapsed:.2f}s")
-        print(f"Entities: {results['entities_extracted']} extracted -> {results['kg_entities']} in KG")
-        print(f"Triples: {results['triples_extracted']} extracted -> {results['approved_triples']} approved -> {results['kg_triples']} in KG")
-        print(f"{'='*70}\n")
-        
+        results["relation_library_size"] = self.relation_library.size
+        p.print_summary(results)
+
+        # Persist relation library
+        try:
+            self.relation_library.save(self._relation_library_path)
+        except Exception:
+            pass  # best-effort
+
         # Store in history
         self.processing_history.append({
             "document_id": document_id,
             "timestamp": datetime.now().isoformat(),
             "results": results,
         })
-        
+
         return results
+
+    def _run_critic_corrector_loop(
+        self,
+        context: AgentContext,
+        entities: List[Dict[str, Any]],
+        triples: List[Dict[str, Any]],
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]], int]:
+        """
+        Run the FinReflectKG-style critic-corrector verification loop.
+
+        Iterates: critic reviews → corrector fixes → repeat until no issues or max iterations.
+
+        Args:
+            context: Processing context
+            entities: Extracted entities
+            triples: Extracted triples
+
+        Returns:
+            Tuple of (verified_entities, verified_triples, iterations_run)
+        """
+        current_entities = entities
+        current_triples = triples
+        max_iterations = self.max_refinement_iterations
+
+        for iteration in range(max_iterations):
+            self.progress.stage_detail(f"Iteration {iteration + 1}/{max_iterations}")
+
+            # Critic reviews
+            critic_result = self.critic_agent.run(
+                context,
+                entities=current_entities,
+                triples=current_triples,
+            )
+            feedback = critic_result.items
+            critic_quality = critic_result.confidence
+
+            # Check if critic found issues
+            issues = feedback.get("issues", []) if isinstance(feedback, dict) else []
+            entities_ok = feedback.get("entities_ok", True) if isinstance(feedback, dict) else True
+            triples_ok = feedback.get("triples_ok", True) if isinstance(feedback, dict) else True
+
+            if (entities_ok and triples_ok) or not issues:
+                self.progress.stage_detail(f"Critic: no issues (quality: {critic_quality:.2f})")
+                return current_entities, current_triples, iteration + 1
+
+            self.progress.stage_detail(f"Critic: {len(issues)} issues (quality: {critic_quality:.2f})")
+
+            # Corrector fixes
+            corrector_result = self.corrector_agent.run(
+                context,
+                entities=current_entities,
+                triples=current_triples,
+                critic_feedback=feedback,
+            )
+            corrected = corrector_result.items
+
+            # Update with corrections
+            if isinstance(corrected, dict):
+                if corrected.get("corrected_entities"):
+                    current_entities = corrected["corrected_entities"]
+                if corrected.get("corrected_triples"):
+                    current_triples = corrected["corrected_triples"]
+
+            issues_addressed = corrected.get("issues_addressed", 0) if isinstance(corrected, dict) else 0
+            self.progress.stage_detail(f"Corrector: fixed {issues_addressed} issues")
+
+        return current_entities, current_triples, max_iterations
 
     def _run_deliberation_phase(
         self,
@@ -929,14 +1205,12 @@ class DeliberativeOrchestrator:
         Returns:
             Aggregate results
         """
-        print("\n" + "=" * 70)
-        print(f"PROCESSING CORPUS: {len(documents)} documents")
-        print("=" * 70)
-        
         all_results = []
-        
+
         for i, doc in enumerate(documents):
-            print(f"\n[Document {i+1}/{len(documents)}]")
+            self.progress.print_document_header(
+                doc.get("id", f"doc_{i+1}"), i + 1, len(documents),
+            )
             result = self.process_document(
                 text=doc.get("text"),
                 source_path=doc.get("source"),
@@ -944,41 +1218,31 @@ class DeliberativeOrchestrator:
                 metadata=doc.get("metadata"),
             )
             all_results.append(result)
-        
+
         # Cross-document entity resolution
         if self.enable_cross_document:
-            print("\n" + "-" * 50)
-            print("Cross-Document Entity Resolution")
-            print("-" * 50)
             self._resolve_cross_document_entities()
-        
+
         # Aggregate stats
         aggregate = {
-            "documents_processed": len(documents),
-            "total_entities": sum(r.get("kg_entities", 0) for r in all_results),
-            "total_triples": sum(r.get("kg_triples", 0) for r in all_results),
-            "total_time": sum(r.get("processing_time_seconds", 0) for r in all_results),
-            "memory_stats": self.shared_memory.get_stats(),
-            "kg_stats": self.knowledge_organizer.get_kg_stats(),
+            "Documents processed": len(documents),
+            "Total entities": sum(r.get("kg_entities", 0) for r in all_results),
+            "Total triples": sum(r.get("kg_triples", 0) for r in all_results),
+            "Total time": f"{sum(r.get('processing_time_seconds', 0) for r in all_results):.1f}s",
+            "Relation Library": f"{self.relation_library.size} types",
         }
-        
-        print("\n" + "=" * 70)
-        print("CORPUS PROCESSING COMPLETE")
-        print("=" * 70)
-        print(f"Documents: {aggregate['documents_processed']}")
-        print(f"Total Entities: {aggregate['total_entities']}")
-        print(f"Total Triples: {aggregate['total_triples']}")
-        print(f"Total Time: {aggregate['total_time']:.2f}s")
-        print("=" * 70 + "\n")
-        
+
+        self.progress.print_corpus_summary(aggregate)
+
         return aggregate
 
     def _resolve_cross_document_entities(self) -> None:
         """Resolve entities across documents."""
-        # This uses the shared memory's entity alias system
         stats = self.shared_memory.get_stats()
-        print(f"  Entity aliases registered: {stats.get('entity_aliases', 0)}")
-        print(f"  Unique entities tracked: {stats.get('unique_entities', 0)}")
+        self.progress.stage_detail(
+            f"Cross-doc resolution: {stats.get('entity_aliases', 0)} aliases, "
+            f"{stats.get('unique_entities', 0)} unique entities"
+        )
 
     def get_stats(self) -> Dict[str, Any]:
         """Get comprehensive statistics."""

@@ -55,6 +55,11 @@ from multi_agent_kg.core.adaptive_config import (
     ThresholdAutoTuner,
     MODEL_SPECS,
 )
+from multi_agent_kg.core.adaptive_planner import (
+    AdaptivePlanner,
+    PipelineStrategy,
+    DocumentProfile,
+)
 from multi_agent_kg.core.kg_operations import (
     KGDiff,
     compute_diff,
@@ -139,4 +144,8 @@ __all__ = [
     "find_paths",
     "paths_to_text",
     "neighbourhood",
+    # Adaptive Planning
+    "AdaptivePlanner",
+    "PipelineStrategy",
+    "DocumentProfile",
 ]

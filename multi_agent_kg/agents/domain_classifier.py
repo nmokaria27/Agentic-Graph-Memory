@@ -165,8 +165,8 @@ class DomainClassifier(BaseAgent):
         message_bus: Optional[MessageBus] = None,
         llm_config: Optional[LLMConfig] = None,
         confidence_threshold: float = 0.7,
-        max_entity_types: int = 15,
-        max_relation_types: int = 15,
+        max_entity_types: int = 7,   # Research: 3-7 entity types capture 80% of knowledge
+        max_relation_types: int = 15, # Research: 5-15 relation types is optimal
     ):
         super().__init__(
             name="DomainClassifier",
@@ -385,7 +385,7 @@ class DomainClassifier(BaseAgent):
                         "priority": "medium",
                     })
                 elif isinstance(rt, dict):
-                    rt["type"] = rt.get("type", "RELATED_TO").upper().replace(" ", "_")
+                    rt["type"] = rt.get("type", "UNKNOWN_RELATION").upper().replace(" ", "_")
                     rt["priority"] = rt.get("priority", "medium")
                     rt["source_types"] = rt.get("source_types", [])
                     rt["target_types"] = rt.get("target_types", [])
@@ -490,30 +490,26 @@ class DomainClassifier(BaseAgent):
         }
 
     def _create_fallback_result(self, document_id: str) -> ExtractionResult:
-        """Create a minimal fallback result when classification fails."""
+        """Create a minimal fallback result when classification fails.
+
+        No hardcoded entity or relation types — the downstream extractors
+        will discover types from the content.  The fallback simply signals
+        that domain classification was inconclusive.
+        """
         fallback_context = {
             "primary_domain": "General",
             "sub_domains": ["General"],
-            "domain_description": "Unable to classify domain - using general extraction",
+            "domain_description": (
+                "Domain classification inconclusive. "
+                "Entity and relation types will be discovered from the content."
+            ),
             "confidence": 0.3,
-            "reasoning": "Classification failed, falling back to general schema",
+            "reasoning": "Classification failed — extractors will discover schema from content",
             "key_indicators": [],
-            "entity_types": [
-                {"type": "PERSON", "description": "A person or individual", "priority": "high"},
-                {"type": "ORGANIZATION", "description": "An organization or institution", "priority": "high"},
-                {"type": "LOCATION", "description": "A place or location", "priority": "high"},
-                {"type": "CONCEPT", "description": "An abstract concept or idea", "priority": "medium"},
-                {"type": "EVENT", "description": "An event or occurrence", "priority": "medium"},
-                {"type": "DATE", "description": "A date or time reference", "priority": "medium"},
-            ],
-            "relation_types": [
-                {"type": "RELATED_TO", "description": "General relationship", "source_types": [], "target_types": [], "priority": "high"},
-                {"type": "LOCATED_IN", "description": "Location relationship", "source_types": [], "target_types": ["LOCATION"], "priority": "medium"},
-                {"type": "PART_OF", "description": "Part-whole relationship", "source_types": [], "target_types": [], "priority": "medium"},
-                {"type": "WORKS_FOR", "description": "Employment relationship", "source_types": ["PERSON"], "target_types": ["ORGANIZATION"], "priority": "medium"},
-            ],
-            "entity_type_names": ["PERSON", "ORGANIZATION", "LOCATION", "CONCEPT", "EVENT", "DATE"],
-            "relation_type_names": ["RELATED_TO", "LOCATED_IN", "PART_OF", "WORKS_FOR"],
+            "entity_types": [],      # Empty: extractors discover from content
+            "relation_types": [],    # Empty: extractors discover from content
+            "entity_type_names": [],
+            "relation_type_names": [],
             "entity_examples": [],
             "relation_examples": [],
             "extraction_parameters": {
@@ -526,14 +522,14 @@ class DomainClassifier(BaseAgent):
             },
             "document_id": document_id,
         }
-        
+
         return ExtractionResult(
             items=[fallback_context],
             confidence=0.3,
             evidence=[],
             metadata={"document_id": document_id, "fallback": True},
             needs_escalation=True,
-            escalation_reason="Classification failed - using fallback schema",
+            escalation_reason="Classification failed - extractors will discover schema",
         )
 
     def _store_domain_context(

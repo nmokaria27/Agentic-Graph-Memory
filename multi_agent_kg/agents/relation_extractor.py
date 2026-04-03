@@ -1,16 +1,17 @@
 """
 Relation Extractor Agent.
 
-Implements RHF (Relation-Head-First) multi-stage extraction:
-1. Relation Identification: Find relation types present in text
-2. Head Entity Binding: Bind relations to head (subject) entities  
-3. Tail Entity Binding: Complete triples with tail (object) entities
+Implements consolidated triple extraction (reduced from 3 stages to 1 + gleaning):
+1. Joint Triple Extraction: Extract complete (subject, relation, object) triples
+2. Gleaning: Re-run to catch missed relationships (GraphRAG-style)
 
 Features:
+- Single-prompt extraction reduces error compounding (was 3 LLM calls, now 2)
+- GraphRAG-style gleaning to recover missed relationships
+- Constrained decoding via Pydantic schemas (eliminates JSON failures)
+- Accepts prior triples from FastExtractor (GLiREL) for refinement
 - Open-world relation discovery (not limited to predefined types)
 - Self-consistency for confidence estimation
-- Relation type learning via SharedMemory
-- Blackboard voting for novel relations
 """
 
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
@@ -35,7 +36,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class DiscoveredRelation:
+class DiscoveredRelationModel:
     """A relation type discovered during extraction."""
     name: str
     definition: str
@@ -45,117 +46,72 @@ class DiscoveredRelation:
     source_documents: List[str] = field(default_factory=list)
 
 
-RELATION_IDENTIFICATION_PROMPT = """Identify all relation types present in the following text.
+JOINT_TRIPLE_EXTRACTION_PROMPT = """Think step by step: first identify relationships between entities, then output complete triples.
 
-DISCOVER relations from scratch by analyzing the actual text:
-- What RELATIONSHIPS are described between entities?
-- What CONNECTIONS exist between concepts?
-- What ACTIONS or ASSOCIATIONS are mentioned?
-
-DO NOT use predefined relation taxonomies - CREATE types specific to this content.
+Given the text and list of entities below, extract ALL relationships as complete
+(subject, relation, object) triples. For each triple, include a brief supporting
+evidence snippet from the text.
 
 DOMAIN: {domain}
-
-SUGGESTED TYPES (if any): {suggested_types}
-
-TEXT:
-{text}
 
 ENTITIES FOUND:
 {entities}
 
+{suggested_types_section}
+
+{prior_triples_section}
+
+TEXT:
+{text}
+
 Instructions:
-1. Look for explicit and implicit relationships between entities
-2. Create descriptive relation type names based on what you observe
-3. Each relation type should capture a SPECIFIC type of relationship
-4. Relation names should be in UPPER_SNAKE_CASE and descriptive
+1. For each pair of entities that have a relationship, output the complete triple
+2. Relation names should be descriptive UPPER_SNAKE_CASE (e.g., CAUSES, TREATED_BY)
+3. Include both explicit relationships stated in the text AND implicit ones that can be reasonably inferred
+4. Each triple must reference entities from the provided list
 
-Return:
-{{
-    "relations_found": [
-        {{
-            "relation_type": "<DESCRIPTIVE_RELATION_NAME>",
-            "definition": "<what this relation means in this context>",
-            "count_in_text": <approximate count>,
-            "example_text": "<example sentence showing this relation>"
-        }}
-    ]
-}}"""
+Return a JSON object with a "triples" list."""
 
 
-HEAD_BINDING_PROMPT = """For each relation type, identify the HEAD (subject) entities.
+RELATION_GLEANING_PROMPT = """The following triples were already extracted from this text.
+Review the text carefully and find any relationships that were MISSED.
 
-TEXT:
-{text}
+Focus on:
+- Implicit or indirect relationships
+- Causal relationships not explicitly stated
+- Hierarchical relationships (part-of, is-a)
+- Temporal relationships (before, after, during)
+- Relationships involving entities that appear in few or no triples
+
+ALREADY FOUND TRIPLES:
+{found_triples}
 
 ENTITIES:
 {entities}
 
-RELATION TYPES TO BIND:
-{relation_types}
-
-For each relation occurrence, identify what entity is the SUBJECT (head) of that relation.
-
-Return:
-{{
-    "head_bindings": [
-        {{
-            "relation_type": "<relation>",
-            "head_entity": "<subject entity text>",
-            "head_entity_id": "<entity id if available>",
-            "context": "<sentence or phrase containing this>",
-            "confidence": <0.0-1.0>
-        }}
-    ]
-}}"""
-
-
-TAIL_BINDING_PROMPT = """Complete the triples by adding TAIL (object) entities.
-
 TEXT:
 {text}
 
-ENTITIES:
-{entities}
-
-HEAD BINDINGS (subject-relation pairs):
-{head_bindings}
-
-For each head binding, identify what entity is the OBJECT (tail) of that relation.
-
-Return:
-{{
-    "triples": [
-        {{
-            "subject": "<head entity>",
-            "subject_id": "<head entity id>",
-            "relation": "<relation type>",
-            "object": "<tail entity>",
-            "object_id": "<tail entity id>",
-            "confidence": <0.0-1.0>,
-            "evidence": "<supporting text snippet>"
-        }}
-    ]
-}}"""
+Return ONLY NEW triples that were missed. Do not repeat already-found triples.
+Return a JSON object with a "triples" list. If no new triples are found, return {{"triples": []}}."""
 
 
 class RelationExtractor(BaseAgent):
     """
-    Relation Extractor Agent - RHF multi-stage relation extraction.
-    
-    Pipeline (Relation-Head-First):
-    1. Relation Identification: Find what relations exist in text
-    2. Head Entity Binding: Bind relations to subject entities
-    3. Tail Entity Binding: Complete triples with object entities
-    
+    Relation Extractor Agent - Consolidated triple extraction with gleaning.
+
+    Pipeline (reduced from 3 stages to 1 + gleaning):
+    1. Joint Triple Extraction: Complete (subject, relation, object) in one pass
+    2. Gleaning: Re-run to catch missed relationships
+
     Uses SharedMemory to:
     - Track discovered relation types across documents
     - Store extracted triples for cross-reference
     - Post novel relations to blackboard for voting
-    
+
     Uses MessageBus to:
     - Receive domain info and entities
-    - Send triples to EvidenceLinker
+    - Send triples to downstream agents
     - Escalate low-confidence extractions
     """
 
@@ -169,6 +125,7 @@ class RelationExtractor(BaseAgent):
         use_self_consistency: bool = True,
         n_consistency_samples: int = 3,
         enable_open_world: bool = True,
+        max_gleanings: int = 1,
     ):
         super().__init__(
             name="RelationExtractor",
@@ -183,9 +140,10 @@ class RelationExtractor(BaseAgent):
         self.use_self_consistency = use_self_consistency
         self.n_consistency_samples = n_consistency_samples
         self.enable_open_world = enable_open_world
-        
+        self.max_gleanings = max_gleanings
+
         # Track discovered relation types
-        self.discovered_relations: Dict[str, DiscoveredRelation] = {}
+        self.discovered_relations: Dict[str, DiscoveredRelationModelModel] = {}
 
     def _normalize_relation_types(self, relation_types_raw: Any) -> List[str]:
         """Normalize relation types from various formats to List[str]."""
@@ -212,143 +170,143 @@ class RelationExtractor(BaseAgent):
         segments: Optional[List[Dict[str, Any]]] = None,
         entities: Optional[List[Dict[str, Any]]] = None,
         domain_config: Optional[Dict[str, Any]] = None,
+        prior_triples: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> ExtractionResult:
         """
-        Extract relations using RHF pipeline.
-        
+        Extract relations using consolidated single-pass + gleaning.
+
         Args:
             context: Processing context
             segments: Document segments
             entities: Extracted entities
             domain_config: Domain configuration
-            
+            prior_triples: Baseline triples from FastExtractor (GLiREL)
+
         Returns:
             ExtractionResult with extracted triples
         """
         self.stats["calls"] += 1
-        
+
         # Use entities from context if not provided
         entities = entities or context.entities or []
-        
+
         # Get relation types from domain or discovered
         suggested_types = self._get_suggested_relation_types(domain_config)
-        
+
         # Check for domain messages
         if self.message_bus:
             messages = self.receive_messages()
             for msg in messages:
                 if msg.comm_type == CommunicationType.INFORM and "relation_types" in msg.content:
                     suggested_types = self._normalize_relation_types(msg.content["relation_types"])
-        
-        # Process segments or full text
-        all_triples = []
-        low_confidence_triples = []
-        new_relations_discovered = []
-        
-        texts_to_process = []
+
+        # Batch segments to reduce LLM calls (5 segments per batch)
+        BATCH_SIZE = 5
+        all_triples: List[Dict[str, Any]] = []
+        low_confidence_triples: List[Dict[str, Any]] = []
+
+        raw_segments = []
         if segments:
-            texts_to_process = [(s.get("text", ""), s.get("segment_id")) for s in segments]
+            raw_segments = [(s.get("text", ""), s.get("segment_id", "")) for s in segments]
         elif context.text:
-            texts_to_process = [(context.text, f"{context.document_id}_full")]
-        
-        for text, segment_id in texts_to_process:
-            if not text or len(text) < 20:
+            raw_segments = [(context.text, f"{context.document_id}_full")]
+
+        # Group segments into batches
+        batches = []
+        for i in range(0, len(raw_segments), BATCH_SIZE):
+            batches.append(raw_segments[i:i + BATCH_SIZE])
+
+        print(f"  Processing {len(raw_segments)} segments in {len(batches)} batches")
+
+        for batch_idx, batch in enumerate(batches):
+            combined_text = "\n\n---\n\n".join(text for text, _ in batch if text)
+            batch_ids = [sid for _, sid in batch]
+
+            if not combined_text or len(combined_text) < 20:
                 continue
-            
-            # RHF Pipeline
-            # Stage 1: Relation Identification
-            relations_found = self._stage1_identify_relations(
-                text, 
-                entities,
-                suggested_types,
-                context.domain,
+
+            # Per-batch prior triples
+            batch_priors = []
+            if prior_triples:
+                batch_priors = [
+                    t for t in prior_triples
+                    if t.get("source_segment") in batch_ids
+                    or not t.get("source_segment")
+                ][:20]  # Cap to avoid prompt overflow
+
+            # Stage 1: Joint triple extraction (one call per batch)
+            triples = self._stage1_joint_extraction(
+                combined_text, entities, suggested_types, context.domain, batch_priors,
             )
-            
-            # Track new relation types
-            for rel in relations_found:
-                if rel.get("is_new_type"):
-                    new_relations_discovered.append(rel)
-                    self._register_new_relation(rel, context.document_id)
-            
-            relation_types = [r["relation_type"] for r in relations_found]
-            
-            if not relation_types:
-                continue
-            
-            # Stage 2: Head Entity Binding
-            head_bindings = self._stage2_head_binding(
-                text,
-                entities,
-                relation_types,
-            )
-            
-            if not head_bindings:
-                continue
-            
-            # Stage 3: Tail Entity Binding
-            triples = self._stage3_tail_binding(
-                text,
-                entities,
-                head_bindings,
-            )
-            
-            # Add segment info and separate by confidence
+
+            # Stage 2: Gleaning — one pass per batch
+            for _ in range(self.max_gleanings):
+                gleaned = self._stage2_gleaning(combined_text, entities, triples)
+                if not gleaned:
+                    break
+                triples.extend(gleaned)
+
+            # Track discovered relation types
             for triple in triples:
-                triple["source_segment"] = segment_id
+                rel_type = triple.get("relation", "")
+                if rel_type and rel_type not in self.discovered_relations:
+                    self._register_new_relation(
+                        {"relation_type": rel_type, "definition": ""},
+                        context.document_id,
+                    )
+
+            # Add batch info and separate by confidence
+            batch_label = batch_ids[0] if batch_ids else f"batch_{batch_idx}"
+            for triple in triples:
+                if not triple.get("source_segment"):
+                    triple["source_segment"] = batch_label
                 triple["document_id"] = context.document_id
-                
+
                 if triple.get("confidence", 0) >= self.quality_threshold:
                     all_triples.append(triple)
                 else:
                     low_confidence_triples.append(triple)
-        
+
+            print(f"    Batch {batch_idx + 1}/{len(batches)}: {len(triples)} triples")
+
         # Handle low confidence triples
         print(f"\n[RELATION EXTRACTOR DEBUG]")
-        print(f"  Total extracted: {len(all_triples)}")
+        print(f"  Total extracted: {len(all_triples) + len(low_confidence_triples)}")
         print(f"  High confidence (>={self.quality_threshold}): {len(all_triples)}")
         print(f"  Low confidence (<{self.quality_threshold}): {len(low_confidence_triples)}")
-        print(f"  New relation types discovered: {len(new_relations_discovered)}")
-        
+        print(f"  Relation types discovered: {len(self.discovered_relations)}")
+
         if low_confidence_triples:
-            self._handle_low_confidence_triples(
-                low_confidence_triples,
-                context,
-            )
-        
-        # Handle new relation types
-        if new_relations_discovered:
-            self._handle_new_relations(
-                new_relations_discovered,
-                context,
-            )
-        
+            self._handle_low_confidence_triples(low_confidence_triples, context)
+
         # Store results
         if self.shared_memory:
             self._store_triples(all_triples, context.document_id)
-        
+
         # Calculate overall confidence
         if all_triples:
             avg_confidence = sum(t.get("confidence", 0.5) for t in all_triples) / len(all_triples)
         else:
             avg_confidence = 0.0
-        
+
         self.log(
             f"Extracted {len(all_triples)} triples, "
-            f"{len(new_relations_discovered)} new relation types discovered"
+            f"{len(self.discovered_relations)} relation types tracked"
         )
-        
+
         return ExtractionResult(
             items=all_triples,
             confidence=avg_confidence,
             metadata={
                 "document_id": context.document_id,
                 "low_confidence_count": len(low_confidence_triples),
-                "new_relations_discovered": len(new_relations_discovered),
+                "new_relations_discovered": len(self.discovered_relations),
                 "relation_types_used": list(set(t.get("relation", "") for t in all_triples)),
+                "prior_triples_used": len(prior_triples) if prior_triples else 0,
             },
-            needs_escalation=len(low_confidence_triples) > 0 or len(new_relations_discovered) > 0,
-            escalation_reason=self._get_escalation_reason(low_confidence_triples, new_relations_discovered),
+            needs_escalation=len(low_confidence_triples) > 0,
+            escalation_reason=self._get_escalation_reason(low_confidence_triples, []),
         )
 
     def _get_suggested_relation_types(
@@ -377,117 +335,138 @@ class RelationExtractor(BaseAgent):
         
         return list(set(types))
 
-    def _stage1_identify_relations(
+    def _stage1_joint_extraction(
         self,
         text: str,
         entities: List[Dict[str, Any]],
         suggested_types: List[str],
         domain: Optional[str],
+        prior_triples: Optional[List[Dict[str, Any]]] = None,
     ) -> List[Dict[str, Any]]:
-        """Stage 1: Identify relation types in text."""
-        entities_str = ", ".join(e.get("text", str(e)) for e in entities)
-        
-        prompt = RELATION_IDENTIFICATION_PROMPT.format(
+        """Stage 1: Joint triple extraction in a single prompt."""
+        from multi_agent_kg.schemas.extraction_schemas import TripleExtractionResponse
+
+        entities_str = ", ".join(
+            f'"{e.get("text", str(e))}" ({e.get("type", "?")})'
+            for e in entities[:50]
+        )
+
+        suggested_section = ""
+        if suggested_types:
+            suggested_section = (
+                f"Suggested relation types: {', '.join(suggested_types)}\n"
+                f"You may also discover new relation types based on the content."
+            )
+
+        prior_section = ""
+        if prior_triples:
+            prior_list = "\n".join(
+                f'  ({t.get("subject", "?")}) --[{t.get("relation", "?")}]--> ({t.get("object", "?")})'
+                for t in prior_triples[:20]
+            )
+            prior_section = (
+                f"A preliminary scan found these relationships:\n{prior_list}\n"
+                f"Review them, correct errors, and add missed relationships."
+            )
+
+        prompt = JOINT_TRIPLE_EXTRACTION_PROMPT.format(
             text=text,
             entities=entities_str,
-            suggested_types=", ".join(suggested_types) if suggested_types else "none provided (discover new types)",
+            suggested_types_section=suggested_section,
+            prior_triples_section=prior_section,
             domain=domain or "general",
         )
-        
+
         if self.use_self_consistency:
             result, confidence = self.call_llm_with_self_consistency(
                 prompt=prompt,
-                system_prompt="You are an expert at identifying relations between entities. Be thorough but precise.",
+                system_prompt=(
+                    "You are an expert at extracting relationships between entities. "
+                    "Output complete triples with evidence."
+                ),
                 tier=ModelTier.MEDIUM,
                 n_samples=self.n_consistency_samples,
             )
+            triples = self._normalize_triple_list(result.get("triples", []))
+            for t in triples:
+                t["confidence"] = (t.get("confidence", 0.7) + confidence) / 2
         else:
             result = self.call_llm(
                 prompt=prompt,
-                system_prompt="You are an expert at identifying relations between entities. Be thorough but precise.",
+                system_prompt=(
+                    "You are an expert at extracting relationships between entities. "
+                    "Output complete triples with evidence."
+                ),
                 tier=ModelTier.MEDIUM,
                 max_tokens=4096,
+                response_schema=TripleExtractionResponse,
             )
-        
-        return result.get("relations_found", [])
+            triples = self._normalize_triple_list(result.get("triples", []))
 
-    def _stage2_head_binding(
+        return triples
+
+    def _stage2_gleaning(
         self,
         text: str,
         entities: List[Dict[str, Any]],
-        relation_types: List[str],
+        found_triples: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
-        """Stage 2: Bind relations to head (subject) entities."""
-        if not relation_types:
+        """Stage 2: Gleaning -- find missed relationships."""
+        from multi_agent_kg.schemas.extraction_schemas import TripleExtractionResponse
+
+        if not found_triples:
             return []
-        
-        entities_json = json.dumps(entities, indent=2)
-        
-        prompt = HEAD_BINDING_PROMPT.format(
-            text=text,
-            entities=entities_json,
-            relation_types=", ".join(relation_types),
+
+        found_list = "\n".join(
+            f'  ({t.get("subject", "?")}) --[{t.get("relation", "?")}]--> ({t.get("object", "?")})'
+            for t in found_triples[:30]
         )
-        
+        entities_str = ", ".join(
+            f'"{e.get("text", str(e)) if isinstance(e, dict) else str(e)}"'
+            for e in entities[:40]
+        )
+
+        prompt = RELATION_GLEANING_PROMPT.format(
+            text=text,
+            entities=entities_str,
+            found_triples=found_list,
+        )
+
         result = self.call_llm(
             prompt=prompt,
-            system_prompt="You are an expert at identifying subject-relation pairs in text.",
+            system_prompt="You are an expert at finding missed relationships. Only return NEW triples.",
             tier=ModelTier.MEDIUM,
-            max_tokens=4096,
+            max_tokens=2048,
+            response_schema=TripleExtractionResponse,
         )
-        
-        return result.get("head_bindings", [])
 
-    def _stage3_tail_binding(
-        self,
-        text: str,
-        entities: List[Dict[str, Any]],
-        head_bindings: List[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
-        """Stage 3: Complete triples with tail (object) entities."""
-        if not head_bindings:
-            return []
-        
-        # Process head_bindings in batches to avoid JSON truncation
-        batch_size = 15  # Conservative batch size for relation completion
-        all_triples = []
-        
-        entities_json = json.dumps(entities, indent=2)
-        
-        for i in range(0, len(head_bindings), batch_size):
-            batch = head_bindings[i:i+batch_size]
-            head_bindings_json = json.dumps(batch, indent=2)
-            
-            prompt = TAIL_BINDING_PROMPT.format(
-                text=text,
-                entities=entities_json,
-                head_bindings=head_bindings_json,
-            )
-            
-            if self.use_self_consistency:
-                result, confidence = self.call_llm_with_self_consistency(
-                    prompt=prompt,
-                    system_prompt="You are an expert at completing relation triples. Be precise about object entities.",
-                    tier=ModelTier.MEDIUM,
-                    n_samples=self.n_consistency_samples,
-                )
-                
-                # Adjust confidences based on consistency
-                triples = result.get("triples", [])
-                for t in triples:
-                    # Combine LLM confidence with self-consistency
-                    t["confidence"] = (t.get("confidence", 0.7) + confidence) / 2
-                all_triples.extend(triples)
-            else:
-                result = self.call_llm(
-                    prompt=prompt,
-                    system_prompt="You are an expert at completing relation triples. Be precise about object entities.",
-                    tier=ModelTier.MEDIUM,
-                    max_tokens=4096,
-                )
-                all_triples.extend(result.get("triples", []))
-        
-        return all_triples
+        new_triples = self._normalize_triple_list(result.get("triples", []))
+        for t in new_triples:
+            t["confidence"] = min(t.get("confidence", 0.6), 0.7)
+            t["gleaned"] = True
+        return new_triples
+
+    @staticmethod
+    def _normalize_triple_list(raw: list) -> List[Dict[str, Any]]:
+        """Normalise triples that may have non-standard keys or be strings."""
+        normalised = []
+        for item in raw:
+            if isinstance(item, str):
+                # Skip bare strings — can't recover a triple from just a string
+                continue
+            if not isinstance(item, dict):
+                continue
+            # Accept common aliases
+            if "subject" not in item:
+                item["subject"] = item.pop("head", item.pop("head_entity", item.pop("source", "")))
+            if "object" not in item:
+                item["object"] = item.pop("tail", item.pop("tail_entity", item.pop("target", "")))
+            if "relation" not in item:
+                item["relation"] = item.pop("predicate", item.pop("relation_type", item.pop("type", "")))
+            # Only keep triples with all three parts
+            if item.get("subject") and item.get("relation") and item.get("object"):
+                normalised.append(item)
+        return normalised
 
     def _register_new_relation(
         self,
@@ -503,7 +482,7 @@ class RelationExtractor(BaseAgent):
             self.discovered_relations[name].frequency += 1
             self.discovered_relations[name].source_documents.append(document_id)
         else:
-            self.discovered_relations[name] = DiscoveredRelation(
+            self.discovered_relations[name] = DiscoveredRelationModel(
                 name=name,
                 definition=relation.get("definition", ""),
                 frequency=1,
@@ -617,24 +596,17 @@ class RelationExtractor(BaseAgent):
         relation = triple.get("relation", "") or triple.get("relation_type", "")
         obj = triple.get("object", "")
         
-        # Basic validation
+        # Basic validation — no hardcoded relation patterns; the system discovers all relations
         if not subject or not relation or not obj:
             return VoteType.REJECT, 0.9, "Triple missing subject, relation, or object"
-        
-        # Check if relation type is known
-        known_relations = list(self.discovered_relations.keys()) + self.domain_relations.get("general", [])
+
+        # Check if relation type was previously discovered (learned, not hardcoded)
+        known_relations = list(self.discovered_relations.keys())
         if relation.lower() in [r.lower() for r in known_relations]:
-            return VoteType.ACCEPT, 0.8, f"Known relation type: {relation}"
-        
-        # Check for common sense relation patterns
-        relation_lower = relation.lower().replace("_", " ")
-        common_patterns = ["is a", "works for", "located in", "part of", "born in", 
-                          "founded", "married to", "has", "owns", "created", "leads"]
-        if any(p in relation_lower for p in common_patterns):
-            return VoteType.WEAK_ACCEPT, 0.7, f"Relation follows common pattern"
-        
-        # Unknown relation - weak reject
-        return VoteType.WEAK_REJECT, 0.6, f"Unknown relation type: {relation}"
+            return VoteType.ACCEPT, 0.8, f"Previously discovered relation type: {relation}"
+
+        # New relation type — accept it (the system learns new relations)
+        return VoteType.WEAK_ACCEPT, 0.65, f"New relation type discovered: {relation}"
 
     def _vote_on_relation_type(
         self,
@@ -690,6 +662,6 @@ class RelationExtractor(BaseAgent):
             reasons.append(f"{len(new_relations)} new relation types")
         return ", ".join(reasons) if reasons else None
 
-    def get_discovered_relations(self) -> Dict[str, DiscoveredRelation]:
+    def get_discovered_relations(self) -> Dict[str, DiscoveredRelationModel]:
         """Get all discovered relation types."""
         return self.discovered_relations

@@ -26,7 +26,7 @@ from multi_agent_kg.core.communication import (
     AgentMessage,
 )
 from multi_agent_kg.core.config import LLMConfig
-from multi_agent_kg.llm.openai_client import chat_completion_json
+from multi_agent_kg.llm.openai_client import chat_completion_json, chat_completion_structured
 
 if TYPE_CHECKING:
     from multi_agent_kg.core.deliberation import DeliberationCoordinator, VoteType
@@ -46,27 +46,30 @@ class ModelTier(str, Enum):
 
 
 # Default model mapping (Ollama models on GPU via SSH tunnel)
+# Best-quality strategy: use largest models for critical extraction tasks
 DEFAULT_MODEL_TIERS = {
-    ModelTier.SMALL: "gemma3:27b",
-    ModelTier.MEDIUM: "gemma3:27b",
-    ModelTier.LARGE: "gemma3:27b",
+    ModelTier.SMALL: "qwen3:4b",       # Fast simple tasks
+    ModelTier.MEDIUM: "gemma3:27b",    # Strong extraction
+    ModelTier.LARGE: "gemma3:27b",     # Highest quality
 }
 
 # Per-agent model overrides (takes precedence over tier mapping).
-# This lets us assign specific Ollama models to each concrete agent
-# without changing individual agent implementations.
+# Best-quality strategy: strongest models for extraction, reasoning
+# models for verification, fast models only for simple tasks.
 AGENT_MODEL_OVERRIDES: Dict[str, str] = {
     # Worker agents
-    "DocumentProcessor": "qwen3:4b",
-    "DomainClassifier": "qwen3:8b",
-    "EntityExtractor": "qwen3:8b",
-    "RelationExtractor": "qwen3:8b",
-    "EvidenceLinker": "qwen3:4b",
+    "DocumentProcessor": "qwen3:4b",                 # Simple segmentation
+    "DomainClassifier": "gemma3:27b",                 # Deep understanding for schema discovery
+    "EntityExtractor": "gemma3:27b",                  # Critical: extraction quality
+    "RelationExtractor": "gemma3:27b",                # Critical: relation quality
+    "EvidenceLinker": "qwen3:8b",                     # Medium complexity
+    # Entity resolution + verification
+    "EntityResolver": "llama4:latest",                # Good at entity comparison
+    "CriticAgent": "deepseek-r1:14b",                # Chain-of-thought for finding errors
+    "CorrectorAgent": "gemma3:27b",                  # Strong generation for fixes
     # Coordinator agents
-    "ExtractionVerificationAgent": "deepseek-r1:14b",
-    "KnowledgeOrganizer": "gpt-oss:20b",
-    # Evaluation / judge agents can be added here, e.g.:
-    # "HoldoutJudge": "llama4:latest",
+    "ExtractionVerificationAgent": "deepseek-r1:14b", # Reasoning for verification
+    "KnowledgeOrganizer": "mistral-small3.1:latest",  # Strong structured output
 }
 
 
@@ -196,18 +199,22 @@ class BaseAgent(ABC):
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
         response_format: Optional[Dict] = None,
+        response_schema: Optional[Any] = None,
     ) -> Dict[str, Any]:
         """
         Call the LLM with the specified tier.
-        
+
         Args:
             prompt: User prompt
             system_prompt: System prompt
             tier: Model tier (defaults to self.default_tier)
             temperature: Override temperature
             max_tokens: Override max tokens
-            response_format: JSON schema for structured output
-            
+            response_format: JSON schema for structured output (legacy)
+            response_schema: Pydantic BaseModel class for constrained decoding.
+                When provided, uses Ollama's native ``format`` parameter to
+                guarantee structurally valid JSON output via GBNF grammars.
+
         Returns:
             Parsed JSON response from LLM
         """
@@ -220,21 +227,31 @@ class BaseAgent(ABC):
             model = override_model
         else:
             model = self.model_tiers.get(tier, self.llm_config.model)
-        
+
         config = LLMConfig(
             model=model,
             temperature=temperature if temperature is not None else self.llm_config.temperature,
             max_tokens=max_tokens if max_tokens is not None else self.llm_config.max_tokens,
         )
-        
+
         self.stats["llm_calls"] += 1
-        
+
         # Build messages list
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": prompt})
-        
+
+        # Use constrained decoding when a Pydantic schema is provided
+        if response_schema is not None:
+            return chat_completion_structured(
+                messages=messages,
+                schema=response_schema,
+                model=config.model,
+                temperature=config.temperature,
+                max_tokens=config.max_tokens,
+            )
+
         return chat_completion_json(
             messages=messages,
             model=config.model,

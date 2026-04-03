@@ -39,6 +39,12 @@ from multi_agent_kg.agents.evidence_linker import EvidenceLinker
 from multi_agent_kg.agents.extraction_validator import ExtractionValidator
 from multi_agent_kg.agents.extraction_verification_agent import ExtractionVerificationAgent
 from multi_agent_kg.agents.knowledge_organizer import KnowledgeOrganizer
+from multi_agent_kg.agents.entity_resolver import EntityResolver
+from multi_agent_kg.agents.critic_agent import CriticAgent
+from multi_agent_kg.agents.corrector_agent import CorrectorAgent
+from multi_agent_kg.agents.triplex_extractor import TriplexExtractor
+from multi_agent_kg.agents.schema_aligner import SchemaAligner
+from multi_agent_kg.agents.orphan_linker import OrphanLinker
 
 __all__ = [
     # Base
@@ -53,8 +59,14 @@ __all__ = [
     "EntityExtractor",
     "RelationExtractor",
     "EvidenceLinker",
+    "EntityResolver",
+    "CriticAgent",
+    "CorrectorAgent",
+    "TriplexExtractor",
+    "SchemaAligner",
     # Coordinators
     "ExtractionValidator",
     "ExtractionVerificationAgent",
     "KnowledgeOrganizer",
+    "OrphanLinker",
 ]

@@ -61,11 +61,14 @@ class QAHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
 
     def _json_response(self, data, code=200):
-        self.send_response(code)
-        self._cors_headers()
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps(data, default=str).encode())
+        try:
+            self.send_response(code)
+            self._cors_headers()
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(data, default=str).encode())
+        except BrokenPipeError:
+            print("  (client disconnected before response was sent)")
 
     def log_message(self, format, *args):
         pass  # suppress default logging

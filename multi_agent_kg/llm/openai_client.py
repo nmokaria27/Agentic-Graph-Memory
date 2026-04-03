@@ -9,12 +9,19 @@ Ollama model tiers (on gpu01.mind.cs.umd.edu):
 - LARGE:  gemma3:27b   (27B params, best quality)
 - MEDIUM: qwen3:8b     (8B params, balanced)
 - SMALL:  qwen3:4b     (4B params, fast)
+
+Structured output:
+- chat_completion_structured() uses Ollama's native `format` parameter
+  which applies GBNF grammar constraints at the token level, guaranteeing
+  valid JSON matching the provided Pydantic schema.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Type
 from openai import OpenAI
+from pydantic import BaseModel
 import os
 import json
+import re
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -166,7 +173,6 @@ def chat_completion_json(
     )
 
     # Strip any <think>...</think> blocks (qwen3 thinking mode)
-    import re
     response_text = re.sub(r'<think>.*?</think>', '', response_text, flags=re.DOTALL).strip()
 
     # Try to parse JSON
@@ -235,6 +241,141 @@ def chat_completion_json(
             return {"relations": [], "relations_found": []}
         else:
             return {}
+
+
+def _get_ollama_base() -> str:
+    """Return the Ollama base URL without the /v1 suffix."""
+    url = OLLAMA_BASE_URL.rstrip("/")
+    if url.endswith("/v1"):
+        url = url[:-3]
+    return url
+
+
+def chat_completion_structured(
+    messages: List[Dict[str, str]],
+    schema: Type[BaseModel],
+    model: str = "gemma3:27b",
+    temperature: float = 0.1,
+    max_tokens: Optional[int] = None,
+    max_retries: int = 2,
+    **kwargs: Any,
+) -> Any:
+    """
+    Call LLM with Ollama's native structured output (GBNF grammar constraints).
+
+    Uses Ollama's **native /api/chat endpoint** (not the OpenAI-compat layer)
+    with the ``format`` parameter to pass a JSON schema.  Ollama/llama.cpp
+    converts the schema to a GBNF grammar and masks invalid tokens during
+    generation, **guaranteeing** structurally valid JSON.
+
+    For the OpenAI backend the function falls back to requesting JSON mode
+    with the schema described in the prompt, then validates with Pydantic.
+
+    Args:
+        messages: Chat messages.
+        schema: A Pydantic BaseModel **class** (not an instance).
+        model: Model name.
+        temperature: Sampling temperature (low recommended for schemas).
+        max_tokens: Maximum tokens in the response.
+        max_retries: Number of retries on validation failure.
+        **kwargs: Extra params forwarded to the API.
+
+    Returns:
+        Parsed + validated dict matching the schema.
+    """
+    import httpx
+
+    resolved_model = _resolve_model(model)
+
+    # Build the JSON schema dict from the Pydantic model
+    json_schema = schema.model_json_schema()
+
+    # Inject a hint about the expected format into the last user message
+    modified_messages = list(messages)
+    if modified_messages and modified_messages[-1]["role"] == "user":
+        original = modified_messages[-1]["content"]
+        if "JSON" not in original and "json" not in original:
+            modified_messages[-1] = {
+                "role": "user",
+                "content": (
+                    f"{original}\n\nReturn your response as valid JSON only, "
+                    f"with no additional text."
+                ),
+            }
+
+    last_error: Optional[Exception] = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            if LLM_BACKEND != "openai":
+                # ── Ollama native /api/chat with format parameter ──
+                ollama_base = _get_ollama_base()
+                payload: Dict[str, Any] = {
+                    "model": resolved_model,
+                    "messages": modified_messages,
+                    "format": json_schema,
+                    "stream": False,
+                    "options": {
+                        "temperature": temperature,
+                    },
+                }
+                if max_tokens is not None:
+                    payload["options"]["num_predict"] = max_tokens
+
+                resp = httpx.post(
+                    f"{ollama_base}/api/chat",
+                    json=payload,
+                    timeout=600.0,  # 10 min for large batches over SSH tunnel
+                )
+                resp.raise_for_status()
+                content = resp.json()["message"]["content"]
+            else:
+                # ── OpenAI backend ──
+                params: Dict[str, Any] = {
+                    "model": resolved_model,
+                    "messages": modified_messages,
+                    "temperature": temperature,
+                    "response_format": {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": schema.__name__,
+                            "schema": json_schema,
+                        },
+                    },
+                }
+                if max_tokens is not None:
+                    params["max_tokens"] = max_tokens
+
+                response = client.chat.completions.create(**params)
+                content = response.choices[0].message.content or ""
+
+            # Strip <think> blocks from reasoning models
+            content = re.sub(
+                r"<think>.*?</think>", "", content, flags=re.DOTALL
+            ).strip()
+
+            # Parse and validate with Pydantic
+            parsed = json.loads(content)
+            validated = schema.model_validate(parsed)
+            return validated.model_dump()
+
+        except Exception as exc:
+            last_error = exc
+            if attempt < max_retries:
+                temperature = min(temperature + 0.1, 0.5)
+                continue
+
+    # All retries exhausted -- fall back to unstructured JSON parsing
+    print(
+        f"  WARNING: Structured output failed after {max_retries + 1} attempts "
+        f"({last_error}), falling back to chat_completion_json"
+    )
+    return chat_completion_json(
+        messages=messages,
+        model=model,
+        temperature=0.2,
+        max_tokens=max_tokens,
+    )
 
 
 def get_embedding(

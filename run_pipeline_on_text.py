@@ -19,7 +19,7 @@ debug_logger = DebugLogger("pipeline_debug.log", verbose=True, clear_log=True)
 print("Debug logging enabled - logs will be saved to pipeline_debug.log\n")
 
 # Load the extracted text
-text_file = "gfy083_full_plaintext.txt"
+text_file = "testtext.txt"
 if not os.path.exists(text_file):
     raise SystemExit(f"ERROR: {text_file} not found. Run extract_pdf.py first.")
 

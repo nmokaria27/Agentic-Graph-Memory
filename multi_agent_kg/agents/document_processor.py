@@ -50,7 +50,7 @@ class DocumentProcessor(BaseAgent):
         llm_config: Optional[LLMConfig] = None,
         min_segment_length: int = 1500,
         max_segment_length: int = 2000,
-        overlap: int = 150,
+        overlap: int = 200,  # 10% of max_segment_length per research best practices
     ):
         super().__init__(
             name="DocumentProcessor",
