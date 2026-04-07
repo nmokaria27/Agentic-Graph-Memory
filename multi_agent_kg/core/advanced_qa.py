@@ -415,13 +415,15 @@ QUERY: {query}
 
 Based ONLY on the evidence above, provide:
 1. A concise answer using only claims directly supported by the evidence above.
-   Prefer 1-3 sentences.
+   Prefer 1-3 sentences and at most 80 words.
 2. If the evidence is incomplete, answer only the supported part and note the gap briefly.
 3. Do NOT mention expert agents, domains, routing, or the phrase "knowledge graph".
 4. Do NOT speculate or add background knowledge.
-5. A confidence score (0.0-1.0): how completely can you answer from this evidence?
-6. Supporting KG triples
-7. Any aspects you CANNOT answer from the available evidence
+5. Do NOT define or explain an entity unless that definition is explicitly present in the evidence.
+6. If the evidence only shows a relation such as "Used-for", answer with that relation only.
+7. A confidence score (0.0-1.0): how completely can you answer from this evidence?
+8. Supporting KG triples
+9. Any aspects you CANNOT answer from the available evidence
 
 Return JSON:
 {{
@@ -1344,11 +1346,6 @@ Return ONLY the JSON."""
     def _get_cross_domain_context(self, question: str) -> str:
         """Get cross-domain relations and multi-hop paths."""
         lines = []
-        if self.org_chart.cross_domain_relations:
-            lines.append("Cross-domain relationships:")
-            for t in self.org_chart.cross_domain_relations[:30]:
-                lines.append(f"  ({t.subject}) -[{t.relation}]-> ({t.object})")
-
         query_norm = normalize_entity_name(question)
         matched_entities = []
         for eid, entity in self.full_kg.entities.items():
@@ -1358,6 +1355,16 @@ Return ONLY the JSON."""
                 if len(n_norm) > 2 and n_norm in query_norm:
                     matched_entities.append(eid)
                     break
+
+        if self.org_chart.cross_domain_relations and matched_entities:
+            relevant_cross = [
+                t for t in self.org_chart.cross_domain_relations
+                if t.subject in matched_entities or t.object in matched_entities
+            ]
+            if relevant_cross:
+                lines.append("Cross-domain relationships:")
+                for t in relevant_cross[:20]:
+                    lines.append(f"  ({t.subject}) -[{t.relation}]-> ({t.object})")
 
         if len(matched_entities) >= 2:
             for i in range(len(matched_entities)):
@@ -1430,7 +1437,9 @@ RULES:
 4. Note any gaps (aspects no expert could answer)
 5. Keep the final answer concise and avoid meta-commentary
 6. Do NOT mention experts, routing, or internal system behavior in the answer text
-7. For each major claim, include the supporting KG triple(s)
+7. Do NOT define entities or add background explanations unless explicitly supported by expert evidence
+8. Limit the answer to at most 4 sentences
+9. For each major claim, include the supporting KG triple(s)
 
 Return JSON:
 {{

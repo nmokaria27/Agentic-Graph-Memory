@@ -109,6 +109,8 @@ class EvaluationResult:
     verification_results: List[Dict[str, Any]] = field(default_factory=list)
     judge_verdict: Optional[Dict[str, Any]] = None
     gold_answer: Optional[str] = None
+    aux_metrics: Dict[str, Any] = field(default_factory=dict)
+    system_metadata: Dict[str, Any] = field(default_factory=dict)
     duration_seconds: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
@@ -123,6 +125,8 @@ class EvaluationResult:
             "atomic_facts": self.atomic_facts,
             "verification_results": self.verification_results,
             "judge_verdict": self.judge_verdict,
+            "aux_metrics": self.aux_metrics,
+            "system_metadata": self.system_metadata,
             "duration_seconds": round(self.duration_seconds, 2),
         }
 
@@ -160,9 +164,23 @@ class BenchmarkResult:
             "total_supported": sum(m.supported_count for m in metrics_list),
             "total_contradicted": sum(m.contradicted_count for m in metrics_list),
             "total_unverifiable": sum(m.unverifiable_count for m in metrics_list),
+            "aux_metrics": self._aggregate_aux_metrics(),
             "by_question_type": self._by_question_type(),
         }
         return self.aggregate_metrics
+
+    def _aggregate_aux_metrics(self) -> Dict[str, float]:
+        numeric_values: Dict[str, List[float]] = {}
+        for result in self.individual_results:
+            for key, value in result.aux_metrics.items():
+                if isinstance(value, (int, float)):
+                    numeric_values.setdefault(key, []).append(float(value))
+
+        return {
+            key: round(sum(values) / len(values), 4)
+            for key, values in numeric_values.items()
+            if values
+        }
 
     def _by_question_type(self) -> Dict[str, Dict[str, float]]:
         """Break down metrics by question type (if gold answers have types)."""
@@ -173,7 +191,16 @@ class BenchmarkResult:
 
         result = {}
         for qtype, metrics_list in by_type.items():
+            q_results = [
+                r for r in self.individual_results
+                if (r.question_type or "unknown") == qtype
+            ]
             n = len(metrics_list)
+            aux_numeric: Dict[str, List[float]] = {}
+            for r in q_results:
+                for key, value in r.aux_metrics.items():
+                    if isinstance(value, (int, float)):
+                        aux_numeric.setdefault(key, []).append(float(value))
             result[qtype] = {
                 "count": n,
                 "avg_kgafe_score": round(
@@ -182,6 +209,11 @@ class BenchmarkResult:
                 "avg_faithfulness": round(
                     sum(m.kg_faithfulness for m in metrics_list) / n, 4
                 ),
+                "aux_metrics": {
+                    key: round(sum(values) / len(values), 4)
+                    for key, values in aux_numeric.items()
+                    if values
+                },
             }
         return result
 
@@ -324,6 +356,7 @@ class KGAFEEvaluator:
             print(f"\n--- Question {i+1}/{len(questions)} [{bq.question_type}] ---")
             print(f"Q: {bq.question}")
 
+            qa_result: Dict[str, Any] = {}
             if qa_system:
                 # Get answer from QA system
                 qa_result = qa_system.query(bq.question)
@@ -352,11 +385,103 @@ class KGAFEEvaluator:
             eval_result.question_id = bq.question_id
             eval_result.question_type = bq.question_type
             eval_result.difficulty = bq.difficulty
+            eval_result.system_metadata = self._extract_system_metadata(qa_result)
+            eval_result.aux_metrics = self._compute_aux_metrics(
+                question=bq,
+                answer=answer,
+                system_metadata=eval_result.system_metadata,
+            )
             results.individual_results.append(eval_result)
 
             print(f"  KGAFE Score: {eval_result.metrics.kgafe_score:.3f}")
 
         return results
+
+    def _extract_system_metadata(self, qa_result: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract routing/provenance metadata from a QA system result when available."""
+        if not qa_result:
+            return {}
+
+        domain_responses = qa_result.get("domain_responses") or []
+        consulted_domains = []
+        for response in domain_responses:
+            domain_id = response.get("domain_id")
+            if domain_id and domain_id not in consulted_domains:
+                consulted_domains.append(domain_id)
+
+        exploration = qa_result.get("exploration_summary") or {}
+        for domain_id in exploration.get("domains_explored", []):
+            if domain_id and domain_id not in consulted_domains:
+                consulted_domains.append(domain_id)
+
+        return {
+            "consulted_domains": consulted_domains,
+            "num_consulted_domains": len(consulted_domains),
+            "overall_confidence": qa_result.get("overall_confidence"),
+            "overall_coverage": qa_result.get("overall_coverage"),
+        }
+
+    def _compute_aux_metrics(
+        self,
+        question: BenchmarkQuestion,
+        answer: str,
+        system_metadata: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Compute auxiliary hard metrics from benchmark metadata."""
+        answer_norm = normalize_entity_name(answer)
+        aux: Dict[str, Any] = {
+            "answer_word_count": len((answer or "").split()),
+        }
+
+        entity_labels = [
+            normalize_entity_name(self._entity_label(entity_id))
+            for entity_id in question.entities_involved
+        ]
+        entity_labels = [label for label in entity_labels if label]
+        if entity_labels:
+            mentioned = sum(1 for label in entity_labels if label in answer_norm)
+            aux["entity_recall"] = mentioned / len(entity_labels)
+
+        if question.supporting_triples:
+            covered = 0
+            for triple in question.supporting_triples:
+                subj = normalize_entity_name(self._entity_label(triple["subject"]))
+                obj = normalize_entity_name(self._entity_label(triple["object"]))
+                if subj in answer_norm and obj in answer_norm:
+                    covered += 1
+            aux["support_triple_recall"] = covered / len(question.supporting_triples)
+
+        if question.supporting_paths:
+            path_entities = []
+            for path in question.supporting_paths:
+                for triple in path:
+                    path_entities.append(triple["subject"])
+                    path_entities.append(triple["object"])
+            unique_entities = list(dict.fromkeys(path_entities))
+            if unique_entities:
+                mentioned = 0
+                for entity_id in unique_entities:
+                    label = normalize_entity_name(self._entity_label(entity_id))
+                    if label and label in answer_norm:
+                        mentioned += 1
+                aux["path_entity_recall"] = mentioned / len(unique_entities)
+
+        expected_domains = question.expected_domains or []
+        consulted_domains = system_metadata.get("consulted_domains") or []
+        if expected_domains and consulted_domains:
+            overlap = len(set(expected_domains) & set(consulted_domains))
+            aux["expected_domain_recall"] = overlap / len(expected_domains)
+            aux["expected_domain_precision"] = overlap / len(consulted_domains)
+
+        if question.question_type == "negative":
+            abstain_cues = (
+                " no ", " not ", "does not", "do not", "cannot", "can't",
+                "not contain", "no evidence", "not directly support", "unknown",
+            )
+            padded = f" {answer.lower()} "
+            aux["negative_abstention"] = 1.0 if any(cue in padded for cue in abstain_cues) else 0.0
+
+        return aux
 
     def run_benchmark(
         self,

@@ -1359,13 +1359,6 @@ Return ONLY the JSON."""
         """Get cross-domain relation context + multi-hop paths relevant to the query."""
         lines = []
 
-        # Static cross-domain relations
-        if self.org_chart.cross_domain_relations:
-            lines.append("Cross-domain relationships:")
-            for t in self.org_chart.cross_domain_relations[:30]:
-                lines.append(f"  ({t.subject}) -[{t.relation}]-> ({t.object})")
-
-        # Multi-hop: find paths between entities mentioned in the question
         import re as _re
         query_lower = question.lower()
         matched_entities = []
@@ -1377,6 +1370,18 @@ Return ONLY the JSON."""
                     matched_entities.append(eid)
                     break
 
+        # Only include cross-domain relations that touch query-relevant entities.
+        if self.org_chart.cross_domain_relations and matched_entities:
+            relevant_cross = [
+                t for t in self.org_chart.cross_domain_relations
+                if t.subject in matched_entities or t.object in matched_entities
+            ]
+            if relevant_cross:
+                lines.append("Cross-domain relationships:")
+                for t in relevant_cross[:20]:
+                    lines.append(f"  ({t.subject}) -[{t.relation}]-> ({t.object})")
+
+        # Multi-hop: find paths between entities mentioned in the question
         if len(matched_entities) >= 2:
             for i in range(len(matched_entities)):
                 for j in range(i + 1, len(matched_entities)):

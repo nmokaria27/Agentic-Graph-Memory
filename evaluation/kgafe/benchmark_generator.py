@@ -536,7 +536,8 @@ class BenchmarkGenerator:
             return self._generate_multi_hop(count, start_id)
 
         questions = []
-        candidate_paths: List[List[Triple]] = []
+        multi_hop_candidates: List[List[Triple]] = []
+        direct_candidates: List[List[Triple]] = []
         seen_pairs = set()
         cross_relations = list(self.org_chart.cross_domain_relations)
         self.rng.shuffle(cross_relations)
@@ -553,7 +554,7 @@ class BenchmarkGenerator:
             if pair_key in seen_pairs:
                 continue
             seen_pairs.add(pair_key)
-            candidate_paths.append([triple])
+            direct_candidates.append([triple])
 
             paths = find_paths(self.kg, triple.subject, triple.object, max_hops=3)
             added_for_pair = 0
@@ -561,10 +562,63 @@ class BenchmarkGenerator:
                 if not (2 <= len(path) <= 3):
                     continue
                 if all(self._is_good_triple(step) for step in path):
-                    candidate_paths.append(path)
-                    added_for_pair += 1
+                    path_domains = {
+                        self._entity_domain(step.subject)
+                        for step in path
+                        if self._entity_domain(step.subject)
+                    } | {
+                        self._entity_domain(step.object)
+                        for step in path
+                        if self._entity_domain(step.object)
+                    }
+                    if len(path_domains) >= 2:
+                        multi_hop_candidates.append(path)
+                        added_for_pair += 1
                 if added_for_pair >= 2:
                     break
+
+        if len(multi_hop_candidates) < count and self.org_chart:
+            domain_entities = [
+                (entity_id, self._entity_domain(entity_id))
+                for entity_id in self.kg.entities
+                if self._is_good_entity(entity_id) and self._entity_domain(entity_id)
+            ]
+            self.rng.shuffle(domain_entities)
+            pair_attempts = 0
+            max_pair_attempts = min(len(domain_entities) * 4, count * 50)
+            while len(multi_hop_candidates) < count * 4 and pair_attempts < max_pair_attempts:
+                pair_attempts += 1
+                if len(domain_entities) < 2:
+                    break
+                (e1, d1), (e2, d2) = self.rng.sample(domain_entities, 2)
+                if d1 == d2:
+                    continue
+                pair_key = tuple(sorted((e1, e2)))
+                if pair_key in seen_pairs:
+                    continue
+                seen_pairs.add(pair_key)
+                paths = find_paths(self.kg, e1, e2, max_hops=3)
+                for path in paths:
+                    if not (2 <= len(path) <= 3):
+                        continue
+                    if not all(self._is_good_triple(step) for step in path):
+                        continue
+                    path_domains = {
+                        self._entity_domain(step.subject)
+                        for step in path
+                        if self._entity_domain(step.subject)
+                    } | {
+                        self._entity_domain(step.object)
+                        for step in path
+                        if self._entity_domain(step.object)
+                    }
+                    if len(path_domains) >= 2:
+                        multi_hop_candidates.append(path)
+                        break
+
+        candidate_paths = multi_hop_candidates
+        if len(candidate_paths) < count:
+            candidate_paths = candidate_paths + direct_candidates
 
         self.rng.shuffle(candidate_paths)
         for path in candidate_paths:
@@ -607,7 +661,7 @@ class BenchmarkGenerator:
                 question=q_text,
                 gold_answer=gold,
                 question_type="cross_domain",
-                difficulty="hard",
+                difficulty="hard" if len(path) >= 2 else "medium",
                 supporting_triples=[{
                     "subject": t.subject,
                     "relation": t.relation,

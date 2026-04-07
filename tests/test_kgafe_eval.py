@@ -195,3 +195,61 @@ def test_cross_domain_questions_are_generated_when_org_chart_is_available(monkey
     assert len(questions) == 1
     assert questions[0].question_type == "cross_domain"
     assert len(questions[0].expected_domains) >= 2
+    assert len(questions[0].supporting_triples) >= 2
+
+
+def test_aux_metrics_capture_routing_and_support_recall(monkeypatch) -> None:
+    kg = KnowledgeGraph()
+    kg.add_entity("method_a", ["Method A"], "METHOD")
+    kg.add_entity("dataset_b", ["Dataset B"], "DATASET")
+    kg.add_entity("metric_c", ["Metric C"], "METRIC")
+    kg.add_triple("method_a", "USED_FOR", "dataset_b", 1.0)
+    kg.add_triple("dataset_b", "EVALUATE_FOR", "metric_c", 1.0)
+
+    evaluator = KGAFEEvaluator(kg=kg, enable_judge_panel=False)
+    question = BenchmarkQuestion(
+        question_id="xd_0001",
+        question="How does Method A connect to Metric C?",
+        gold_answer="Method A connects to Metric C through Dataset B.",
+        question_type="cross_domain",
+        difficulty="hard",
+        supporting_triples=[
+            {"subject": "method_a", "relation": "USED_FOR", "object": "dataset_b"},
+            {"subject": "dataset_b", "relation": "EVALUATE_FOR", "object": "metric_c"},
+        ],
+        supporting_paths=[[
+            {"subject": "method_a", "relation": "USED_FOR", "object": "dataset_b"},
+            {"subject": "dataset_b", "relation": "EVALUATE_FOR", "object": "metric_c"},
+        ]],
+        entities_involved=["method_a", "dataset_b", "metric_c"],
+        expected_domains=["methods", "datasets", "metrics"],
+    )
+
+    class StubQA:
+        def query(self, question: str):
+            return {
+                "final_answer": "Method A connects to Dataset B and Metric C.",
+                "domain_responses": [
+                    {"domain_id": "methods"},
+                    {"domain_id": "datasets"},
+                ],
+                "overall_confidence": 0.9,
+                "overall_coverage": 0.8,
+            }
+
+    def fake_evaluate_answer(question, answer, gold_answer=None, relevant_triples=None):
+        return EvaluationResult(
+            question=question,
+            answer=answer,
+            gold_answer=gold_answer,
+            metrics=KGAFEMetrics(kgafe_score=0.5, kg_precision=0.4, kg_faithfulness=0.6),
+        )
+
+    monkeypatch.setattr(evaluator, "evaluate_answer", fake_evaluate_answer)
+    result = evaluator.evaluate_benchmark_questions([question], qa_system=StubQA())
+    aux = result.individual_results[0].aux_metrics
+
+    assert aux["entity_recall"] == 1.0
+    assert aux["support_triple_recall"] == 1.0
+    assert aux["expected_domain_recall"] == 2 / 3
+    assert aux["expected_domain_precision"] == 1.0
