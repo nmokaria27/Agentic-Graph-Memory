@@ -43,11 +43,12 @@ class OracleDomainWrapper:
         original = self.qa_system._decompose_and_route
 
         def forced_route(*args, **kwargs):
+            max_domains = getattr(self.qa_system, "max_routed_domains", 4)
             return {
                 "sub_questions": [
                     {
                         "question": benchmark_question.question,
-                        "target_domains": expected_domains[:2],
+                        "target_domains": expected_domains[:max_domains],
                         "context": "",
                     }
                 ]

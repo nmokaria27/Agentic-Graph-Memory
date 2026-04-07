@@ -69,6 +69,7 @@ from multi_agent_kg.core.domain_experts import (
     Domain,
     DomainBuilder,
     DomainExpertAgent,
+    FallbackGraphExpert,
     OrgChart,
     QAOrchestrator,
     TopicSubAgent,
@@ -1083,6 +1084,7 @@ class AdvancedQAOrchestrator:
         self.enable_debate = enable_debate
         self.enable_critic = enable_critic
         self.max_critic_revisions = max_critic_revisions
+        self.max_routed_domains = min(4, max(1, len(org_chart.domains)))
 
         # Initialize Active Explorer Experts (upgrade #1)
         self.experts: Dict[str, ActiveExplorerExpert] = {}
@@ -1093,6 +1095,20 @@ class AdvancedQAOrchestrator:
                 llm_config=llm_config,
                 max_exploration_rounds=max_exploration_rounds,
             )
+
+        global_domain = Domain(
+            domain_id="global_fallback",
+            label="Global Fallback",
+            description="Query-focused global fallback used only when routed domains miss evidence.",
+            entity_ids=set(full_kg.entities.keys()),
+            relation_schema={triple.relation: triple.relation for triple in full_kg.triples},
+            topics=[],
+        )
+        self.global_fallback_expert = FallbackGraphExpert(
+            domain=global_domain,
+            full_kg=full_kg,
+            llm_config=llm_config,
+        )
 
         # Initialize components for improvements #2-5
         self.critic = CriticAgent(full_kg, llm_config) if enable_critic else None
@@ -1149,7 +1165,10 @@ class AdvancedQAOrchestrator:
                 expert = self.experts.get(domain_id)
                 if expert:
                     full_context = f"{sq_context}\n{session_context}" if session_context else sq_context
-                    response = expert.answer(sq_text, context=full_context)
+                    expert_context = QAOrchestrator._build_expert_context(
+                        self, question, sq_text, target_domains, domain_id, full_context,
+                    )
+                    response = expert.answer(sq_text, context=expert_context)
                     response["sub_question"] = sq_text
                     domain_responses.append(response)
                     called_domains.add(domain_id)
@@ -1158,6 +1177,27 @@ class AdvancedQAOrchestrator:
                     print(f"    [{domain_id}] coverage={response.get('coverage', 0):.2f}, "
                           f"confidence={response.get('confidence', 0):.2f}, "
                           f"exploration_rounds={rounds}")
+
+        fallback_context = QAOrchestrator._build_global_fallback_context(
+            self, question, domain_responses, called_domains,
+        )
+        if fallback_context:
+            print("\n  → Triggering global fallback")
+            fallback_response = self.global_fallback_expert.answer(
+                question, context=fallback_context,
+            )
+            if (
+                fallback_response.get("answer")
+                or fallback_response.get("evidence")
+                or fallback_response.get("coverage", 0.0) > 0.0
+            ):
+                fallback_response["sub_question"] = question
+                domain_responses.append(fallback_response)
+                print(
+                    "    [global_fallback] coverage="
+                    f"{fallback_response.get('coverage', 0):.2f}, "
+                    f"confidence={fallback_response.get('confidence', 0):.2f}"
+                )
 
         # ── Step 3: Debate conflicting responses ────────────────────
         debate_results = []
@@ -1324,22 +1364,18 @@ Return ONLY the JSON."""
             result = {
                 "sub_questions": [{
                     "question": question,
-                    "target_domains": [d.domain_id for d in self.org_chart.domains[:2]],
+                    "target_domains": [
+                        d.domain_id for d in self.org_chart.domains[: self.max_routed_domains]
+                    ],
                     "context": "",
                 }]
             }
 
         sub_questions = result.get("sub_questions", [])
         for sq in sub_questions:
-            target_domains = []
-            for domain_id in sq.get("target_domains", []):
-                if domain_id in self.experts and domain_id not in target_domains:
-                    target_domains.append(domain_id)
-                if len(target_domains) >= 2:
-                    break
-            if not target_domains and self.org_chart.domains:
-                target_domains = [self.org_chart.domains[0].domain_id]
-            sq["target_domains"] = target_domains
+            sq["target_domains"] = QAOrchestrator._normalize_target_domains(
+                self, sq.get("target_domains", [])
+            )
 
         return result
 

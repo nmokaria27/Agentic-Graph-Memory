@@ -1171,6 +1171,102 @@ Return ONLY the JSON."""
         return relevant if relevant else self.domain.topics
 
 
+class FallbackGraphExpert(DomainExpertAgent):
+    """Query-focused global fallback that only inspects evidence near query entities."""
+
+    def answer(self, query: str, context: str = "") -> Dict[str, Any]:
+        query_entities = self._extract_query_entities(query)
+        evidence_blocks: List[str] = []
+
+        if len(query_entities) >= 2:
+            all_paths = []
+            for i in range(len(query_entities)):
+                for j in range(i + 1, len(query_entities)):
+                    all_paths.extend(
+                        find_paths(self.full_kg, query_entities[i], query_entities[j], max_hops=3)
+                    )
+            if all_paths:
+                evidence_blocks.append("QUERY-SPECIFIC PATHS:")
+                for path in all_paths[:8]:
+                    for triple in path:
+                        evidence_blocks.append(
+                            f"({triple.subject}) -[{triple.relation}]-> ({triple.object})"
+                        )
+                    evidence_blocks.append("---")
+
+        for entity_id in query_entities[:4]:
+            triples = neighbourhood(self.full_kg, entity_id, hops=2)
+            if triples:
+                evidence_blocks.append(f"LOCAL NEIGHBOURHOOD OF {entity_id}:")
+                for triple in triples[:20]:
+                    evidence_blocks.append(
+                        f"({triple.subject}) -[{triple.relation}]-> ({triple.object})"
+                    )
+
+        if not evidence_blocks:
+            evidence_blocks.append("No direct query-specific graph evidence was found.")
+
+        prompt = f"""You are a global graph fallback expert. Use ONLY the evidence below.
+
+GRAPH EVIDENCE:
+{chr(10).join(evidence_blocks)}
+{f"Additional context: {context}" if context else ""}
+
+QUERY: {query}
+
+Return JSON:
+{{
+    "answer": "Short evidence-grounded answer.",
+    "coverage": 0.0,
+    "evidence": ["(entity) -[relation]-> (entity)"],
+    "confidence": 0.0,
+    "out_of_scope_aspects": ["missing aspects"]
+}}
+
+Rules:
+- Be concise and relation-focused.
+- Do not speculate or use background knowledge.
+- If evidence is weak, answer only the supported part.
+- Do not mention expert systems, routing, or the phrase "knowledge graph".
+
+Return ONLY the JSON."""
+
+        try:
+            result = chat_completion_json(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Answer from the provided graph evidence only. "
+                            "Be concise, conservative, and return only valid JSON."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.llm_config.model,
+                temperature=0.1,
+            )
+        except Exception:
+            result = {
+                "answer": "",
+                "coverage": 0.0,
+                "evidence": [],
+                "confidence": 0.0,
+                "out_of_scope_aspects": [query],
+            }
+
+        result["domain_id"] = self.domain.domain_id
+        result["topics_used"] = []
+        result["multi_hop_paths"] = "fallback-focused"
+
+        computed = self._compute_coverage_confidence(query, query_entities)
+        if computed["entity_coverage"] > 0 or computed["triple_coverage"] > 0:
+            result["coverage"] = computed["coverage"]
+            result["confidence"] = max(result.get("confidence", 0.0), computed["confidence"])
+
+        return result
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # QA Orchestrator — routes queries across domain experts
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1196,6 +1292,7 @@ class QAOrchestrator:
         self.org_chart = org_chart
         self.full_kg = full_kg
         self.llm_config = llm_config
+        self.max_routed_domains = min(4, max(1, len(org_chart.domains)))
 
         # Initialize domain expert agents
         self.experts: Dict[str, DomainExpertAgent] = {}
@@ -1205,6 +1302,20 @@ class QAOrchestrator:
                 full_kg=full_kg,
                 llm_config=llm_config,
             )
+
+        global_domain = Domain(
+            domain_id="global_fallback",
+            label="Global Fallback",
+            description="Query-focused global fallback used only when routed domains miss evidence.",
+            entity_ids=set(full_kg.entities.keys()),
+            relation_schema={triple.relation: triple.relation for triple in full_kg.triples},
+            topics=[],
+        )
+        self.global_fallback_expert = FallbackGraphExpert(
+            domain=global_domain,
+            full_kg=full_kg,
+            llm_config=llm_config,
+        )
 
     def query(self, question: str) -> Dict[str, Any]:
         """
@@ -1250,12 +1361,36 @@ class QAOrchestrator:
 
                 expert = self.experts.get(domain_id)
                 if expert:
-                    response = expert.answer(sq_text, context=sq_context)
+                    expert_context = self._build_expert_context(
+                        question, sq_text, target_domains, domain_id, sq_context,
+                    )
+                    response = expert.answer(sq_text, context=expert_context)
                     response["sub_question"] = sq_text
                     domain_responses.append(response)
                     called_domains.add(call_key)
                     print(f"    [{domain_id}] coverage={response.get('coverage', 0):.2f}, "
                           f"confidence={response.get('confidence', 0):.2f}")
+
+        fallback_context = self._build_global_fallback_context(
+            question, domain_responses, called_domains,
+        )
+        if fallback_context:
+            print("\n  → Triggering global fallback")
+            fallback_response = self.global_fallback_expert.answer(
+                question, context=fallback_context,
+            )
+            if (
+                fallback_response.get("answer")
+                or fallback_response.get("evidence")
+                or fallback_response.get("coverage", 0.0) > 0.0
+            ):
+                fallback_response["sub_question"] = question
+                domain_responses.append(fallback_response)
+                print(
+                    "    [global_fallback] coverage="
+                    f"{fallback_response.get('coverage', 0):.2f}, "
+                    f"confidence={fallback_response.get('confidence', 0):.2f}"
+                )
 
         # Step 3: Check cross-domain relations for bridging
         cross_domain_context = self._get_cross_domain_context(question)
@@ -1281,6 +1416,139 @@ class QAOrchestrator:
         print(f"{'='*70}\n")
 
         return result
+
+    def _extract_query_entities(self, text: str) -> List[str]:
+        """Extract KG entities mentioned in free text by word-boundary matching."""
+        import re
+
+        query_lower = text.lower()
+        matched = []
+        for eid, entity in self.full_kg.entities.items():
+            names = [eid.replace("_", " ")] + entity.labels
+            for name in names:
+                name_lower = name.lower()
+                if len(name_lower) < 3:
+                    continue
+                pattern = r"\b" + re.escape(name_lower) + r"\b"
+                if re.search(pattern, query_lower):
+                    matched.append(eid)
+                    break
+        return matched
+
+    def _normalize_target_domains(self, domain_ids: List[str]) -> List[str]:
+        """Validate routed domains and keep enough capacity for real cross-domain questions."""
+        target_domains = []
+        for domain_id in domain_ids:
+            if domain_id in self.experts and domain_id not in target_domains:
+                target_domains.append(domain_id)
+            if len(target_domains) >= self.max_routed_domains:
+                break
+        if not target_domains and self.org_chart.domains:
+            target_domains = [self.org_chart.domains[0].domain_id]
+        return target_domains
+
+    def _build_expert_context(
+        self,
+        question: str,
+        sub_question: str,
+        routed_domains: List[str],
+        current_domain_id: str,
+        base_context: str,
+    ) -> str:
+        """Provide each expert a concise view of nearby ownership and bridge hints."""
+        query_entities = self._extract_query_entities(f"{question} {sub_question}")
+        entity_map = self.org_chart.entity_domain_map()
+        routed_set = set(routed_domains)
+        lines: List[str] = []
+
+        if base_context.strip():
+            lines.append(base_context.strip())
+
+        if query_entities:
+            lines.append("Ownership hints:")
+            for entity_id in query_entities[:8]:
+                owners = entity_map.get(entity_id, [])
+                if current_domain_id in owners:
+                    other_owners = [owner for owner in owners if owner != current_domain_id]
+                    if other_owners:
+                        lines.append(
+                            f"  - {entity_id}: this domain owns it; also linked to "
+                            f"{', '.join(other_owners[:2])}"
+                        )
+                    else:
+                        lines.append(f"  - {entity_id}: this domain owns it")
+                elif owners:
+                    lines.append(
+                        f"  - {entity_id}: handled by {', '.join(owners[:2])}"
+                    )
+                else:
+                    lines.append(f"  - {entity_id}: currently unowned in the domain chart")
+
+        relevant_cross = []
+        for triple in self.org_chart.cross_domain_relations:
+            if triple.subject not in query_entities and triple.object not in query_entities:
+                continue
+            subject_owners = set(entity_map.get(triple.subject, []))
+            object_owners = set(entity_map.get(triple.object, []))
+            if (
+                current_domain_id in subject_owners
+                or current_domain_id in object_owners
+                or routed_set & (subject_owners | object_owners)
+            ):
+                relevant_cross.append(triple)
+
+        if relevant_cross:
+            lines.append("Relevant cross-domain hints:")
+            for triple in relevant_cross[:8]:
+                lines.append(
+                    f"  - ({triple.subject}) -[{triple.relation}]-> ({triple.object})"
+                )
+
+        return "\n".join(lines).strip()
+
+    def _build_global_fallback_context(
+        self,
+        question: str,
+        domain_responses: List[Dict[str, Any]],
+        called_domains: Set[str],
+    ) -> str:
+        """Trigger a global query-focused consult only when routing likely missed evidence."""
+        if len(self.experts) <= 1:
+            return ""
+
+        query_entities = self._extract_query_entities(question)
+        entity_map = self.org_chart.entity_domain_map()
+        unowned = [entity_id for entity_id in query_entities if not entity_map.get(entity_id)]
+        uncovered = [
+            entity_id
+            for entity_id in query_entities
+            if entity_map.get(entity_id) and not (set(entity_map[entity_id]) & called_domains)
+        ]
+
+        best_coverage = max((resp.get("coverage", 0.0) for resp in domain_responses), default=0.0)
+        best_confidence = max((resp.get("confidence", 0.0) for resp in domain_responses), default=0.0)
+        has_supported_answer = any(
+            (resp.get("answer") or "").strip() and resp.get("coverage", 0.0) >= 0.35
+            for resp in domain_responses
+        )
+
+        if not (unowned or uncovered or (query_entities and not has_supported_answer and best_confidence < 0.35)):
+            return ""
+
+        lines = [
+            "Fallback trigger: routed domains may have missed relevant evidence.",
+            "Use the full graph only to recover missing entities or bridge relations.",
+            "Do not restate claims already unsupported by routed experts.",
+        ]
+        if unowned:
+            lines.append(f"Unowned query entities: {', '.join(unowned[:6])}")
+        if uncovered:
+            lines.append(f"Entities not covered by routed domains: {', '.join(uncovered[:6])}")
+        if not has_supported_answer:
+            lines.append(
+                f"Best routed coverage/confidence was {best_coverage:.2f}/{best_confidence:.2f}."
+            )
+        return "\n".join(lines)
 
     def _decompose_and_route(self, question: str) -> Dict[str, Any]:
         """Decompose a query into sub-questions and route to domains."""
@@ -1335,7 +1603,9 @@ Return ONLY the JSON."""
                 "sub_questions": [
                     {
                         "question": question,
-                        "target_domains": [d.domain_id for d in self.org_chart.domains[:2]],
+                        "target_domains": [
+                            d.domain_id for d in self.org_chart.domains[: self.max_routed_domains]
+                        ],
                         "context": "",
                     }
                 ]
@@ -1343,15 +1613,9 @@ Return ONLY the JSON."""
 
         sub_questions = result.get("sub_questions", [])
         for sq in sub_questions:
-            target_domains = []
-            for domain_id in sq.get("target_domains", []):
-                if domain_id in self.experts and domain_id not in target_domains:
-                    target_domains.append(domain_id)
-                if len(target_domains) >= 2:
-                    break
-            if not target_domains and self.org_chart.domains:
-                target_domains = [self.org_chart.domains[0].domain_id]
-            sq["target_domains"] = target_domains
+            sq["target_domains"] = self._normalize_target_domains(
+                sq.get("target_domains", [])
+            )
 
         return result
 
