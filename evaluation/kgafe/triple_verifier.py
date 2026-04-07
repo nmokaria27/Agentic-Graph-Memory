@@ -376,21 +376,31 @@ Return JSON:
 
 Return ONLY the JSON."""
 
-        result = chat_completion_json(
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a logical entailment checker. Determine if knowledge graph "
-                        "paths support a given fact. Be strict — only mark as 'supported' if "
-                        "the path provides genuine evidence. Return only valid JSON."
-                    ),
-                },
-                {"role": "user", "content": prompt},
-            ],
-            model=self.model,
-            temperature=0.1,
-        )
+        try:
+            result = chat_completion_json(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a logical entailment checker. Determine if knowledge graph "
+                            "paths support a given fact. Be strict — only mark as 'supported' if "
+                            "the path provides genuine evidence. Return only valid JSON."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.model,
+                temperature=0.1,
+            )
+        except Exception as exc:
+            return VerificationResult(
+                fact_id=fact_id,
+                verdict=Verdict.UNVERIFIABLE,
+                tier=2,
+                confidence=0.0,
+                supporting_triples=[t for path in all_paths[:3] for t in path],
+                reasoning=f"Tier 2 path inference failed: {exc}",
+            )
 
         verdict_str = result.get("verdict", "unverifiable").lower()
         verdict_map = {
@@ -400,7 +410,7 @@ Return ONLY the JSON."""
             "partially_supported": Verdict.PARTIALLY_SUPPORTED,
         }
 
-        best_idx = result.get("best_path_index", 1) - 1
+        best_idx = self._coerce_best_path_index(result.get("best_path_index"), len(all_paths))
         best_path = all_paths[best_idx] if 0 <= best_idx < len(all_paths) else []
 
         return VerificationResult(
@@ -412,6 +422,26 @@ Return ONLY the JSON."""
             supporting_paths=[best_path] if best_path else [],
             reasoning=result.get("reasoning", ""),
         )
+
+    def _coerce_best_path_index(self, raw_index: Any, num_paths: int) -> int:
+        """Convert an LLM-returned path index into a safe 0-based index."""
+        if num_paths <= 0:
+            return -1
+
+        if raw_index is None:
+            return 0
+
+        try:
+            idx = int(raw_index)
+        except (TypeError, ValueError):
+            return 0
+
+        idx -= 1  # model returns 1-based index
+        if idx < 0:
+            return 0
+        if idx >= num_paths:
+            return num_paths - 1
+        return idx
 
     def _tier3_semantic_entailment(
         self,

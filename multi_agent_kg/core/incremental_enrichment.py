@@ -4,9 +4,10 @@ Incremental Knowledge Graph Enrichment Pipeline.
 Given an *existing* KG and one or more new documents, this module:
 1. Runs extraction on the new documents (reusing the existing pipeline)
 2. Computes a diff between the new extractions and the existing KG
-3. Uses an LLM-backed ConflictResolver agent to adjudicate conflicts
-4. Merges the accepted changes into the base KG
-5. Returns a structured report of what changed
+3. Routes proposed facts to the owning domain expert(s) for governance review
+4. Uses an LLM-backed ConflictResolver agent as a fallback adjudicator
+5. Merges the accepted changes into the base KG
+6. Returns a structured report of what changed
 
 This is the multi-agent "additive" pathway — the counterpart to the
 initial build pipeline in deliberative_orchestrator.py.
@@ -19,6 +20,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from multi_agent_kg.core.config import LLMConfig
+from multi_agent_kg.core.domain_experts import OrgChart
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.core.kg_operations import (
     KGDiff,
@@ -123,6 +125,190 @@ Return ONLY the JSON array."""
         return resolutions
 
 
+class GovernanceReviewBoard:
+    """
+    Routes updates to the domain expert(s) that own the affected subgraph.
+
+    This makes governance explicit: even non-conflicting facts must be
+    reviewed by the responsible expert before they are merged into memory.
+    """
+
+    def __init__(
+        self,
+        org_chart: OrgChart,
+        base_kg: KnowledgeGraph,
+        llm_config: LLMConfig,
+    ):
+        self.org_chart = org_chart
+        self.base_kg = base_kg
+        self.llm_config = llm_config
+
+    def review_new_triples(
+        self,
+        triples: List[Any],
+        source_text: str = "",
+    ) -> List[Dict[str, Any]]:
+        decisions: List[Dict[str, Any]] = []
+        for triple in triples:
+            assignment = self.org_chart.route_triple_for_governance(triple)
+            decisions.append(
+                self._review_candidate(
+                    candidate=triple,
+                    assignment=assignment,
+                    source_text=source_text,
+                )
+            )
+        return decisions
+
+    def resolve_conflicts(
+        self,
+        conflicts: List[tuple],
+        source_text: str = "",
+    ) -> List[Dict[str, Any]]:
+        decisions: List[Dict[str, Any]] = []
+        for index, (existing, candidate) in enumerate(conflicts, start=1):
+            assignment = self.org_chart.route_triple_for_governance(candidate)
+            decisions.append(
+                self._review_candidate(
+                    candidate=candidate,
+                    existing=existing,
+                    assignment=assignment,
+                    source_text=source_text,
+                    conflict_index=index,
+                )
+            )
+        return decisions
+
+    def _review_candidate(
+        self,
+        candidate: Any,
+        assignment: Any,
+        source_text: str = "",
+        existing: Optional[Any] = None,
+        conflict_index: Optional[int] = None,
+    ) -> Dict[str, Any]:
+        owner_domains = [
+            self.org_chart.find_domain(domain_id)
+            for domain_id in assignment.domain_ids
+        ]
+        owner_domains = [domain for domain in owner_domains if domain is not None]
+        domain_context = "\n\n".join(
+            [
+                f"OWNER DOMAIN: {domain.owner_label}\n"
+                f"SCOPE: {domain.governance_scope}\n"
+                f"{domain.subgraph_summary(self.base_kg)}"
+                for domain in owner_domains[:2]
+            ]
+        )
+        assignment_dict = assignment.to_dict() if hasattr(assignment, "to_dict") else assignment
+
+        if existing is None:
+            prompt = f"""You are reviewing a proposed knowledge-graph update under an
+expert-governed memory policy.
+
+GOVERNANCE ROUTING:
+{json.dumps(assignment_dict, indent=2)}
+
+{domain_context or "No owning domain was found in the current org chart."}
+
+SOURCE TEXT:
+{source_text[:3000]}
+
+PROPOSED TRIPLE:
+({candidate.subject}) -[{candidate.relation}]-> ({candidate.object})
+[confidence={candidate.confidence}]
+
+Decide one action:
+- "approve": accept as-is
+- "reject": do not add it
+- "revise": accept a better normalized triple
+- "escalate": insufficient evidence or ownership ambiguity
+
+Return JSON:
+{{
+  "action": "approve",
+  "rationale": "...",
+  "revised_triple": null
+}}
+
+If action is "revise", include revised_triple with subject, relation, object.
+Return ONLY the JSON."""
+        else:
+            prompt = f"""You are resolving a conflict in an expert-governed knowledge graph.
+
+GOVERNANCE ROUTING:
+{json.dumps(assignment_dict, indent=2)}
+
+{domain_context or "No owning domain was found in the current org chart."}
+
+SOURCE TEXT:
+{source_text[:3000]}
+
+EXISTING TRIPLE:
+({existing.subject}) -[{existing.relation}]-> ({existing.object})
+[confidence={existing.confidence}]
+
+CANDIDATE TRIPLE:
+({candidate.subject}) -[{candidate.relation}]-> ({candidate.object})
+[confidence={candidate.confidence}]
+
+Decide one resolution:
+- "keep_existing"
+- "keep_new"
+- "keep_both"
+- "merge"
+- "escalate"
+
+Return JSON:
+{{
+  "resolution": "keep_existing",
+  "rationale": "...",
+  "merged_triple": null
+}}
+
+If resolution is "merge", include merged_triple with subject, relation, object.
+Return ONLY the JSON."""
+
+        try:
+            result = chat_completion_json(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a domain governance board for a knowledge graph. "
+                            "Be conservative: reject or escalate unsupported updates."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.llm_config.model,
+                temperature=0.1,
+            )
+        except Exception:
+            if existing is None:
+                action = "approve" if (candidate.confidence or 0.0) >= 0.6 else "reject"
+                result = {
+                    "action": action,
+                    "rationale": "Fallback to confidence threshold because governance review failed.",
+                    "revised_triple": None,
+                }
+            else:
+                existing_conf = existing.confidence or 0.0
+                candidate_conf = candidate.confidence or 0.0
+                resolution = "keep_new" if candidate_conf > existing_conf else "keep_existing"
+                result = {
+                    "resolution": resolution,
+                    "rationale": "Fallback to confidence comparison because governance review failed.",
+                    "merged_triple": None,
+                }
+
+        result["owner_domains"] = [domain.domain_id for domain in owner_domains]
+        result["assignment"] = assignment_dict
+        if conflict_index is not None:
+            result["conflict_index"] = conflict_index
+        return result
+
+
 class IncrementalEnricher:
     """
     High-level controller for incremental KG enrichment.
@@ -139,12 +325,21 @@ class IncrementalEnricher:
         llm_config: Optional[LLMConfig] = None,
         match_threshold: float = 0.80,
         auto_resolve_conflicts: bool = True,
+        org_chart: Optional[OrgChart] = None,
+        enable_governance: bool = True,
     ):
         self.base_kg = base_kg
         self.llm_config = llm_config or LLMConfig(model="gemma3:27b")
         self.match_threshold = match_threshold
         self.auto_resolve_conflicts = auto_resolve_conflicts
+        self.org_chart = org_chart
+        self.enable_governance = enable_governance and org_chart is not None
         self.conflict_resolver = ConflictResolver(self.llm_config)
+        self.governance_board = (
+            GovernanceReviewBoard(org_chart, base_kg, self.llm_config)
+            if self.enable_governance and org_chart is not None
+            else None
+        )
         self.enrichment_log: List[Dict[str, Any]] = []
 
     def add_documents(
@@ -169,6 +364,17 @@ class IncrementalEnricher:
             "diffs": [],
             "merge_stats": {},
             "conflicts_resolved": 0,
+            "governance": {
+                "enabled": self.enable_governance,
+                "new_triples_reviewed": 0,
+                "new_triples_approved": 0,
+                "new_triples_revised": 0,
+                "new_triples_rejected": 0,
+                "new_triples_escalated": 0,
+                "conflicts_reviewed": 0,
+                "conflicts_escalated": 0,
+                "decisions": [],
+            },
         }
 
         # Step 1: Run the extraction pipeline on new documents into a
@@ -205,14 +411,71 @@ class IncrementalEnricher:
             "conflicting_triples": len(diff.conflicting_triples),
         })
 
-        # Step 3: Resolve conflicts
+        source_texts = " ".join(d.get("text", "")[:1000] for d in documents)
+
+        # Step 3: Review new triples with the governing expert(s)
+        if diff.new_triples and self.governance_board:
+            print(f"\nReviewing {len(diff.new_triples)} proposed triples with domain owners...")
+            governance_decisions = self.governance_board.review_new_triples(
+                diff.new_triples,
+                source_texts,
+            )
+            approved_triples = []
+            from multi_agent_kg.core.knowledge_graph import Triple
+
+            for candidate_t, decision in zip(diff.new_triples, governance_decisions):
+                action = decision.get("action", "reject")
+                report["governance"]["new_triples_reviewed"] += 1
+                report["governance"]["decisions"].append({
+                    "triple": {
+                        "subject": candidate_t.subject,
+                        "relation": candidate_t.relation,
+                        "object": candidate_t.object,
+                    },
+                    "action": action,
+                    "owner_domains": decision.get("owner_domains", []),
+                    "rationale": decision.get("rationale", ""),
+                })
+
+                if action == "approve":
+                    approved_triples.append(candidate_t)
+                    report["governance"]["new_triples_approved"] += 1
+                elif action == "revise" and decision.get("revised_triple"):
+                    revised = decision["revised_triple"]
+                    approved_triples.append(
+                        Triple(
+                            subject=revised.get("subject", candidate_t.subject),
+                            relation=revised.get("relation", candidate_t.relation),
+                            object=revised.get("object", candidate_t.object),
+                            confidence=candidate_t.confidence,
+                            source=candidate_t.source,
+                            metadata=candidate_t.metadata,
+                        )
+                    )
+                    report["governance"]["new_triples_revised"] += 1
+                elif action == "escalate":
+                    report["governance"]["new_triples_escalated"] += 1
+                else:
+                    report["governance"]["new_triples_rejected"] += 1
+
+            diff.new_triples = approved_triples
+
+        # Step 4: Resolve conflicts
         conflict_strategy = "keep_higher_confidence"
         if diff.conflicting_triples and self.auto_resolve_conflicts:
-            print(f"\nResolving {len(diff.conflicting_triples)} conflicts with LLM...")
-            source_texts = " ".join(d.get("text", "")[:1000] for d in documents)
-            resolutions = self.conflict_resolver.resolve(
-                diff.conflicting_triples, source_texts
-            )
+            print(f"\nResolving {len(diff.conflicting_triples)} conflicts...")
+            if self.governance_board:
+                print("Using domain-governance review board...")
+                resolutions = self.governance_board.resolve_conflicts(
+                    diff.conflicting_triples,
+                    source_texts,
+                )
+                conflict_strategy = "keep_existing"
+            else:
+                print("Using generic LLM conflict resolver...")
+                resolutions = self.conflict_resolver.resolve(
+                    diff.conflicting_triples, source_texts
+                )
             # Apply resolutions
             resolved_triples = []
             for res in resolutions:
@@ -220,6 +483,18 @@ class IncrementalEnricher:
                 if idx < len(diff.conflicting_triples):
                     resolution = res.get("resolution", "keep_existing")
                     existing_t, candidate_t = diff.conflicting_triples[idx]
+                    if self.governance_board:
+                        report["governance"]["conflicts_reviewed"] += 1
+                        report["governance"]["decisions"].append({
+                            "triple": {
+                                "subject": candidate_t.subject,
+                                "relation": candidate_t.relation,
+                                "object": candidate_t.object,
+                            },
+                            "action": resolution,
+                            "owner_domains": res.get("owner_domains", []),
+                            "rationale": res.get("rationale", ""),
+                        })
 
                     if resolution == "keep_new":
                         # Move from conflicting to new
@@ -243,6 +518,8 @@ class IncrementalEnricher:
                         )
                         diff.new_triples.append(merged)
                         resolved_triples.append(idx)
+                    elif resolution == "escalate":
+                        report["governance"]["conflicts_escalated"] += 1
                     # else: keep_existing, do nothing
 
             # Remove resolved conflicts
@@ -253,7 +530,7 @@ class IncrementalEnricher:
             ]
             report["conflicts_resolved"] = len(resolved_triples)
 
-        # Step 4: Merge
+        # Step 5: Merge
         print("\n" + "=" * 70)
         print("INCREMENTAL ENRICHMENT: Merging into base KG")
         print("=" * 70)

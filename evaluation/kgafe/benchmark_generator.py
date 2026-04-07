@@ -17,12 +17,13 @@ This enables fully automatic evaluation without human annotation.
 from __future__ import annotations
 
 import random
+import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
-from multi_agent_kg.core.domain_experts import find_paths
+from multi_agent_kg.core.domain_experts import OrgChart, find_paths
 from multi_agent_kg.core.kg_operations import normalize_for_matching
 from multi_agent_kg.llm.openai_client import chat_completion_json
 
@@ -68,10 +69,17 @@ class BenchmarkGenerator:
         kg: KnowledgeGraph,
         model: str = "gemma3:27b",
         seed: int = 42,
+        org_chart: Optional[OrgChart] = None,
     ):
         self.kg = kg
         self.model = model
         self.rng = random.Random(seed)
+        self.org_chart = org_chart
+        self._entity_to_domain: Dict[str, str] = {}
+        if org_chart:
+            for domain in org_chart.domains:
+                for entity_id in domain.entity_ids:
+                    self._entity_to_domain[entity_id] = domain.domain_id
 
         # Pre-compute useful indexes
         self._subj_index: Dict[str, List[Triple]] = defaultdict(list)
@@ -81,6 +89,66 @@ class BenchmarkGenerator:
             self._subj_index[t.subject].append(t)
             self._obj_index[t.object].append(t)
             self._rel_index[t.relation].append(t)
+
+    def _entity(self, entity_id: str):
+        return self.kg.entities.get(entity_id)
+
+    def _entity_type(self, entity_id: str) -> str:
+        entity = self._entity(entity_id)
+        return (entity.type or "") if entity else ""
+
+    def _entity_domain(self, entity_id: str) -> str:
+        return self._entity_to_domain.get(entity_id, "")
+
+    def _is_good_entity(self, entity_id: str) -> bool:
+        entity = self._entity(entity_id)
+        label = self._entity_label(entity_id).strip()
+        low = label.lower()
+        etype = self._entity_type(entity_id).upper()
+
+        bad_tokens = {
+            "quartile", "group", "groups", "patient", "patients", "study",
+            "analysis", "findings", "result", "results", "changes",
+            "phenogroup",
+        }
+        bad_types = {
+            "STUDY_DESIGN", "ANALYSIS_TECHNIQUE",
+            "STATISTICAL_METHOD", "STATISTICAL_MODEL",
+        }
+
+        if not label or len(label) < 3:
+            return False
+        if any(token in low for token in bad_tokens):
+            return False
+        if re.fullmatch(r"[0-9.%+\- ]+", label):
+            return False
+        if etype in bad_types:
+            return False
+        return True
+
+    def _is_good_triple(self, triple: Triple) -> bool:
+        return (
+            self._is_good_entity(triple.subject)
+            and self._is_good_entity(triple.object)
+            and len(triple.relation) >= 3
+        )
+
+    def _question_template(self, subject: str, relation: str, obj: str) -> str:
+        rel = relation.replace("_", " ").lower()
+
+        if rel.startswith("associated with"):
+            return f"Is {subject} associated with {obj}?"
+        if "mediated by" in rel or rel.startswith("mediates"):
+            return f"How is the relationship involving {subject} mediated by {obj}?"
+        if rel.startswith("measured by") or "used to measure" in rel:
+            return f"How is {subject} measured?"
+        if rel.startswith("part of"):
+            return f"What system or process is {subject} part of?"
+        if rel.startswith("affects"):
+            return f"How does {subject} affect {obj}?"
+        if rel.startswith("manifests as"):
+            return f"How does {subject} manifest clinically?"
+        return f"What is the relationship between {subject} and {obj}?"
 
     def generate(
         self,
@@ -100,19 +168,25 @@ class BenchmarkGenerator:
         if question_types is None:
             question_types = [
                 "single_hop", "multi_hop", "aggregation",
-                "comparison", "negative",
+                "comparison", "negative", "cross_domain",
             ]
 
-        # Compute per-type counts
-        per_type = max(1, n_questions // len(question_types))
-        remainder = n_questions - per_type * len(question_types)
+        if n_questions <= 0 or not question_types:
+            return []
+
+        # Distribute the requested budget across types without exceeding n_questions.
+        shuffled_types = list(question_types)
+        self.rng.shuffle(shuffled_types)
+        per_type = n_questions // len(shuffled_types)
+        remainder = n_questions % len(shuffled_types)
 
         questions: List[BenchmarkQuestion] = []
         qid_counter = 0
 
-        for qtype in question_types:
-            count = per_type + (1 if remainder > 0 else 0)
-            remainder -= 1
+        for idx, qtype in enumerate(shuffled_types):
+            count = per_type + (1 if idx < remainder else 0)
+            if count == 0:
+                continue
 
             if qtype == "single_hop":
                 batch = self._generate_single_hop(count, qid_counter)
@@ -124,6 +198,8 @@ class BenchmarkGenerator:
                 batch = self._generate_comparison(count, qid_counter)
             elif qtype == "negative":
                 batch = self._generate_negative(count, qid_counter)
+            elif qtype == "cross_domain":
+                batch = self._generate_cross_domain(count, qid_counter)
             else:
                 continue
 
@@ -131,7 +207,7 @@ class BenchmarkGenerator:
             qid_counter += len(batch)
 
         self.rng.shuffle(questions)
-        return questions
+        return questions[:n_questions]
 
     def _generate_single_hop(
         self, count: int, start_id: int
@@ -143,10 +219,13 @@ class BenchmarkGenerator:
         # Sample triples with decent confidence
         candidates = [
             t for t in self.kg.triples
-            if t.confidence is None or t.confidence >= 0.5
+            if (t.confidence is None or t.confidence >= 0.5)
+            and self._is_good_triple(t)
         ]
         if not candidates:
-            candidates = self.kg.triples
+            candidates = [t for t in self.kg.triples if self._is_good_triple(t)]
+        if not candidates:
+            return []
 
         sampled = self.rng.sample(candidates, min(count * 3, len(candidates)))
         questions = []
@@ -162,7 +241,7 @@ class BenchmarkGenerator:
 
             # Generate question using LLM for natural phrasing
             q_text = self._phrase_question(
-                f"What {rel_name} {subj_name}?",
+                self._question_template(subj_name, triple.relation, obj_name),
                 subj_name, obj_name, rel_name,
             )
             gold = f"{subj_name} {rel_name} {obj_name}."
@@ -190,7 +269,7 @@ class BenchmarkGenerator:
         questions = []
 
         # Find entity pairs connected by 2-3 hop paths
-        entities = list(self.kg.entities.keys())
+        entities = [eid for eid in self.kg.entities if self._is_good_entity(eid)]
         attempts = 0
         max_attempts = count * 20
 
@@ -207,7 +286,26 @@ class BenchmarkGenerator:
             if not multi_paths:
                 continue
 
+            if self.org_chart:
+                cross_domain_paths = []
+                for path in multi_paths:
+                    domains = {
+                        self._entity_domain(t.subject)
+                        for t in path
+                        if self._entity_domain(t.subject)
+                    } | {
+                        self._entity_domain(t.object)
+                        for t in path
+                        if self._entity_domain(t.object)
+                    }
+                    if len(domains) >= 2:
+                        cross_domain_paths.append(path)
+                if cross_domain_paths:
+                    multi_paths = cross_domain_paths
+
             path = multi_paths[0]  # Use shortest multi-hop path
+            if not all(self._is_good_triple(t) for t in path):
+                continue
             subj_name = self._entity_label(e1)
             obj_name = self._entity_label(e2)
 
@@ -246,6 +344,11 @@ class BenchmarkGenerator:
                 entities_involved=[e1, e2] + [
                     t.object for t in path[:-1]
                 ],
+                expected_domains=sorted({
+                    self._entity_domain(eid)
+                    for eid in [e1, e2] + [t.object for t in path[:-1]]
+                    if self._entity_domain(eid)
+                }),
             ))
 
         return questions
@@ -258,8 +361,8 @@ class BenchmarkGenerator:
 
         # Find entities with multiple outgoing/incoming triples
         for entity_id in self.rng.sample(
-            list(self.kg.entities.keys()),
-            min(count * 3, len(self.kg.entities)),
+            [eid for eid in self.kg.entities if self._is_good_entity(eid)],
+            min(count * 3, len([eid for eid in self.kg.entities if self._is_good_entity(eid)])),
         ):
             if len(questions) >= count:
                 break
@@ -274,10 +377,11 @@ class BenchmarkGenerator:
                     by_rel[t.relation].append(t)
 
                 for rel, triples in by_rel.items():
-                    if len(triples) >= 2 and len(questions) < count:
+                    good_triples = [t for t in triples if self._is_good_triple(t)]
+                    if len(good_triples) >= 2 and len(questions) < count:
                         name = self._entity_label(entity_id)
                         rel_name = rel.replace("_", " ")
-                        objects = [self._entity_label(t.object) for t in triples]
+                        objects = [self._entity_label(t.object) for t in good_triples]
 
                         q_text = f"What are all the things that {name} {rel_name}?"
                         gold = f"{name} {rel_name}: {', '.join(objects)}."
@@ -292,8 +396,8 @@ class BenchmarkGenerator:
                                 "subject": t.subject,
                                 "relation": t.relation,
                                 "object": t.object,
-                            } for t in triples],
-                            entities_involved=[entity_id] + [t.object for t in triples],
+                            } for t in good_triples],
+                            entities_involved=[entity_id] + [t.object for t in good_triples],
                         ))
                         break
 
@@ -308,7 +412,7 @@ class BenchmarkGenerator:
         # Group entities by type
         by_type: Dict[str, List[str]] = defaultdict(list)
         for eid, entity in self.kg.entities.items():
-            if entity.type:
+            if entity.type and self._is_good_entity(eid):
                 by_type[entity.type].append(eid)
 
         for etype, eids in by_type.items():
@@ -329,6 +433,8 @@ class BenchmarkGenerator:
             # Get triples for both entities
             e1_triples = self._subj_index.get(pair[0], []) + self._obj_index.get(pair[0], [])
             e2_triples = self._subj_index.get(pair[1], []) + self._obj_index.get(pair[1], [])
+            e1_triples = [t for t in e1_triples if self._is_good_triple(t)]
+            e2_triples = [t for t in e2_triples if self._is_good_triple(t)]
 
             if not e1_triples or not e2_triples:
                 continue
@@ -369,7 +475,7 @@ class BenchmarkGenerator:
     ) -> List[BenchmarkQuestion]:
         """Generate negative questions (answer should be 'no' or 'not found')."""
         questions = []
-        entities = list(self.kg.entities.keys())
+        entities = [eid for eid in self.kg.entities if self._is_good_entity(eid)]
 
         attempts = 0
         while len(questions) < count and attempts < count * 20:
@@ -403,7 +509,10 @@ class BenchmarkGenerator:
 
             # Pick a plausible-sounding relation
             if self.kg.triples:
-                rel = self.rng.choice(self.kg.triples).relation.replace("_", " ")
+                good_triples = [t for t in self.kg.triples if self._is_good_triple(t)]
+                if not good_triples:
+                    break
+                rel = self.rng.choice(good_triples).relation.replace("_", " ")
             else:
                 rel = "is related to"
 
@@ -415,6 +524,102 @@ class BenchmarkGenerator:
                 difficulty="easy",
                 supporting_triples=[],
                 entities_involved=[e1, e2],
+            ))
+
+        return questions
+
+    def _generate_cross_domain(
+        self, count: int, start_id: int
+    ) -> List[BenchmarkQuestion]:
+        """Generate harder cross-domain questions that require bridging domains."""
+        if not self.org_chart:
+            return self._generate_multi_hop(count, start_id)
+
+        questions = []
+        candidate_paths: List[List[Triple]] = []
+        seen_pairs = set()
+        cross_relations = list(self.org_chart.cross_domain_relations)
+        self.rng.shuffle(cross_relations)
+        max_seed_relations = min(max(count * 20, 25), len(cross_relations))
+
+        for triple in cross_relations[:max_seed_relations]:
+            subj_domain = self._entity_domain(triple.subject)
+            obj_domain = self._entity_domain(triple.object)
+            if not subj_domain or not obj_domain or subj_domain == obj_domain:
+                continue
+            if not self._is_good_triple(triple):
+                continue
+            pair_key = tuple(sorted((triple.subject, triple.object)))
+            if pair_key in seen_pairs:
+                continue
+            seen_pairs.add(pair_key)
+            candidate_paths.append([triple])
+
+            paths = find_paths(self.kg, triple.subject, triple.object, max_hops=3)
+            added_for_pair = 0
+            for path in paths:
+                if not (2 <= len(path) <= 3):
+                    continue
+                if all(self._is_good_triple(step) for step in path):
+                    candidate_paths.append(path)
+                    added_for_pair += 1
+                if added_for_pair >= 2:
+                    break
+
+        self.rng.shuffle(candidate_paths)
+        for path in candidate_paths:
+            if len(questions) >= count:
+                break
+
+            e1 = path[0].subject
+            e2 = path[-1].object
+            subj_name = self._entity_label(e1)
+            obj_name = self._entity_label(e2)
+            path_domains = sorted({
+                self._entity_domain(t.subject)
+                for t in path
+                if self._entity_domain(t.subject)
+            } | {
+                self._entity_domain(t.object)
+                for t in path
+                if self._entity_domain(t.object)
+            })
+            if len(path_domains) < 2:
+                continue
+
+            chain = []
+            for t in path:
+                chain.append(
+                    f"{self._entity_label(t.subject)} {t.relation.replace('_', ' ')} "
+                    f"{self._entity_label(t.object)}"
+                )
+
+            q_text = self._phrase_question(
+                f"Explain how {subj_name} connects to {obj_name} across different research areas.",
+                subj_name,
+                obj_name,
+                "cross-domain connection",
+            )
+            gold = f"{subj_name} connects to {obj_name} through: {'; '.join(chain)}."
+
+            questions.append(BenchmarkQuestion(
+                question_id=f"xd_{start_id + len(questions):04d}",
+                question=q_text,
+                gold_answer=gold,
+                question_type="cross_domain",
+                difficulty="hard",
+                supporting_triples=[{
+                    "subject": t.subject,
+                    "relation": t.relation,
+                    "object": t.object,
+                } for t in path],
+                supporting_paths=[[{
+                    "subject": t.subject,
+                    "relation": t.relation,
+                    "object": t.object,
+                } for t in path]],
+                entities_involved=[e1, e2] + [t.object for t in path[:-1]],
+                expected_domains=path_domains,
             ))
 
         return questions

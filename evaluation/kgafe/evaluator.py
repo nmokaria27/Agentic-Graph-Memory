@@ -20,10 +20,12 @@ Computes the following novel metrics:
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
+from multi_agent_kg.core.domain_experts import OrgChart
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
 from multi_agent_kg.core.domain_experts import neighbourhood
 from multi_agent_kg.core.kg_operations import normalize_entity_name
@@ -100,6 +102,9 @@ class EvaluationResult:
     question: str
     answer: str
     metrics: KGAFEMetrics
+    question_id: Optional[str] = None
+    question_type: Optional[str] = None
+    difficulty: Optional[str] = None
     atomic_facts: List[Dict[str, Any]] = field(default_factory=list)
     verification_results: List[Dict[str, Any]] = field(default_factory=list)
     judge_verdict: Optional[Dict[str, Any]] = None
@@ -108,6 +113,9 @@ class EvaluationResult:
 
     def to_dict(self) -> Dict[str, Any]:
         return {
+            "question_id": self.question_id,
+            "question_type": self.question_type,
+            "difficulty": self.difficulty,
             "question": self.question,
             "answer": self.answer,
             "gold_answer": self.gold_answer,
@@ -160,14 +168,7 @@ class BenchmarkResult:
         """Break down metrics by question type (if gold answers have types)."""
         by_type: Dict[str, List[KGAFEMetrics]] = {}
         for r in self.individual_results:
-            # Try to get question type from gold answer metadata
-            qtype = "unknown"
-            if r.gold_answer:
-                # The gold_answer field stores the type when from benchmark
-                for bq_type in ["single_hop", "multi_hop", "aggregation", "comparison", "negative"]:
-                    if bq_type in str(getattr(r, "_question_type", "")):
-                        qtype = bq_type
-                        break
+            qtype = r.question_type or "unknown"
             by_type.setdefault(qtype, []).append(r.metrics)
 
         result = {}
@@ -212,6 +213,7 @@ class KGAFEEvaluator:
         kg: KnowledgeGraph,
         model: str = "gemma3:27b",
         enable_judge_panel: bool = True,
+        org_chart: Optional[OrgChart] = None,
     ):
         self.kg = kg
         self.model = model
@@ -221,7 +223,15 @@ class KGAFEEvaluator:
         self.decomposer = AtomicDecomposer(model=model)
         self.verifier = TripleVerifier(kg=kg, model=model)
         self.judge = JudgePanel(model=model) if enable_judge_panel else None
-        self.benchmark_gen = BenchmarkGenerator(kg=kg, model=model)
+        self.benchmark_gen = BenchmarkGenerator(kg=kg, model=model, org_chart=org_chart)
+
+    def generate_benchmark_questions(
+        self,
+        n_questions: int = 50,
+        question_types: Optional[List[str]] = None,
+    ) -> List[BenchmarkQuestion]:
+        """Generate a fixed benchmark set so multiple systems can be compared fairly."""
+        return self.benchmark_gen.generate(n_questions, question_types)
 
     def evaluate_answer(
         self,
@@ -248,10 +258,11 @@ class KGAFEEvaluator:
             entity.labels[0] if entity.labels else eid
             for eid, entity in self.kg.entities.items()
         ]
+        normalized_answer = self._normalize_answer_for_evaluation(answer)
 
         # Step 1: Atomic fact decomposition
         print("  [KGAFE] Decomposing answer into atomic facts...")
-        atomic_facts = self.decomposer.decompose(answer, entity_names)
+        atomic_facts = self.decomposer.decompose(normalized_answer, entity_names)
         print(f"  [KGAFE] Extracted {len(atomic_facts)} atomic facts")
 
         # Step 2: Three-tier verification of each fact
@@ -272,10 +283,10 @@ class KGAFEEvaluator:
         judge_verdict = None
         if self.judge:
             print("  [KGAFE] Running judge panel...")
-            kg_evidence = self._get_relevant_evidence(question, answer)
+            kg_evidence = self._get_relevant_evidence(question, normalized_answer)
             judge_verdict = self.judge.evaluate(
                 question=question,
-                answer=answer,
+                answer=normalized_answer,
                 kg_evidence=kg_evidence,
                 atomic_facts=[f.to_dict() for f in atomic_facts],
                 verification_results=[vr.to_dict() for vr in verification_results],
@@ -286,7 +297,7 @@ class KGAFEEvaluator:
         # Step 4: Compute metrics
         metrics = self._compute_metrics(
             atomic_facts, verification_results, judge_verdict,
-            question, answer, relevant_triples,
+            question, normalized_answer, relevant_triples,
         )
 
         duration = time.time() - start_time
@@ -302,32 +313,12 @@ class KGAFEEvaluator:
             duration_seconds=duration,
         )
 
-    def run_benchmark(
+    def evaluate_benchmark_questions(
         self,
-        n_questions: int = 50,
+        questions: List[BenchmarkQuestion],
         qa_system=None,
-        question_types: Optional[List[str]] = None,
     ) -> BenchmarkResult:
-        """
-        Generate a benchmark and evaluate the QA system against it.
-
-        Args:
-            n_questions: Number of benchmark questions to generate
-            qa_system: The QAOrchestrator to evaluate (must have .query() method)
-            question_types: Which question types to include
-
-        Returns:
-            BenchmarkResult with individual and aggregate metrics
-        """
-        print(f"\n{'='*70}")
-        print(f"KGAFE BENCHMARK: Generating {n_questions} questions")
-        print(f"{'='*70}\n")
-
-        # Generate benchmark questions
-        questions = self.benchmark_gen.generate(n_questions, question_types)
-        print(f"Generated {len(questions)} benchmark questions")
-
-        # Evaluate each question
+        """Evaluate one QA system on a fixed benchmark question set."""
         results = BenchmarkResult()
         for i, bq in enumerate(questions):
             print(f"\n--- Question {i+1}/{len(questions)} [{bq.question_type}] ---")
@@ -358,10 +349,40 @@ class KGAFEEvaluator:
                 gold_answer=bq.gold_answer,
                 relevant_triples=relevant,
             )
-            eval_result._question_type = bq.question_type
+            eval_result.question_id = bq.question_id
+            eval_result.question_type = bq.question_type
+            eval_result.difficulty = bq.difficulty
             results.individual_results.append(eval_result)
 
             print(f"  KGAFE Score: {eval_result.metrics.kgafe_score:.3f}")
+
+        return results
+
+    def run_benchmark(
+        self,
+        n_questions: int = 50,
+        qa_system=None,
+        question_types: Optional[List[str]] = None,
+    ) -> BenchmarkResult:
+        """
+        Generate a benchmark and evaluate the QA system against it.
+
+        Args:
+            n_questions: Number of benchmark questions to generate
+            qa_system: The QAOrchestrator to evaluate (must have .query() method)
+            question_types: Which question types to include
+
+        Returns:
+            BenchmarkResult with individual and aggregate metrics
+        """
+        print(f"\n{'='*70}")
+        print(f"KGAFE BENCHMARK: Generating {n_questions} questions")
+        print(f"{'='*70}\n")
+
+        questions = self.generate_benchmark_questions(n_questions, question_types)
+        print(f"Generated {len(questions)} benchmark questions")
+
+        results = self.evaluate_benchmark_questions(questions, qa_system=qa_system)
 
         # Compute aggregates
         agg = results.compute_aggregates()
@@ -418,8 +439,21 @@ class KGAFEEvaluator:
         if total == 0:
             return metrics
 
+        evaluable_total = (
+            metrics.supported_count
+            + metrics.partially_supported_count
+            + metrics.contradicted_count
+        )
+
         # Core metrics
-        metrics.kg_faithfulness = metrics.supported_count / total
+        # Faithfulness gives partial credit for partially supported claims and
+        # excludes fully unverifiable claims from the denominator.
+        metrics.kg_faithfulness = (
+            (metrics.supported_count + 0.5 * metrics.partially_supported_count)
+            / evaluable_total
+            if evaluable_total > 0
+            else 0.0
+        )
         metrics.kg_precision = metrics.supported_count / total
         metrics.hallucination_rate = (
             metrics.contradicted_count + metrics.unverifiable_count
@@ -533,3 +567,20 @@ class KGAFEEvaluator:
         if entity and entity.labels:
             return entity.labels[0]
         return entity_id.replace("_", " ")
+
+    def _normalize_answer_for_evaluation(self, answer: str) -> str:
+        """Strip obvious agent-scaffolding before atomic decomposition."""
+        cleaned = answer or ""
+        cleaned = re.sub(r"\((?:global_expert|[a-z_]+_expert)\)", "", cleaned)
+        cleaned = re.sub(r"\[(?:global_expert|[a-z_]+)\]", "", cleaned)
+
+        boilerplate_prefixes = [
+            r"^Based on the (?:available|provided )?knowledge graph,\s*",
+            r"^According to the (?:available|provided )?knowledge graph,\s*",
+            r"^The (?:available )?knowledge graph (?:shows|indicates|suggests) that\s*",
+            r"^The graph (?:shows|indicates|suggests) that\s*",
+        ]
+        for pattern in boilerplate_prefixes:
+            cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
+
+        return re.sub(r"\s+", " ", cleaned).strip()

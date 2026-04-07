@@ -31,7 +31,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from multi_agent_kg.core import LLMConfig, load_kg, DomainBuilder, QAOrchestrator
-from multi_agent_kg.core.domain_experts import OrgChart, Domain, TopicSubAgent
+from multi_agent_kg.core.domain_experts import OrgChart
 
 CACHE_FILE = "org_chart_cache.json"
 KG_FILE = "kg_export.json"
@@ -48,31 +48,7 @@ def _kg_hash(kg_path: str) -> str:
 
 def save_org_chart(org_chart: OrgChart, path: str, kg_path: str = KG_FILE) -> None:
     """Serialize OrgChart to JSON, embedding the KG hash for invalidation."""
-    data = {
-        "_kg_hash": _kg_hash(kg_path),
-        "domains": [
-            {
-                "domain_id": d.domain_id,
-                "label": d.label,
-                "description": d.description,
-                "entity_ids": sorted(d.entity_ids),
-                "relation_schema": d.relation_schema,
-                "topics": [
-                    {
-                        "topic_id": t.topic_id,
-                        "label": t.label,
-                        "description": t.description,
-                        "entity_ids": sorted(t.entity_ids),
-                        "relation_types": sorted(t.relation_types),
-                        "keywords": t.keywords,
-                    }
-                    for t in d.topics
-                ],
-            }
-            for d in org_chart.domains
-        ],
-        "cross_domain_relation_count": len(org_chart.cross_domain_relations),
-    }
+    data = {"_kg_hash": _kg_hash(kg_path), **org_chart.to_dict()}
     with open(path, "w") as f:
         json.dump(data, f, indent=2)
     print(f"Org chart cached to: {path}")
@@ -82,45 +58,7 @@ def load_org_chart(path: str, kg) -> OrgChart:
     """Deserialize OrgChart from JSON cache."""
     with open(path) as f:
         data = json.load(f)
-
-    domains = []
-    for dd in data["domains"]:
-        topics = [
-            TopicSubAgent(
-                topic_id=t["topic_id"],
-                label=t["label"],
-                description=t["description"],
-                entity_ids=set(t.get("entity_ids", [])),
-                relation_types=set(t.get("relation_types", [])),
-                keywords=t.get("keywords", []),
-            )
-            for t in dd.get("topics", [])
-        ]
-        domains.append(Domain(
-            domain_id=dd["domain_id"],
-            label=dd["label"],
-            description=dd["description"],
-            entity_ids=set(dd.get("entity_ids", [])),
-            relation_schema=dd.get("relation_schema", {}),
-            topics=topics,
-        ))
-
-    # Rebuild cross-domain relations from KG
-    all_domain_ids = set()
-    entity_to_domain = {}
-    for d in domains:
-        all_domain_ids.add(d.domain_id)
-        for eid in d.entity_ids:
-            entity_to_domain[eid] = d.domain_id
-
-    cross = [
-        t for t in kg.triples
-        if entity_to_domain.get(t.subject) != entity_to_domain.get(t.object)
-        and t.subject in entity_to_domain
-        and t.object in entity_to_domain
-    ]
-
-    return OrgChart(domains=domains, cross_domain_relations=cross)
+    return OrgChart.from_dict(data, kg)
 
 
 # --- Setup (runs once at startup) ---

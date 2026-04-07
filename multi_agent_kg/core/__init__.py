@@ -67,11 +67,13 @@ from multi_agent_kg.core.kg_operations import (
 from multi_agent_kg.core.incremental_enrichment import (
     IncrementalEnricher,
     ConflictResolver,
+    GovernanceReviewBoard,
 )
 from multi_agent_kg.core.domain_experts import (
     Domain,
     TopicSubAgent,
     OrgChart,
+    GovernanceAssignment,
     DomainBuilder,
     DomainExpertAgent,
     QAOrchestrator,
@@ -138,10 +140,12 @@ __all__ = [
     # Incremental Enrichment
     "IncrementalEnricher",
     "ConflictResolver",
+    "GovernanceReviewBoard",
     # Domain Expert QA
     "Domain",
     "TopicSubAgent",
     "OrgChart",
+    "GovernanceAssignment",
     "DomainBuilder",
     "DomainExpertAgent",
     "QAOrchestrator",

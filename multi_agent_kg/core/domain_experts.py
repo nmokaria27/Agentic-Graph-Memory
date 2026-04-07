@@ -70,6 +70,27 @@ class TopicSubAgent:
     relation_types: Set[str] = field(default_factory=set)
     keywords: List[str] = field(default_factory=list)
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "topic_id": self.topic_id,
+            "label": self.label,
+            "description": self.description,
+            "entity_ids": sorted(self.entity_ids),
+            "relation_types": sorted(self.relation_types),
+            "keywords": self.keywords,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TopicSubAgent":
+        return cls(
+            topic_id=data["topic_id"],
+            label=data["label"],
+            description=data.get("description", ""),
+            entity_ids=set(data.get("entity_ids", [])),
+            relation_types=set(data.get("relation_types", [])),
+            keywords=data.get("keywords", []),
+        )
+
 
 @dataclass
 class Domain:
@@ -92,6 +113,14 @@ class Domain:
     relation_schema: Dict[str, str] = field(default_factory=dict)  # relation -> description
     topics: List[TopicSubAgent] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def owner_label(self) -> str:
+        return self.metadata.get("owner_label") or f"{self.label} Expert"
+
+    @property
+    def governance_scope(self) -> str:
+        return self.metadata.get("governance_scope") or self.description
 
     def get_subgraph(self, full_kg: KnowledgeGraph) -> Tuple[List[Entity], List[Triple]]:
         """Extract the subgraph belonging to this domain from the full KG."""
@@ -124,6 +153,29 @@ class Domain:
             lines.append(f"  ... and {len(triples) - 80} more")
         return "\n".join(lines)
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "domain_id": self.domain_id,
+            "label": self.label,
+            "description": self.description,
+            "entity_ids": sorted(self.entity_ids),
+            "relation_schema": self.relation_schema,
+            "topics": [topic.to_dict() for topic in self.topics],
+            "metadata": self.metadata,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Domain":
+        return cls(
+            domain_id=data["domain_id"],
+            label=data["label"],
+            description=data.get("description", ""),
+            entity_ids=set(data.get("entity_ids", [])),
+            relation_schema=data.get("relation_schema", {}),
+            topics=[TopicSubAgent.from_dict(t) for t in data.get("topics", [])],
+            metadata=data.get("metadata", {}),
+        )
+
 
 @dataclass
 class OrgChart:
@@ -155,6 +207,156 @@ class OrgChart:
             if d.domain_id == domain_id:
                 return d
         return None
+
+    def entity_domain_map(self) -> Dict[str, List[str]]:
+        mapping: Dict[str, List[str]] = {}
+        for domain in self.domains:
+            for entity_id in domain.entity_ids:
+                mapping.setdefault(entity_id, []).append(domain.domain_id)
+        return mapping
+
+    def route_triple_for_governance(self, triple: Triple) -> "GovernanceAssignment":
+        """Assign an incoming triple to the domain expert(s) that should review it."""
+        entity_map = self.entity_domain_map()
+        subject_domains = set(entity_map.get(triple.subject, []))
+        object_domains = set(entity_map.get(triple.object, []))
+        bridged_domains = sorted(subject_domains | object_domains)
+
+        if subject_domains and object_domains and not (subject_domains & object_domains):
+            return GovernanceAssignment(
+                assignment_type="cross_domain",
+                primary_domain_id=bridged_domains[0],
+                domain_ids=bridged_domains,
+                rationale=(
+                    f"Subject '{triple.subject}' and object '{triple.object}' belong to "
+                    "different domains, so the update requires joint governance."
+                ),
+                score_breakdown={
+                    domain_id: {
+                        "score": 1,
+                        "reasons": ["entity participates in cross-domain fact"],
+                    }
+                    for domain_id in bridged_domains
+                },
+            )
+
+        score_breakdown: Dict[str, Dict[str, Any]] = {}
+        best_score = 0
+
+        for domain in self.domains:
+            score = 0
+            reasons: List[str] = []
+            if triple.subject in domain.entity_ids:
+                score += 3
+                reasons.append("subject belongs to domain")
+            if triple.object in domain.entity_ids:
+                score += 2
+                reasons.append("object belongs to domain")
+            if triple.relation in domain.relation_schema:
+                score += 1
+                reasons.append("relation is in domain schema")
+
+            if score > 0:
+                score_breakdown[domain.domain_id] = {
+                    "score": score,
+                    "reasons": reasons,
+                }
+                best_score = max(best_score, score)
+
+        if not score_breakdown:
+            return GovernanceAssignment(
+                assignment_type="unowned",
+                primary_domain_id=None,
+                domain_ids=[],
+                rationale=(
+                    f"No domain owns subject '{triple.subject}', object "
+                    f"'{triple.object}', or relation '{triple.relation}'."
+                ),
+                score_breakdown={},
+            )
+
+        top_domains = sorted(
+            [
+                domain_id
+                for domain_id, details in score_breakdown.items()
+                if details["score"] == best_score
+            ]
+        )
+
+        if len(top_domains) == 1:
+            winner = top_domains[0]
+            details = score_breakdown[winner]
+            return GovernanceAssignment(
+                assignment_type="single_owner",
+                primary_domain_id=winner,
+                domain_ids=top_domains,
+                rationale=(
+                    f"{winner} has the strongest ownership signal: "
+                    + ", ".join(details["reasons"])
+                ),
+                score_breakdown=score_breakdown,
+            )
+
+        return GovernanceAssignment(
+            assignment_type="cross_domain",
+            primary_domain_id=top_domains[0],
+            domain_ids=top_domains,
+            rationale=(
+                "Multiple domains have equally strong ownership signals for "
+                f"({triple.subject}) -[{triple.relation}]-> ({triple.object})."
+            ),
+            score_breakdown=score_breakdown,
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "domains": [domain.to_dict() for domain in self.domains],
+            "cross_domain_relation_count": len(self.cross_domain_relations),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], kg: KnowledgeGraph) -> "OrgChart":
+        domains = [Domain.from_dict(d) for d in data.get("domains", [])]
+        entity_domain_map: Dict[str, str] = {}
+        for domain in domains:
+            for entity_id in domain.entity_ids:
+                entity_domain_map.setdefault(entity_id, domain.domain_id)
+
+        cross_domain = [
+            triple
+            for triple in kg.triples
+            if entity_domain_map.get(triple.subject) != entity_domain_map.get(triple.object)
+            and triple.subject in entity_domain_map
+            and triple.object in entity_domain_map
+        ]
+        return cls(domains=domains, cross_domain_relations=cross_domain)
+
+
+@dataclass
+class GovernanceAssignment:
+    """
+    Ownership routing result for a proposed knowledge-graph update.
+
+    assignment_type:
+        - single_owner: one domain expert owns the update
+        - cross_domain: several experts must adjudicate it jointly
+        - unowned: no current domain clearly owns it
+    """
+
+    assignment_type: str
+    primary_domain_id: Optional[str]
+    domain_ids: List[str] = field(default_factory=list)
+    rationale: str = ""
+    score_breakdown: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "assignment_type": self.assignment_type,
+            "primary_domain_id": self.primary_domain_id,
+            "domain_ids": self.domain_ids,
+            "rationale": self.rationale,
+            "score_breakdown": self.score_breakdown,
+        }
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -290,18 +492,47 @@ class DomainBuilder:
     4. Identifying cross-domain bridge relations
     """
 
-    def __init__(self, llm_config: LLMConfig):
+    def __init__(
+        self,
+        llm_config: LLMConfig,
+        target_num_domains: Optional[int] = None,
+    ):
         self.llm_config = llm_config
+        self.target_num_domains = target_num_domains
 
-    def build(self, kg: KnowledgeGraph) -> OrgChart:
+    def build(
+        self,
+        kg: KnowledgeGraph,
+        target_num_domains: Optional[int] = None,
+    ) -> OrgChart:
         """Build an OrgChart from a KnowledgeGraph."""
         print("\n[DomainBuilder] Analyzing KG structure...")
+        requested_domains = target_num_domains or self.target_num_domains
+
+        if requested_domains == 1:
+            relation_schema = {triple.relation: "" for triple in kg.triples}
+            return OrgChart(
+                domains=[
+                    Domain(
+                        domain_id="global_expert",
+                        label="Global Expert",
+                        description="Single owner for the entire knowledge graph.",
+                        entity_ids=set(kg.entities.keys()),
+                        relation_schema=relation_schema,
+                        metadata={
+                            "owner_label": "Global Expert",
+                            "governance_scope": "Owns every entity and relation in the graph.",
+                        },
+                    )
+                ],
+                cross_domain_relations=[],
+            )
 
         # Prepare KG summary for the LLM
         kg_summary = self._kg_summary(kg)
 
         # Step 1: Identify domains
-        domains_raw = self._identify_domains(kg_summary)
+        domains_raw = self._identify_domains(kg_summary, requested_domains)
 
         # Step 2: Assign entities to domains
         entity_assignments = self._assign_entities(kg, domains_raw)
@@ -341,14 +572,26 @@ class DomainBuilder:
 
         return "\n".join(lines)
 
-    def _identify_domains(self, kg_summary: str) -> List[Dict[str, Any]]:
+    def _identify_domains(
+        self,
+        kg_summary: str,
+        target_num_domains: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
         """Use LLM to identify thematic domains."""
+        count_instruction = ""
+        if target_num_domains:
+            count_instruction = (
+                f"\nIdentify EXACTLY {target_num_domains} domains. "
+                "Do not return fewer or more unless the KG is truly degenerate."
+            )
+
         prompt = f"""Analyze this knowledge graph and identify the major thematic DOMAINS 
 (logical groupings of related entities and relationships).
 
 Each domain should represent a coherent area of knowledge where entities 
 are densely connected. Think of domains as "departments" in an organization
 that would each need their own expert.
+{count_instruction}
 
 KNOWLEDGE GRAPH:
 {kg_summary}
@@ -673,6 +916,10 @@ Return ONLY the JSON."""
                 entity_ids=entity_ids,
                 relation_schema=relation_schema,
                 topics=topics,
+                metadata={
+                    "owner_label": d_raw.get("owner_label", f"{d_raw['label']} Expert"),
+                    "governance_scope": d_raw.get("description", ""),
+                },
             )
             domains.append(domain)
 
@@ -780,18 +1027,22 @@ You have access to the following knowledge from a knowledge graph:
 QUERY: {query}
 
 Based ONLY on the knowledge graph data above, provide:
-1. A thorough answer to the query, citing specific entities and relationships.
-   If multi-hop paths are provided, use them to explain *indirect* connections.
-2. A coverage score (0.0-1.0): what fraction of the query can you fully answer 
+1. A concise answer to the query using only claims that are directly supported by
+   the evidence above. Prefer 1-3 sentences.
+2. If the evidence is incomplete, answer only the supported part and explicitly
+   note the gap in a short neutral phrase.
+3. Do NOT mention domain IDs, expert agents, routing, or the phrase "knowledge graph".
+4. Do NOT speculate, generalize, or add background knowledge.
+5. A coverage score (0.0-1.0): what fraction of the query can you fully answer 
    from this domain's knowledge? 1.0 = fully answered, 0.0 = cannot answer at all
-3. The specific KG triples (as strings) that support your answer
-4. Your confidence in the answer (0.0-1.0)
+6. The specific KG triples (as strings) that support your answer
+7. Your confidence in the answer (0.0-1.0)
 
 If the query asks about things outside your domain, say so and set coverage accordingly.
 
 Respond in JSON:
 {{
-    "answer": "...",
+    "answer": "A short evidence-grounded answer.",
     "coverage": 0.65,
     "evidence": ["(entity1) -[relation]-> (entity2)", ...],
     "confidence": 0.7,
@@ -1068,7 +1319,10 @@ Return ONLY the JSON."""
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a query decomposition and routing expert. Return only valid JSON.",
+                        "content": (
+                            "You are a query decomposition and routing expert. "
+                            "Prefer the fewest domains needed and return only valid JSON."
+                        ),
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -1076,16 +1330,28 @@ Return ONLY the JSON."""
                 temperature=0.1,
             )
         except Exception:
-            # Fallback: route to all domains
+            # Fallback: route narrowly instead of broadcasting to every domain.
             result = {
                 "sub_questions": [
                     {
                         "question": question,
-                        "target_domains": [d.domain_id for d in self.org_chart.domains],
+                        "target_domains": [d.domain_id for d in self.org_chart.domains[:2]],
                         "context": "",
                     }
                 ]
             }
+
+        sub_questions = result.get("sub_questions", [])
+        for sq in sub_questions:
+            target_domains = []
+            for domain_id in sq.get("target_domains", []):
+                if domain_id in self.experts and domain_id not in target_domains:
+                    target_domains.append(domain_id)
+                if len(target_domains) >= 2:
+                    break
+            if not target_domains and self.org_chart.domains:
+                target_domains = [self.org_chart.domains[0].domain_id]
+            sq["target_domains"] = target_domains
 
         return result
 
@@ -1159,6 +1425,7 @@ partial answers to a user's question. Your job is to:
 2. Resolve any contradictions (prefer higher-confidence answers)
 3. Note any gaps — aspects of the question that no expert could answer
 4. Compute an overall coverage and confidence score
+5. Keep the final answer concise and strictly evidence-grounded
 
 USER QUESTION: {question}
 
@@ -1167,11 +1434,18 @@ DOMAIN EXPERT RESPONSES:
 
 {f"CROSS-DOMAIN CONTEXT:{chr(10)}{cross_domain_context}" if cross_domain_context else ""}
 
-Synthesize a final answer. Cite which domain expert(s) provided each piece of information.
+Synthesize a final answer.
+
+RULES:
+- Do NOT mention domain experts, routing, confidence scores, or out-of-scope notes in the answer text.
+- Do NOT say "the knowledge graph says" or similar meta-commentary.
+- Include only claims that are directly supported by the expert evidence above.
+- Prefer the shortest answer that fully covers the supported facts.
+- If evidence is weak or missing, state the limitation briefly and stop.
 
 Respond in JSON:
 {{
-    "answer": "Comprehensive answer here, citing domain experts...",
+    "answer": "Short final answer here.",
     "coverage": 0.85,
     "confidence": 0.8,
     "gaps": ["aspects of the question that couldn't be answered"]

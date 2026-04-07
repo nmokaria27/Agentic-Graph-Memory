@@ -30,7 +30,7 @@ from evaluation.kgafe.evaluator import KGAFEEvaluator
 
 def load_qa_system(kg, org_chart_path=None):
     """Load the QA system (QAOrchestrator) for benchmark evaluation."""
-    from multi_agent_kg.core.domain_experts import QAOrchestrator, DomainBuilder, OrgChart, Domain, TopicSubAgent
+    from multi_agent_kg.core.domain_experts import QAOrchestrator, DomainBuilder, OrgChart
 
     llm_config = LLMConfig()
 
@@ -39,44 +39,7 @@ def load_qa_system(kg, org_chart_path=None):
         print(f"Loading org chart from {org_chart_path}...")
         with open(org_chart_path) as f:
             cache = json.load(f)
-
-        domains = []
-        for d in cache.get("domains", []):
-            topics = [
-                TopicSubAgent(
-                    topic_id=t["topic_id"],
-                    label=t["label"],
-                    description=t.get("description", ""),
-                    entity_ids=set(t.get("entity_ids", [])),
-                    relation_types=set(t.get("relation_types", [])),
-                    keywords=t.get("keywords", []),
-                )
-                for t in d.get("topics", [])
-            ]
-            domain = Domain(
-                domain_id=d["domain_id"],
-                label=d["label"],
-                description=d.get("description", ""),
-                entity_ids=set(d.get("entity_ids", [])),
-                relation_schema=d.get("relation_schema", {}),
-                topics=topics,
-            )
-            domains.append(domain)
-
-        # Rebuild cross-domain relations
-        cross_domain = []
-        entity_domain_map = {}
-        for d in domains:
-            for eid in d.entity_ids:
-                entity_domain_map[eid] = d.domain_id
-
-        for t in kg.triples:
-            sd = entity_domain_map.get(t.subject)
-            od = entity_domain_map.get(t.object)
-            if sd and od and sd != od:
-                cross_domain.append(t)
-
-        org_chart = OrgChart(domains=domains, cross_domain_relations=cross_domain)
+        org_chart = OrgChart.from_dict(cache, kg)
     else:
         # Build org chart from scratch
         print("Building org chart from KG (this may take a while)...")
