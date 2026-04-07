@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 from multi_agent_kg.core import LLMConfig, load_kg
 from multi_agent_kg.core.advanced_qa import AdvancedQAOrchestrator
 from multi_agent_kg.core.domain_experts import DomainBuilder, OrgChart, QAOrchestrator
+from evaluation.kgafe.baselines import build_baseline_system
 from evaluation.kgafe.evaluator import KGAFEEvaluator
 
 
@@ -45,9 +46,20 @@ EXPERIMENTS: Dict[str, ExperimentConfig] = {
         orchestrator="basic",
         num_domains=1,
     ),
+    "flat_path_basic": ExperimentConfig(
+        name="flat_path_basic",
+        description="Single global expert with path-focused retrieval",
+        orchestrator="basic",
+        num_domains=1,
+    ),
     "domain_basic": ExperimentConfig(
         name="domain_basic",
         description="Clustered domain experts without active exploration/debate",
+        orchestrator="basic",
+    ),
+    "oracle_domain_basic": ExperimentConfig(
+        name="oracle_domain_basic",
+        description="Clustered domain experts with oracle routing to expected domains",
         orchestrator="basic",
     ),
     "domain_advanced": ExperimentConfig(
@@ -102,6 +114,16 @@ def build_qa_system(
     else:
         builder = DomainBuilder(llm_config, target_num_domains=config.num_domains)
         org_chart = builder.build(kg)
+
+    if config.name in {"flat_path_basic", "oracle_domain_basic"}:
+        baseline = build_baseline_system(
+            config.name,
+            kg=kg,
+            llm_config=llm_config,
+            org_chart=org_chart,
+            advanced_orchestrator_cls=AdvancedQAOrchestrator,
+        )
+        return baseline.qa_system
 
     if config.orchestrator == "advanced":
         return AdvancedQAOrchestrator(

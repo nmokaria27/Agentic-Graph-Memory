@@ -359,7 +359,10 @@ class KGAFEEvaluator:
             qa_result: Dict[str, Any] = {}
             if qa_system:
                 # Get answer from QA system
-                qa_result = qa_system.query(bq.question)
+                if hasattr(qa_system, "query_benchmark_question"):
+                    qa_result = qa_system.query_benchmark_question(bq)
+                else:
+                    qa_result = qa_system.query(bq.question)
                 answer = qa_result.get("final_answer", "")
             else:
                 # No QA system — evaluate gold answer against itself (sanity check)
