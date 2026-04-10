@@ -143,3 +143,55 @@ def test_assign_entity_to_domains_updates_org_chart() -> None:
     gkg.assign_entity_to_domains("artery", ["cardio"])
 
     assert "artery" in gkg.org_chart.find_domain("cardio").entity_ids
+
+
+def test_strict_mode_uses_review_callback_when_available() -> None:
+    kg = KnowledgeGraph()
+    kg.add_entity("heart", ["Heart"], "ORGAN")
+    kg.add_entity("blood_pressure", ["Blood Pressure"], "MEASUREMENT")
+    gkg = GovernedKnowledgeGraph(kg=kg, org_chart=_simple_org_chart(), governance_mode="strict")
+
+    def callback(triple, assignment, _kg, _org_chart):
+        return GovernanceDecision(
+            triple=triple,
+            action="approve",
+            domain_id=assignment.primary_domain_id,
+            rationale="approved in test",
+            assignment=assignment,
+        )
+
+    gkg.set_review_callback(callback)
+    decision = gkg.propose_triple("heart", "AFFECTS", "blood_pressure", confidence=0.9)
+
+    assert decision.action == "approve"
+    assert decision.committed is True
+    assert len(gkg.triples) == 1
+
+
+def test_cross_domain_relations_update_incrementally_on_commit() -> None:
+    kg = KnowledgeGraph()
+    kg.add_entity("heart", ["Heart"], "ORGAN")
+    kg.add_entity("il6", ["IL-6"], "MARKER")
+    gkg = GovernedKnowledgeGraph(kg=kg, org_chart=_simple_org_chart(), governance_mode="audit_only")
+
+    decision = gkg.propose_triple("heart", "AFFECTS", "il6", confidence=0.8)
+
+    assert decision.committed is True
+    assert len(gkg.org_chart.cross_domain_relations) == 1
+
+
+def test_bootstrap_assignment_stats_are_recorded() -> None:
+    gkg = GovernedKnowledgeGraph(kg=KnowledgeGraph(), org_chart=_simple_org_chart(), governance_mode="audit_only")
+    stats = {
+        "num_entities": 4,
+        "assigned_entities": 3,
+        "unassigned_entities": 1,
+        "multi_assigned_entities": 1,
+        "assignment_coverage": 0.75,
+    }
+    gkg.set_bootstrap_assignment_stats(stats)
+
+    stored = gkg.get_stats()["bootstrap_assignment_stats"]
+
+    assert stored["assigned_entities"] == 3
+    assert stored["assignment_coverage"] == 0.75

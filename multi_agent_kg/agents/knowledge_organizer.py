@@ -11,9 +11,10 @@ Responsible for:
 This is the final coordinator - the output stage.
 """
 
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 import json
 from collections import defaultdict
+from math import sqrt
 
 from multi_agent_kg.agents.base import (
     BaseAgent,
@@ -137,6 +138,9 @@ class KnowledgeOrganizer(BaseAgent):
             "triples_added": 0,
             "triples_updated": 0,
             "relations_normalized": 0,
+            "relations_schema_mapped": 0,
+            "relations_schema_rejected": 0,
+            "governance_repairs": 0,
         }
 
     def run(
@@ -240,6 +244,15 @@ class KnowledgeOrganizer(BaseAgent):
         # First check for obvious duplicates (same name, different case)
         obvious_merges, remaining = self._find_obvious_duplicates(entities)
         
+        # Use deterministic semantic matching before spending an LLM call.
+        semantic_merges, remaining = self._find_semantic_duplicates(remaining)
+        obvious_merges.extend(semantic_merges)
+        if self.shared_memory:
+            for group in semantic_merges:
+                canonical_id = group.get("canonical_id")
+                for alias_id in group.get("merge_ids", []):
+                    self.shared_memory.register_entity_alias(alias_id, canonical_id)
+
         # Use LLM for non-obvious cases
         if len(remaining) > 1:
             entities_json = json.dumps([
@@ -286,6 +299,72 @@ class KnowledgeOrganizer(BaseAgent):
         
         merged_count = len(entities) - len(remaining)
         return remaining, merged_count
+
+    def _find_semantic_duplicates(
+        self,
+        entities: List[Dict[str, Any]],
+    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Collapse near-duplicate entities with type-aware lexical similarity."""
+        if len(entities) < 2:
+            return [], entities
+
+        merges = []
+        consumed: Set[int] = set()
+        remaining: List[Dict[str, Any]] = []
+
+        def normalized_text(entity: Dict[str, Any]) -> str:
+            text = entity.get("text") or entity.get("id", "")
+            return " ".join(text.lower().replace("_", " ").split())
+
+        def trigram_vector(text: str) -> Dict[str, int]:
+            padded = f"  {text}  "
+            vector: Dict[str, int] = {}
+            for idx in range(max(len(padded) - 2, 1)):
+                gram = padded[idx:idx + 3]
+                vector[gram] = vector.get(gram, 0) + 1
+            return vector
+
+        def cosine_similarity(left: Dict[str, int], right: Dict[str, int]) -> float:
+            shared = set(left) & set(right)
+            numerator = sum(left[token] * right[token] for token in shared)
+            left_norm = sqrt(sum(value * value for value in left.values()))
+            right_norm = sqrt(sum(value * value for value in right.values()))
+            if not left_norm or not right_norm:
+                return 0.0
+            return numerator / (left_norm * right_norm)
+
+        normalized = [normalized_text(entity) for entity in entities]
+        vectors = [trigram_vector(text) for text in normalized]
+        types = [(entity.get("type") or "").upper() for entity in entities]
+
+        for idx, entity in enumerate(entities):
+            if idx in consumed:
+                continue
+            canonical_id = entity.get("id", entity.get("text", ""))
+            merged_ids: List[str] = []
+            for other_idx in range(idx + 1, len(entities)):
+                if other_idx in consumed:
+                    continue
+                if types[idx] and types[other_idx] and types[idx] != types[other_idx]:
+                    continue
+                similarity = cosine_similarity(vectors[idx], vectors[other_idx])
+                if similarity < 0.88:
+                    continue
+                other_id = entities[other_idx].get("id", entities[other_idx].get("text", ""))
+                merged_ids.append(other_id)
+                consumed.add(other_idx)
+            if merged_ids:
+                merges.append(
+                    {
+                        "canonical_id": canonical_id,
+                        "canonical_name": entity.get("text", canonical_id),
+                        "merge_ids": merged_ids,
+                        "reason": "type-aware trigram similarity",
+                    }
+                )
+            remaining.append(entity)
+
+        return merges, remaining
 
     def _find_obvious_duplicates(
         self,
@@ -486,6 +565,8 @@ class KnowledgeOrganizer(BaseAgent):
                     return known_id
             return None
 
+        allowed_relations = self._allowed_relation_types()
+
         # ── Add entities ─────────────────────────────────────────────
         for entity in entities:
             entity_id = entity.get("id", entity.get("text", ""))
@@ -565,6 +646,14 @@ class KnowledgeOrganizer(BaseAgent):
             if relation.upper() in _BAD_RELATIONS:
                 skipped_triples += 1
                 continue
+            relation, relation_allowed = self._enforce_relation_schema(
+                relation,
+                allowed_relations,
+            )
+            if not relation_allowed:
+                self.integration_stats["relations_schema_rejected"] += 1
+                skipped_triples += 1
+                continue
 
             # Resolve subject and object to known entity IDs
             resolved_subj = _resolve_entity_name(raw_subj) or _resolve_entity_name(
@@ -628,6 +717,34 @@ class KnowledgeOrganizer(BaseAgent):
                         "original_object": raw_obj,
                     },
                 )
+                if (
+                    decision.action in {"reject", "escalate"}
+                    and self.governed_kg.governance_mode == "strict"
+                ):
+                    repaired = self._repair_triple_for_governance(
+                        subject=resolved_subj,
+                        relation=relation,
+                        obj=resolved_obj,
+                        evidence=triple.get("supporting_evidence", ""),
+                        allowed_relations=allowed_relations,
+                        rationale=decision.rationale,
+                    )
+                    if repaired is not None:
+                        self.integration_stats["governance_repairs"] += 1
+                        decision = self.governed_kg.propose_triple(
+                            subject=repaired["subject"],
+                            relation=repaired["relation"],
+                            obj=repaired["object"],
+                            confidence=triple.get("final_confidence", triple.get("confidence", 0.7)),
+                            source=document_id,
+                            metadata={
+                                "evidence": triple.get("supporting_evidence", ""),
+                                "verification_status": triple.get("verification_status", "unknown"),
+                                "original_subject": raw_subj,
+                                "original_object": raw_obj,
+                                "governance_repair": True,
+                            },
+                        )
                 result = decision if decision.committed else None
             else:
                 result = self.knowledge_graph.add_triple(
@@ -651,6 +768,99 @@ class KnowledgeOrganizer(BaseAgent):
         print(f"  Entity resolution: mapped {len(name_to_id)} name variants")
         print(f"  Triples skipped (dup/invalid): {skipped_triples}")
         return added_entities, added_triples
+
+    def _allowed_relation_types(self) -> Set[str]:
+        if not self.governed_kg or not self.governed_kg.org_chart.domains:
+            return set()
+        allowed: Set[str] = set()
+        for domain in self.governed_kg.org_chart.domains:
+            allowed.update(domain.relation_schema.keys())
+            allowed.update(domain.metadata.get("seed_relation_types", []))
+        return {relation for relation in allowed if relation}
+
+    def _enforce_relation_schema(
+        self,
+        relation: str,
+        allowed_relations: Set[str],
+    ) -> Tuple[str, bool]:
+        if not allowed_relations:
+            return relation, True
+        if relation in allowed_relations:
+            return relation, True
+
+        canonical_relation = relation.upper().replace("-", "_").replace(" ", "_")
+        canonical_allowed = {
+            allowed: allowed.upper().replace("-", "_").replace(" ", "_")
+            for allowed in allowed_relations
+        }
+        for allowed, normalized in canonical_allowed.items():
+            if normalized == canonical_relation:
+                self.integration_stats["relations_schema_mapped"] += 1
+                return allowed, True
+        return relation, False
+
+    def _repair_triple_for_governance(
+        self,
+        *,
+        subject: str,
+        relation: str,
+        obj: str,
+        evidence: str,
+        allowed_relations: Set[str],
+        rationale: str,
+    ) -> Optional[Dict[str, str]]:
+        if not allowed_relations:
+            return None
+        prompt = f"""A triple was rejected or escalated during governed KG creation.
+
+Current triple:
+({subject}) -[{relation}]-> ({obj})
+
+Allowed relation types:
+{sorted(allowed_relations)}
+
+Evidence:
+{evidence[:1200]}
+
+Governance rationale:
+{rationale}
+
+If the triple can be repaired to match the allowed relation schema without changing the meaning,
+return JSON:
+{{
+  "action": "revise",
+  "subject": "{subject}",
+  "relation": "<allowed relation>",
+  "object": "{obj}"
+}}
+
+Otherwise return:
+{{"action": "reject"}}
+
+Return ONLY JSON."""
+        try:
+            result = self.call_llm(
+                prompt=prompt,
+                system_prompt="You repair candidate triples conservatively. Return only valid JSON.",
+                tier=ModelTier.MEDIUM,
+                max_tokens=512,
+            )
+        except Exception:
+            return None
+
+        if result.get("action") != "revise":
+            return None
+        revised_relation, relation_allowed = self._enforce_relation_schema(
+            result.get("relation", relation),
+            allowed_relations,
+        )
+        if not relation_allowed:
+            return None
+        return {
+            "subject": result.get("subject", subject),
+            "relation": revised_relation,
+            "object": result.get("object", obj),
+        }
 
     def _update_memory(
         self,

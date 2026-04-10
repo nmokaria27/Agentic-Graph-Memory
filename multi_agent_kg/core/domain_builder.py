@@ -9,6 +9,7 @@ governance exist during KG creation rather than only after the fact.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Dict, List, Optional
 
 from multi_agent_kg.core.config import LLMConfig
@@ -200,46 +201,151 @@ class DomainBuilder:
         self,
         entities: List[Dict[str, Any]],
         org_chart: OrgChart,
-    ) -> Dict[str, List[str]]:
+        return_diagnostics: bool = False,
+    ) -> Any:
         """
         Assign extracted entities to preliminary domains using the seed schema.
         Returns a mapping of entity_id -> candidate domain_ids.
         """
         assignments: Dict[str, List[str]] = {}
+        diagnostics = {
+            "num_entities": len(entities),
+            "assigned_entities": 0,
+            "unassigned_entities": 0,
+            "multi_assigned_entities": 0,
+            "avg_assignment_score": 0.0,
+            "assignment_coverage": 0.0,
+        }
         if not org_chart.domains:
-            return assignments
+            return (assignments, diagnostics) if return_diagnostics else assignments
 
+        score_total = 0.0
         for entity in entities:
             entity_id = entity.get("id", entity.get("text", ""))
-            entity_text = entity.get("text", entity_id).lower()
-            entity_type = (entity.get("type") or "").lower()
-            scored: List[tuple[int, str]] = []
+            entity_text = entity.get("text", entity_id)
+            entity_type = entity.get("type") or ""
+            entity_tokens = self._tokenize(f"{entity_text} {' '.join(entity.get('mentions', []))}")
+            entity_type_norm = self._normalize_label(entity_type)
+            scored: List[tuple[float, str]] = []
             for domain in org_chart.domains:
-                score = 0
-                seed_types = [item.lower() for item in domain.metadata.get("seed_entity_types", []) if item]
-                if entity_type and entity_type in seed_types:
-                    score += 3
-                elif entity_type and any(entity_type in item or item in entity_type for item in seed_types):
-                    score += 2
-                topic_keywords = [kw.lower() for topic in domain.topics for kw in topic.keywords]
-                if entity_text and any(keyword in entity_text for keyword in topic_keywords):
-                    score += 1
+                score = 0.0
+                seed_types = [
+                    self._normalize_label(item)
+                    for item in domain.metadata.get("seed_entity_types", [])
+                    if item
+                ]
+                if entity_type_norm and entity_type_norm in seed_types:
+                    score += 5.0
+                elif entity_type_norm and any(
+                    entity_type_norm in seed_type or seed_type in entity_type_norm
+                    for seed_type in seed_types
+                ):
+                    score += 3.0
+
+                seed_tokens = self._tokenize(
+                    " ".join(domain.metadata.get("seed_entity_types", []))
+                    + " "
+                    + " ".join(domain.metadata.get("seed_relation_types", []))
+                    + " "
+                    + domain.label
+                    + " "
+                    + domain.description
+                )
+                overlap = len(entity_tokens & seed_tokens)
+                if overlap:
+                    score += min(2.5, overlap * 0.75)
+
+                topic_keywords = {
+                    self._normalize_label(keyword)
+                    for topic in domain.topics
+                    for keyword in topic.keywords
+                    if keyword
+                }
+                if entity_tokens & topic_keywords:
+                    score += 1.5
+
                 if score > 0:
                     scored.append((score, domain.domain_id))
 
             if not scored:
-                assignments[entity_id] = [org_chart.domains[0].domain_id]
+                assignments[entity_id] = []
+                diagnostics["unassigned_entities"] += 1
                 continue
 
             scored.sort(reverse=True)
             best_score = scored[0][0]
+            threshold = max(best_score - 1.0, best_score * 0.7)
             assignments[entity_id] = [
                 domain_id
                 for score, domain_id in scored
-                if score == best_score
+                if score >= threshold
             ]
+            diagnostics["assigned_entities"] += 1
+            diagnostics["multi_assigned_entities"] += int(len(assignments[entity_id]) > 1)
+            score_total += best_score
 
-        return assignments
+        if diagnostics["assigned_entities"]:
+            diagnostics["avg_assignment_score"] = round(
+                score_total / diagnostics["assigned_entities"],
+                4,
+            )
+        diagnostics["assignment_coverage"] = round(
+            diagnostics["assigned_entities"] / max(len(entities), 1),
+            4,
+        )
+        return (assignments, diagnostics) if return_diagnostics else assignments
+
+    def compare_assignment_agreement(
+        self,
+        reference_org_chart: OrgChart,
+        candidate_org_chart: OrgChart,
+    ) -> Dict[str, Any]:
+        """Compare bootstrap assignments to a later full-build org chart."""
+        reference_map = reference_org_chart.entity_domain_map()
+        candidate_map = candidate_org_chart.entity_domain_map()
+        domain_alignment: Dict[str, str] = {}
+        for ref_domain in reference_org_chart.domains:
+            best_match = ""
+            best_overlap = -1.0
+            ref_entities = set(ref_domain.entity_ids)
+            for cand_domain in candidate_org_chart.domains:
+                cand_entities = set(cand_domain.entity_ids)
+                union = ref_entities | cand_entities
+                overlap = len(ref_entities & cand_entities) / len(union) if union else 0.0
+                if overlap > best_overlap:
+                    best_overlap = overlap
+                    best_match = cand_domain.domain_id
+            if best_match:
+                domain_alignment[ref_domain.domain_id] = best_match
+
+        entity_ids = sorted(set(reference_map) | set(candidate_map))
+        if not entity_ids:
+            return {"agreement": 0.0, "num_entities": 0}
+
+        matches = 0
+        overlap_sum = 0.0
+        for entity_id in entity_ids:
+            ref = {
+                domain_alignment.get(domain_id, domain_id)
+                for domain_id in reference_map.get(entity_id, [])
+            }
+            cand = set(candidate_map.get(entity_id, []))
+            if ref == cand:
+                matches += 1
+            overlap_sum += (len(ref & cand) / len(ref | cand)) if (ref or cand) else 1.0
+        return {
+            "agreement": round(matches / len(entity_ids), 4),
+            "mean_jaccard_overlap": round(overlap_sum / len(entity_ids), 4),
+            "num_entities": len(entity_ids),
+            "domain_alignment": domain_alignment,
+        }
+
+    def _normalize_label(self, text: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
+
+    def _tokenize(self, text: str) -> set[str]:
+        normalized = self._normalize_label(text)
+        return {token for token in normalized.split("_") if token}
 
     def _kg_summary(self, kg: KnowledgeGraph) -> str:
         entities_by_type: Dict[str, List[str]] = {}

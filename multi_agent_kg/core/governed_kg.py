@@ -1,9 +1,16 @@
 """
 Governed knowledge graph wrapper.
 
-This is the core data structure for the reframed research idea:
-knowledge is stored as a graph plus a governance layer that records which
-domain expert agent owns and approves changes to different parts of memory.
+Definition 1.
+  A Governed Knowledge Graph is a tuple G = (E, T, D, phi, gamma) where E is
+  the entity set, T is the triple set, D is the set of governed domains,
+  phi:E -> 2^D maps entities to their owning domains, and gamma routes a
+  proposed triple update to the responsible governing domain(s) before a
+  decision in {approve, reject, revise, escalate, auto_approve} is committed.
+
+This wrapper operationalizes that definition by composing a base
+KnowledgeGraph with an OrgChart, an audit trail, and explicit propose/commit
+governance semantics.
 """
 
 from __future__ import annotations
@@ -121,6 +128,7 @@ class GovernedKnowledgeGraph:
         self._audit_log: List[GovernanceDecision] = []
         self._pending_review: List[Triple] = []
         self._review_callback = review_callback
+        self._bootstrap_assignment_stats: Dict[str, Any] = {}
 
     @property
     def kg(self) -> KnowledgeGraph:
@@ -168,6 +176,9 @@ class GovernedKnowledgeGraph:
             return
         self._org_chart.assign_entity(entity_id, domain_ids)
         self._org_chart.refresh_cross_domain_relations(self._kg)
+
+    def set_bootstrap_assignment_stats(self, stats: Dict[str, Any]) -> None:
+        self._bootstrap_assignment_stats = dict(stats)
 
     def add_entity(
         self,
@@ -278,7 +289,8 @@ class GovernedKnowledgeGraph:
             metadata=triple.metadata,
         )
         decision.committed = result is not None
-        self._org_chart.refresh_cross_domain_relations(self._kg)
+        if result is not None:
+            self._org_chart.update_cross_domain_relation(result)
         return result
 
     def add_triple_bypass(
@@ -315,7 +327,8 @@ class GovernedKnowledgeGraph:
             metadata=metadata,
         )
         decision.committed = result is not None
-        self._org_chart.refresh_cross_domain_relations(self._kg)
+        if result is not None:
+            self._org_chart.update_cross_domain_relation(result)
         return result
 
     def get_domain_subgraph(self, domain_id: str) -> Dict[str, Any]:
@@ -340,8 +353,16 @@ class GovernedKnowledgeGraph:
 
     def get_stats(self) -> Dict[str, Any]:
         action_counts: Dict[str, int] = {}
+        assignment_counts: Dict[str, int] = {}
+        domain_decisions: Dict[str, int] = {}
         for decision in self._audit_log:
             action_counts[decision.action] = action_counts.get(decision.action, 0) + 1
+            if decision.assignment is not None:
+                assignment_type = decision.assignment.assignment_type
+                assignment_counts[assignment_type] = assignment_counts.get(assignment_type, 0) + 1
+                for domain_id in decision.assignment.domain_ids:
+                    domain_decisions[domain_id] = domain_decisions.get(domain_id, 0) + 1
+        domain_coverage = self._org_chart.entity_coverage()
         return {
             "entities": len(self._kg.entities),
             "triples": len(self._kg.triples),
@@ -351,6 +372,16 @@ class GovernedKnowledgeGraph:
             "audit_log_entries": len(self._audit_log),
             "pending_review": len(self._pending_review),
             "decision_counts": action_counts,
+            "assignment_counts": assignment_counts,
+            "domain_decision_counts": domain_decisions,
+            "domain_coverage": {
+                **domain_coverage,
+                "fraction_entities_assigned": round(
+                    domain_coverage.get("entities_with_domains", 0) / max(len(self._kg.entities), 1),
+                    4,
+                ),
+            },
+            "bootstrap_assignment_stats": self._bootstrap_assignment_stats,
         }
 
     def to_dict(self) -> Dict[str, Any]:
@@ -359,6 +390,7 @@ class GovernedKnowledgeGraph:
             "org_chart": self._org_chart.to_dict(),
             "governance_mode": self._governance_mode,
             "audit_log": [decision.to_dict() for decision in self._audit_log],
+            "bootstrap_assignment_stats": self._bootstrap_assignment_stats,
         }
 
     def to_json(self) -> str:
@@ -382,6 +414,7 @@ class GovernedKnowledgeGraph:
             GovernanceDecision.from_dict(item)
             for item in data.get("audit_log", [])
         ]
+        graph._bootstrap_assignment_stats = data.get("bootstrap_assignment_stats", {})
         return graph
 
 

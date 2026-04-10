@@ -1,11 +1,13 @@
 """
 Governance primitives for the governed knowledge graph.
 
-This module defines the structural concepts behind the research framing:
-- topic-level sub-agents
-- domains as governed subgraphs
-- the org chart that maps ownership across domains
-- governance assignments for proposed updates
+Definition 1 (Governed Knowledge Graph primitives):
+  A governed knowledge graph uses a set of domains D to impose ownership over
+  entities and triples in a base graph. The org chart stores domain-owned
+  subgraphs plus an ownership function phi:E -> 2^D that maps each entity to one
+  or more governing domains. Governance assignments operationalize gamma, the
+  routing function that maps a candidate triple update to the responsible
+  domain(s) before any downstream approval/revision/rejection decision is made.
 """
 
 from __future__ import annotations
@@ -174,6 +176,11 @@ class OrgChart:
 
     domains: List[Domain] = field(default_factory=list)
     cross_domain_relations: List[Triple] = field(default_factory=list)
+    _entity_domain_map_cache: Optional[Dict[str, List[str]]] = field(
+        default=None,
+        init=False,
+        repr=False,
+    )
 
     def domain_summary(self) -> str:
         lines = ["AVAILABLE DOMAIN EXPERTS:", ""]
@@ -197,11 +204,13 @@ class OrgChart:
         return None
 
     def entity_domain_map(self) -> Dict[str, List[str]]:
-        mapping: Dict[str, List[str]] = {}
-        for domain in self.domains:
-            for entity_id in domain.entity_ids:
-                mapping.setdefault(entity_id, []).append(domain.domain_id)
-        return mapping
+        if self._entity_domain_map_cache is None:
+            mapping: Dict[str, List[str]] = {}
+            for domain in self.domains:
+                for entity_id in domain.entity_ids:
+                    mapping.setdefault(entity_id, []).append(domain.domain_id)
+            self._entity_domain_map_cache = mapping
+        return self._entity_domain_map_cache
 
     def assign_entity(self, entity_id: str, domain_ids: List[str]) -> None:
         normalized = []
@@ -211,10 +220,37 @@ class OrgChart:
         for domain in self.domains:
             if domain.domain_id in normalized:
                 domain.add_entity(entity_id)
+        self._entity_domain_map_cache = None
 
     def remove_entity(self, entity_id: str) -> None:
         for domain in self.domains:
             domain.remove_entity(entity_id)
+        self._entity_domain_map_cache = None
+
+    def entity_coverage(self) -> Dict[str, Any]:
+        mapping = self.entity_domain_map()
+        total_assigned = len(mapping)
+        multi_domain = sum(1 for domain_ids in mapping.values() if len(domain_ids) > 1)
+        return {
+            "entities_with_domains": total_assigned,
+            "multi_domain_entities": multi_domain,
+        }
+
+    def crosses_domains(self, triple: Triple) -> bool:
+        entity_map = self.entity_domain_map()
+        subject_domains = set(entity_map.get(triple.subject, []))
+        object_domains = set(entity_map.get(triple.object, []))
+        return bool(subject_domains and object_domains and subject_domains != object_domains)
+
+    def update_cross_domain_relation(self, triple: Triple) -> None:
+        if self.crosses_domains(triple):
+            if not any(
+                existing.subject == triple.subject
+                and existing.relation == triple.relation
+                and existing.object == triple.object
+                for existing in self.cross_domain_relations
+            ):
+                self.cross_domain_relations.append(triple)
 
     def refresh_cross_domain_relations(self, kg: KnowledgeGraph) -> None:
         entity_map = self.entity_domain_map()

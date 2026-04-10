@@ -60,6 +60,11 @@ def main() -> None:
         "--org-output",
         default=os.path.join("evaluation", "results", "scierc_governed_created_org_chart.json"),
     )
+    parser.add_argument(
+        "--compare-bootstrap",
+        action="store_true",
+        help="After creation, rebuild a full org chart from the KG and compare assignment agreement.",
+    )
     args = parser.parse_args()
 
     scierc_path = os.path.join(args.data_dir, f"{args.split}.json")
@@ -94,10 +99,22 @@ def main() -> None:
 
     orchestrator.process_corpus(documents)
 
+    builder = DomainBuilder(llm_config)
     if not governed_kg.org_chart.domains:
         print("Bootstrapping final org chart from built KG...")
-        builder = DomainBuilder(llm_config)
         governed_kg.bootstrap_domains(builder)
+
+    if args.compare_bootstrap and governed_kg.kg.entities:
+        print("Comparing bootstrap assignments against a full post-hoc domain build...")
+        reference_org = governed_kg.org_chart
+        final_org = builder.build(governed_kg.kg, target_num_domains=len(reference_org.domains) or None)
+        agreement = builder.compare_assignment_agreement(reference_org, final_org)
+        governed_kg.set_bootstrap_assignment_stats(
+            {
+                **governed_kg.get_stats().get("bootstrap_assignment_stats", {}),
+                "posthoc_assignment_agreement": agreement,
+            }
+        )
 
     save_governed_kg(governed_kg, args.output)
     with open(args.org_output, "w", encoding="utf-8") as handle:

@@ -276,6 +276,7 @@ def main() -> None:
         "model": args.model,
         "route_only": args.route_only,
         "metrics": compute_metrics(rows),
+        "governed_kg_stats": governed_kg.get_stats(),
         "structure_metrics": {
             "domain_coverage": round(
                 sum(1 for entity_id in kg.entities if org_chart.entity_domain_map().get(entity_id))

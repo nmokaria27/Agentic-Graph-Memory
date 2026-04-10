@@ -76,7 +76,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--governance-mode",
-    default=os.getenv("PIPELINE_GOVERNANCE_MODE", "permissive"),
+    default=os.getenv("PIPELINE_GOVERNANCE_MODE", "audit_only"),
     choices=["strict", "permissive", "audit_only"],
 )
 args = parser.parse_args()
@@ -113,6 +113,12 @@ orchestrator = DeliberativeOrchestrator(
     enable_cross_document=False,
     debug_logger=debug_logger,
 )
+if args.governance_mode == "strict":
+    print("Strict governance enabled: creation will request explicit review before committing triples.")
+elif args.governance_mode == "permissive":
+    print("Permissive governance enabled: triples are routed and audited, then accepted.")
+else:
+    print("Audit-only governance enabled: creation preserves an audit trail with no review latency.")
 
 print("Processing document through pipeline...")
 print("This may take several minutes...\n")
@@ -135,6 +141,13 @@ try:
     print(f"  Total Entities: {kg_stats.get('total_entities', 0)}")
     print(f"  Total Triples: {kg_stats.get('total_triples', 0)}")
     print(f"  Unique Relations: {kg_stats.get('unique_relations', 0)}")
+
+    print(f"\nGoverned KG:")
+    governed_stats = orchestrator.governed_kg.get_stats()
+    print(f"  Domains: {governed_stats.get('domains', 0)}")
+    print(f"  Cross-domain Relations: {governed_stats.get('cross_domain_relations', 0)}")
+    print(f"  Assignment Counts: {governed_stats.get('assignment_counts', {})}")
+    print(f"  Bootstrap Assignment Stats: {governed_stats.get('bootstrap_assignment_stats', {})}")
     
     print(f"\nMemory System:")
     mem_stats = stats['memory_stats']
@@ -213,71 +226,10 @@ try:
     )
     print(f"✓ Static visualization: {viz_png}")
 
-    # ═══════════════════════════════════════════════════════════════
-    # QA DEMO
-    # ═══════════════════════════════════════════════════════════════
-    print("\n" + "=" * 70)
-    print("QA DEMO")
-    print("=" * 70)
-
-    from multi_agent_kg.core import DomainBuilder
-
-    governed_for_qa = load_governed_kg("governed_kg_export.json")
-    kg_for_qa = governed_for_qa.kg
-    kg_qa_stats = kg_for_qa.get_stats()
-    print(f"\nKG for QA: {kg_qa_stats['num_entities']} entities, {kg_qa_stats['num_triples']} triples")
-
-    if not governed_for_qa.org_chart.domains:
-        print("\nBuilding governed org chart...")
-        builder = DomainBuilder(llm_config)
-        governed_for_qa.bootstrap_domains(builder)
-    print(f"\n{governed_for_qa.org_chart.domain_summary()}")
-
-    qa = create_qa_system(
-        governed_kg=governed_for_qa,
-        llm_config=llm_config,
-        advanced=True,
-    )
-
-    test_questions = [
-        "How does insulin resistance lead to microvascular dysfunction?",
-        "What biomarkers are associated with endothelial dysfunction?",
-        "What is the relationship between IL-6 signaling and cardiovascular outcomes?",
-        "What role do SGLT2 inhibitors play in cardiovascular protection?",
-    ]
-
-    qa_results_list = []
-    for q in test_questions:
-        print(f"\n{'─' * 60}")
-        print(f"Q: {q}")
-        print(f"{'─' * 60}")
-        result = qa.query(q)
-        qa_results_list.append(result)
-        print(f"\nA: {result['final_answer'][:600]}")
-        print(f"Coverage: {result['overall_coverage']:.2f}  Confidence: {result['overall_confidence']:.2f}")
-
-    with open("qa_results.json", "w", encoding="utf-8") as f:
-        json.dump(qa_results_list, f, indent=2, default=str)
-    print(f"\nQA results saved to: qa_results.json")
-
-    # ═══════════════════════════════════════════════════════════════
-    # ENHANCED VISUALIZER WITH QA
-    # ═══════════════════════════════════════════════════════════════
-    print("\n" + "=" * 70)
-    print("GENERATING ENHANCED EXPLORER")
-    print("=" * 70)
-
-    explorer_html = "kg_explorer.html"
-    visualizer.visualize_interactive_enhanced(
-        output_file=explorer_html,
-        qa_results=qa_results_list,
-    )
-    print(f"✓ Enhanced explorer: {explorer_html}")
-
     print("\n" + "=" * 70)
     print("COMPLETE")
     print("=" * 70)
-    print(f"\nOpen {explorer_html} in your browser to explore the knowledge graph with QA!")
+    print("\nUse scripts/run_demo.py or scripts/qa_server.py if you want to test QA on top of this governed graph.")
 
 except Exception as e:
     print("\n" + "=" * 70)

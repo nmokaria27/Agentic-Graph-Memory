@@ -27,8 +27,8 @@ from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 import hashlib
 
-from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
-from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
+from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
+from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph, GovernanceDecision
 from multi_agent_kg.core.memory import SharedMemory, MemoryType
 from multi_agent_kg.core.communication import MessageBus, CollaborationProtocol
 from multi_agent_kg.core.config import LLMConfig
@@ -154,6 +154,7 @@ class DeliberativeOrchestrator:
         self.debug_logger = debug_logger
         self.schema_override = schema_override
         self.domain_builder = DomainBuilder(self.llm_config)
+        self._active_source_text = ""
         
         # Model tier configuration
         self.model_tiers = model_tiers or {
@@ -187,6 +188,7 @@ class DeliberativeOrchestrator:
         self._corpus_domain_config: Optional[Dict[str, Any]] = None
         
         self._print_header()
+        self._configure_governance_review()
 
     def _init_agents(self) -> None:
         """Initialize all agents with shared infrastructure."""
@@ -284,6 +286,48 @@ class DeliberativeOrchestrator:
         for agent in all_agents:
             agent.set_deliberation_coordinator(self.deliberation_coordinator)
 
+    def _configure_governance_review(self) -> None:
+        """Install LLM-backed strict review for extraction-time governance."""
+        if self.governance_mode != "strict":
+            self.governed_kg.set_review_callback(None)
+            return
+
+        from multi_agent_kg.core.incremental_enrichment import GovernanceReviewBoard
+
+        def review_callback(
+            triple: Triple,
+            assignment: Any,
+            kg: KnowledgeGraph,
+            org_chart: Any,
+        ) -> GovernanceDecision:
+            board = GovernanceReviewBoard(org_chart, kg, self.llm_config)
+            result = board._review_candidate(
+                candidate=triple,
+                assignment=assignment,
+                source_text=self._active_source_text,
+            )
+            revised_triple = None
+            revised_payload = result.get("revised_triple")
+            if result.get("action") == "revise" and revised_payload:
+                revised_triple = Triple(
+                    subject=revised_payload.get("subject", triple.subject),
+                    relation=revised_payload.get("relation", triple.relation),
+                    object=revised_payload.get("object", triple.object),
+                    confidence=triple.confidence,
+                    source=triple.source,
+                    metadata=triple.metadata,
+                )
+            return GovernanceDecision(
+                triple=triple,
+                action=result.get("action", "escalate"),
+                domain_id=assignment.primary_domain_id if assignment else None,
+                rationale=result.get("rationale", ""),
+                revised_triple=revised_triple,
+                assignment=assignment,
+            )
+
+        self.governed_kg.set_review_callback(review_callback)
+
     def _print_header(self) -> None:
         """Print orchestrator header."""
         print("\n" + "=" * 70)
@@ -347,6 +391,7 @@ class DeliberativeOrchestrator:
             quality_threshold=self.quality_threshold,
             max_iterations=self.max_refinement_iterations,
         )
+        self._active_source_text = context.text
         
         results = {}
         
@@ -424,7 +469,7 @@ class DeliberativeOrchestrator:
 
         print("\n[3b/9] Preliminary Domain Assignment")
         print("-" * 50)
-        entity_domain_assignments = self._assign_entities_to_domains(entities)
+        entity_domain_assignments, bootstrap_stats = self._assign_entities_to_domains(entities)
         assigned_count = 0
         for entity in entities:
             entity_id = entity.get("id", entity.get("text", ""))
@@ -433,6 +478,8 @@ class DeliberativeOrchestrator:
                 entity["candidate_domains"] = candidate_domains
                 assigned_count += 1
         results["entities_domain_assigned"] = assigned_count
+        results["bootstrap_assignment_stats"] = bootstrap_stats
+        self.governed_kg.set_bootstrap_assignment_stats(bootstrap_stats)
         print(f"  Assigned provisional domains to {assigned_count} entities")
         
         # Step 4: Relation Extraction (RHF)
@@ -615,13 +662,20 @@ class DeliberativeOrchestrator:
     def _assign_entities_to_domains(
         self,
         entities: List[Dict[str, Any]],
-    ) -> Dict[str, List[str]]:
+    ) -> Tuple[Dict[str, List[str]], Dict[str, Any]]:
         """Assign extracted entities to the preliminary domain structure."""
         if not self.governed_kg.org_chart.domains:
-            return {}
+            return {}, {
+                "num_entities": len(entities),
+                "assigned_entities": 0,
+                "unassigned_entities": len(entities),
+                "multi_assigned_entities": 0,
+                "assignment_coverage": 0.0,
+            }
         return self.domain_builder.assign_entities_to_org_chart(
             entities,
             self.governed_kg.org_chart,
+            return_diagnostics=True,
         )
 
     def _run_deliberation_phase(
