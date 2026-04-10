@@ -1,4 +1,5 @@
 from multi_agent_kg.core import (
+    DeliberativeOrchestrator,
     Domain,
     GovernedKnowledgeGraph,
     GovernanceAssignment,
@@ -195,3 +196,48 @@ def test_bootstrap_assignment_stats_are_recorded() -> None:
 
     assert stored["assigned_entities"] == 3
     assert stored["assignment_coverage"] == 0.75
+
+
+def test_strict_mode_reuses_one_review_board(monkeypatch) -> None:
+    from multi_agent_kg.core import incremental_enrichment
+
+    init_calls = {"count": 0}
+
+    class DummyBoard:
+        def __init__(self, org_chart, base_kg, llm_config):
+            init_calls["count"] += 1
+            self.org_chart = org_chart
+            self.base_kg = base_kg
+            self.llm_config = llm_config
+
+        def _review_candidate(self, candidate, assignment, source_text="", **_kwargs):
+            return {
+                "action": "approve",
+                "rationale": "approved by dummy board",
+                "revised_triple": None,
+            }
+
+    monkeypatch.setattr(incremental_enrichment, "GovernanceReviewBoard", DummyBoard)
+
+    kg = KnowledgeGraph()
+    kg.add_entity("heart", ["Heart"], "ORGAN")
+    kg.add_entity("blood_pressure", ["Blood Pressure"], "MEASUREMENT")
+    kg.add_entity("il6", ["IL-6"], "MARKER")
+    gkg = GovernedKnowledgeGraph(kg=kg, org_chart=_simple_org_chart(), governance_mode="strict")
+
+    orchestrator = DeliberativeOrchestrator(
+        llm_config=LLMConfig(model="test-model"),
+        governed_kg=gkg,
+        governance_mode="strict",
+        enable_deliberation=False,
+        enable_self_consistency=False,
+        enable_open_world=False,
+        enable_cross_document=False,
+    )
+
+    decision_one = orchestrator.governed_kg.propose_triple("heart", "AFFECTS", "blood_pressure", confidence=0.9)
+    decision_two = orchestrator.governed_kg.propose_triple("heart", "AFFECTS", "il6", confidence=0.8)
+
+    assert init_calls["count"] == 1
+    assert decision_one.committed is True
+    assert decision_two.committed is True

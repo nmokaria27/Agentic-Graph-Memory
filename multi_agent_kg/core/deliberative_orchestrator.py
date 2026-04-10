@@ -155,6 +155,7 @@ class DeliberativeOrchestrator:
         self.schema_override = schema_override
         self.domain_builder = DomainBuilder(self.llm_config)
         self._active_source_text = ""
+        self._strict_review_board = None
         
         # Model tier configuration
         self.model_tiers = model_tiers or {
@@ -290,9 +291,16 @@ class DeliberativeOrchestrator:
         """Install LLM-backed strict review for extraction-time governance."""
         if self.governance_mode != "strict":
             self.governed_kg.set_review_callback(None)
+            self._strict_review_board = None
             return
 
         from multi_agent_kg.core.incremental_enrichment import GovernanceReviewBoard
+
+        self._strict_review_board = GovernanceReviewBoard(
+            self.governed_kg.org_chart,
+            self.knowledge_graph,
+            self.llm_config,
+        )
 
         def review_callback(
             triple: Triple,
@@ -300,8 +308,11 @@ class DeliberativeOrchestrator:
             kg: KnowledgeGraph,
             org_chart: Any,
         ) -> GovernanceDecision:
-            board = GovernanceReviewBoard(org_chart, kg, self.llm_config)
-            result = board._review_candidate(
+            # Keep one review board instance per extraction run so strict-mode
+            # governance can maintain consistency across multiple decisions.
+            self._strict_review_board.org_chart = org_chart
+            self._strict_review_board.base_kg = kg
+            result = self._strict_review_board._review_candidate(
                 candidate=triple,
                 assignment=assignment,
                 source_text=self._active_source_text,

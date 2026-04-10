@@ -26,7 +26,14 @@ from multi_agent_kg.core.knowledge_graph import Entity, KnowledgeGraph, Triple
 
 @dataclass
 class GovernanceDecision:
-    """A single governance decision over a proposed triple update."""
+    """
+    A single governance decision over a proposed triple update.
+
+    `committed` intentionally follows two-phase commit semantics:
+    a decision is created first as an audit/provenance record, then
+    `commit_decision()` mutates `committed=True` only if the triple is
+    actually inserted into the governed graph.
+    """
 
     triple: Triple
     action: str

@@ -704,6 +704,10 @@ class KnowledgeOrganizer(BaseAgent):
                     name_to_id[raw_obj.lower().strip()] = resolved_obj
 
             if self.governed_kg:
+                already_repaired = bool(
+                    triple.get("governance_repair")
+                    or triple.get("metadata", {}).get("governance_repair")
+                )
                 decision = self.governed_kg.propose_triple(
                     subject=resolved_subj,
                     relation=relation,
@@ -720,7 +724,11 @@ class KnowledgeOrganizer(BaseAgent):
                 if (
                     decision.action in {"reject", "escalate"}
                     and self.governed_kg.governance_mode == "strict"
+                    and not already_repaired
                 ):
+                    # Single-attempt repair semantics: once a triple has been
+                    # repaired and re-proposed, we accept the second decision
+                    # as final rather than entering another repair cycle.
                     repaired = self._repair_triple_for_governance(
                         subject=resolved_subj,
                         relation=relation,
