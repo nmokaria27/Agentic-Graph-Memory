@@ -1,0 +1,388 @@
+"""
+Governed knowledge graph wrapper.
+
+This is the core data structure for the reframed research idea:
+knowledge is stored as a graph plus a governance layer that records which
+domain expert agent owns and approves changes to different parts of memory.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any, Callable, Dict, List, Optional
+
+from multi_agent_kg.core.governance import GovernanceAssignment, OrgChart
+from multi_agent_kg.core.knowledge_graph import Entity, KnowledgeGraph, Triple
+
+
+@dataclass
+class GovernanceDecision:
+    """A single governance decision over a proposed triple update."""
+
+    triple: Triple
+    action: str
+    domain_id: Optional[str]
+    rationale: str
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    revised_triple: Optional[Triple] = None
+    assignment: Optional[GovernanceAssignment] = None
+    committed: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "triple": {
+                "subject": self.triple.subject,
+                "relation": self.triple.relation,
+                "object": self.triple.object,
+                "confidence": self.triple.confidence,
+                "source": self.triple.source,
+                "metadata": self.triple.metadata,
+            },
+            "action": self.action,
+            "domain_id": self.domain_id,
+            "rationale": self.rationale,
+            "timestamp": self.timestamp,
+            "revised_triple": (
+                {
+                    "subject": self.revised_triple.subject,
+                    "relation": self.revised_triple.relation,
+                    "object": self.revised_triple.object,
+                    "confidence": self.revised_triple.confidence,
+                    "source": self.revised_triple.source,
+                    "metadata": self.revised_triple.metadata,
+                }
+                if self.revised_triple
+                else None
+            ),
+            "assignment": self.assignment.to_dict() if self.assignment else None,
+            "committed": self.committed,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "GovernanceDecision":
+        triple_data = data["triple"]
+        triple = Triple(
+            subject=triple_data["subject"],
+            relation=triple_data["relation"],
+            object=triple_data["object"],
+            confidence=triple_data.get("confidence"),
+            source=triple_data.get("source"),
+            metadata=triple_data.get("metadata", {}),
+        )
+        revised_data = data.get("revised_triple")
+        revised = None
+        if revised_data:
+            revised = Triple(
+                subject=revised_data["subject"],
+                relation=revised_data["relation"],
+                object=revised_data["object"],
+                confidence=revised_data.get("confidence"),
+                source=revised_data.get("source"),
+                metadata=revised_data.get("metadata", {}),
+            )
+        assignment = None
+        if data.get("assignment"):
+            assignment = GovernanceAssignment(
+                assignment_type=data["assignment"]["assignment_type"],
+                primary_domain_id=data["assignment"].get("primary_domain_id"),
+                domain_ids=data["assignment"].get("domain_ids", []),
+                rationale=data["assignment"].get("rationale", ""),
+                score_breakdown=data["assignment"].get("score_breakdown", {}),
+            )
+        return cls(
+            triple=triple,
+            action=data["action"],
+            domain_id=data.get("domain_id"),
+            rationale=data.get("rationale", ""),
+            timestamp=data.get("timestamp", datetime.now(UTC).isoformat()),
+            revised_triple=revised,
+            assignment=assignment,
+            committed=data.get("committed", False),
+        )
+
+
+class GovernedKnowledgeGraph:
+    """Composition wrapper that adds governance and auditability to a KG."""
+
+    def __init__(
+        self,
+        kg: Optional[KnowledgeGraph] = None,
+        org_chart: Optional[OrgChart] = None,
+        governance_mode: str = "strict",
+        review_callback: Optional[
+            Callable[[Triple, GovernanceAssignment, KnowledgeGraph, OrgChart], GovernanceDecision]
+        ] = None,
+    ):
+        self._kg = kg or KnowledgeGraph()
+        self._org_chart = org_chart or OrgChart()
+        self._governance_mode = governance_mode
+        self._audit_log: List[GovernanceDecision] = []
+        self._pending_review: List[Triple] = []
+        self._review_callback = review_callback
+
+    @property
+    def kg(self) -> KnowledgeGraph:
+        return self._kg
+
+    @property
+    def org_chart(self) -> OrgChart:
+        return self._org_chart
+
+    @property
+    def entities(self) -> Dict[str, Entity]:
+        return self._kg.entities
+
+    @property
+    def triples(self) -> List[Triple]:
+        return self._kg.triples
+
+    @property
+    def governance_mode(self) -> str:
+        return self._governance_mode
+
+    @property
+    def audit_log(self) -> List[GovernanceDecision]:
+        return self._audit_log
+
+    def set_review_callback(
+        self,
+        callback: Optional[
+            Callable[[Triple, GovernanceAssignment, KnowledgeGraph, OrgChart], GovernanceDecision]
+        ],
+    ) -> None:
+        self._review_callback = callback
+
+    def set_org_chart(self, org_chart: OrgChart) -> None:
+        self._org_chart = org_chart
+        self._org_chart.refresh_cross_domain_relations(self._kg)
+
+    def bootstrap_domains(self, builder: Any) -> OrgChart:
+        org_chart = builder.build(self._kg)
+        self.set_org_chart(org_chart)
+        return org_chart
+
+    def assign_entity_to_domains(self, entity_id: str, domain_ids: List[str]) -> None:
+        if not self._org_chart.domains:
+            return
+        self._org_chart.assign_entity(entity_id, domain_ids)
+        self._org_chart.refresh_cross_domain_relations(self._kg)
+
+    def add_entity(
+        self,
+        entity_id: str,
+        labels: Optional[List[str]] = None,
+        entity_type: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Entity:
+        return self._kg.add_entity(
+            entity_id=entity_id,
+            labels=labels,
+            entity_type=entity_type,
+            metadata=metadata,
+        )
+
+    def propose_triple(
+        self,
+        subject: str,
+        relation: str,
+        obj: str,
+        confidence: Optional[float] = None,
+        source: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> GovernanceDecision:
+        triple = Triple(
+            subject=subject,
+            relation=relation,
+            object=obj,
+            confidence=confidence,
+            source=source,
+            metadata=metadata or {},
+        )
+        assignment = self._org_chart.route_triple_for_governance(triple)
+
+        if self._governance_mode == "audit_only":
+            decision = GovernanceDecision(
+                triple=triple,
+                action="auto_approve",
+                domain_id=assignment.primary_domain_id,
+                rationale="Audit-only mode automatically records and accepts proposals.",
+                assignment=assignment,
+            )
+            self.commit_decision(decision)
+            return decision
+
+        if self._governance_mode == "permissive":
+            action = "approve" if assignment.assignment_type != "unowned" else "auto_approve"
+            rationale = (
+                "Permissive mode accepted the proposal after ownership routing."
+                if assignment.assignment_type != "unowned"
+                else "Permissive mode accepted an unowned proposal and logged it for audit."
+            )
+            decision = GovernanceDecision(
+                triple=triple,
+                action=action,
+                domain_id=assignment.primary_domain_id,
+                rationale=rationale,
+                assignment=assignment,
+            )
+            self.commit_decision(decision)
+            return decision
+
+        if self._review_callback is not None:
+            decision = self._review_callback(triple, assignment, self._kg, self._org_chart)
+            if decision.assignment is None:
+                decision.assignment = assignment
+            self.commit_decision(decision)
+            return decision
+
+        if assignment.assignment_type == "unowned":
+            decision = GovernanceDecision(
+                triple=triple,
+                action="escalate",
+                domain_id=None,
+                rationale="Strict mode requires explicit review for unowned triples.",
+                assignment=assignment,
+            )
+            self._audit_log.append(decision)
+            self._pending_review.append(triple)
+            return decision
+
+        decision = GovernanceDecision(
+            triple=triple,
+            action="escalate",
+            domain_id=assignment.primary_domain_id,
+            rationale="Strict mode queued the proposal for explicit domain review.",
+            assignment=assignment,
+        )
+        self._audit_log.append(decision)
+        self._pending_review.append(triple)
+        return decision
+
+    def commit_decision(self, decision: GovernanceDecision) -> Optional[Triple]:
+        if decision not in self._audit_log:
+            self._audit_log.append(decision)
+
+        approved_actions = {"approve", "auto_approve", "revise"}
+        if decision.action not in approved_actions:
+            return None
+
+        triple = decision.revised_triple or decision.triple
+        result = self._kg.add_triple(
+            subject=triple.subject,
+            relation=triple.relation,
+            obj=triple.object,
+            confidence=triple.confidence,
+            source=triple.source,
+            metadata=triple.metadata,
+        )
+        decision.committed = result is not None
+        self._org_chart.refresh_cross_domain_relations(self._kg)
+        return result
+
+    def add_triple_bypass(
+        self,
+        subject: str,
+        relation: str,
+        obj: str,
+        confidence: Optional[float] = None,
+        source: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Optional[Triple]:
+        triple = Triple(
+            subject=subject,
+            relation=relation,
+            object=obj,
+            confidence=confidence,
+            source=source,
+            metadata=metadata or {},
+        )
+        decision = GovernanceDecision(
+            triple=triple,
+            action="auto_approve",
+            domain_id=None,
+            rationale="Triple added through bypass path for backward compatibility.",
+            assignment=None,
+        )
+        self._audit_log.append(decision)
+        result = self._kg.add_triple(
+            subject=subject,
+            relation=relation,
+            obj=obj,
+            confidence=confidence,
+            source=source,
+            metadata=metadata,
+        )
+        decision.committed = result is not None
+        self._org_chart.refresh_cross_domain_relations(self._kg)
+        return result
+
+    def get_domain_subgraph(self, domain_id: str) -> Dict[str, Any]:
+        domain = self._org_chart.find_domain(domain_id)
+        if domain is None:
+            return {"entities": [], "triples": []}
+        entities, triples = domain.get_subgraph(self._kg)
+        return {"entities": entities, "triples": triples}
+
+    def get_governance_history(self, domain_id: Optional[str] = None) -> List[GovernanceDecision]:
+        if domain_id is None:
+            return list(self._audit_log)
+        return [
+            decision
+            for decision in self._audit_log
+            if decision.domain_id == domain_id
+            or (
+                decision.assignment is not None
+                and domain_id in decision.assignment.domain_ids
+            )
+        ]
+
+    def get_stats(self) -> Dict[str, Any]:
+        action_counts: Dict[str, int] = {}
+        for decision in self._audit_log:
+            action_counts[decision.action] = action_counts.get(decision.action, 0) + 1
+        return {
+            "entities": len(self._kg.entities),
+            "triples": len(self._kg.triples),
+            "domains": len(self._org_chart.domains),
+            "cross_domain_relations": len(self._org_chart.cross_domain_relations),
+            "governance_mode": self._governance_mode,
+            "audit_log_entries": len(self._audit_log),
+            "pending_review": len(self._pending_review),
+            "decision_counts": action_counts,
+        }
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "knowledge_graph": self._kg.to_dict(),
+            "org_chart": self._org_chart.to_dict(),
+            "governance_mode": self._governance_mode,
+            "audit_log": [decision.to_dict() for decision in self._audit_log],
+        }
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "GovernedKnowledgeGraph":
+        if "knowledge_graph" not in data:
+            kg = KnowledgeGraph.from_dict(data)
+            return cls(kg=kg, governance_mode="audit_only")
+
+        kg = KnowledgeGraph.from_dict(data["knowledge_graph"])
+        org_chart_data = data.get("org_chart", {})
+        org_chart = OrgChart.from_dict(org_chart_data, kg) if org_chart_data else OrgChart()
+        graph = cls(
+            kg=kg,
+            org_chart=org_chart,
+            governance_mode=data.get("governance_mode", "audit_only"),
+        )
+        graph._audit_log = [
+            GovernanceDecision.from_dict(item)
+            for item in data.get("audit_log", [])
+        ]
+        return graph
+
+
+__all__ = ["GovernanceDecision", "GovernedKnowledgeGraph"]

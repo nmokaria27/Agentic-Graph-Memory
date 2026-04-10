@@ -18,7 +18,13 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from multi_agent_kg.core import GovernanceReviewBoard, LLMConfig, Triple, load_kg
+from multi_agent_kg.core import (
+    GovernanceReviewBoard,
+    LLMConfig,
+    Triple,
+    load_governed_kg,
+    load_kg,
+)
 from multi_agent_kg.core.domain_experts import OrgChart
 
 
@@ -162,6 +168,7 @@ def compute_metrics(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     decisions_present = 0
     cross_domain_total = 0
     cross_domain_routed = 0
+    cross_domain_escalated = 0
 
     for row in rows:
         expected = set(row["expected_domains"])
@@ -176,6 +183,7 @@ def compute_metrics(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         if row["expected_assignment_type"] == "cross_domain":
             cross_domain_total += 1
             cross_domain_routed += int(len(predicted) >= 2 and expected.issubset(predicted))
+            cross_domain_escalated += int(row.get("decision") == "escalate")
 
         if row["label"] == "positive":
             positives += 1
@@ -198,6 +206,7 @@ def compute_metrics(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "expected_domain_recall": safe_div(domain_recall_sum, len(rows)),
         "expected_domain_precision": safe_div(domain_precision_sum, len(rows)),
         "cross_domain_routing_recall": safe_div(cross_domain_routed, cross_domain_total),
+        "cross_domain_escalation_accuracy": safe_div(cross_domain_escalated, cross_domain_total),
         "decision_coverage": safe_div(decisions_present, len(rows)),
     }
     if decisions_present:
@@ -212,7 +221,7 @@ def compute_metrics(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run governed-update benchmark")
     parser.add_argument("--kg-path", required=True, help="Path to KG JSON")
-    parser.add_argument("--org-chart", required=True, help="Path to org chart JSON")
+    parser.add_argument("--org-chart", help="Path to org chart JSON; if omitted, try the governed KG payload")
     parser.add_argument("--num-positive", type=int, default=25, help="Number of held-out true triples")
     parser.add_argument("--num-negative", type=int, default=25, help="Number of corrupted false triples")
     parser.add_argument("--seed", type=int, default=42)
@@ -221,8 +230,14 @@ def main() -> None:
     parser.add_argument("--output", required=True, help="Where to write benchmark JSON")
     args = parser.parse_args()
 
-    kg = load_kg(args.kg_path)
-    org_chart = load_org_chart(args.org_chart, kg)
+    governed_kg = load_governed_kg(args.kg_path)
+    kg = governed_kg.kg
+    if args.org_chart:
+        org_chart = load_org_chart(args.org_chart, kg)
+    else:
+        org_chart = governed_kg.org_chart
+        if not org_chart.domains:
+            raise SystemExit("ERROR: no org chart provided and the governed KG has no embedded org chart.")
     examples = build_examples(
         kg,
         org_chart,
@@ -261,6 +276,27 @@ def main() -> None:
         "model": args.model,
         "route_only": args.route_only,
         "metrics": compute_metrics(rows),
+        "structure_metrics": {
+            "domain_coverage": round(
+                sum(1 for entity_id in kg.entities if org_chart.entity_domain_map().get(entity_id))
+                / max(len(kg.entities), 1),
+                4,
+            ),
+            "governance_completeness": round(
+                len(governed_kg.audit_log) / max(len(kg.triples), 1),
+                4,
+            ),
+            "audit_trail_integrity": round(
+                len(
+                    {
+                        (decision.triple.subject, decision.triple.relation, decision.triple.object)
+                        for decision in governed_kg.audit_log
+                    }
+                )
+                / max(len(kg.triples), 1),
+                4,
+            ),
+        },
         "examples": rows,
     }
     output_dir = os.path.dirname(args.output)

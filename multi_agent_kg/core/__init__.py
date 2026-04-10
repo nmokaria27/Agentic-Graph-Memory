@@ -25,6 +25,14 @@ Orchestrator:
 
 Configuration:
 - LLMConfig, RelationSchema: Configuration types
+
+Core Data Structure:
+- GovernedKnowledgeGraph: KG plus domain-governance layer
+- GovernanceDecision: Audit record for governed updates
+
+Application Layers:
+- QAOrchestrator / AdvancedQAOrchestrator
+- IncrementalEnricher
 """
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple, Entity, Conflict
@@ -59,10 +67,20 @@ from multi_agent_kg.core.kg_operations import (
     KGDiff,
     compute_diff,
     merge_kg,
+    load_governed_kg,
     load_kg,
+    save_governed_kg,
     save_kg,
     find_entity_matches,
     normalize_entity_name,
+)
+from multi_agent_kg.core.governed_kg import (
+    GovernanceDecision,
+    GovernedKnowledgeGraph,
+)
+from multi_agent_kg.core.applications import (
+    create_enricher,
+    create_qa_system,
 )
 from multi_agent_kg.core.incremental_enrichment import (
     IncrementalEnricher,
@@ -134,9 +152,15 @@ __all__ = [
     "KGDiff",
     "compute_diff",
     "merge_kg",
+    "load_governed_kg",
     "load_kg",
+    "save_governed_kg",
     "save_kg",
     "find_entity_matches",
+    "GovernedKnowledgeGraph",
+    "GovernanceDecision",
+    "create_qa_system",
+    "create_enricher",
     # Incremental Enrichment
     "IncrementalEnricher",
     "ConflictResolver",

@@ -318,6 +318,37 @@ class KnowledgeGraph:
         """Export the knowledge graph as JSON."""
         return json.dumps(self.to_dict(), indent=indent)
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "KnowledgeGraph":
+        """Reconstruct a knowledge graph from serialized data."""
+        kg = cls()
+        entities_list = data.get("entities", [])
+        triples_list = data.get("triples", [])
+
+        for entity_data in entities_list:
+            kg.add_entity(
+                entity_id=entity_data["id"],
+                labels=entity_data.get("labels", []),
+                entity_type=entity_data.get("type"),
+                metadata=entity_data.get("metadata", {}),
+            )
+
+        for triple_data in triples_list:
+            subject = triple_data.get("subject", "")
+            relation = triple_data.get("relation", "")
+            obj = triple_data.get("object", "")
+            if subject and relation and obj:
+                kg.add_triple(
+                    subject=subject,
+                    relation=relation,
+                    obj=obj,
+                    confidence=triple_data.get("confidence"),
+                    source=triple_data.get("source"),
+                    metadata=triple_data.get("metadata", {}),
+                )
+
+        return kg
+
     def get_stats(self) -> Dict[str, Any]:
         """Get statistics about the knowledge graph."""
         relation_counts: Dict[str, int] = {}

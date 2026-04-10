@@ -23,14 +23,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from multi_agent_kg.core import LLMConfig, load_kg, DomainBuilder
-from multi_agent_kg.core.advanced_qa import AdvancedQAOrchestrator
+from multi_agent_kg.core import (
+    DomainBuilder,
+    LLMConfig,
+    create_qa_system,
+    load_governed_kg,
+)
 
 # ═══════════════════════════════════════════════════════════════════════════
 # CONFIG
 # ═══════════════════════════════════════════════════════════════════════════
 
-KG_PATH = "kg_export.json"
+KG_PATH = "governed_kg_export.json"
 OUTPUT_PATH = "demo_results.json"
 
 llm_config = LLMConfig(model="gemma3:27b", temperature=0.2, max_tokens=4096)
@@ -65,7 +69,8 @@ def main():
     if not os.path.exists(KG_PATH):
         raise SystemExit(f"ERROR: {KG_PATH} not found. Run run_pipeline_on_text.py first.")
 
-    kg = load_kg(KG_PATH)
+    governed_kg = load_governed_kg(KG_PATH)
+    kg = governed_kg.kg
     stats = kg.get_stats()
     print(f"KG loaded: {stats['num_entities']} entities, {stats['num_triples']} triples")
 
@@ -101,7 +106,9 @@ def main():
 
     t0 = time.time()
     builder = DomainBuilder(llm_config)
-    org_chart = builder.build(kg)
+    if not governed_kg.org_chart.domains:
+        governed_kg.bootstrap_domains(builder)
+    org_chart = governed_kg.org_chart
     build_time = time.time() - t0
 
     print(f"Org chart built in {build_time:.1f}s\n")
@@ -153,10 +160,10 @@ def main():
     # ──────────────────────────────────────────────────────────────────
     section("STEP 3: ADVANCED QA — ACTIVE EXPLORATION + DEBATE + CRITIC + PROVENANCE")
 
-    qa = AdvancedQAOrchestrator(
-        org_chart=org_chart,
-        full_kg=kg,
+    qa = create_qa_system(
+        governed_kg=governed_kg,
         llm_config=llm_config,
+        advanced=True,
         max_exploration_rounds=3,
         enable_debate=True,
         enable_critic=True,

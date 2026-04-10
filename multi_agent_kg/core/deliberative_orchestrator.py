@@ -28,10 +28,12 @@ from datetime import datetime
 import hashlib
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
+from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
 from multi_agent_kg.core.memory import SharedMemory, MemoryType
 from multi_agent_kg.core.communication import MessageBus, CollaborationProtocol
 from multi_agent_kg.core.config import LLMConfig
 from multi_agent_kg.core.deliberation import DeliberationCoordinator, VoteType
+from multi_agent_kg.core.domain_builder import DomainBuilder
 
 from multi_agent_kg.agents.base import AgentContext, ModelTier
 from multi_agent_kg.agents.document_processor import DocumentProcessor
@@ -97,6 +99,10 @@ class DeliberativeOrchestrator:
         self,
         llm_config: Optional[LLMConfig] = None,
         knowledge_graph: Optional[KnowledgeGraph] = None,
+        governed_kg: Optional[GovernedKnowledgeGraph] = None,
+        governance_mode: str = "audit_only",
+        reuse_corpus_schema: bool = False,
+        continue_on_document_error: bool = True,
         quality_threshold: float = 0.60,
         max_refinement_iterations: int = 4,
         enable_self_consistency: bool = True,
@@ -127,7 +133,18 @@ class DeliberativeOrchestrator:
                  "relation_types": [{"type": "...", "description": "..."}]}
         """
         self.llm_config = llm_config or LLMConfig()
-        self.knowledge_graph = knowledge_graph or KnowledgeGraph()
+        if governed_kg is not None:
+            self.governed_kg = governed_kg
+            self.knowledge_graph = governed_kg.kg
+        else:
+            self.knowledge_graph = knowledge_graph or KnowledgeGraph()
+            self.governed_kg = GovernedKnowledgeGraph(
+                kg=self.knowledge_graph,
+                governance_mode=governance_mode,
+            )
+        self.governance_mode = self.governed_kg.governance_mode
+        self.reuse_corpus_schema = reuse_corpus_schema
+        self.continue_on_document_error = continue_on_document_error
         self.quality_threshold = quality_threshold
         self.max_refinement_iterations = max_refinement_iterations
         self.enable_self_consistency = enable_self_consistency
@@ -136,6 +153,7 @@ class DeliberativeOrchestrator:
         self.enable_deliberation = enable_deliberation
         self.debug_logger = debug_logger
         self.schema_override = schema_override
+        self.domain_builder = DomainBuilder(self.llm_config)
         
         # Model tier configuration
         self.model_tiers = model_tiers or {
@@ -166,6 +184,7 @@ class DeliberativeOrchestrator:
         self.document_count = 0
         self.session_start = datetime.now()
         self.processing_history = []
+        self._corpus_domain_config: Optional[Dict[str, Any]] = None
         
         self._print_header()
 
@@ -236,6 +255,7 @@ class DeliberativeOrchestrator:
         
         self.knowledge_organizer = KnowledgeOrganizer(
             knowledge_graph=self.knowledge_graph,
+            governed_kg=self.governed_kg,
             shared_memory=self.shared_memory,
             message_bus=self.message_bus,
             llm_config=self.llm_config,
@@ -277,6 +297,7 @@ class DeliberativeOrchestrator:
         print(f"  Open-World Relations: {'Enabled' if self.enable_open_world else 'Disabled'}")
         print(f"  Cross-Document Resolution: {'Enabled' if self.enable_cross_document else 'Disabled'}")
         print(f"  Multi-Agent Deliberation: {'Enabled' if self.enable_deliberation else 'Disabled'}")
+        print(f"  Governance Mode: {self.governance_mode}")
         print(f"\nQuality Settings:")
         print(f"  Threshold: {self.quality_threshold}")
         print(f"  Max Refinement Iterations: {self.max_refinement_iterations}")
@@ -354,13 +375,35 @@ class DeliberativeOrchestrator:
             domain_result_confidence = 0.95
             print(f"  Using fixed schema override ({len(domain_config.get('entity_types', []))} entity types, "
                   f"{len(domain_config.get('relation_types', []))} relation types)")
+        elif self.reuse_corpus_schema and self._corpus_domain_config is not None:
+            domain_config = self._corpus_domain_config
+            domain_result_confidence = 0.95
+            print(
+                "  Reusing corpus schema "
+                f"({len(domain_config.get('entity_types', []))} entity types, "
+                f"{len(domain_config.get('relation_types', []))} relation types)"
+            )
         else:
             domain_result = self.domain_classifier.run(context, segments=segments)
             domain_config = domain_result.items[0] if domain_result.items else {}
             domain_result_confidence = domain_result.confidence
+            if self.reuse_corpus_schema and domain_config:
+                self._corpus_domain_config = domain_config
         context.domain = domain_config.get("domain", "general")
         results["domain"] = context.domain
         print(f"  Domain: {context.domain} (confidence: {domain_result_confidence:.2f})")
+
+        # Step 2b: Bootstrap preliminary domains from the discovered schema
+        if self.debug_logger:
+            self.debug_logger.log_stage_header("2b", "Governance Bootstrap")
+        print("\n[2b/9] Governance Bootstrap")
+        print("-" * 50)
+        if not self.governed_kg.org_chart.domains:
+            preliminary_org = self._bootstrap_domains_from_schema(domain_config)
+            self.governed_kg.set_org_chart(preliminary_org)
+            print(f"  Bootstrapped {len(preliminary_org.domains)} preliminary domains")
+        else:
+            print(f"  Reusing existing governed org chart ({len(self.governed_kg.org_chart.domains)} domains)")
         
         # Step 3: Entity Extraction
         if self.debug_logger:
@@ -378,6 +421,19 @@ class DeliberativeOrchestrator:
         print(f"  Entities: {len(entities)} (confidence: {entity_result.confidence:.2f})")
         if entity_result.needs_escalation:
             print(f"  Escalation: {entity_result.escalation_reason}")
+
+        print("\n[3b/9] Preliminary Domain Assignment")
+        print("-" * 50)
+        entity_domain_assignments = self._assign_entities_to_domains(entities)
+        assigned_count = 0
+        for entity in entities:
+            entity_id = entity.get("id", entity.get("text", ""))
+            candidate_domains = entity_domain_assignments.get(entity_id, [])
+            if candidate_domains:
+                entity["candidate_domains"] = candidate_domains
+                assigned_count += 1
+        results["entities_domain_assigned"] = assigned_count
+        print(f"  Assigned provisional domains to {assigned_count} entities")
         
         # Step 4: Relation Extraction (RHF)
         if self.debug_logger:
@@ -549,6 +605,24 @@ class DeliberativeOrchestrator:
         })
         
         return results
+
+    def _bootstrap_domains_from_schema(self, domain_config: Dict[str, Any]):
+        """Create a preliminary org chart from domain-classifier output."""
+        if not domain_config:
+            return self.governed_kg.org_chart
+        return self.domain_builder.bootstrap_from_schema(domain_config)
+
+    def _assign_entities_to_domains(
+        self,
+        entities: List[Dict[str, Any]],
+    ) -> Dict[str, List[str]]:
+        """Assign extracted entities to the preliminary domain structure."""
+        if not self.governed_kg.org_chart.domains:
+            return {}
+        return self.domain_builder.assign_entities_to_org_chart(
+            entities,
+            self.governed_kg.org_chart,
+        )
 
     def _run_deliberation_phase(
         self,
@@ -895,17 +969,28 @@ class DeliberativeOrchestrator:
         print("=" * 70)
         
         all_results = []
-        
+        failed_documents = []
+
         for i, doc in enumerate(documents):
             print(f"\n[Document {i+1}/{len(documents)}]")
-            result = self.process_document(
-                text=doc.get("text"),
-                source_path=doc.get("source"),
-                document_id=doc.get("id"),
-                metadata=doc.get("metadata"),
-            )
-            all_results.append(result)
-        
+            try:
+                result = self.process_document(
+                    text=doc.get("text"),
+                    source_path=doc.get("source"),
+                    document_id=doc.get("id"),
+                    metadata=doc.get("metadata"),
+                )
+                all_results.append(result)
+            except Exception as exc:
+                failed = {
+                    "document_id": doc.get("id"),
+                    "error": str(exc),
+                }
+                failed_documents.append(failed)
+                print(f"  ERROR: {failed['document_id']} failed: {failed['error']}")
+                if not self.continue_on_document_error:
+                    raise
+
         # Cross-document entity resolution
         if self.enable_cross_document:
             print("\n" + "-" * 50)
@@ -921,6 +1006,7 @@ class DeliberativeOrchestrator:
             "total_time": sum(r.get("processing_time_seconds", 0) for r in all_results),
             "memory_stats": self.shared_memory.get_stats(),
             "kg_stats": self.knowledge_organizer.get_kg_stats(),
+            "failed_documents": failed_documents,
         }
         
         print("\n" + "=" * 70)
@@ -930,6 +1016,7 @@ class DeliberativeOrchestrator:
         print(f"Total Entities: {aggregate['total_entities']}")
         print(f"Total Triples: {aggregate['total_triples']}")
         print(f"Total Time: {aggregate['total_time']:.2f}s")
+        print(f"Failed Documents: {len(failed_documents)}")
         print("=" * 70 + "\n")
         
         return aggregate

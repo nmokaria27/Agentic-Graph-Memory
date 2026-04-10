@@ -11,6 +11,7 @@ from openai import OpenAI
 import os
 import json
 import re
+import time
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,6 +22,8 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 
 # Timeout for Ollama calls (local models can be slow)
 _TIMEOUT = float(os.getenv("LLM_TIMEOUT", "300"))  # 5 min default
+_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "4"))
+_RETRY_BACKOFF = float(os.getenv("LLM_RETRY_BACKOFF", "2.0"))
 
 if LLM_BACKEND == "openai":
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -163,30 +166,53 @@ def chat_completion(
     """
     resolved_model = _resolve_model(model)
 
-    try:
-        params: Dict[str, Any] = {
-            "model": resolved_model,
-            "messages": messages,
-            "temperature": temperature,
-        }
-        if max_tokens is not None:
-            params["max_tokens"] = max_tokens
-        if LLM_BACKEND == "openai":
-            params.update(kwargs)
+    params: Dict[str, Any] = {
+        "model": resolved_model,
+        "messages": messages,
+        "temperature": temperature,
+    }
+    if max_tokens is not None:
+        params["max_tokens"] = max_tokens
+    if LLM_BACKEND == "openai":
+        params.update(kwargs)
 
-        response = client.chat.completions.create(**params)
-        content = response.choices[0].message.content
-        return content if content is not None else ""
+    last_error = None
+    for attempt in range(1, _MAX_RETRIES + 1):
+        try:
+            response = client.chat.completions.create(**params)
+            content = response.choices[0].message.content
+            return content if content is not None else ""
+        except Exception as e:
+            err = str(e)
+            last_error = err
+            if LLM_BACKEND == "openai" and "insufficient_quota" in err:
+                _QUOTA_FALLBACK = {"gpt-4o": "gpt-4o-mini", "gpt-4o-mini": "gpt-3.5-turbo"}
+                if resolved_model in _QUOTA_FALLBACK:
+                    fallback = _QUOTA_FALLBACK[resolved_model]
+                    print(f"  Quota exceeded for {resolved_model}, retrying with {fallback}")
+                    return chat_completion(messages, fallback, temperature, max_tokens, **kwargs)
 
-    except Exception as e:
-        err = str(e)
-        if LLM_BACKEND == "openai" and "insufficient_quota" in err:
-            _QUOTA_FALLBACK = {"gpt-4o": "gpt-4o-mini", "gpt-4o-mini": "gpt-3.5-turbo"}
-            if resolved_model in _QUOTA_FALLBACK:
-                fallback = _QUOTA_FALLBACK[resolved_model]
-                print(f"  Quota exceeded for {resolved_model}, retrying with {fallback}")
-                return chat_completion(messages, fallback, temperature, max_tokens, **kwargs)
-        raise Exception(f"LLM API call failed ({resolved_model}): {err}")
+            transient_markers = [
+                "Connection error",
+                "ReadError",
+                "timed out",
+                "Timeout",
+                "connection reset",
+                "temporarily unavailable",
+                "EOF",
+            ]
+            should_retry = attempt < _MAX_RETRIES and any(marker.lower() in err.lower() for marker in transient_markers)
+            if should_retry:
+                sleep_s = _RETRY_BACKOFF * attempt
+                print(
+                    f"  WARNING: transient LLM failure on attempt {attempt}/{_MAX_RETRIES} "
+                    f"for {resolved_model}; retrying in {sleep_s:.1f}s"
+                )
+                time.sleep(sleep_s)
+                continue
+            raise Exception(f"LLM API call failed ({resolved_model}): {err}")
+
+    raise Exception(f"LLM API call failed ({resolved_model}): {last_error}")
 
 
 def chat_completion_json(

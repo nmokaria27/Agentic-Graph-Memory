@@ -61,7 +61,7 @@ import json
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from multi_agent_kg.core.knowledge_graph import Entity, KnowledgeGraph, Triple
 from multi_agent_kg.core.config import LLMConfig
@@ -79,6 +79,9 @@ from multi_agent_kg.core.domain_experts import (
 )
 from multi_agent_kg.core.kg_operations import normalize_entity_name, normalize_for_matching
 from multi_agent_kg.llm.openai_client import chat_completion, chat_completion_json
+
+if TYPE_CHECKING:
+    from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1070,17 +1073,25 @@ class AdvancedQAOrchestrator:
 
     def __init__(
         self,
-        org_chart: OrgChart,
-        full_kg: KnowledgeGraph,
-        llm_config: LLMConfig,
+        org_chart: Optional[OrgChart] = None,
+        full_kg: Optional[KnowledgeGraph] = None,
+        llm_config: Optional[LLMConfig] = None,
+        governed_kg: Optional["GovernedKnowledgeGraph"] = None,
         max_exploration_rounds: int = 3,
         enable_debate: bool = True,
         enable_critic: bool = True,
         max_critic_revisions: int = 2,
     ):
+        if governed_kg is not None:
+            org_chart = governed_kg.org_chart
+            full_kg = governed_kg.kg
+        if org_chart is None or full_kg is None:
+            raise ValueError(
+                "AdvancedQAOrchestrator requires either governed_kg or both org_chart and full_kg."
+            )
         self.org_chart = org_chart
         self.full_kg = full_kg
-        self.llm_config = llm_config
+        self.llm_config = llm_config or LLMConfig()
         self.enable_debate = enable_debate
         self.enable_critic = enable_critic
         self.max_critic_revisions = max_critic_revisions
@@ -1092,7 +1103,7 @@ class AdvancedQAOrchestrator:
             self.experts[domain.domain_id] = ActiveExplorerExpert(
                 domain=domain,
                 full_kg=full_kg,
-                llm_config=llm_config,
+                llm_config=self.llm_config,
                 max_exploration_rounds=max_exploration_rounds,
             )
 
@@ -1107,14 +1118,26 @@ class AdvancedQAOrchestrator:
         self.global_fallback_expert = FallbackGraphExpert(
             domain=global_domain,
             full_kg=full_kg,
-            llm_config=llm_config,
+            llm_config=self.llm_config,
         )
 
         # Initialize components for improvements #2-5
-        self.critic = CriticAgent(full_kg, llm_config) if enable_critic else None
-        self.debate_arena = DebateArena(llm_config) if enable_debate else None
+        self.critic = CriticAgent(full_kg, self.llm_config) if enable_critic else None
+        self.debate_arena = DebateArena(self.llm_config) if enable_debate else None
         self.session_memory = SessionMemory()
         self.provenance_tracker = ProvenanceChain()
+
+    def query_benchmark_question(self, benchmark_question: Any) -> Dict[str, Any]:
+        """Evaluate benchmark questions without leaking memory across independent items."""
+        original_memory = self.session_memory
+        original_provenance = self.provenance_tracker
+        self.session_memory = SessionMemory()
+        self.provenance_tracker = ProvenanceChain()
+        try:
+            return self.query(benchmark_question.question)
+        finally:
+            self.session_memory = original_memory
+            self.provenance_tracker = original_provenance
 
     def query(self, question: str) -> Dict[str, Any]:
         """

@@ -5,13 +5,22 @@ Assumes a text file exists in the project root (from extract_pdf.py or manually)
 
 import os
 import sys
+import json
+import argparse
 
 # Resolve project root so file paths work from any working directory
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(PROJECT_ROOT)
 
 from dotenv import load_dotenv
-from multi_agent_kg.core import LLMConfig, DeliberativeOrchestrator, KnowledgeGraph
+from multi_agent_kg.core import (
+    DeliberativeOrchestrator,
+    GovernedKnowledgeGraph,
+    LLMConfig,
+    create_qa_system,
+    load_governed_kg,
+    save_governed_kg,
+)
 from multi_agent_kg.utils.debug_logger import DebugLogger
 
 # Load environment
@@ -24,35 +33,66 @@ if os.getenv("LLM_BACKEND", "ollama").lower() == "openai" and not os.getenv("OPE
 debug_logger = DebugLogger("pipeline_debug.log", verbose=True, clear_log=True)
 print("Debug logging enabled - logs will be saved to pipeline_debug.log\n")
 
-# Load the extracted text
-text_file = "gfy083_full_plaintext.txt"
-if not os.path.exists(text_file):
-    raise SystemExit(f"ERROR: {text_file} not found. Run extract_pdf.py first.")
+def load_documents(input_path: str) -> list[dict]:
+    """Load one text file or a directory of text files into corpus documents."""
+    if os.path.isdir(input_path):
+        documents = []
+        for filename in sorted(os.listdir(input_path)):
+            if not filename.endswith(".txt"):
+                continue
+            path = os.path.join(input_path, filename)
+            with open(path, "r", encoding="utf-8") as handle:
+                text = handle.read()
+            documents.append(
+                {
+                    "id": os.path.splitext(filename)[0],
+                    "text": text,
+                    "metadata": {"source": input_path, "type": "research_article"},
+                }
+            )
+        if not documents:
+            raise SystemExit(f"ERROR: no .txt files found in {input_path}")
+        return documents
+
+    if not os.path.exists(input_path):
+        raise SystemExit(f"ERROR: {input_path} not found.")
+
+    with open(input_path, "r", encoding="utf-8") as handle:
+        full_text = handle.read()
+    return [
+        {
+            "id": os.path.splitext(os.path.basename(input_path))[0],
+            "text": full_text,
+            "metadata": {"source": "local_text", "type": "research_article"},
+        }
+    ]
+
+
+parser = argparse.ArgumentParser(description="Run the governed KG creation pipeline")
+parser.add_argument(
+    "--input",
+    default=os.getenv("PIPELINE_INPUT", "gfy083_full_plaintext.txt"),
+    help="Path to a .txt file or directory of .txt files",
+)
+parser.add_argument(
+    "--governance-mode",
+    default=os.getenv("PIPELINE_GOVERNANCE_MODE", "permissive"),
+    choices=["strict", "permissive", "audit_only"],
+)
+args = parser.parse_args()
 
 print("=" * 70)
 print("LOADING EXTRACTED TEXT")
 print("=" * 70)
 
-with open(text_file, "r", encoding="utf-8") as f:
-    full_text = f.read()
-
-print(f"Loaded {len(full_text)} characters (~{len(full_text.split())} words)")
+documents = load_documents(args.input)
+total_chars = sum(len(doc["text"]) for doc in documents)
+total_words = sum(len(doc["text"].split()) for doc in documents)
+print(f"Loaded {len(documents)} document(s), {total_chars} characters (~{total_words} words)")
 
 print("\n" + "=" * 70)
 print("RUNNING MULTI-AGENT PIPELINE")
 print("=" * 70)
-
-# Prepare document
-documents = [
-    {
-        "id": "pubmed_article_lancet",
-        "text": full_text,
-        "metadata": {
-            "source": "pubmed",
-            "type": "research_article",
-        }
-    }
-]
 
 # Configure LLM (using gemma3:27b via Ollama for best quality)
 llm_config = LLMConfig(
@@ -65,7 +105,7 @@ llm_config = LLMConfig(
 print("\nInitializing orchestrator...")
 orchestrator = DeliberativeOrchestrator(
     llm_config=llm_config,
-    knowledge_graph=KnowledgeGraph(),
+    governed_kg=GovernedKnowledgeGraph(governance_mode=args.governance_mode),
     quality_threshold=0.5,  # Lowered for maximum recall; garbage filtered by verification
     max_refinement_iterations=1,
     enable_self_consistency=False,
@@ -131,11 +171,12 @@ try:
         print("\nNo triples extracted.")
     
     # Save full export to file
-    import json
     with open("kg_export.json", "w", encoding="utf-8") as f:
         json.dump(export, f, indent=2, default=str)
 
     print("\nFull knowledge graph saved to: kg_export.json")
+    save_governed_kg(orchestrator.governed_kg, "governed_kg_export.json")
+    print("Governed knowledge graph saved to: governed_kg_export.json")
 
     # Invalidate org chart cache since KG changed
     if os.path.exists("org_chart_cache.json"):
@@ -179,23 +220,23 @@ try:
     print("QA DEMO")
     print("=" * 70)
 
-    from multi_agent_kg.core import load_kg, DomainBuilder
-    from multi_agent_kg.core.advanced_qa import AdvancedQAOrchestrator
+    from multi_agent_kg.core import DomainBuilder
 
-    # Build domain structure from KG
-    kg_for_qa = load_kg("kg_export.json")
+    governed_for_qa = load_governed_kg("governed_kg_export.json")
+    kg_for_qa = governed_for_qa.kg
     kg_qa_stats = kg_for_qa.get_stats()
     print(f"\nKG for QA: {kg_qa_stats['num_entities']} entities, {kg_qa_stats['num_triples']} triples")
 
-    print("\nBuilding domain structure...")
-    builder = DomainBuilder(llm_config)
-    org_chart = builder.build(kg_for_qa)
-    print(f"\n{org_chart.domain_summary()}")
+    if not governed_for_qa.org_chart.domains:
+        print("\nBuilding governed org chart...")
+        builder = DomainBuilder(llm_config)
+        governed_for_qa.bootstrap_domains(builder)
+    print(f"\n{governed_for_qa.org_chart.domain_summary()}")
 
-    qa = AdvancedQAOrchestrator(
-        org_chart=org_chart,
-        full_kg=kg_for_qa,
+    qa = create_qa_system(
+        governed_kg=governed_for_qa,
         llm_config=llm_config,
+        advanced=True,
     )
 
     test_questions = [

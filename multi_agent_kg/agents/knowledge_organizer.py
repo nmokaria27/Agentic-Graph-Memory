@@ -24,6 +24,7 @@ from multi_agent_kg.agents.base import (
     MemoryType,
 )
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Entity, Triple
+from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
 from multi_agent_kg.core.memory import SharedMemory
 from multi_agent_kg.core.communication import MessageBus, CommunicationType
 from multi_agent_kg.core.config import LLMConfig
@@ -106,6 +107,7 @@ class KnowledgeOrganizer(BaseAgent):
     def __init__(
         self,
         knowledge_graph: Optional[KnowledgeGraph] = None,
+        governed_kg: Optional[GovernedKnowledgeGraph] = None,
         shared_memory: Optional[SharedMemory] = None,
         message_bus: Optional[MessageBus] = None,
         llm_config: Optional[LLMConfig] = None,
@@ -121,6 +123,7 @@ class KnowledgeOrganizer(BaseAgent):
             llm_config=llm_config,
             default_tier=ModelTier.MEDIUM,
         )
+        self.governed_kg = governed_kg
         self.enable_deduplication = enable_deduplication
         self.enable_normalization = enable_normalization
         
@@ -518,15 +521,31 @@ class KnowledgeOrganizer(BaseAgent):
                 if not entity_labels:
                     entity_labels = [entity_id]
 
-                self.knowledge_graph.add_entity(
-                    entity_id=entity_id,
-                    labels=entity_labels,
-                    entity_type=entity.get("type", "UNKNOWN"),
-                    metadata={
-                        "source_document": document_id,
-                        "confidence": entity.get("confidence", 0.7),
-                    },
-                )
+                if self.governed_kg:
+                    self.governed_kg.add_entity(
+                        entity_id=entity_id,
+                        labels=entity_labels,
+                        entity_type=entity.get("type", "UNKNOWN"),
+                        metadata={
+                            "source_document": document_id,
+                            "confidence": entity.get("confidence", 0.7),
+                        },
+                    )
+                    if entity.get("candidate_domains"):
+                        self.governed_kg.assign_entity_to_domains(
+                            entity_id,
+                            entity.get("candidate_domains", []),
+                        )
+                else:
+                    self.knowledge_graph.add_entity(
+                        entity_id=entity_id,
+                        labels=entity_labels,
+                        entity_type=entity.get("type", "UNKNOWN"),
+                        metadata={
+                            "source_document": document_id,
+                            "confidence": entity.get("confidence", 0.7),
+                        },
+                    )
                 added_entities += 1
 
         # ── Add triples (with entity resolution) ─────────────────────
@@ -560,38 +579,70 @@ class KnowledgeOrganizer(BaseAgent):
             if not resolved_subj:
                 resolved_subj = raw_subj.lower().replace(" ", "_")
                 if resolved_subj not in self.knowledge_graph.entities:
-                    self.knowledge_graph.add_entity(
-                        entity_id=resolved_subj,
-                        labels=[raw_subj],
-                        entity_type="UNRESOLVED",
-                        metadata={"source_document": document_id, "auto_created": True},
-                    )
+                    if self.governed_kg:
+                        self.governed_kg.add_entity(
+                            entity_id=resolved_subj,
+                            labels=[raw_subj],
+                            entity_type="UNRESOLVED",
+                            metadata={"source_document": document_id, "auto_created": True},
+                        )
+                    else:
+                        self.knowledge_graph.add_entity(
+                            entity_id=resolved_subj,
+                            labels=[raw_subj],
+                            entity_type="UNRESOLVED",
+                            metadata={"source_document": document_id, "auto_created": True},
+                        )
                     name_to_id[raw_subj.lower().strip()] = resolved_subj
 
             if not resolved_obj:
                 resolved_obj = raw_obj.lower().replace(" ", "_")
                 if resolved_obj not in self.knowledge_graph.entities:
-                    self.knowledge_graph.add_entity(
-                        entity_id=resolved_obj,
-                        labels=[raw_obj],
-                        entity_type="UNRESOLVED",
-                        metadata={"source_document": document_id, "auto_created": True},
-                    )
+                    if self.governed_kg:
+                        self.governed_kg.add_entity(
+                            entity_id=resolved_obj,
+                            labels=[raw_obj],
+                            entity_type="UNRESOLVED",
+                            metadata={"source_document": document_id, "auto_created": True},
+                        )
+                    else:
+                        self.knowledge_graph.add_entity(
+                            entity_id=resolved_obj,
+                            labels=[raw_obj],
+                            entity_type="UNRESOLVED",
+                            metadata={"source_document": document_id, "auto_created": True},
+                        )
                     name_to_id[raw_obj.lower().strip()] = resolved_obj
 
-            result = self.knowledge_graph.add_triple(
-                subject=resolved_subj,
-                relation=relation,
-                obj=resolved_obj,
-                confidence=triple.get("final_confidence", triple.get("confidence", 0.7)),
-                source=document_id,
-                metadata={
-                    "evidence": triple.get("supporting_evidence", ""),
-                    "verification_status": triple.get("verification_status", "unknown"),
-                    "original_subject": raw_subj,
-                    "original_object": raw_obj,
-                },
-            )
+            if self.governed_kg:
+                decision = self.governed_kg.propose_triple(
+                    subject=resolved_subj,
+                    relation=relation,
+                    obj=resolved_obj,
+                    confidence=triple.get("final_confidence", triple.get("confidence", 0.7)),
+                    source=document_id,
+                    metadata={
+                        "evidence": triple.get("supporting_evidence", ""),
+                        "verification_status": triple.get("verification_status", "unknown"),
+                        "original_subject": raw_subj,
+                        "original_object": raw_obj,
+                    },
+                )
+                result = decision if decision.committed else None
+            else:
+                result = self.knowledge_graph.add_triple(
+                    subject=resolved_subj,
+                    relation=relation,
+                    obj=resolved_obj,
+                    confidence=triple.get("final_confidence", triple.get("confidence", 0.7)),
+                    source=document_id,
+                    metadata={
+                        "evidence": triple.get("supporting_evidence", ""),
+                        "verification_status": triple.get("verification_status", "unknown"),
+                        "original_subject": raw_subj,
+                        "original_object": raw_obj,
+                    },
+                )
             if result is not None:
                 added_triples += 1
             else:

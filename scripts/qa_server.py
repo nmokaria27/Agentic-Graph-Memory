@@ -30,11 +30,16 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from multi_agent_kg.core import LLMConfig, load_kg, DomainBuilder, QAOrchestrator
+from multi_agent_kg.core import (
+    DomainBuilder,
+    LLMConfig,
+    create_qa_system,
+    load_governed_kg,
+)
 from multi_agent_kg.core.domain_experts import OrgChart
 
 CACHE_FILE = "org_chart_cache.json"
-KG_FILE = "kg_export.json"
+KG_FILE = "governed_kg_export.json"
 
 
 def _kg_hash(kg_path: str) -> str:
@@ -65,7 +70,8 @@ def load_org_chart(path: str, kg) -> OrgChart:
 print("Loading KG and building QA system...")
 llm_config = LLMConfig(model="gemma3:27b", temperature=0.2, max_tokens=4096)
 
-kg = load_kg("kg_export.json")
+governed_kg = load_governed_kg(KG_FILE)
+kg = governed_kg.kg
 stats = kg.get_stats()
 print(f"KG: {stats['num_entities']} entities, {stats['num_triples']} triples")
 
@@ -83,13 +89,18 @@ if os.path.exists(CACHE_FILE):
 if cache_valid:
     print(f"Loading cached org chart from {CACHE_FILE}...")
     org_chart = load_org_chart(CACHE_FILE, kg)
+    governed_kg.set_org_chart(org_chart)
     print(f"{org_chart.domain_summary()}")
 else:
     print("Building org chart (this takes ~10 min, will be cached for next time)...")
     builder = DomainBuilder(llm_config)
     org_chart = builder.build(kg)
+    governed_kg.set_org_chart(org_chart)
     save_org_chart(org_chart, CACHE_FILE)
     print(f"{org_chart.domain_summary()}")
+
+if governed_kg.org_chart.domains:
+    org_chart = governed_kg.org_chart
 
 # Parse command-line args for mode selection
 parser = argparse.ArgumentParser(description="KG QA Server")
@@ -101,14 +112,13 @@ parser.add_argument("--exploration-rounds", type=int, default=3, help="Max explo
 args, _ = parser.parse_known_args()
 
 if args.basic:
-    qa = QAOrchestrator(org_chart=org_chart, full_kg=kg, llm_config=llm_config)
+    qa = create_qa_system(governed_kg=governed_kg, llm_config=llm_config, advanced=False)
     print("Basic QA system ready.\n")
 else:
-    from multi_agent_kg.core.advanced_qa import AdvancedQAOrchestrator
-    qa = AdvancedQAOrchestrator(
-        org_chart=org_chart,
-        full_kg=kg,
+    qa = create_qa_system(
+        governed_kg=governed_kg,
         llm_config=llm_config,
+        advanced=True,
         max_exploration_rounds=args.exploration_rounds,
         enable_debate=not args.no_debate,
         enable_critic=not args.no_critic,

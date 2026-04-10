@@ -280,6 +280,45 @@ def test_human_eval_export_blinds_answer_order() -> None:
     }
 
 
+def test_advanced_query_benchmark_question_resets_session_memory(monkeypatch) -> None:
+    kg = KnowledgeGraph()
+    kg.add_entity("a", ["A"], "TYPE")
+    org_chart = OrgChart(
+        domains=[Domain(domain_id="d1", label="D1", description="", entity_ids={"a"})],
+        cross_domain_relations=[],
+    )
+    orchestrator = AdvancedQAOrchestrator(
+        org_chart=org_chart,
+        full_kg=kg,
+        llm_config=LLMConfig(model="test"),
+        max_exploration_rounds=1,
+        enable_debate=False,
+        enable_critic=False,
+    )
+    orchestrator.session_memory.domain_query_count["old_domain"] = 3
+
+    seen = {}
+
+    def fake_query(question: str):
+        seen["preferred_domains_inside"] = orchestrator.session_memory.get_preferred_domains()
+        orchestrator.session_memory.domain_query_count["new_domain"] += 1
+        return {"final_answer": "ok"}
+
+    monkeypatch.setattr(orchestrator, "query", fake_query)
+    bq = BenchmarkQuestion(
+        question_id="q1",
+        question="Q1",
+        gold_answer="G1",
+        question_type="comparison",
+        difficulty="hard",
+    )
+
+    orchestrator.query_benchmark_question(bq)
+
+    assert seen["preferred_domains_inside"] == []
+    assert orchestrator.session_memory.get_preferred_domains() == ["old_domain"]
+
+
 def test_governance_benchmark_builds_positive_and_negative_examples() -> None:
     kg = KnowledgeGraph()
     kg.add_entity("a", ["A"], "TYPE")

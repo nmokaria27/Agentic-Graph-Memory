@@ -21,6 +21,7 @@ from typing import Any, Dict, List, Optional
 
 from multi_agent_kg.core.config import LLMConfig
 from multi_agent_kg.core.domain_experts import OrgChart
+from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.core.kg_operations import (
     KGDiff,
@@ -321,14 +322,21 @@ class IncrementalEnricher:
 
     def __init__(
         self,
-        base_kg: KnowledgeGraph,
+        base_kg: Optional[KnowledgeGraph] = None,
         llm_config: Optional[LLMConfig] = None,
         match_threshold: float = 0.80,
         auto_resolve_conflicts: bool = True,
         org_chart: Optional[OrgChart] = None,
         enable_governance: bool = True,
+        governed_kg: Optional[GovernedKnowledgeGraph] = None,
     ):
+        if governed_kg is not None:
+            base_kg = governed_kg.kg
+            org_chart = governed_kg.org_chart
+        if base_kg is None:
+            raise ValueError("IncrementalEnricher requires either base_kg or governed_kg.")
         self.base_kg = base_kg
+        self.governed_kg = governed_kg
         self.llm_config = llm_config or LLMConfig(model="gemma3:27b")
         self.match_threshold = match_threshold
         self.auto_resolve_conflicts = auto_resolve_conflicts
@@ -383,6 +391,7 @@ class IncrementalEnricher:
         pipeline = DeliberativeOrchestrator(
             llm_config=self.llm_config,
             knowledge_graph=delta_kg,
+            governance_mode="audit_only",
             quality_threshold=quality_threshold,
             max_refinement_iterations=1,
             enable_self_consistency=False,  # Speed: skip broken SC
@@ -536,6 +545,8 @@ class IncrementalEnricher:
         print("=" * 70)
 
         merge_stats = merge_kg(self.base_kg, diff, conflict_strategy)
+        if self.governed_kg is not None:
+            self.governed_kg.org_chart.refresh_cross_domain_relations(self.base_kg)
         report["merge_stats"] = merge_stats
         print(f"  Entities added:   {merge_stats['entities_added']}")
         print(f"  Entities updated: {merge_stats['entities_updated']}")

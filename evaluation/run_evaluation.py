@@ -74,6 +74,7 @@ def run_pipeline_on_docs(
     model: str = "gemma3:27b",
     output_dir: str = "evaluation/results",
     schema_override: Optional[Dict[str, Any]] = None,
+    reuse_corpus_schema: bool = False,
 ) -> Dict[str, Dict[str, Any]]:
     """
     Run the multi-agent KG pipeline on a list of documents.
@@ -117,6 +118,8 @@ def run_pipeline_on_docs(
             orchestrator = DeliberativeOrchestrator(
                 llm_config=llm_config,
                 knowledge_graph=KnowledgeGraph(),
+                governance_mode="audit_only",
+                reuse_corpus_schema=reuse_corpus_schema,
                 quality_threshold=0.4,
                 max_refinement_iterations=1,
                 enable_self_consistency=False,
@@ -244,6 +247,11 @@ def main() -> None:
         action="store_true",
         help="Use SciERC's fixed entity/relation schema instead of dynamic discovery",
     )
+    parser.add_argument(
+        "--reuse-corpus-schema",
+        action="store_true",
+        help="Reuse the first discovered schema across documents for speed and consistency",
+    )
     args = parser.parse_args()
 
     # --- Step 1: Load SciERC ---
@@ -283,6 +291,7 @@ def main() -> None:
             model=args.model,
             output_dir=args.results_dir,
             schema_override=schema,
+            reuse_corpus_schema=args.reuse_corpus_schema,
         )
     print()
 

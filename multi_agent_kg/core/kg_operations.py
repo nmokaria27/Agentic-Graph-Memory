@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
 from multi_agent_kg.core.knowledge_graph import Entity, KnowledgeGraph, Triple
 
 
@@ -418,3 +419,18 @@ def load_kg(path: str) -> KnowledgeGraph:
             )
 
     return kg
+
+
+def save_governed_kg(gkg: GovernedKnowledgeGraph, path: str) -> None:
+    """Save a governed knowledge graph to JSON."""
+    data = gkg.to_dict()
+    data["stats"] = gkg.get_stats()
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(data, handle, indent=2, default=str)
+
+
+def load_governed_kg(path: str) -> GovernedKnowledgeGraph:
+    """Load a governed KG, auto-wrapping legacy plain KG exports."""
+    with open(path, "r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    return GovernedKnowledgeGraph.from_dict(data)
