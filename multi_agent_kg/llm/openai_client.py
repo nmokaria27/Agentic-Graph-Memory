@@ -36,11 +36,11 @@ else:
 
 # Map old OpenAI model names → Ollama equivalents (for backward compat)
 _OPENAI_TO_OLLAMA = {
-    "gpt-4o": "gemma3:27b",
-    "gpt-4o-mini": "gemma3:27b",
-    "gpt-4": "gemma3:27b",
-    "gpt-4-turbo": "gemma3:27b",
-    "gpt-3.5-turbo": "gemma3:27b",
+    "gpt-4o": "gemma4:31b",
+    "gpt-4o-mini": "gemma4:31b",
+    "gpt-4": "gemma4:31b",
+    "gpt-4-turbo": "gemma4:31b",
+    "gpt-3.5-turbo": "gemma4:31b",
 }
 
 
@@ -155,7 +155,7 @@ def _extract_json(text: str) -> Any:
 
 def chat_completion(
     messages: List[Dict[str, str]],
-    model: str = "gemma3:27b",
+    model: str = "gemma4:31b",
     temperature: float = 0.2,
     max_tokens: Optional[int] = None,
     **kwargs: Any,
@@ -217,7 +217,7 @@ def chat_completion(
 
 def chat_completion_json(
     messages: List[Dict[str, str]],
-    model: str = "gemma3:27b",
+    model: str = "gemma4:31b",
     temperature: float = 0.2,
     max_tokens: Optional[int] = None,
     **kwargs: Any,

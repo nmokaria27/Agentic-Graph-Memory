@@ -28,6 +28,7 @@ MODEL_SPECS = {
     # Ollama models (default)
     "qwen3:4b": ModelSpec("qwen3:4b", 32768, 8192),
     "qwen3:8b": ModelSpec("qwen3:8b", 32768, 8192),
+    "gemma4:31b": ModelSpec("gemma4:31b", 32768, 8192),
     "gemma3:27b": ModelSpec("gemma3:27b", 32768, 8192),
     "mistral:latest": ModelSpec("mistral:latest", 32768, 8192),
     "mistral-small3.1:latest": ModelSpec("mistral-small3.1:latest", 32768, 8192),

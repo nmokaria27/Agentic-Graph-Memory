@@ -2,6 +2,7 @@
 Configuration classes for the multi-agent knowledge graph system.
 """
 
+import os
 from dataclasses import dataclass, field
 from typing import Optional, List
 
@@ -101,7 +102,7 @@ class LLMConfig:
         top_p: Nucleus sampling parameter
     """
 
-    model: str = "gemma3:27b"
+    model: str = field(default_factory=lambda: os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b"))
     temperature: float = 0.2
     max_tokens: Optional[int] = None
     top_p: float = 1.0

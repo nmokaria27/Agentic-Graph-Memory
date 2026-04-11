@@ -15,6 +15,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from enum import Enum
 import json
+import os
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.core.memory import SharedMemory, MemoryType, BlackboardEntry
@@ -41,15 +42,15 @@ class AgentRole(str, Enum):
 class ModelTier(str, Enum):
     """Model tier for tiered model selection."""
     SMALL = "small"     # ~4B params - fast (qwen3:4b)
-    MEDIUM = "medium"   # ~8B params - balanced (qwen3:8b)
-    LARGE = "large"     # ~27B params - highest quality (gemma3:27b)
+    MEDIUM = "medium"   # balanced reasoning
+    LARGE = "large"     # highest quality reasoning
 
 
 # Default model mapping (Ollama models on GPU via SSH tunnel)
 DEFAULT_MODEL_TIERS = {
-    ModelTier.SMALL: "gemma3:27b",
-    ModelTier.MEDIUM: "gemma3:27b",
-    ModelTier.LARGE: "gemma3:27b",
+    ModelTier.SMALL: os.getenv("LLM_SMALL_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
+    ModelTier.MEDIUM: os.getenv("LLM_MEDIUM_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
+    ModelTier.LARGE: os.getenv("LLM_LARGE_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
 }
 
 

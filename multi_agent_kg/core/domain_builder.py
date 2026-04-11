@@ -86,6 +86,10 @@ class DomainBuilder:
         relation_types = domain_config.get("relation_types", [])
         requested_domains = target_num_domains or self.target_num_domains
 
+        heuristic_org = self._heuristic_bootstrap_from_schema(domain_config, requested_domains)
+        if heuristic_org is not None:
+            return heuristic_org
+
         if requested_domains == 1:
             relation_schema = {
                 rel.get("type", rel): ""
@@ -195,6 +199,115 @@ class DomainBuilder:
                     },
                 )
             )
+        return OrgChart(domains=domains, cross_domain_relations=[])
+
+    def _heuristic_bootstrap_from_schema(
+        self,
+        domain_config: Dict[str, Any],
+        target_num_domains: Optional[int],
+    ) -> Optional[OrgChart]:
+        """
+        Fast deterministic bootstrap for compact schemas.
+
+        Preliminary domains exist to support ownership routing during KG creation.
+        For small fixed schemas, a deterministic partition is more stable and much
+        faster than a heavyweight LLM clustering step.
+        """
+        entity_types = domain_config.get("entity_types", [])
+        relation_types = domain_config.get("relation_types", [])
+        if not entity_types:
+            return None
+        if len(entity_types) > 12 or len(relation_types) > 20:
+            return None
+
+        buckets = {
+            "methods_and_systems": {
+                "label": "Methods and Systems",
+                "entity_keywords": {"method", "model", "system", "algorithm", "tool"},
+                "relation_keywords": {"used", "feature"},
+                "topics": ["models", "algorithms", "systems"],
+            },
+            "tasks_and_concepts": {
+                "label": "Tasks and Concepts",
+                "entity_keywords": {"task", "term", "concept", "scientific"},
+                "relation_keywords": {"part", "hyponym", "conjunction", "feature"},
+                "topics": ["tasks", "concepts", "structures"],
+            },
+            "resources_and_evaluation": {
+                "label": "Resources and Evaluation",
+                "entity_keywords": {"material", "dataset", "corpus", "metric", "benchmark", "language"},
+                "relation_keywords": {"evaluate", "compare", "used"},
+                "topics": ["datasets", "metrics", "benchmarks"],
+            },
+        }
+
+        entity_assignments: Dict[str, List[str]] = {bucket_id: [] for bucket_id in buckets}
+        for entity in entity_types:
+            entity_type = entity.get("type", "")
+            description = entity.get("description", "")
+            text = self._normalize_label(f"{entity_type} {description}")
+            scored = []
+            for bucket_id, config in buckets.items():
+                score = sum(1 for keyword in config["entity_keywords"] if keyword in text)
+                if score:
+                    scored.append((score, bucket_id))
+            if scored:
+                scored.sort(reverse=True)
+                entity_assignments[scored[0][1]].append(entity_type)
+            else:
+                entity_assignments["tasks_and_concepts"].append(entity_type)
+
+        relation_assignments: Dict[str, List[str]] = {bucket_id: [] for bucket_id in buckets}
+        for relation in relation_types:
+            relation_type = relation.get("type", relation)
+            description = relation.get("description", "")
+            text = self._normalize_label(f"{relation_type} {description}")
+            scored = []
+            for bucket_id, config in buckets.items():
+                score = sum(1 for keyword in config["relation_keywords"] if keyword in text)
+                if score:
+                    scored.append((score, bucket_id))
+            if scored:
+                scored.sort(reverse=True)
+                relation_assignments[scored[0][1]].append(relation_type)
+            else:
+                relation_assignments["tasks_and_concepts"].append(relation_type)
+
+        active_domains = [
+            bucket_id for bucket_id, assigned in entity_assignments.items() if assigned or relation_assignments[bucket_id]
+        ]
+        if target_num_domains == 1 or len(active_domains) <= 1:
+            return None
+
+        domains: List[Domain] = []
+        for bucket_id in active_domains:
+            config = buckets[bucket_id]
+            domains.append(
+                Domain(
+                    domain_id=bucket_id,
+                    label=config["label"],
+                    description=f"Preliminary governed domain for {config['label'].lower()} inferred from schema.",
+                    entity_ids=set(),
+                    relation_schema={relation: "" for relation in relation_assignments[bucket_id]},
+                    topics=[
+                        TopicSubAgent(
+                            topic_id=f"{bucket_id}_{topic}",
+                            label=topic.replace("_", " ").title(),
+                            description=f"Bootstrap topic for {topic.replace('_', ' ')}.",
+                            keywords=[topic],
+                        )
+                        for topic in config["topics"]
+                    ],
+                    metadata={
+                        "owner_label": f"{config['label']} Expert",
+                        "governance_scope": f"Preliminary bootstrap scope for {config['label'].lower()}",
+                        "seed_entity_types": entity_assignments[bucket_id],
+                        "seed_relation_types": relation_assignments[bucket_id],
+                        "bootstrap_source": "heuristic_schema",
+                    },
+                )
+            )
+
         return OrgChart(domains=domains, cross_domain_relations=[])
 
     def assign_entities_to_org_chart(

@@ -68,6 +68,54 @@ def _token_overlap(a: str, b: str) -> float:
     return len(ta & tb) / len(ta | tb)
 
 
+def _entity_surface_text(entity: Dict[str, Any]) -> str:
+    """Return the best human-readable surface form for an entity."""
+    text = entity.get("text")
+    if text:
+        return text
+    labels = entity.get("labels", [])
+    if labels:
+        return labels[0]
+    return entity.get("id", "")
+
+
+def _triple_surface_variants(triple: Dict[str, Any]) -> List[Tuple[str, str]]:
+    """
+    Return plausible surface-form variants for a triple's subject/object.
+
+    Governed KG exports often use canonical IDs in `subject`/`object` while
+    preserving the original mention text in metadata. The evaluator should
+    score those exports against gold text on the same footing as older
+    per-document exports that stored surface strings directly.
+    """
+    metadata = triple.get("metadata", {}) or {}
+    subjects: List[str] = []
+    objects: List[str] = []
+
+    for value in [
+        triple.get("subject", ""),
+        metadata.get("original_subject", ""),
+        metadata.get("subject_text", ""),
+    ]:
+        if value and value not in subjects:
+            subjects.append(value)
+
+    for value in [
+        triple.get("object", ""),
+        metadata.get("original_object", ""),
+        metadata.get("object_text", ""),
+    ]:
+        if value and value not in objects:
+            objects.append(value)
+
+    if not subjects:
+        subjects.append("")
+    if not objects:
+        objects.append("")
+
+    return [(subj, obj) for subj in subjects for obj in objects]
+
+
 # ---------------------------------------------------------------------------
 # SciERC type/relation mapping for dynamic→fixed schema evaluation
 # ---------------------------------------------------------------------------
@@ -304,7 +352,7 @@ def evaluate_entities_strict(
     # Build predicted set — include all label variants for matching
     pred_set: Dict[str, str] = {}
     for ent in pred_entities:
-        text = ent.get("text") or ent.get("id", "")
+        text = _entity_surface_text(ent)
         etype = ent.get("type", "Unknown")
         if map_types:
             etype = _map_entity_type(etype)
@@ -365,7 +413,7 @@ def evaluate_entities_partial(
 
     gold_texts = [_normalise_text(e["text"]) for e in gold_entities]
     pred_texts = [
-        _normalise_text(e.get("text") or e.get("id", ""))
+        _normalise_text(_entity_surface_text(e))
         for e in pred_entities
     ]
 
@@ -417,36 +465,46 @@ def evaluate_triples_strict(
     """
     prf = PRF()
     per_rel: Dict[str, PRF] = defaultdict(PRF)
+    gold_matched: Set[int] = set()
+    pred_matched: Set[int] = set()
 
-    gold_set: Dict[Tuple[str, str, str], str] = {}
-    for t in gold_triples:
-        key = _triple_key_strict(t)
-        gold_set[key] = _normalise_text(t.get("relation", ""))
+    for pi, pt in enumerate(pred_triples):
+        p_rel = _normalise_text(pt.get("relation", ""))
+        matched = False
+        for gi, gt in enumerate(gold_triples):
+            if gi in gold_matched:
+                continue
+            g_rel = _normalise_text(gt.get("relation", ""))
+            if p_rel != g_rel:
+                continue
+            g_key = _triple_key_strict(gt)
+            for subj, obj in _triple_surface_variants(pt):
+                p_key = (
+                    _normalise_text(subj),
+                    p_rel,
+                    _normalise_text(obj),
+                )
+                if p_key == g_key:
+                    prf.tp += 1
+                    gold_matched.add(gi)
+                    pred_matched.add(pi)
+                    per_rel[g_rel].tp += 1
+                    matched = True
+                    break
+            if matched:
+                break
 
-    pred_set: Dict[Tuple[str, str, str], str] = {}
-    for t in pred_triples:
-        key = _triple_key_strict(t)
-        pred_set[key] = _normalise_text(t.get("relation", ""))
+    prf.fp = len(pred_triples) - len(pred_matched)
+    prf.fn = len(gold_triples) - len(gold_matched)
 
-    gold_keys = set(gold_set.keys())
-    pred_keys = set(pred_set.keys())
+    for gi, gt in enumerate(gold_triples):
+        if gi not in gold_matched:
+            per_rel[_normalise_text(gt.get("relation", ""))].fn += 1
+    for pi, pt in enumerate(pred_triples):
+        if pi not in pred_matched:
+            per_rel[_normalise_text(pt.get("relation", ""))].fp += 1
 
-    matched = gold_keys & pred_keys
-    prf.tp = len(matched)
-    prf.fp = len(pred_keys - gold_keys)
-    prf.fn = len(gold_keys - pred_keys)
-
-    for key in matched:
-        rel = gold_set[key]
-        per_rel[rel].tp += 1
-    for key in gold_keys - pred_keys:
-        rel = gold_set[key]
-        per_rel[rel].fn += 1
-    for key in pred_keys - gold_keys:
-        rel = pred_set[key]
-        per_rel[rel].fp += 1
-
-    halluc = prf.fp / len(pred_keys) if pred_keys else 0.0
+    halluc = prf.fp / len(pred_triples) if pred_triples else 0.0
     return prf, dict(per_rel), halluc
 
 
@@ -467,20 +525,21 @@ def evaluate_triples_fuzzy(
     pred_matched: Set[int] = set()
 
     for pi, pt in enumerate(pred_triples):
-        p_subj = pt.get("subject", "")
         p_rel = _normalise_text(pt.get("relation", ""))
-        p_obj = pt.get("object", "")
         for gi, gt in enumerate(gold_triples):
             if gi in gold_matched:
                 continue
             g_rel = _normalise_text(gt.get("relation", ""))
             if p_rel != g_rel:
                 continue
-            if _fuzzy_match(p_subj, gt["subject"], threshold) and \
-               _fuzzy_match(p_obj, gt["object"], threshold):
-                prf.tp += 1
-                gold_matched.add(gi)
-                pred_matched.add(pi)
+            for p_subj, p_obj in _triple_surface_variants(pt):
+                if _fuzzy_match(p_subj, gt["subject"], threshold) and \
+                   _fuzzy_match(p_obj, gt["object"], threshold):
+                    prf.tp += 1
+                    gold_matched.add(gi)
+                    pred_matched.add(pi)
+                    break
+            if pi in pred_matched:
                 break
 
     prf.fp = len(pred_triples) - len(pred_matched)
@@ -507,21 +566,22 @@ def evaluate_triples_mapped(
     pred_matched: Set[int] = set()
 
     for pi, pt in enumerate(pred_triples):
-        p_subj = pt.get("subject", "")
         p_rel_raw = pt.get("relation", "")
         p_rel = _normalise_text(_map_relation_type(p_rel_raw))
-        p_obj = pt.get("object", "")
         for gi, gt in enumerate(gold_triples):
             if gi in gold_matched:
                 continue
             g_rel = _normalise_text(gt.get("relation", ""))
             if p_rel != g_rel:
                 continue
-            if _fuzzy_match(p_subj, gt["subject"], threshold) and \
-               _fuzzy_match(p_obj, gt["object"], threshold):
-                prf.tp += 1
-                gold_matched.add(gi)
-                pred_matched.add(pi)
+            for p_subj, p_obj in _triple_surface_variants(pt):
+                if _fuzzy_match(p_subj, gt["subject"], threshold) and \
+                   _fuzzy_match(p_obj, gt["object"], threshold):
+                    prf.tp += 1
+                    gold_matched.add(gi)
+                    pred_matched.add(pi)
+                    break
+            if pi in pred_matched:
                 break
 
     prf.fp = len(pred_triples) - len(pred_matched)

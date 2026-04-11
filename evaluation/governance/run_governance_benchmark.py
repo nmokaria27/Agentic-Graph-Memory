@@ -225,7 +225,7 @@ def main() -> None:
     parser.add_argument("--num-positive", type=int, default=25, help="Number of held-out true triples")
     parser.add_argument("--num-negative", type=int, default=25, help="Number of corrupted false triples")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--model", default="gemma3:27b")
+    parser.add_argument("--model", default="gemma4:31b")
     parser.add_argument("--route-only", action="store_true", help="Skip LLM governance review; score routing only")
     parser.add_argument("--output", required=True, help="Where to write benchmark JSON")
     args = parser.parse_args()

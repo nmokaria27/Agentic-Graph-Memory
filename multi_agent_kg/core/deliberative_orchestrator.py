@@ -26,6 +26,7 @@ Novel Features:
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime
 import hashlib
+import os
 
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
 from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph, GovernanceDecision
@@ -159,9 +160,9 @@ class DeliberativeOrchestrator:
         
         # Model tier configuration
         self.model_tiers = model_tiers or {
-            ModelTier.SMALL: "gemma3:27b",
-            ModelTier.MEDIUM: "gemma3:27b",
-            ModelTier.LARGE: "gemma3:27b",
+            ModelTier.SMALL: os.getenv("LLM_SMALL_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
+            ModelTier.MEDIUM: os.getenv("LLM_MEDIUM_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
+            ModelTier.LARGE: os.getenv("LLM_LARGE_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
         }
         
         # Shared infrastructure
@@ -520,7 +521,15 @@ class DeliberativeOrchestrator:
             1 for e in entities
             if (e.get("id", e.get("text", "")) not in connected_ids)
         )
-        if disconnected_count > 5:
+        should_run_connectivity = (
+            disconnected_count > 5
+            and (
+                self.enable_open_world
+                or len(triples) <= 2
+                or relation_result.confidence < 0.55
+            )
+        )
+        if should_run_connectivity:
             if self.debug_logger:
                 self.debug_logger.log_stage_header(4, "Connectivity Pass")
             print(f"\n[4b/9] Connectivity Pass ({disconnected_count} disconnected entities)")

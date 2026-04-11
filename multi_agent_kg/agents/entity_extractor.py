@@ -63,22 +63,28 @@ EXTRACT entities including:
 - Important statistical markers (e.g., "HbA1c", "IESS", "CFR") when they represent specific measurements
 
 CRITICAL SPAN RULES:
-- Extract the COMPLETE noun phrase as it appears in the text, including all modifiers and qualifiers
-- INCLUDE trailing words like "scheme", "process", "stage", "system", "model", "method", "items", "task", "problem"
-  GOOD: "constrained optimization scheme" (complete phrase)
-  BAD:  "constrained optimization" (missing trailing qualifier)
-- INCLUDE leading modifiers like "priori", "complex", "iterative", "discriminative"
-  GOOD: "priori geometric constraints" (complete phrase)
-  BAD:  "geometric constraints" (missing leading modifier)
-- INCLUDE parenthetical abbreviations when present in the text
-  GOOD: "Named Entity (NE) items" (complete phrase with abbreviation)
-  BAD:  "Named Entity" (truncated)
-- For compound entities with commas, extract the FULL coordinated phrase
-  GOOD: "proper names, numerical and temporal expressions"
-  BAD:  "temporal expressions" (only part of the list)
-- Extract BOTH the short form AND the full form as separate entities
-  e.g., "NE items" AND "Named Entity (NE) items" are both valid entities
-- For datasets/corpora, include the full description: "English and Czech newspaper texts" not just "English"
+- Extract the SHORTEST meaningful noun phrase that still identifies the entity.
+  GOOD: "morphological analysis"
+  BAD:  "morphological analysis problem in Japanese"
+- Prefer the core scientific entity over the surrounding event or sentence frame.
+  GOOD: "proper nouns"
+  BAD:  "Recognition of proper nouns in Japanese text"
+- Keep short but meaningful entities.
+  VALID: "Amorph", "MET", "NE", "rules", "dictionaries", "constraints"
+- If both a short form and a long form are present, extract both when both are meaningful.
+  VALID: "NE items" and "Named Entity (NE) items"
+- For coordinated lists, extract the individual entities in the list when they are meaningful.
+  GOOD: "proper names", "numerical expressions", "temporal expressions"
+  BAD:  only the entire long list with no atomic entities
+- When a longer phrase contains a clear embedded scientific entity, extract the embedded entity too.
+  GOOD: "Recognition of proper nouns in Japanese text" -> also extract "proper nouns"
+  GOOD: "morphological analysis problem" -> also extract "morphological analysis"
+- Keep qualifiers only when they are necessary to identify the entity.
+  GOOD: "constrained optimization scheme"
+  BAD:  "the constrained optimization scheme used in our approach"
+- Prefer clean entity mentions over explanatory phrases.
+  GOOD: "English and Czech newspaper texts"
+  BAD:  "annotated English and Czech newspaper texts used for training"
 
 DO NOT EXTRACT:
 - Articles, prepositions, pronouns, conjunctions alone
@@ -86,7 +92,11 @@ DO NOT EXTRACT:
 - Bare numbers without meaning ("0.85", "38614", "42")
 - Common adjectives alone ("high", "low", "greater", "significant")
 
-IMPORTANT: Err on the side of INCLUSION and LONGER SPANS. When in doubt, include more words rather than fewer.
+IMPORTANT:
+- Err on the side of INCLUSION, but prefer cleaner and shorter entity spans.
+- Do NOT skip short entities just because they look simple.
+- Tool names, abbreviations, and common scientific noun phrases are valid entities.
+- If a sentence names stages, tools, or resources explicitly, extract them individually.
 
 ## EXAMPLES
 
@@ -123,7 +133,7 @@ Return a JSON object:
     ]
 }}
 
-Extract ALL entities. Be thorough. Prefer LONGER spans over shorter ones."""
+Extract ALL entities. Be thorough. Prefer precise entity spans over long descriptive spans."""
 
 
 COREFERENCE_PROMPT = """Identify which entity mentions refer to the same real-world entity.

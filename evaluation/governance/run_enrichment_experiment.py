@@ -48,7 +48,7 @@ def main() -> None:
     )
     parser.add_argument("--split", default="dev", choices=["train", "dev", "test"])
     parser.add_argument("--max-docs", type=int, default=5)
-    parser.add_argument("--model", default="gemma3:27b")
+    parser.add_argument("--model", default="gemma4:31b")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 

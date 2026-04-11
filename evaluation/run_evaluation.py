@@ -71,7 +71,7 @@ SCIERC_SCHEMA = {
 
 def run_pipeline_on_docs(
     documents: List[Dict[str, Any]],
-    model: str = "gemma3:27b",
+    model: str = "gemma4:31b",
     output_dir: str = "evaluation/results",
     schema_override: Optional[Dict[str, Any]] = None,
     reuse_corpus_schema: bool = False,
@@ -223,8 +223,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--model",
-        default="gemma3:27b",
-        help="LLM model name to use (default: gemma3:27b)",
+        default="gemma4:31b",
+        help="LLM model name to use (default: gemma4:31b)",
     )
     parser.add_argument(
         "--fuzzy-threshold",

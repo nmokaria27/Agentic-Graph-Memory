@@ -44,7 +44,7 @@ def main() -> None:
         default=os.path.join("evaluation", "datasets", "scierc"),
     )
     parser.add_argument("--max-docs", type=int, default=10)
-    parser.add_argument("--model", default="gemma3:27b")
+    parser.add_argument("--model", default="gemma4:31b")
     parser.add_argument("--fixed-schema", action="store_true")
     parser.add_argument("--reuse-corpus-schema", action="store_true", default=True)
     parser.add_argument(

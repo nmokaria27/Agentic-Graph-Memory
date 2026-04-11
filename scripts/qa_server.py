@@ -68,7 +68,7 @@ def load_org_chart(path: str, kg) -> OrgChart:
 
 # --- Setup (runs once at startup) ---
 print("Loading KG and building QA system...")
-llm_config = LLMConfig(model="gemma3:27b", temperature=0.2, max_tokens=4096)
+llm_config = LLMConfig(model="gemma4:31b", temperature=0.2, max_tokens=4096)
 
 governed_kg = load_governed_kg(KG_FILE)
 kg = governed_kg.kg

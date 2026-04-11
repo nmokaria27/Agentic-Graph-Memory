@@ -37,7 +37,7 @@ from multi_agent_kg.core import (
 KG_PATH = "governed_kg_export.json"
 OUTPUT_PATH = "demo_results.json"
 
-llm_config = LLMConfig(model="gemma3:27b", temperature=0.2, max_tokens=4096)
+llm_config = LLMConfig(model="gemma4:31b", temperature=0.2, max_tokens=4096)
 
 # Questions that exercise different QA capabilities
 DEMO_QUESTIONS = [
@@ -274,7 +274,7 @@ def main():
 
     evaluator = KGAFEEvaluator(
         kg=kg,
-        model="gemma3:27b",
+        model="gemma4:31b",
         enable_judge_panel=True,
     )
 

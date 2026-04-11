@@ -320,18 +320,19 @@ class RelationExtractor(BaseAgent):
         for text, segment_id in texts_to_process:
             if not text or len(text) < 20:
                 continue
+            text_lower = text.lower()
 
             # Filter entities to those relevant to this segment
             segment_entities = [
                 e for e in entities
                 if e.get("source_segment") == segment_id
-                or e.get("text", "") in text
+                or (e.get("text", "") and e.get("text", "").lower() in text_lower)
             ]
             # Fallback: if no segment match, use entities whose text appears in segment
             if not segment_entities:
                 segment_entities = [
                     e for e in entities
-                    if e.get("text", "") and e.get("text", "") in text
+                    if e.get("text", "") and e.get("text", "").lower() in text_lower
                 ]
 
             # RHF Pipeline
@@ -477,13 +478,39 @@ class RelationExtractor(BaseAgent):
 
         # If open_world is disabled, we're in fixed-schema mode — force the types
         if not self.enable_open_world and suggested_types:
+            fixed_type_guide = """ALLOWED RELATION TYPES (use ONLY these exact names):
+
+- Used-for: Method/tool/system X is used for or applied to task/purpose Y
+  Example: (CNN) -[Used-for]-> (image classification)
+
+- Part-of: X is a component, subset, stage, or internal part of Y
+  Example: (dictionary lookup) -[Part-of]-> (Amorph)
+
+- Feature-of: X is a feature, property, signal, or characteristic of Y
+  Example: (object shape) -[Feature-of]-> (priori knowledge)
+
+- Compare: X is compared or contrasted with Y
+  Example: (our method) -[Compare]-> (baseline)
+
+- Hyponym-of: X is a subtype, instance, or special case of Y
+  Example: (NE items) -[Hyponym-of]-> (proper names)
+
+- Conjunction: X and Y are paired, coordinated, used together, or jointly listed
+  Example: (dictionary lookup) -[Conjunction]-> (rule application)
+
+- Evaluate-for: X is evaluated, tested, or measured for Y
+  Example: (model) -[Evaluate-for]-> (test set)
+"""
             prompt = (
                 f"Identify which of these SPECIFIC relation types are present in the text.\n\n"
-                f"ALLOWED RELATION TYPES (use ONLY these, do NOT invent new types):\n"
+                f"{fixed_type_guide}\n"
+                f"Only return relation types from this allowed set:\n"
                 + "\n".join(f"- {t}" for t in suggested_types) +
                 f"\n\nTEXT:\n{text}\n\n"
                 f"ENTITIES FOUND:\n{entities_str}\n\n"
-                f"For each relation type that is present, provide examples from the text.\n\n"
+                f"Identify every allowed relation type that is clearly expressed in the text.\n"
+                f"Pay special attention to conjunctions such as coordinated pairs, lists, or stages used together.\n"
+                f"Do not invent relation types outside the allowed set.\n\n"
                 f"Return:\n{{\n"
                 f'    "relations_found": [\n'
                 f"        {{\n"

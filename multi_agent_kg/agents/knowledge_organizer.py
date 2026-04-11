@@ -396,6 +396,21 @@ class KnowledgeOrganizer(BaseAgent):
         """Normalize relation types."""
         if not triples:
             return triples, 0
+
+        allowed_relations = self._allowed_relation_types()
+        if allowed_relations:
+            normalized_count = 0
+            for triple in triples:
+                original_rel = triple.get("relation", "")
+                normalized_rel, allowed = self._enforce_relation_schema(
+                    original_rel,
+                    allowed_relations,
+                )
+                if allowed and normalized_rel != original_rel:
+                    triple["original_relation"] = original_rel
+                    triple["relation"] = normalized_rel
+                    normalized_count += 1
+            return triples, normalized_count
         
         # Collect unique relations
         relations = list(set(t.get("relation", "") for t in triples if t.get("relation")))
@@ -470,7 +485,7 @@ class KnowledgeOrganizer(BaseAgent):
             # Pronoun / reference phrases that coreference failed to resolve
             "our approach", "this method", "this approach", "this system",
             "this information", "this technique", "this model",
-            "a set of rules", "these methods", "these models",
+            "these methods", "these models",
             "the proposed method", "the proposed approach",
         }
         for entity in entities:
@@ -498,6 +513,11 @@ class KnowledgeOrganizer(BaseAgent):
             clean_entities.append(entity)
         # ── Consolidate entity types ─────────────────────────────────
         _TYPE_CONSOLIDATION = {
+            "TASK": "Task",
+            "METHOD": "Method",
+            "METRIC": "Metric",
+            "MATERIAL": "Material",
+            "OTHERSCIENTIFICTERM": "OtherScientificTerm",
             "CLINICAL_BIOMARKER": "BIOLOGICAL_MARKER",
             "BIOMARKER": "BIOLOGICAL_MARKER",
             "IMMUNE_PROCESS": "BIOLOGICAL_PROCESS",
@@ -559,13 +579,17 @@ class KnowledgeOrganizer(BaseAgent):
             key = name.lower().strip()
             if key in name_to_id:
                 return name_to_id[key]
-            # Try fuzzy: check if name is a substring of any known entity
+            normalized = " ".join(key.replace("_", " ").replace("-", " ").split())
             for known_name, known_id in name_to_id.items():
-                if len(key) > 3 and (key in known_name or known_name in key):
+                known_normalized = " ".join(
+                    known_name.replace("_", " ").replace("-", " ").split()
+                )
+                if known_normalized == normalized:
                     return known_id
             return None
 
         allowed_relations = self._allowed_relation_types()
+        seen_triples: Set[tuple] = set()
 
         # ── Add entities ─────────────────────────────────────────────
         for entity in entities:
@@ -702,6 +726,15 @@ class KnowledgeOrganizer(BaseAgent):
                             metadata={"source_document": document_id, "auto_created": True},
                         )
                     name_to_id[raw_obj.lower().strip()] = resolved_obj
+
+            triple_key = (resolved_subj, relation, resolved_obj)
+            if resolved_subj == resolved_obj:
+                skipped_triples += 1
+                continue
+            if triple_key in seen_triples:
+                skipped_triples += 1
+                continue
+            seen_triples.add(triple_key)
 
             if self.governed_kg:
                 already_repaired = bool(

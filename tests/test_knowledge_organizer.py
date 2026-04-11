@@ -57,3 +57,35 @@ def test_semantic_duplicate_finder_collapses_near_duplicates() -> None:
 
     assert len(merges) == 1
     assert len(remaining) == 2
+
+
+def test_integrate_to_kg_skips_self_loops_and_duplicate_triples() -> None:
+    governed = _governed_graph()
+    organizer = KnowledgeOrganizer(
+        knowledge_graph=KnowledgeGraph(),
+        governed_kg=governed,
+        llm_config=LLMConfig(model="test-model"),
+    )
+
+    entities = [
+        {"id": "method_a", "text": "Method A", "type": "METHOD"},
+        {"id": "task_b", "text": "Task B", "type": "TASK"},
+    ]
+    triples = [
+        {"subject": "Method A", "relation": "Used-for", "object": "Task B", "confidence": 0.9},
+        {"subject": "Method A", "relation": "Used-for", "object": "Task B", "confidence": 0.9},
+        {"subject": "Method A", "relation": "Part-of", "object": "Method A", "confidence": 0.9},
+    ]
+
+    added_entities, added_triples = organizer._integrate_to_kg(
+        entities=entities,
+        triples=triples,
+        document_id="doc1",
+    )
+
+    assert added_entities == 2
+    assert added_triples == 1
+    assert len(governed.kg.triples) == 1
+    triple = governed.kg.triples[0]
+    assert triple.subject == "method_a"
+    assert triple.object == "task_b"

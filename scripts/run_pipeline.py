@@ -94,9 +94,9 @@ print("\n" + "=" * 70)
 print("RUNNING MULTI-AGENT PIPELINE")
 print("=" * 70)
 
-# Configure LLM (using gemma3:27b via Ollama for best quality)
+# Configure LLM (using gemma4:31b via Ollama for best quality)
 llm_config = LLMConfig(
-    model="gemma3:27b",
+    model="gemma4:31b",
     temperature=0.2,
     max_tokens=4096,
 )
