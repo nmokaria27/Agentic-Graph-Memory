@@ -105,6 +105,11 @@ RELATION TYPES TO BIND:
 
 For each relation occurrence, identify what entity is the SUBJECT (head) of that relation.
 
+CRITICAL RULES:
+- The subject must be copied VERBATIM from the ENTITIES list.
+- Never output a generic paraphrase when a concrete entity exists in ENTITIES.
+- If no exact entity from ENTITIES expresses the subject, SKIP that occurrence.
+
 Return:
 {{
     "head_bindings": [
@@ -135,8 +140,11 @@ For each head binding, identify what entity is the OBJECT (tail) of that relatio
 CRITICAL RULES:
 - The OBJECT must be a DIFFERENT entity from the SUBJECT. A triple like (X, relation, X) is INVALID.
 - The object must be an entity from the ENTITIES list or clearly mentioned in the text.
+- In benchmark / fixed-schema settings, SUBJECT and OBJECT must be copied VERBATIM from the ENTITIES list. Do not paraphrase entity names.
 - If you cannot find a valid, distinct object entity, SKIP that head binding entirely.
 - Focus on what the subject ACTS ON, RELATES TO, or AFFECTS — that target is the object.
+- Never use generic summaries such as "products of them", "detectors", or "data sources" unless that exact phrase appears as an entity in ENTITIES.
+- For conjunctions, connect the explicit coordinated entities themselves, not a generic phrase describing the list.
 
 EXAMPLES:
 Head binding: {{"relation_type": "REDUCES_BIOMARKER", "head_entity": "Metformin", "context": "Metformin reduces HbA1c levels"}}
@@ -162,6 +170,18 @@ Return:
         }}
     ]
 }}"""
+
+
+def _normalize_surface(text: str) -> str:
+    """Normalize entity surface forms for exact benchmark matching."""
+    return " ".join(
+        str(text)
+        .strip()
+        .lower()
+        .replace("_", " ")
+        .replace("-", " ")
+        .split()
+    )
 
 
 CONNECTIVITY_PASS_PROMPT = """You are given a document and a knowledge graph that was extracted from it.
@@ -371,6 +391,9 @@ class RelationExtractor(BaseAgent):
                 segment_entities,
                 head_bindings,
             )
+
+            if not self.enable_open_world:
+                triples = self._align_triples_to_known_entities(triples, segment_entities)
             
             # Include ALL triples in output; filter self-referencing and track low-confidence
             for triple in triples:
@@ -629,6 +652,65 @@ class RelationExtractor(BaseAgent):
                 all_triples.extend(triples)
 
         return all_triples
+
+    def _align_triples_to_known_entities(
+        self,
+        triples: List[Dict[str, Any]],
+        entities: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """
+        In fixed-schema mode, only keep triples whose subject/object can be aligned
+        to extracted entities exactly. This avoids generic paraphrases like
+        "products of them" becoming benchmark triples.
+        """
+        if not triples or not entities:
+            return triples
+
+        by_id: Dict[str, Dict[str, Any]] = {}
+        by_surface: Dict[str, Dict[str, Any]] = {}
+        for ent in entities:
+            ent_id = str(ent.get("id", "")).strip()
+            if ent_id:
+                by_id[ent_id.lower()] = ent
+            surfaces = set()
+            if ent.get("text"):
+                surfaces.add(ent["text"])
+            for label in ent.get("labels", []) or []:
+                surfaces.add(label)
+            if ent_id:
+                surfaces.add(ent_id)
+            for surface in surfaces:
+                norm = _normalize_surface(surface)
+                if norm:
+                    by_surface[norm] = ent
+
+        def resolve(raw_text: str, raw_id: str) -> Optional[Dict[str, Any]]:
+            rid = str(raw_id or "").strip().lower()
+            if rid and rid in by_id:
+                return by_id[rid]
+            norm = _normalize_surface(raw_text)
+            if norm and norm in by_surface:
+                return by_surface[norm]
+            return None
+
+        aligned = []
+        for triple in triples:
+            subj_ent = resolve(triple.get("subject", ""), triple.get("subject_id", ""))
+            obj_ent = resolve(triple.get("object", ""), triple.get("object_id", ""))
+            if not subj_ent or not obj_ent:
+                continue
+            subj_id = subj_ent.get("id") or triple.get("subject_id") or triple.get("subject")
+            obj_id = obj_ent.get("id") or triple.get("object_id") or triple.get("object")
+            if subj_id == obj_id:
+                continue
+            subj_surface = subj_ent.get("text") or (subj_ent.get("labels") or [subj_id])[0]
+            obj_surface = obj_ent.get("text") or (obj_ent.get("labels") or [obj_id])[0]
+            triple["subject"] = subj_surface
+            triple["subject_id"] = subj_id
+            triple["object"] = obj_surface
+            triple["object_id"] = obj_id
+            aligned.append(triple)
+        return aligned
 
     def _register_new_relation(
         self,

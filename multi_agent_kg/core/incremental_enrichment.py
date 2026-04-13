@@ -329,6 +329,8 @@ class IncrementalEnricher:
         org_chart: Optional[OrgChart] = None,
         enable_governance: bool = True,
         governed_kg: Optional[GovernedKnowledgeGraph] = None,
+        skip_evidence_linking: bool = False,
+        skip_verification: bool = False,
     ):
         if governed_kg is not None:
             base_kg = governed_kg.kg
@@ -342,6 +344,8 @@ class IncrementalEnricher:
         self.auto_resolve_conflicts = auto_resolve_conflicts
         self.org_chart = org_chart
         self.enable_governance = enable_governance and org_chart is not None
+        self.skip_evidence_linking = skip_evidence_linking
+        self.skip_verification = skip_verification
         self.conflict_resolver = ConflictResolver(self.llm_config)
         self.governance_board = (
             GovernanceReviewBoard(org_chart, base_kg, self.llm_config)
@@ -391,7 +395,10 @@ class IncrementalEnricher:
         pipeline = DeliberativeOrchestrator(
             llm_config=self.llm_config,
             knowledge_graph=delta_kg,
+            enable_governance=False,
             governance_mode="audit_only",
+            skip_evidence_linking=self.skip_evidence_linking,
+            skip_verification=self.skip_verification,
             quality_threshold=quality_threshold,
             max_refinement_iterations=1,
             enable_self_consistency=False,  # Speed: skip broken SC

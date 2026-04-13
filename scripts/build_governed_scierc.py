@@ -47,6 +47,8 @@ def main() -> None:
     parser.add_argument("--model", default="gemma4:31b")
     parser.add_argument("--fixed-schema", action="store_true")
     parser.add_argument("--reuse-corpus-schema", action="store_true", default=True)
+    parser.add_argument("--skip-evidence-linking", action="store_true")
+    parser.add_argument("--skip-verification", action="store_true")
     parser.add_argument(
         "--governance-mode",
         default="audit_only",
@@ -78,6 +80,8 @@ def main() -> None:
         governed_kg=governed_kg,
         governance_mode=args.governance_mode,
         reuse_corpus_schema=args.reuse_corpus_schema,
+        skip_evidence_linking=args.skip_evidence_linking,
+        skip_verification=args.skip_verification,
         quality_threshold=0.4,
         max_refinement_iterations=1,
         enable_self_consistency=False,

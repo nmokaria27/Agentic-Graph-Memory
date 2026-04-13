@@ -101,9 +101,12 @@ class DeliberativeOrchestrator:
         llm_config: Optional[LLMConfig] = None,
         knowledge_graph: Optional[KnowledgeGraph] = None,
         governed_kg: Optional[GovernedKnowledgeGraph] = None,
+        enable_governance: bool = True,
         governance_mode: str = "audit_only",
         reuse_corpus_schema: bool = False,
         continue_on_document_error: bool = True,
+        skip_evidence_linking: bool = False,
+        skip_verification: bool = False,
         quality_threshold: float = 0.60,
         max_refinement_iterations: int = 4,
         enable_self_consistency: bool = True,
@@ -134,18 +137,26 @@ class DeliberativeOrchestrator:
                  "relation_types": [{"type": "...", "description": "..."}]}
         """
         self.llm_config = llm_config or LLMConfig()
+        self.enable_governance = enable_governance or governed_kg is not None
         if governed_kg is not None:
             self.governed_kg = governed_kg
             self.knowledge_graph = governed_kg.kg
-        else:
+        elif self.enable_governance:
             self.knowledge_graph = knowledge_graph or KnowledgeGraph()
             self.governed_kg = GovernedKnowledgeGraph(
                 kg=self.knowledge_graph,
                 governance_mode=governance_mode,
             )
-        self.governance_mode = self.governed_kg.governance_mode
+        else:
+            self.knowledge_graph = knowledge_graph or KnowledgeGraph()
+            self.governed_kg = None
+        self.governance_mode = (
+            self.governed_kg.governance_mode if self.governed_kg is not None else "disabled"
+        )
         self.reuse_corpus_schema = reuse_corpus_schema
         self.continue_on_document_error = continue_on_document_error
+        self.skip_evidence_linking = skip_evidence_linking
+        self.skip_verification = skip_verification
         self.quality_threshold = quality_threshold
         self.max_refinement_iterations = max_refinement_iterations
         self.enable_self_consistency = enable_self_consistency
@@ -290,6 +301,9 @@ class DeliberativeOrchestrator:
 
     def _configure_governance_review(self) -> None:
         """Install LLM-backed strict review for extraction-time governance."""
+        if self.governed_kg is None:
+            self._strict_review_board = None
+            return
         if self.governance_mode != "strict":
             self.governed_kg.set_review_callback(None)
             self._strict_review_board = None
@@ -354,6 +368,8 @@ class DeliberativeOrchestrator:
         print(f"  Cross-Document Resolution: {'Enabled' if self.enable_cross_document else 'Disabled'}")
         print(f"  Multi-Agent Deliberation: {'Enabled' if self.enable_deliberation else 'Disabled'}")
         print(f"  Governance Mode: {self.governance_mode}")
+        print(f"  Skip Evidence Linking: {'Enabled' if self.skip_evidence_linking else 'Disabled'}")
+        print(f"  Skip Verification: {'Enabled' if self.skip_verification else 'Disabled'}")
         print(f"\nQuality Settings:")
         print(f"  Threshold: {self.quality_threshold}")
         print(f"  Max Refinement Iterations: {self.max_refinement_iterations}")
@@ -455,7 +471,9 @@ class DeliberativeOrchestrator:
             self.debug_logger.log_stage_header("2b", "Governance Bootstrap")
         print("\n[2b/9] Governance Bootstrap")
         print("-" * 50)
-        if not self.governed_kg.org_chart.domains:
+        if not self.enable_governance or self.governed_kg is None:
+            print("  Governance disabled - skipping")
+        elif not self.governed_kg.org_chart.domains:
             preliminary_org = self._bootstrap_domains_from_schema(domain_config)
             self.governed_kg.set_org_chart(preliminary_org)
             print(f"  Bootstrapped {len(preliminary_org.domains)} preliminary domains")
@@ -481,18 +499,23 @@ class DeliberativeOrchestrator:
 
         print("\n[3b/9] Preliminary Domain Assignment")
         print("-" * 50)
-        entity_domain_assignments, bootstrap_stats = self._assign_entities_to_domains(entities)
-        assigned_count = 0
-        for entity in entities:
-            entity_id = entity.get("id", entity.get("text", ""))
-            candidate_domains = entity_domain_assignments.get(entity_id, [])
-            if candidate_domains:
-                entity["candidate_domains"] = candidate_domains
-                assigned_count += 1
-        results["entities_domain_assigned"] = assigned_count
-        results["bootstrap_assignment_stats"] = bootstrap_stats
-        self.governed_kg.set_bootstrap_assignment_stats(bootstrap_stats)
-        print(f"  Assigned provisional domains to {assigned_count} entities")
+        if not self.enable_governance or self.governed_kg is None:
+            results["entities_domain_assigned"] = 0
+            results["bootstrap_assignment_stats"] = {}
+            print("  Governance disabled - skipping")
+        else:
+            entity_domain_assignments, bootstrap_stats = self._assign_entities_to_domains(entities)
+            assigned_count = 0
+            for entity in entities:
+                entity_id = entity.get("id", entity.get("text", ""))
+                candidate_domains = entity_domain_assignments.get(entity_id, [])
+                if candidate_domains:
+                    entity["candidate_domains"] = candidate_domains
+                    assigned_count += 1
+            results["entities_domain_assigned"] = assigned_count
+            results["bootstrap_assignment_stats"] = bootstrap_stats
+            self.governed_kg.set_bootstrap_assignment_stats(bootstrap_stats)
+            print(f"  Assigned provisional domains to {assigned_count} entities")
         
         # Step 4: Relation Extraction (RHF)
         if self.debug_logger:
@@ -559,19 +582,28 @@ class DeliberativeOrchestrator:
             print(f"\n[4b/9] Connectivity Pass — skipped ({disconnected_count} disconnected, threshold=5)")
 
         # Step 5: Evidence Linking
-        if self.debug_logger:
-            self.debug_logger.log_stage_header(5, "Evidence Linking")
-        print("\n[5/9] Evidence Linking")
-        print("-" * 50)
-        evidence_result = self.evidence_linker.run(
-            context,
-            triples=triples,
-            segments=segments,
-            domain_config=domain_config,
-        )
-        linked_triples = evidence_result.items
-        results["triples_linked"] = len(linked_triples)
-        print(f"  Linked: {len(linked_triples)} (confidence: {evidence_result.confidence:.2f})")
+        if self.skip_evidence_linking:
+            if self.debug_logger:
+                self.debug_logger.log_stage_header(5, "Evidence Linking (Skipped)")
+            print("\n[5/9] Evidence Linking — SKIPPED")
+            print("-" * 50)
+            linked_triples = triples
+            results["triples_linked"] = len(linked_triples)
+            print(f"  Passing through {len(linked_triples)} triples")
+        else:
+            if self.debug_logger:
+                self.debug_logger.log_stage_header(5, "Evidence Linking")
+            print("\n[5/9] Evidence Linking")
+            print("-" * 50)
+            evidence_result = self.evidence_linker.run(
+                context,
+                triples=triples,
+                segments=segments,
+                domain_config=domain_config,
+            )
+            linked_triples = evidence_result.items
+            results["triples_linked"] = len(linked_triples)
+            print(f"  Linked: {len(linked_triples)} (confidence: {evidence_result.confidence:.2f})")
         
         # Step 6: Multi-Agent Deliberation
         if self.debug_logger:
@@ -620,20 +652,31 @@ class DeliberativeOrchestrator:
         results["refinement_iterations"] = 0
 
         # Step 8: Verification (single quality gate)
-        if self.debug_logger:
-            self.debug_logger.log_stage_header(8, "Extraction Verification")
-        print("\n[8/9] Extraction Verification")
-        print("-" * 50)
-        verification_result = self.verification_agent.run(
-            context,
-            entities=entities,
-            triples=linked_triples,
-        )
-        verified = verification_result.items
-        results["approved_triples"] = len(verified.get("approved_triples", []))
-        results["rejected_triples"] = len(verified.get("rejected_triples", []))
-        print(f"  Approved: {results['approved_triples']}")
-        print(f"  Rejected: {results['rejected_triples']}")
+        if self.skip_verification:
+            if self.debug_logger:
+                self.debug_logger.log_stage_header(8, "Extraction Verification (Skipped)")
+            print("\n[8/9] Extraction Verification — SKIPPED")
+            print("-" * 50)
+            verified = {"entities": entities, "approved_triples": linked_triples, "rejected_triples": []}
+            results["approved_triples"] = len(linked_triples)
+            results["rejected_triples"] = 0
+            print(f"  Approved: {results['approved_triples']}")
+            print(f"  Rejected: {results['rejected_triples']}")
+        else:
+            if self.debug_logger:
+                self.debug_logger.log_stage_header(8, "Extraction Verification")
+            print("\n[8/9] Extraction Verification")
+            print("-" * 50)
+            verification_result = self.verification_agent.run(
+                context,
+                entities=entities,
+                triples=linked_triples,
+            )
+            verified = verification_result.items
+            results["approved_triples"] = len(verified.get("approved_triples", []))
+            results["rejected_triples"] = len(verified.get("rejected_triples", []))
+            print(f"  Approved: {results['approved_triples']}")
+            print(f"  Rejected: {results['rejected_triples']}")
         
         # Step 9: Knowledge Organization
         if self.debug_logger:
@@ -675,6 +718,8 @@ class DeliberativeOrchestrator:
 
     def _bootstrap_domains_from_schema(self, domain_config: Dict[str, Any]):
         """Create a preliminary org chart from domain-classifier output."""
+        if self.governed_kg is None:
+            return None
         if not domain_config:
             return self.governed_kg.org_chart
         return self.domain_builder.bootstrap_from_schema(domain_config)
@@ -684,7 +729,7 @@ class DeliberativeOrchestrator:
         entities: List[Dict[str, Any]],
     ) -> Tuple[Dict[str, List[str]], Dict[str, Any]]:
         """Assign extracted entities to the preliminary domain structure."""
-        if not self.governed_kg.org_chart.domains:
+        if self.governed_kg is None or not self.governed_kg.org_chart.domains:
             return {}, {
                 "num_entities": len(entities),
                 "assigned_entities": 0,
