@@ -49,6 +49,8 @@ def main() -> None:
     parser.add_argument("--split", default="dev", choices=["train", "dev", "test"])
     parser.add_argument("--max-docs", type=int, default=5)
     parser.add_argument("--model", default="gemma4:31b")
+    parser.add_argument("--skip-evidence-linking", action="store_true")
+    parser.add_argument("--skip-verification", action="store_true")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
@@ -64,11 +66,15 @@ def main() -> None:
         governed_kg=governed_gkg,
         llm_config=llm_config,
         enable_governance=True,
+        skip_evidence_linking=args.skip_evidence_linking,
+        skip_verification=args.skip_verification,
     )
     unguided_enricher = IncrementalEnricher(
         governed_kg=unguided_gkg,
         llm_config=llm_config,
         enable_governance=False,
+        skip_evidence_linking=args.skip_evidence_linking,
+        skip_verification=args.skip_verification,
     )
 
     governed_before = _snapshot_stats(governed_gkg)

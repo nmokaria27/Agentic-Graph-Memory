@@ -38,6 +38,26 @@ from multi_agent_kg.core import (
 )
 
 
+def _entity_to_dict(entity: Any) -> Dict[str, Any]:
+    return {
+        "id": entity.id,
+        "labels": list(entity.labels),
+        "type": entity.type,
+        "metadata": dict(entity.metadata),
+    }
+
+
+def _triple_to_dict(triple: Any) -> Dict[str, Any]:
+    return {
+        "subject": triple.subject,
+        "relation": triple.relation,
+        "object": triple.object,
+        "confidence": triple.confidence,
+        "source": triple.source,
+        "metadata": dict(triple.metadata),
+    }
+
+
 def _surface_entity(entity: Dict[str, Any]) -> str:
     if entity.get("text"):
         return str(entity["text"]).strip().lower()
@@ -187,10 +207,10 @@ def main() -> None:
     )
 
     governed_stats = governed_gkg.get_stats()
-    governed_entities = list(governed_gkg.kg.entities.values())
-    governed_triples = [triple.to_dict() for triple in governed_gkg.kg.triples]
-    ungoverned_entities = list(ungoverned_kg.entities.values())
-    ungoverned_triples = [triple.to_dict() for triple in ungoverned_kg.triples]
+    governed_entities = [_entity_to_dict(entity) for entity in governed_gkg.kg.entities.values()]
+    governed_triples = [_triple_to_dict(triple) for triple in governed_gkg.kg.triples]
+    ungoverned_entities = [_entity_to_dict(entity) for entity in ungoverned_kg.entities.values()]
+    ungoverned_triples = [_triple_to_dict(triple) for triple in ungoverned_kg.triples]
 
     governed_entity_set = _entity_set(governed_entities)
     ungoverned_entity_set = _entity_set(ungoverned_entities)
