@@ -1,0 +1,189 @@
+{
+  "documents_total": 100,
+  "documents_evaluated": 99,
+  "documents_missing_predictions": 1,
+  "entity_strict": {
+    "precision": 0.5846579129232896,
+    "recall": 0.6428571428571429,
+    "f1": 0.6123778501628665,
+    "tp": 846,
+    "fp": 601,
+    "fn": 470
+  },
+  "entity_strict_mapped": {
+    "precision": 0.5846579129232896,
+    "recall": 0.6497695852534562,
+    "f1": 0.6154965441978901,
+    "tp": 846,
+    "fp": 601,
+    "fn": 456
+  },
+  "entity_partial": {
+    "precision": 0.7023907666941468,
+    "recall": 0.590027700831025,
+    "f1": 0.6413248024087317,
+    "tp": 852,
+    "fp": 361,
+    "fn": 592
+  },
+  "entity_per_type": {
+    "OtherScientificTerm": {
+      "precision": 0.514336917562724,
+      "recall": 0.6093418259023354,
+      "f1": 0.5578231292517007,
+      "tp": 287,
+      "fp": 271,
+      "fn": 184
+    },
+    "Task": {
+      "precision": 0.6589861751152074,
+      "recall": 0.5860655737704918,
+      "f1": 0.6203904555314533,
+      "tp": 143,
+      "fp": 74,
+      "fn": 101
+    },
+    "Method": {
+      "precision": 0.6707317073170732,
+      "recall": 0.7124352331606217,
+      "f1": 0.6909547738693468,
+      "tp": 275,
+      "fp": 135,
+      "fn": 111
+    },
+    "Material": {
+      "precision": 0.5280898876404494,
+      "recall": 0.6394557823129252,
+      "f1": 0.5784615384615385,
+      "tp": 94,
+      "fp": 84,
+      "fn": 53
+    },
+    "PERSON": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 3,
+      "fn": 0
+    },
+    "Metric": {
+      "precision": 0.6911764705882353,
+      "recall": 0.6911764705882353,
+      "f1": 0.6911764705882353,
+      "tp": 47,
+      "fp": 21,
+      "fn": 21
+    },
+    "ORGANIZATION": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "RESEARCHER": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 4,
+      "fn": 0
+    },
+    "OTHER_SCIENTIFIC_TERM": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 8,
+      "fn": 0
+    }
+  },
+  "entity_type_accuracy": 0.7884160756501182,
+  "entity_type_accuracy_mapped": 0.793144208037825,
+  "entity_hallucination_rate": 0.49546578730420443,
+  "triple_strict": {
+    "precision": 0.20414201183431951,
+    "recall": 0.09857142857142857,
+    "f1": 0.1329479768786127,
+    "tp": 69,
+    "fp": 269,
+    "fn": 631
+  },
+  "triple_fuzzy": {
+    "precision": 0.23076923076923078,
+    "recall": 0.11142857142857143,
+    "f1": 0.15028901734104047,
+    "tp": 78,
+    "fp": 260,
+    "fn": 622
+  },
+  "triple_mapped": {
+    "precision": 0.23076923076923078,
+    "recall": 0.11239193083573487,
+    "f1": 0.1511627906976744,
+    "tp": 78,
+    "fp": 260,
+    "fn": 616
+  },
+  "triple_per_relation": {
+    "part-of": {
+      "precision": 0.1935483870967742,
+      "recall": 0.13333333333333333,
+      "f1": 0.15789473684210525,
+      "tp": 6,
+      "fp": 25,
+      "fn": 39
+    },
+    "used-for": {
+      "precision": 0.25,
+      "recall": 0.08943089430894309,
+      "f1": 0.1317365269461078,
+      "tp": 33,
+      "fp": 99,
+      "fn": 336
+    },
+    "hyponym-of": {
+      "precision": 0.1875,
+      "recall": 0.13043478260869565,
+      "f1": 0.15384615384615383,
+      "tp": 6,
+      "fp": 26,
+      "fn": 40
+    },
+    "conjunction": {
+      "precision": 0.3055555555555556,
+      "recall": 0.19130434782608696,
+      "f1": 0.23529411764705882,
+      "tp": 22,
+      "fp": 50,
+      "fn": 93
+    },
+    "feature-of": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 35,
+      "fn": 54
+    },
+    "evaluate-for": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 21,
+      "fn": 53
+    },
+    "compare": {
+      "precision": 0.13333333333333333,
+      "recall": 0.1111111111111111,
+      "f1": 0.1212121212121212,
+      "tp": 2,
+      "fp": 13,
+      "fn": 16
+    }
+  },
+  "triple_hallucination_rate": 0.7958579881656804
+}

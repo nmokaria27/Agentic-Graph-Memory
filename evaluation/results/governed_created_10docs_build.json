@@ -1,0 +1,3577 @@
+{
+  "knowledge_graph": {
+    "entities": [
+      {
+        "id": "japanese_character_strings",
+        "labels": [
+          "Japanese character strings"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "X96-1059",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "rules",
+        "labels": [
+          "rules"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "X96-1059",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "three_d_reconstruction",
+        "labels": [
+          "3D reconstruction",
+          "3 -- D reconstruction"
+        ],
+        "type": "Task",
+        "metadata": {
+          "source_document": "ICCV_2001_47_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "n_gram_models",
+        "labels": [
+          "n-gram models"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "weakly_supervised_dependency_parser",
+        "labels": [
+          "weakly supervised dependency parser",
+          "dependency parser"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "speech_syntax",
+        "labels": [
+          "speech syntax"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "annotated_training_corpus",
+        "labels": [
+          "annotated training corpus",
+          "Labeled data"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "syntactic_knowledge",
+        "labels": [
+          "syntactic knowledge"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "bayesian_inference",
+        "labels": [
+          "Bayesian inference"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "tree_structures",
+        "labels": [
+          "tree structures"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "discriminative_model",
+        "labels": [
+          "discriminative model"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "posterior",
+        "labels": [
+          "posterior"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "unlabeled_corpus",
+        "labels": [
+          "unlabeled corpus"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "selectional_preferences",
+        "labels": [
+          "selectional preferences",
+          "se-lectional preferences"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "head_word",
+        "labels": [
+          "head word"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "dependents",
+        "labels": [
+          "dependents"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "english_and_czech_newspaper_texts",
+        "labels": [
+          "English and Czech newspaper texts"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "english",
+        "labels": [
+          "English"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "czech",
+        "labels": [
+          "Czech"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "newspaper_texts",
+        "labels": [
+          "newspaper texts"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "french_broadcast_news_transcriptions",
+        "labels": [
+          "French broadcast news transcriptions"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "french",
+        "labels": [
+          "French"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "INTERSPEECH_2013_21_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "listen_communicate_show",
+        "labels": [
+          "Listen-Communicate-Show",
+          "LCS"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "H01-1049",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "human_interaction_with_data_sources",
+        "labels": [
+          "human interaction with data sources"
+        ],
+        "type": "Task",
+        "metadata": {
+          "source_document": "H01-1049",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "data_sources",
+        "labels": [
+          "data sources",
+          "information sources"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "H01-1049",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "spoken_language_understanding_system",
+        "labels": [
+          "spoken language understanding system",
+          "spoken language understanding"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "H01-1049",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "intelligent_mobile_agents",
+        "labels": [
+          "intelligent mobile agents",
+          "mobile agents",
+          "mobile , intelligent agent"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "H01-1049",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "tactical_personnel",
+        "labels": [
+          "tactical personnel"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "H01-1049",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "logistics_system",
+        "labels": [
+          "logistics system"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "H01-1049",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "supply_or_information_request",
+        "labels": [
+          "supply or information request"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "H01-1049",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "database",
+        "labels": [
+          "database"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "H01-1049",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "marines",
+        "labels": [
+          "Marines"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "H01-1049",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "domain_independent_model",
+        "labels": [
+          "domain independent model"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "automated_interpretation_of_nominal_compounds",
+        "labels": [
+          "automated interpretation of nominal compounds",
+          "interpretation of compounds"
+        ],
+        "type": "Task",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "nominal_compounds",
+        "labels": [
+          "nominal compounds",
+          "compounds"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "productive_rules_of_interpretation",
+        "labels": [
+          "productive rules of interpretation"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "morpho_syntactic_and_semantic_characteristics",
+        "labels": [
+          "morpho-syntactic and semantic characteristics"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "semantic_characteristics",
+        "labels": [
+          "semantic characteristics"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "nominal_constituents",
+        "labels": [
+          "nominal constituents"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "pustejovsky_principles",
+        "labels": [
+          "Pustejovsky's principles",
+          "Pustejovsky 's principles"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "pustejovsky",
+        "labels": [
+          "Pustejovsky"
+        ],
+        "type": "PERSON",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "predicative_information",
+        "labels": [
+          "predicative information"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "nominals",
+        "labels": [
+          "nominals"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "generalizable_semantic_principles",
+        "labels": [
+          "generalizable semantic principles"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "domain_specific_semantic_information",
+        "labels": [
+          "domain-specific semantic information"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "real_texts",
+        "labels": [
+          "real texts"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "complementary_semantic_information",
+        "labels": [
+          "complementary semantic information"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "C96-1062",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "distinctiveness",
+        "labels": [
+          "distinctiveness"
+        ],
+        "type": "Metric",
+        "metadata": {
+          "source_document": "CVPR_2009_18_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "space_time_interest_point_detection",
+        "labels": [
+          "space-time interest point detection"
+        ],
+        "type": "Task",
+        "metadata": {
+          "source_document": "CVPR_2009_18_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "action_classification",
+        "labels": [
+          "action classification"
+        ],
+        "type": "Task",
+        "metadata": {
+          "source_document": "CVPR_2009_18_abs",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "plume",
+        "labels": [
+          "Plume",
+          "restricted domain parser"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "carnegie_mellon_university",
+        "labels": [
+          "Carnegie-Mellon University"
+        ],
+        "type": "ORGANIZATION",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "parsing",
+        "labels": [
+          "parsing"
+        ],
+        "type": "Task",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "semantic_caseframe_instantiation",
+        "labels": [
+          "semantic caseframe instantiation"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "efficiency",
+        "labels": [
+          "efficiency"
+        ],
+        "type": "Metric",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "grammatical_input",
+        "labels": [
+          "grammatical input"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "robustness",
+        "labels": [
+          "robustness"
+        ],
+        "type": "Metric",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "ungrammatical_input",
+        "labels": [
+          "ungrammatical input"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "declarative_and_imperative_utterances",
+        "labels": [
+          "declarative and imperative utterances"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "declarative_utterances",
+        "labels": [
+          "declarative utterances"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "imperative_utterances",
+        "labels": [
+          "imperative utterances"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "passives",
+        "labels": [
+          "passives"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "relative_clauses",
+        "labels": [
+          "relative clauses"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "interrogatives",
+        "labels": [
+          "interrogatives"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "syntactic_coverage",
+        "labels": [
+          "syntactic coverage"
+        ],
+        "type": "Metric",
+        "metadata": {
+          "source_document": "P85-1019",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "unlexicalized_parser",
+        "labels": [
+          "unlexicalized parser"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P05-1039",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "german",
+        "labels": [
+          "German"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "P05-1039",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "smoothing",
+        "labels": [
+          "smoothing"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P05-1039",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "suffix_analysis",
+        "labels": [
+          "suffix analysis"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P05-1039",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "labelled_bracket_f_score",
+        "labels": [
+          "labelled bracket F-score"
+        ],
+        "type": "Metric",
+        "metadata": {
+          "source_document": "P05-1039",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "negra_corpus",
+        "labels": [
+          "NEGRA corpus"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "P05-1039",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "accuracy",
+        "labels": [
+          "accuracy"
+        ],
+        "type": "Metric",
+        "metadata": {
+          "source_document": "P05-1039",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "parsing_results",
+        "labels": [
+          "parsing results"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P05-1039",
+          "confidence": 0.7
+        }
+      },
+      {
+        "id": "unsupervised learning approach",
+        "labels": [
+          "unsupervised learning approach"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "disambiguate various relations between named entities",
+        "labels": [
+          "disambiguate various relations between named entities"
+        ],
+        "type": "Task",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "relations between named entities",
+        "labels": [
+          "relations between named entities"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "named entities",
+        "labels": [
+          "named entities"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "lexical and syntactic features",
+        "labels": [
+          "lexical and syntactic features"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "lexical features",
+        "labels": [
+          "lexical features"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "syntactic features",
+        "labels": [
+          "syntactic features"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "eigenvectors",
+        "labels": [
+          "eigenvectors"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "adjacency graph",
+        "labels": [
+          "adjacency graph"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "Laplacian",
+        "labels": [
+          "Laplacian"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "submanifold of data",
+        "labels": [
+          "submanifold of data"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.85
+        }
+      },
+      {
+        "id": "high dimensionality space",
+        "labels": [
+          "high dimensionality space"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.85
+        }
+      },
+      {
+        "id": "cluster number estimation",
+        "labels": [
+          "cluster number estimation"
+        ],
+        "type": "Task",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "ACE corpora",
+        "labels": [
+          "ACE corpora"
+        ],
+        "type": "Material",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "spectral clustering",
+        "labels": [
+          "spectral clustering"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "clustering methods",
+        "labels": [
+          "clustering methods"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P06-2012",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "mathematical formalism",
+        "labels": [
+          "mathematical formalism"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "combination of various structures",
+        "labels": [
+          "combination of various structures"
+        ],
+        "type": "Task",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.85
+        }
+      },
+      {
+        "id": "strings",
+        "labels": [
+          "strings"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "trees",
+        "labels": [
+          "trees"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "dags",
+        "labels": [
+          "dags"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "graphs",
+        "labels": [
+          "graphs"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "products",
+        "labels": [
+          "products"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.85
+        }
+      },
+      {
+        "id": "polarization",
+        "labels": [
+          "polarization"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "elementary structures",
+        "labels": [
+          "elementary structures"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "saturation",
+        "labels": [
+          "saturation"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "final structure",
+        "labels": [
+          "final structure"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.85
+        }
+      },
+      {
+        "id": "grammar formalisms",
+        "labels": [
+          "grammar formalisms"
+        ],
+        "type": "OtherScientificTerm",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.9
+        }
+      },
+      {
+        "id": "rewriting systems",
+        "labels": [
+          "rewriting systems"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "dependency grammars",
+        "labels": [
+          "dependency grammars"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "TAG",
+        "labels": [
+          "TAG"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "HPSG",
+        "labels": [
+          "HPSG"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.95
+        }
+      },
+      {
+        "id": "LFG",
+        "labels": [
+          "LFG"
+        ],
+        "type": "Method",
+        "metadata": {
+          "source_document": "P06-1018",
+          "confidence": 0.95
+        }
+      }
+    ],
+    "triples": [
+      {
+        "subject": "weakly_supervised_dependency_parser",
+        "relation": "Used-for",
+        "object": "speech_syntax",
+        "confidence": 0.9,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "weakly supervised dependency parser",
+          "original_object": "speech syntax"
+        }
+      },
+      {
+        "subject": "rules",
+        "relation": "Used-for",
+        "object": "syntactic_knowledge",
+        "confidence": 0.9,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "hand-crafted rules",
+          "original_object": "syntactic knowledge"
+        }
+      },
+      {
+        "subject": "bayesian_inference",
+        "relation": "Used-for",
+        "object": "tree_structures",
+        "confidence": 0.9,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Bayesian inference",
+          "original_object": "tree structures"
+        }
+      },
+      {
+        "subject": "posterior",
+        "relation": "Part-of",
+        "object": "discriminative_model",
+        "confidence": 0.8,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "posterior",
+          "original_object": "discriminative model"
+        }
+      },
+      {
+        "subject": "english",
+        "relation": "Conjunction",
+        "object": "czech",
+        "confidence": 0.9,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "English",
+          "original_object": "Czech"
+        }
+      },
+      {
+        "subject": "head_word",
+        "relation": "Conjunction",
+        "object": "dependents",
+        "confidence": 0.9,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "head word",
+          "original_object": "dependents"
+        }
+      },
+      {
+        "subject": "weakly_supervised_dependency_parser",
+        "relation": "Evaluate-for",
+        "object": "english_and_czech_newspaper_texts",
+        "confidence": 0.8,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "weakly supervised dependency parser",
+          "original_object": "English and Czech newspaper texts"
+        }
+      },
+      {
+        "subject": "weakly_supervised_dependency_parser",
+        "relation": "Evaluate-for",
+        "object": "french_broadcast_news_transcriptions",
+        "confidence": 0.8,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "weakly supervised dependency parser",
+          "original_object": "French broadcast news transcriptions"
+        }
+      },
+      {
+        "subject": "listen_communicate_show",
+        "relation": "Used-for",
+        "object": "human_interaction_with_data_sources",
+        "confidence": 0.9,
+        "source": "H01-1049",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Listen-Communicate-Show",
+          "original_object": "human interaction with data sources"
+        }
+      },
+      {
+        "subject": "spoken_language_understanding_system",
+        "relation": "Conjunction",
+        "object": "intelligent_mobile_agents",
+        "confidence": 0.8,
+        "source": "H01-1049",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "spoken language understanding system",
+          "original_object": "intelligent mobile agents"
+        }
+      },
+      {
+        "subject": "listen_communicate_show",
+        "relation": "Used-for",
+        "object": "supply_or_information_request",
+        "confidence": 0.9,
+        "source": "H01-1049",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "LCS-Marine",
+          "original_object": "supply or information request"
+        }
+      },
+      {
+        "subject": "logistics_system",
+        "relation": "Used-for",
+        "object": "supply_or_information_request",
+        "confidence": 0.8,
+        "source": "H01-1049",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "logistics system",
+          "original_object": "supply or information request"
+        }
+      },
+      {
+        "subject": "intelligent_mobile_agents",
+        "relation": "Used-for",
+        "object": "database",
+        "confidence": 0.9,
+        "source": "H01-1049",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "intelligent mobile agents",
+          "original_object": "database"
+        }
+      },
+      {
+        "subject": "semantic_characteristics",
+        "relation": "Part-of",
+        "object": "morpho_syntactic_and_semantic_characteristics",
+        "confidence": 0.9,
+        "source": "C96-1062",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "semantic characteristics",
+          "original_object": "morpho-syntactic and semantic characteristics"
+        }
+      },
+      {
+        "subject": "plume",
+        "relation": "Used-for",
+        "object": "parsing",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Plume",
+          "original_object": "parsing"
+        }
+      },
+      {
+        "subject": "plume",
+        "relation": "Used-for",
+        "object": "passives",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Plume",
+          "original_object": "passives"
+        }
+      },
+      {
+        "subject": "plume",
+        "relation": "Used-for",
+        "object": "relative_clauses",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Plume",
+          "original_object": "relative clauses"
+        }
+      },
+      {
+        "subject": "plume",
+        "relation": "Used-for",
+        "object": "interrogatives",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Plume",
+          "original_object": "interrogatives"
+        }
+      },
+      {
+        "subject": "semantic_caseframe_instantiation",
+        "relation": "Feature-of",
+        "object": "plume",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "semantic caseframe instantiation",
+          "original_object": "Plume"
+        }
+      },
+      {
+        "subject": "efficiency",
+        "relation": "Feature-of",
+        "object": "semantic_caseframe_instantiation",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "efficiency",
+          "original_object": "semantic caseframe instantiation"
+        }
+      },
+      {
+        "subject": "robustness",
+        "relation": "Feature-of",
+        "object": "semantic_caseframe_instantiation",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "robustness",
+          "original_object": "semantic caseframe instantiation"
+        }
+      },
+      {
+        "subject": "syntactic_coverage",
+        "relation": "Feature-of",
+        "object": "plume",
+        "confidence": 0.8,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "syntactic coverage",
+          "original_object": "Plume"
+        }
+      },
+      {
+        "subject": "efficiency",
+        "relation": "Evaluate-for",
+        "object": "grammatical_input",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "efficiency",
+          "original_object": "grammatical input"
+        }
+      },
+      {
+        "subject": "robustness",
+        "relation": "Evaluate-for",
+        "object": "ungrammatical_input",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "robustness",
+          "original_object": "ungrammatical input"
+        }
+      },
+      {
+        "subject": "passives",
+        "relation": "Conjunction",
+        "object": "relative_clauses",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "passives",
+          "original_object": "relative clauses"
+        }
+      },
+      {
+        "subject": "passives",
+        "relation": "Conjunction",
+        "object": "interrogatives",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "passives",
+          "original_object": "interrogatives"
+        }
+      },
+      {
+        "subject": "unlexicalized_parser",
+        "relation": "Used-for",
+        "object": "german",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "unlexicalized parser",
+          "original_object": "German"
+        }
+      },
+      {
+        "subject": "smoothing",
+        "relation": "Used-for",
+        "object": "labelled_bracket_f_score",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "smoothing",
+          "original_object": "labelled bracket F-score"
+        }
+      },
+      {
+        "subject": "suffix_analysis",
+        "relation": "Used-for",
+        "object": "labelled_bracket_f_score",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "suffix analysis",
+          "original_object": "labelled bracket F-score"
+        }
+      },
+      {
+        "subject": "smoothing",
+        "relation": "Conjunction",
+        "object": "suffix_analysis",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "smoothing",
+          "original_object": "suffix analysis"
+        }
+      },
+      {
+        "subject": "smoothing",
+        "relation": "Conjunction",
+        "object": "parsing_results",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "smoothing",
+          "original_object": "parsing results"
+        }
+      },
+      {
+        "subject": "labelled_bracket_f_score",
+        "relation": "Evaluate-for",
+        "object": "negra_corpus",
+        "confidence": 0.8,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "labelled bracket F-score",
+          "original_object": "NEGRA corpus"
+        }
+      },
+      {
+        "subject": "smoothing",
+        "relation": "Feature-of",
+        "object": "unlexicalized_parser",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "smoothing",
+          "original_object": "unlexicalized parser"
+        }
+      },
+      {
+        "subject": "suffix_analysis",
+        "relation": "Feature-of",
+        "object": "unlexicalized_parser",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "suffix analysis",
+          "original_object": "unlexicalized parser"
+        }
+      },
+      {
+        "subject": "HPSG",
+        "relation": "Conjunction",
+        "object": "LFG",
+        "confidence": 0.9,
+        "source": "P06-1018",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "HPSG",
+          "original_object": "LFG"
+        }
+      },
+      {
+        "subject": "LFG",
+        "relation": "Conjunction",
+        "object": "HPSG",
+        "confidence": 0.9,
+        "source": "P06-1018",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "LFG",
+          "original_object": "HPSG"
+        }
+      },
+      {
+        "subject": "polarization",
+        "relation": "Feature-of",
+        "object": "elementary structures",
+        "confidence": 0.9,
+        "source": "P06-1018",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "polarization",
+          "original_object": "elementary structures"
+        }
+      }
+    ]
+  },
+  "org_chart": {
+    "domains": [
+      {
+        "domain_id": "methods_and_systems",
+        "label": "Methods and Systems",
+        "description": "Preliminary governed domain for methods and systems inferred from schema.",
+        "entity_ids": [
+          "HPSG",
+          "LFG",
+          "TAG",
+          "bayesian_inference",
+          "clustering methods",
+          "dependency grammars",
+          "discriminative_model",
+          "domain_independent_model",
+          "intelligent_mobile_agents",
+          "listen_communicate_show",
+          "logistics_system",
+          "mathematical formalism",
+          "n_gram_models",
+          "plume",
+          "pustejovsky_principles",
+          "rewriting systems",
+          "rules",
+          "semantic_caseframe_instantiation",
+          "smoothing",
+          "spectral clustering",
+          "spoken_language_understanding_system",
+          "suffix_analysis",
+          "unlexicalized_parser",
+          "unsupervised learning approach",
+          "weakly_supervised_dependency_parser"
+        ],
+        "relation_schema": {},
+        "topics": [
+          {
+            "topic_id": "methods_and_systems_models",
+            "label": "Models",
+            "description": "Bootstrap topic for models.",
+            "entity_ids": [],
+            "relation_types": [],
+            "keywords": [
+              "models"
+            ]
+          },
+          {
+            "topic_id": "methods_and_systems_algorithms",
+            "label": "Algorithms",
+            "description": "Bootstrap topic for algorithms.",
+            "entity_ids": [],
+            "relation_types": [],
+            "keywords": [
+              "algorithms"
+            ]
+          },
+          {
+            "topic_id": "methods_and_systems_systems",
+            "label": "Systems",
+            "description": "Bootstrap topic for systems.",
+            "entity_ids": [],
+            "relation_types": [],
+            "keywords": [
+              "systems"
+            ]
+          }
+        ],
+        "metadata": {
+          "owner_label": "Methods and Systems Expert",
+          "governance_scope": "Preliminary bootstrap scope for methods and systems",
+          "seed_entity_types": [
+            "METHOD"
+          ],
+          "seed_relation_types": [],
+          "bootstrap_source": "heuristic_schema"
+        }
+      },
+      {
+        "domain_id": "tasks_and_concepts",
+        "label": "Tasks and Concepts",
+        "description": "Preliminary governed domain for tasks and concepts inferred from schema.",
+        "entity_ids": [
+          "Laplacian",
+          "action_classification",
+          "adjacency graph",
+          "automated_interpretation_of_nominal_compounds",
+          "cluster number estimation",
+          "combination of various structures",
+          "complementary_semantic_information",
+          "dags",
+          "dependents",
+          "disambiguate various relations between named entities",
+          "domain_specific_semantic_information",
+          "eigenvectors",
+          "elementary structures",
+          "final structure",
+          "generalizable_semantic_principles",
+          "grammar formalisms",
+          "graphs",
+          "head_word",
+          "high dimensionality space",
+          "human_interaction_with_data_sources",
+          "interrogatives",
+          "lexical and syntactic features",
+          "lexical features",
+          "marines",
+          "morpho_syntactic_and_semantic_characteristics",
+          "named entities",
+          "nominal_compounds",
+          "nominal_constituents",
+          "nominals",
+          "parsing",
+          "parsing_results",
+          "passives",
+          "polarization",
+          "posterior",
+          "predicative_information",
+          "productive_rules_of_interpretation",
+          "products",
+          "relations between named entities",
+          "relative_clauses",
+          "saturation",
+          "selectional_preferences",
+          "semantic_characteristics",
+          "space_time_interest_point_detection",
+          "speech_syntax",
+          "strings",
+          "submanifold of data",
+          "supply_or_information_request",
+          "syntactic features",
+          "syntactic_knowledge",
+          "tactical_personnel",
+          "three_d_reconstruction",
+          "tree_structures",
+          "trees"
+        ],
+        "relation_schema": {
+          "Feature-of": "",
+          "Part-of": "",
+          "Hyponym-of": "",
+          "Conjunction": ""
+        },
+        "topics": [
+          {
+            "topic_id": "tasks_and_concepts_tasks",
+            "label": "Tasks",
+            "description": "Bootstrap topic for tasks.",
+            "entity_ids": [],
+            "relation_types": [],
+            "keywords": [
+              "tasks"
+            ]
+          },
+          {
+            "topic_id": "tasks_and_concepts_concepts",
+            "label": "Concepts",
+            "description": "Bootstrap topic for concepts.",
+            "entity_ids": [],
+            "relation_types": [],
+            "keywords": [
+              "concepts"
+            ]
+          },
+          {
+            "topic_id": "tasks_and_concepts_structures",
+            "label": "Structures",
+            "description": "Bootstrap topic for structures.",
+            "entity_ids": [],
+            "relation_types": [],
+            "keywords": [
+              "structures"
+            ]
+          }
+        ],
+        "metadata": {
+          "owner_label": "Tasks and Concepts Expert",
+          "governance_scope": "Preliminary bootstrap scope for tasks and concepts",
+          "seed_entity_types": [
+            "TASK",
+            "OTHERSCIENTIFICTERM"
+          ],
+          "seed_relation_types": [
+            "Feature-of",
+            "Part-of",
+            "Hyponym-of",
+            "Conjunction"
+          ],
+          "bootstrap_source": "heuristic_schema"
+        }
+      },
+      {
+        "domain_id": "resources_and_evaluation",
+        "label": "Resources and Evaluation",
+        "description": "Preliminary governed domain for resources and evaluation inferred from schema.",
+        "entity_ids": [
+          "ACE corpora",
+          "accuracy",
+          "annotated_training_corpus",
+          "czech",
+          "data_sources",
+          "database",
+          "declarative_and_imperative_utterances",
+          "declarative_utterances",
+          "distinctiveness",
+          "efficiency",
+          "english",
+          "english_and_czech_newspaper_texts",
+          "french",
+          "french_broadcast_news_transcriptions",
+          "german",
+          "grammatical_input",
+          "imperative_utterances",
+          "japanese_character_strings",
+          "labelled_bracket_f_score",
+          "negra_corpus",
+          "newspaper_texts",
+          "real_texts",
+          "robustness",
+          "syntactic_coverage",
+          "ungrammatical_input",
+          "unlabeled_corpus"
+        ],
+        "relation_schema": {
+          "Used-for": "",
+          "Compare": "",
+          "Evaluate-for": ""
+        },
+        "topics": [
+          {
+            "topic_id": "resources_and_evaluation_datasets",
+            "label": "Datasets",
+            "description": "Bootstrap topic for datasets.",
+            "entity_ids": [],
+            "relation_types": [],
+            "keywords": [
+              "datasets"
+            ]
+          },
+          {
+            "topic_id": "resources_and_evaluation_metrics",
+            "label": "Metrics",
+            "description": "Bootstrap topic for metrics.",
+            "entity_ids": [],
+            "relation_types": [],
+            "keywords": [
+              "metrics"
+            ]
+          },
+          {
+            "topic_id": "resources_and_evaluation_benchmarks",
+            "label": "Benchmarks",
+            "description": "Bootstrap topic for benchmarks.",
+            "entity_ids": [],
+            "relation_types": [],
+            "keywords": [
+              "benchmarks"
+            ]
+          }
+        ],
+        "metadata": {
+          "owner_label": "Resources and Evaluation Expert",
+          "governance_scope": "Preliminary bootstrap scope for resources and evaluation",
+          "seed_entity_types": [
+            "METRIC",
+            "MATERIAL"
+          ],
+          "seed_relation_types": [
+            "Used-for",
+            "Compare",
+            "Evaluate-for"
+          ],
+          "bootstrap_source": "heuristic_schema"
+        }
+      }
+    ],
+    "cross_domain_relation_count": 21
+  },
+  "governance_mode": "audit_only",
+  "audit_log": [
+    {
+      "triple": {
+        "subject": "weakly_supervised_dependency_parser",
+        "relation": "Used-for",
+        "object": "speech_syntax",
+        "confidence": 0.9,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "weakly supervised dependency parser",
+          "original_object": "speech syntax"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:09:18.619041+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'weakly_supervised_dependency_parser' and object 'speech_syntax' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "rules",
+        "relation": "Used-for",
+        "object": "syntactic_knowledge",
+        "confidence": 0.9,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "hand-crafted rules",
+          "original_object": "syntactic knowledge"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:09:18.622030+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'rules' and object 'syntactic_knowledge' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "bayesian_inference",
+        "relation": "Used-for",
+        "object": "tree_structures",
+        "confidence": 0.9,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Bayesian inference",
+          "original_object": "tree structures"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:09:18.622696+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'bayesian_inference' and object 'tree_structures' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "posterior",
+        "relation": "Part-of",
+        "object": "discriminative_model",
+        "confidence": 0.8,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "posterior",
+          "original_object": "discriminative model"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:09:18.622731+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'posterior' and object 'discriminative_model' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "english",
+        "relation": "Conjunction",
+        "object": "czech",
+        "confidence": 0.9,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "English",
+          "original_object": "Czech"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "resources_and_evaluation",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:09:18.622763+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "resources_and_evaluation",
+        "domain_ids": [
+          "resources_and_evaluation"
+        ],
+        "rationale": "resources_and_evaluation has the strongest ownership signal: subject belongs to domain, object belongs to domain",
+        "score_breakdown": {
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "relation is in domain schema"
+            ]
+          },
+          "resources_and_evaluation": {
+            "score": 5,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "head_word",
+        "relation": "Conjunction",
+        "object": "dependents",
+        "confidence": 0.9,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "head word",
+          "original_object": "dependents"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "tasks_and_concepts",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:09:18.622786+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "tasks_and_concepts",
+        "domain_ids": [
+          "tasks_and_concepts"
+        ],
+        "rationale": "tasks_and_concepts has the strongest ownership signal: subject belongs to domain, object belongs to domain, relation is in domain schema",
+        "score_breakdown": {
+          "tasks_and_concepts": {
+            "score": 6,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain",
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "weakly_supervised_dependency_parser",
+        "relation": "Evaluate-for",
+        "object": "english_and_czech_newspaper_texts",
+        "confidence": 0.8,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "weakly supervised dependency parser",
+          "original_object": "English and Czech newspaper texts"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:09:18.622806+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "resources_and_evaluation"
+        ],
+        "rationale": "Subject 'weakly_supervised_dependency_parser' and object 'english_and_czech_newspaper_texts' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "resources_and_evaluation": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "weakly_supervised_dependency_parser",
+        "relation": "Evaluate-for",
+        "object": "french_broadcast_news_transcriptions",
+        "confidence": 0.8,
+        "source": "INTERSPEECH_2013_21_abs",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "weakly supervised dependency parser",
+          "original_object": "French broadcast news transcriptions"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:09:18.622821+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "resources_and_evaluation"
+        ],
+        "rationale": "Subject 'weakly_supervised_dependency_parser' and object 'french_broadcast_news_transcriptions' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "resources_and_evaluation": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "listen_communicate_show",
+        "relation": "Used-for",
+        "object": "human_interaction_with_data_sources",
+        "confidence": 0.9,
+        "source": "H01-1049",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Listen-Communicate-Show",
+          "original_object": "human interaction with data sources"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:23:20.298644+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'listen_communicate_show' and object 'human_interaction_with_data_sources' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "spoken_language_understanding_system",
+        "relation": "Conjunction",
+        "object": "intelligent_mobile_agents",
+        "confidence": 0.8,
+        "source": "H01-1049",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "spoken language understanding system",
+          "original_object": "intelligent mobile agents"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:23:20.298962+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems"
+        ],
+        "rationale": "methods_and_systems has the strongest ownership signal: subject belongs to domain, object belongs to domain",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 5,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "listen_communicate_show",
+        "relation": "Used-for",
+        "object": "supply_or_information_request",
+        "confidence": 0.9,
+        "source": "H01-1049",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "LCS-Marine",
+          "original_object": "supply or information request"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:23:20.299073+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'listen_communicate_show' and object 'supply_or_information_request' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "logistics_system",
+        "relation": "Used-for",
+        "object": "supply_or_information_request",
+        "confidence": 0.8,
+        "source": "H01-1049",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "logistics system",
+          "original_object": "supply or information request"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:23:20.299353+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'logistics_system' and object 'supply_or_information_request' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "intelligent_mobile_agents",
+        "relation": "Used-for",
+        "object": "database",
+        "confidence": 0.9,
+        "source": "H01-1049",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "intelligent mobile agents",
+          "original_object": "database"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:23:20.299374+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "resources_and_evaluation"
+        ],
+        "rationale": "Subject 'intelligent_mobile_agents' and object 'database' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "resources_and_evaluation": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "semantic_characteristics",
+        "relation": "Part-of",
+        "object": "morpho_syntactic_and_semantic_characteristics",
+        "confidence": 0.9,
+        "source": "C96-1062",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "semantic characteristics",
+          "original_object": "morpho-syntactic and semantic characteristics"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "tasks_and_concepts",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T04:42:04.296212+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "tasks_and_concepts",
+        "domain_ids": [
+          "tasks_and_concepts"
+        ],
+        "rationale": "tasks_and_concepts has the strongest ownership signal: subject belongs to domain, object belongs to domain, relation is in domain schema",
+        "score_breakdown": {
+          "tasks_and_concepts": {
+            "score": 6,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain",
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "plume",
+        "relation": "Used-for",
+        "object": "parsing",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Plume",
+          "original_object": "parsing"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165722+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'plume' and object 'parsing' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "plume",
+        "relation": "Used-for",
+        "object": "passives",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Plume",
+          "original_object": "passives"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165800+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'plume' and object 'passives' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "plume",
+        "relation": "Used-for",
+        "object": "relative_clauses",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Plume",
+          "original_object": "relative clauses"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165815+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'plume' and object 'relative_clauses' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "plume",
+        "relation": "Used-for",
+        "object": "interrogatives",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "Plume",
+          "original_object": "interrogatives"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165825+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'plume' and object 'interrogatives' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "semantic_caseframe_instantiation",
+        "relation": "Feature-of",
+        "object": "plume",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "semantic caseframe instantiation",
+          "original_object": "Plume"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165841+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems"
+        ],
+        "rationale": "methods_and_systems has the strongest ownership signal: subject belongs to domain, object belongs to domain",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 5,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "efficiency",
+        "relation": "Feature-of",
+        "object": "semantic_caseframe_instantiation",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "efficiency",
+          "original_object": "semantic caseframe instantiation"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165851+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "resources_and_evaluation"
+        ],
+        "rationale": "Subject 'efficiency' and object 'semantic_caseframe_instantiation' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "resources_and_evaluation": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "robustness",
+        "relation": "Feature-of",
+        "object": "semantic_caseframe_instantiation",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "robustness",
+          "original_object": "semantic caseframe instantiation"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165860+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "resources_and_evaluation"
+        ],
+        "rationale": "Subject 'robustness' and object 'semantic_caseframe_instantiation' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "resources_and_evaluation": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "syntactic_coverage",
+        "relation": "Feature-of",
+        "object": "plume",
+        "confidence": 0.8,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "syntactic coverage",
+          "original_object": "Plume"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165870+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "resources_and_evaluation"
+        ],
+        "rationale": "Subject 'syntactic_coverage' and object 'plume' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "resources_and_evaluation": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "efficiency",
+        "relation": "Evaluate-for",
+        "object": "grammatical_input",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "efficiency",
+          "original_object": "grammatical input"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "resources_and_evaluation",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165883+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "resources_and_evaluation",
+        "domain_ids": [
+          "resources_and_evaluation"
+        ],
+        "rationale": "resources_and_evaluation has the strongest ownership signal: subject belongs to domain, object belongs to domain, relation is in domain schema",
+        "score_breakdown": {
+          "resources_and_evaluation": {
+            "score": 6,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain",
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "robustness",
+        "relation": "Evaluate-for",
+        "object": "ungrammatical_input",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "robustness",
+          "original_object": "ungrammatical input"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "resources_and_evaluation",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165893+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "resources_and_evaluation",
+        "domain_ids": [
+          "resources_and_evaluation"
+        ],
+        "rationale": "resources_and_evaluation has the strongest ownership signal: subject belongs to domain, object belongs to domain, relation is in domain schema",
+        "score_breakdown": {
+          "resources_and_evaluation": {
+            "score": 6,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain",
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "passives",
+        "relation": "Conjunction",
+        "object": "relative_clauses",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "passives",
+          "original_object": "relative clauses"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "tasks_and_concepts",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165904+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "tasks_and_concepts",
+        "domain_ids": [
+          "tasks_and_concepts"
+        ],
+        "rationale": "tasks_and_concepts has the strongest ownership signal: subject belongs to domain, object belongs to domain, relation is in domain schema",
+        "score_breakdown": {
+          "tasks_and_concepts": {
+            "score": 6,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain",
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "passives",
+        "relation": "Conjunction",
+        "object": "interrogatives",
+        "confidence": 0.9,
+        "source": "P85-1019",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "passives",
+          "original_object": "interrogatives"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "tasks_and_concepts",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:06:35.165916+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "tasks_and_concepts",
+        "domain_ids": [
+          "tasks_and_concepts"
+        ],
+        "rationale": "tasks_and_concepts has the strongest ownership signal: subject belongs to domain, object belongs to domain, relation is in domain schema",
+        "score_breakdown": {
+          "tasks_and_concepts": {
+            "score": 6,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain",
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "unlexicalized_parser",
+        "relation": "Used-for",
+        "object": "german",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "unlexicalized parser",
+          "original_object": "German"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:17:25.602525+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "resources_and_evaluation"
+        ],
+        "rationale": "Subject 'unlexicalized_parser' and object 'german' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "resources_and_evaluation": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "smoothing",
+        "relation": "Used-for",
+        "object": "labelled_bracket_f_score",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "smoothing",
+          "original_object": "labelled bracket F-score"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:17:25.602712+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "resources_and_evaluation"
+        ],
+        "rationale": "Subject 'smoothing' and object 'labelled_bracket_f_score' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "resources_and_evaluation": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "suffix_analysis",
+        "relation": "Used-for",
+        "object": "labelled_bracket_f_score",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "suffix analysis",
+          "original_object": "labelled bracket F-score"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:17:25.602749+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "resources_and_evaluation"
+        ],
+        "rationale": "Subject 'suffix_analysis' and object 'labelled_bracket_f_score' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "resources_and_evaluation": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "smoothing",
+        "relation": "Conjunction",
+        "object": "suffix_analysis",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "smoothing",
+          "original_object": "suffix analysis"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:17:25.602801+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems"
+        ],
+        "rationale": "methods_and_systems has the strongest ownership signal: subject belongs to domain, object belongs to domain",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 5,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "smoothing",
+        "relation": "Conjunction",
+        "object": "parsing_results",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "smoothing",
+          "original_object": "parsing results"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:17:25.602833+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "cross_domain",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems",
+          "tasks_and_concepts"
+        ],
+        "rationale": "Subject 'smoothing' and object 'parsing_results' belong to different domains, so the update requires joint governance.",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "entity participates in cross-domain fact"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "labelled_bracket_f_score",
+        "relation": "Evaluate-for",
+        "object": "negra_corpus",
+        "confidence": 0.8,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "labelled bracket F-score",
+          "original_object": "NEGRA corpus"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "resources_and_evaluation",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:17:25.603118+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "resources_and_evaluation",
+        "domain_ids": [
+          "resources_and_evaluation"
+        ],
+        "rationale": "resources_and_evaluation has the strongest ownership signal: subject belongs to domain, object belongs to domain, relation is in domain schema",
+        "score_breakdown": {
+          "resources_and_evaluation": {
+            "score": 6,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain",
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "smoothing",
+        "relation": "Feature-of",
+        "object": "unlexicalized_parser",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "smoothing",
+          "original_object": "unlexicalized parser"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:17:25.603159+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems"
+        ],
+        "rationale": "methods_and_systems has the strongest ownership signal: subject belongs to domain, object belongs to domain",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 5,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "suffix_analysis",
+        "relation": "Feature-of",
+        "object": "unlexicalized_parser",
+        "confidence": 0.9,
+        "source": "P05-1039",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "suffix analysis",
+          "original_object": "unlexicalized parser"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:17:25.603194+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems"
+        ],
+        "rationale": "methods_and_systems has the strongest ownership signal: subject belongs to domain, object belongs to domain",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 5,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "HPSG",
+        "relation": "Conjunction",
+        "object": "LFG",
+        "confidence": 0.9,
+        "source": "P06-1018",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "HPSG",
+          "original_object": "LFG"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:50:44.726054+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems"
+        ],
+        "rationale": "methods_and_systems has the strongest ownership signal: subject belongs to domain, object belongs to domain",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 5,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "LFG",
+        "relation": "Conjunction",
+        "object": "HPSG",
+        "confidence": 0.9,
+        "source": "P06-1018",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "LFG",
+          "original_object": "HPSG"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "methods_and_systems",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:50:44.726609+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "methods_and_systems",
+        "domain_ids": [
+          "methods_and_systems"
+        ],
+        "rationale": "methods_and_systems has the strongest ownership signal: subject belongs to domain, object belongs to domain",
+        "score_breakdown": {
+          "methods_and_systems": {
+            "score": 5,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain"
+            ]
+          },
+          "tasks_and_concepts": {
+            "score": 1,
+            "reasons": [
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    },
+    {
+      "triple": {
+        "subject": "polarization",
+        "relation": "Feature-of",
+        "object": "elementary structures",
+        "confidence": 0.9,
+        "source": "P06-1018",
+        "metadata": {
+          "evidence": "",
+          "verification_status": "unknown",
+          "original_subject": "polarization",
+          "original_object": "elementary structures"
+        }
+      },
+      "action": "auto_approve",
+      "domain_id": "tasks_and_concepts",
+      "rationale": "Audit-only mode automatically records and accepts proposals.",
+      "timestamp": "2026-04-21T05:50:44.726659+00:00",
+      "revised_triple": null,
+      "assignment": {
+        "assignment_type": "single_owner",
+        "primary_domain_id": "tasks_and_concepts",
+        "domain_ids": [
+          "tasks_and_concepts"
+        ],
+        "rationale": "tasks_and_concepts has the strongest ownership signal: subject belongs to domain, object belongs to domain, relation is in domain schema",
+        "score_breakdown": {
+          "tasks_and_concepts": {
+            "score": 6,
+            "reasons": [
+              "subject belongs to domain",
+              "object belongs to domain",
+              "relation is in domain schema"
+            ]
+          }
+        }
+      },
+      "committed": true
+    }
+  ],
+  "bootstrap_assignment_stats": {
+    "num_entities": 17,
+    "assigned_entities": 17,
+    "unassigned_entities": 0,
+    "multi_assigned_entities": 0,
+    "avg_assignment_score": 5.3529,
+    "assignment_coverage": 1.0
+  },
+  "stats": {
+    "entities": 106,
+    "triples": 37,
+    "domains": 3,
+    "cross_domain_relations": 21,
+    "governance_mode": "audit_only",
+    "audit_log_entries": 37,
+    "pending_review": 0,
+    "decision_counts": {
+      "auto_approve": 37
+    },
+    "assignment_counts": {
+      "cross_domain": 21,
+      "single_owner": 16
+    },
+    "domain_decision_counts": {
+      "methods_and_systems": 28,
+      "tasks_and_concepts": 17,
+      "resources_and_evaluation": 13
+    },
+    "domain_coverage": {
+      "entities_with_domains": 104,
+      "multi_domain_entities": 0,
+      "fraction_entities_assigned": 0.9811
+    },
+    "bootstrap_assignment_stats": {
+      "num_entities": 17,
+      "assigned_entities": 17,
+      "unassigned_entities": 0,
+      "multi_assigned_entities": 0,
+      "avg_assignment_score": 5.3529,
+      "assignment_coverage": 1.0
+    }
+  }
+}

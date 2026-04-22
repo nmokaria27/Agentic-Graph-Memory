@@ -1,0 +1,138 @@
+{
+  "config": {
+    "split": "test",
+    "max_docs": 10,
+    "model": "gemma3:27b",
+    "fixed_schema": true,
+    "reuse_corpus_schema": true,
+    "skip_evidence_linking": true,
+    "skip_verification": true,
+    "governance_mode": "audit_only"
+  },
+  "governed": {
+    "entities": 111,
+    "triples": 61,
+    "domains": 3,
+    "cross_domain_relations": 30,
+    "entity_coverage_by_domain": 0.955,
+    "audit_log_entries": 61,
+    "assignment_distribution": {
+      "cross_domain": 30,
+      "single_owner": 31
+    },
+    "decision_distribution": {
+      "auto_approve": 61
+    },
+    "processing_time_seconds": 1173.77,
+    "aggregate": {
+      "documents_processed": 10,
+      "total_entities": 637,
+      "total_triples": 336,
+      "total_time": 1173.743366,
+      "memory_stats": {
+        "total_memories": 40,
+        "by_type": {
+          "episodic": 10,
+          "working": 0,
+          "semantic": 30,
+          "procedural": 0
+        },
+        "by_source": {
+          "DocumentProcessor": 10,
+          "EntityExtractor": 10,
+          "RelationExtractor": 10,
+          "KnowledgeOrganizer": 10
+        },
+        "unique_entities": 138,
+        "entity_aliases": 30,
+        "blackboard_entries": 0,
+        "documents_processed": 10
+      },
+      "kg_stats": {
+        "total_entities": 111,
+        "total_triples": 61,
+        "entity_types": {
+          "Method": 26,
+          "Task": 6,
+          "OTHER_SCIENTIFIC_TERM": 4,
+          "Material": 14,
+          "OtherScientificTerm": 54,
+          "Metric": 6,
+          "Organization": 1
+        },
+        "relation_types": {
+          "Part-of": 10,
+          "Evaluate-for": 4,
+          "Used-for": 24,
+          "Feature-of": 10,
+          "Compare": 4,
+          "Conjunction": 9
+        },
+        "unique_relations": 6
+      },
+      "failed_documents": []
+    }
+  },
+  "ungoverned": {
+    "entities": 109,
+    "triples": 63,
+    "processing_time_seconds": 1221.52,
+    "aggregate": {
+      "documents_processed": 10,
+      "total_entities": 619,
+      "total_triples": 351,
+      "total_time": 1221.509161,
+      "memory_stats": {
+        "total_memories": 40,
+        "by_type": {
+          "episodic": 10,
+          "working": 0,
+          "semantic": 30,
+          "procedural": 0
+        },
+        "by_source": {
+          "DocumentProcessor": 10,
+          "EntityExtractor": 10,
+          "RelationExtractor": 10,
+          "KnowledgeOrganizer": 10
+        },
+        "unique_entities": 135,
+        "entity_aliases": 30,
+        "blackboard_entries": 0,
+        "documents_processed": 10
+      },
+      "kg_stats": {
+        "total_entities": 109,
+        "total_triples": 63,
+        "entity_types": {
+          "Material": 14,
+          "Method": 26,
+          "Task": 6,
+          "OtherScientificTerm": 56,
+          "Metric": 6,
+          "Organization": 1
+        },
+        "relation_types": {
+          "Part-of": 9,
+          "Used-for": 12,
+          "Feature-of": 27,
+          "Conjunction": 10,
+          "Compare": 5
+        },
+        "unique_relations": 5
+      },
+      "failed_documents": []
+    }
+  },
+  "comparison": {
+    "entity_overlap": 0.8333,
+    "triple_overlap": 0.1698,
+    "governance_overhead_seconds": -47.76,
+    "governance_overhead_pct": -3.91,
+    "unique_to_governed": 43,
+    "unique_to_ungoverned": 45,
+    "domain_coverage": 0.955,
+    "audit_completeness": 1.0,
+    "cross_domain_fraction": 0.4918
+  }
+}

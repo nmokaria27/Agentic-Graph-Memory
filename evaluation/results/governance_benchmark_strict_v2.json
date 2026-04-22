@@ -1,0 +1,986 @@
+{
+  "kg_path": "evaluation/results/scierc_governed_created_3docs_v6.json",
+  "org_chart": null,
+  "model": "gemma3:27b",
+  "route_only": false,
+  "metrics": {
+    "num_examples": 40,
+    "routing_exact_match": 1.0,
+    "assignment_type_accuracy": 1.0,
+    "expected_domain_recall": 1.0,
+    "expected_domain_precision": 1.0,
+    "cross_domain_routing_recall": 1.0,
+    "cross_domain_escalation_accuracy": 0.2609,
+    "decision_coverage": 1.0,
+    "accept_recall_positive": 1.0,
+    "reject_recall_negative": 0.85,
+    "false_accept_rate_negative": 0.15
+  },
+  "governed_kg_stats": {
+    "entities": 42,
+    "triples": 22,
+    "domains": 3,
+    "cross_domain_relations": 11,
+    "governance_mode": "audit_only",
+    "audit_log_entries": 23,
+    "pending_review": 0,
+    "decision_counts": {
+      "auto_approve": 23
+    },
+    "assignment_counts": {
+      "cross_domain": 11,
+      "single_owner": 12
+    },
+    "domain_decision_counts": {
+      "methods_and_systems": 16,
+      "tasks_and_concepts": 13,
+      "resources_and_evaluation": 5
+    },
+    "domain_coverage": {
+      "entities_with_domains": 39,
+      "multi_domain_entities": 0,
+      "fraction_entities_assigned": 0.9286
+    },
+    "bootstrap_assignment_stats": {
+      "num_entities": 17,
+      "assigned_entities": 17,
+      "unassigned_entities": 0,
+      "multi_assigned_entities": 0,
+      "avg_assignment_score": 5.2206,
+      "assignment_coverage": 1.0
+    }
+  },
+  "structure_metrics": {
+    "domain_coverage": 0.9286,
+    "governance_completeness": 1.0455,
+    "audit_trail_integrity": 1.0455
+  },
+  "examples": [
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "discriminative_model",
+        "relation": "Evaluate-for",
+        "object": "english_and_czech_newspaper_texts",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple exists in both domains with a confidence of 0.90. The proposed confidence of 0.95 is a reasonable increase and does not introduce new information or conflict with existing knowledge. The relationship is well-defined within the established schema."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "rule_application",
+        "relation": "Used-for",
+        "object": "japanese_text",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple (rule_application) -[Used-for]-> (japanese_text) already exists in both the Methods and Systems and Resources and Evaluation domains with a confidence of 0.90. The proposed confidence of 0.95 is a reasonable increase and does not introduce new information or conflict with existing knowledge. Both domains have confirmed this relationship."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "weakly_supervised_dependency_parser",
+        "relation": "Used-for",
+        "object": "speech_syntax",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple exists in both domains with a confidence score of 0.90. The proposed confidence score of 0.95 is a reasonable increase and does not introduce new information or conflict with existing knowledge. Both domain experts have implicitly approved this relationship."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "dictionary_lookup",
+        "relation": "Used-for",
+        "object": "japanese_text",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple (dictionary_lookup) -[Used-for]-> (japanese_text) already exists in both domains with a confidence of 0.90. The proposed confidence of 0.95 is a reasonable increase and aligns with existing relationships. No further action is required."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "triangulations",
+        "relation": "Feature-of",
+        "object": "vertices",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple (triangulations) -[Feature-of]-> (vertices) already exists in the defined relationships with a confidence of 0.70. The proposed confidence of 0.95 is higher and therefore acceptable. No further revision is needed."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "differential_features",
+        "relation": "Feature-of",
+        "object": "3d_reconstruction",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple aligns with the existing schema and established relationships within the 'Tasks and Concepts' domain. The 'Feature-of' relation is present, both entities exist within the domain, and the confidence score is high. This triple is consistent with the existing knowledge graph structure."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "hand_crafted_rules",
+        "relation": "Used-for",
+        "object": "syntactic_knowledge",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple (hand_crafted_rules) -[Used-for]-> (syntactic_knowledge) exists in both domains with a confidence of 0.90. The proposed confidence of 0.95 is a reasonable increase and aligns with existing knowledge. No escalation is needed as the relationship is well-established and the domains agree."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "head_word",
+        "relation": "Feature-of",
+        "object": "dependents",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple (head_word) -[Feature-of]-> (dependents) already exists in the knowledge graph with a confidence of 0.80. The proposed confidence of 0.95 is higher and therefore acceptable. Both entities and the relation are within the defined domain."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "3_--_d_surface_mesh",
+        "relation": "Part-of",
+        "object": "objective_function",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple exists within the defined domain and schema with a high confidence score. No revisions are necessary."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "reconstruction_results",
+        "relation": "Feature-of",
+        "object": "a_priori_knowledge",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple (reconstruction_results) -[Feature-of]-> (a_priori_knowledge) already exists in the defined relationships with a confidence of 0.70. The proposed confidence of 0.95 is higher and therefore acceptable. The relationship aligns with the domain schema and existing knowledge."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "posterior",
+        "relation": "Feature-of",
+        "object": "dependents",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple (posterior) -[Feature-of]-> (dependents) already exists in the knowledge graph with a confidence of 0.80. The proposed update increases the confidence to 0.95, which is acceptable. Both entities and the relation are within the defined domain and schema."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "structural_constraints",
+        "relation": "Part-of",
+        "object": "constrained_optimization_scheme",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple (structural_constraints) -[Part-of]-> (constrained_optimization_scheme) exists in both domains with a confidence of 0.80. The proposed confidence of 0.95 is a reasonable increase, and the relationship is consistent with existing knowledge. No escalation is needed."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "morphological_analysis",
+        "relation": "Used-for",
+        "object": "recognition_of_proper_nouns",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple (morphological_analysis) -[Used-for]-> (recognition_of_proper_nouns) already exists in both domains with a confidence of 0.90. The proposed confidence of 0.95 is a reasonable increase and supported by existing relationships. No escalation or revision is necessary."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "constrained_optimization_scheme",
+        "relation": "Feature-of",
+        "object": "reconstruction_results",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple (constrained_optimization_scheme) -[Feature-of]-> (reconstruction_results) exists in both domains with a confidence of 0.80. The proposed confidence of 0.95 is a reasonable increase and aligns with existing knowledge. No escalation is needed."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "morphological_analysis",
+        "relation": "Used-for",
+        "object": "temporal_expressions",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple (morphological_analysis) -[Used-for]-> (temporal_expressions) is already present in both the Methods and Systems and Tasks and Concepts domains with a confidence of 0.90. The proposed confidence of 0.95 is a reasonable increase and does not introduce any conflicts or inconsistencies. Both domains have established this relationship, supporting the update."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "bayesian_inference",
+        "relation": "Used-for",
+        "object": "hand_crafted_rules",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple exists within the established graph and aligns with existing relationships. The confidence score is high and consistent with other relationships in the domain."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "anisotropic_meshing",
+        "relation": "Conjunction",
+        "object": "non_quadratic_approach",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple (anisotropic_meshing) -[Conjunction]-> (non_quadratic_approach) already exists in the knowledge graph with a confidence of 0.80. The proposed confidence of 0.95 is higher and represents a refinement of the existing relationship, which is acceptable within the bootstrap scope. No revision is necessary."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "non_quadratic_approach",
+        "relation": "Conjunction",
+        "object": "regularization",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple (non_quadratic_approach) -[Conjunction]-> (regularization) already exists in the knowledge graph with a confidence of 0.80. The proposed confidence of 0.95 is higher and represents a refinement of the existing relationship, falling within the bootstrap scope and domain expertise. No further action is required."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "recognition_of_proper_nouns",
+        "relation": "Part-of",
+        "object": "morphological_analysis",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple (recognition_of_proper_nouns) -[Part-of]-> (morphological_analysis) already exists in both domains with a confidence of 0.90. The proposed confidence of 0.95 is a reasonable increase and is supported by existing relationships. No escalation or revision is necessary."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "morphological_analysis",
+        "relation": "Used-for",
+        "object": "dictionary_lookup",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple exists within the established relationships and aligns with the domain's scope. The confidence score is high and consistent with existing triples. No revisions are necessary."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "discriminative_model",
+        "relation": "Evaluate-for",
+        "object": "posterior",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "discriminative_model",
+        "Evaluate-for",
+        "english_and_czech_newspaper_texts"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "escalate",
+      "rationale": "The proposed triple connects a method ('discriminative_model') to a concept ('posterior'). While not inherently incorrect, the relationship 'Evaluate-for' is unusual in this context. The 'Tasks and Concepts' domain expert should confirm if evaluating a model *for* a concept is a valid relationship, or if a different relationship (e.g., 'produces', 'influences') would be more appropriate. The low confidence score (0.35) further necessitates expert review."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "rule_application",
+        "relation": "Used-for",
+        "object": "non_quadratic_approach",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "rule_application",
+        "Used-for",
+        "japanese_text"
+      ],
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple (rule_application) -[Used-for]-> (non_quadratic_approach) has a low confidence score (0.35). While both entities exist within the 'methods_and_systems' domain, the connection appears weak and lacks strong supporting evidence within the provided relationships. Existing relationships demonstrate 'rule_application' being used for 'japanese_text', and 'non_quadratic_approach' being conjoined with 'anisotropic_meshing' and 'regularization'. A direct 'Used-for' relationship between these two is not substantiated by the current knowledge graph."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "weakly_supervised_dependency_parser",
+        "relation": "Used-for",
+        "object": "french_broadcast_news_transcriptions",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "weakly_supervised_dependency_parser",
+        "Used-for",
+        "speech_syntax"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple aligns with existing relationships within both domains. 'weakly_supervised_dependency_parser' is a method used for processing language, and 'french_broadcast_news_transcriptions' is a resource used for evaluation or application of such methods. The existing relationship '(discriminative_model) -[Evaluate-for]-> (french_broadcast_news_transcriptions)' supports the plausibility of this connection. While the confidence score is low (0.35), it falls within an acceptable range for preliminary bootstrapping, and the relationship is logically sound."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "dictionary_lookup",
+        "relation": "Used-for",
+        "object": "discriminative_model",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "dictionary_lookup",
+        "Used-for",
+        "japanese_text"
+      ],
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple lacks strong support within the existing knowledge graph. While 'dictionary_lookup' and 'discriminative_model' both exist as entities, there is no established path connecting them through existing relationships. The low confidence score (0.35) further reinforces the need for caution. Adding this triple would introduce a potentially unsupported connection, violating the conservative governance policy."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "triangulations",
+        "relation": "Feature-of",
+        "object": "n_gram_models",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "triangulations",
+        "Feature-of",
+        "vertices"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple connects an entity from the 'Tasks and Concepts' domain ('triangulations') to an entity from the 'Methods and Systems' domain ('n_gram_models') with a 'Feature-of' relation. This connection is not supported by the existing knowledge graph or the provided source text. The existing relationships for 'triangulations' relate it to 'vertices', and 'n_gram_models' is only present in the 'Methods and Systems' domain without any connecting relationships. The low confidence score (0.35) further reinforces the need for rejection."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "differential_features",
+        "relation": "Feature-of",
+        "object": "constrained_optimization_scheme",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "differential_features",
+        "Feature-of",
+        "3d_reconstruction"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "escalate",
+      "rationale": "While both entities exist within the knowledge graph, the proposed relationship lacks strong support from either domain's existing relationships. The confidence score is low, and there's no clear path to validate this connection based on the current graph structure. Cross-domain relationships require higher scrutiny."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "hand_crafted_rules",
+        "relation": "Used-for",
+        "object": "japanese_text",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "hand_crafted_rules",
+        "Used-for",
+        "syntactic_knowledge"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The relationship 'Used-for' between 'hand_crafted_rules' and 'japanese_text' is consistent with existing triples involving 'dictionary_lookup' and 'rule_application' also using 'japanese_text'. While the confidence score is low (0.35), the existing relationships provide supporting evidence for its validity within the current bootstrap scope. No escalation is necessary."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "head_word",
+        "relation": "Feature-of",
+        "object": "weakly_supervised_dependency_parser",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "head_word",
+        "Feature-of",
+        "dependents"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple connects an entity from the 'Tasks and Concepts' domain ('head_word') to an entity from the 'Methods and Systems' domain ('weakly_supervised_dependency_parser') with a 'Feature-of' relation. While cross-domain relationships are possible, the low confidence score (0.35) and lack of supporting evidence within the existing knowledge graph make this connection suspect. The existing relationships for 'head_word' focus on its role as a feature of 'dependents', and there's no established link suggesting it directly features within a parser.  Given the conservative governance policy, we reject this update."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "3_--_d_surface_mesh",
+        "relation": "Part-of",
+        "object": "constrained_optimization_scheme",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "3_--_d_surface_mesh",
+        "Part-of",
+        "objective_function"
+      ],
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple introduces a new entity ('3_--_d_surface_mesh') not present in the existing knowledge graph bootstrap scope for 'methods_and_systems'.  Without further context or definition of this entity, and given the low confidence score (0.35), adding it would violate the conservative governance policy.  The connection to 'constrained_optimization_scheme' is also unsupported by existing relationships."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "reconstruction_results",
+        "relation": "Feature-of",
+        "object": "image_information",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "reconstruction_results",
+        "Feature-of",
+        "a_priori_knowledge"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "escalate",
+      "rationale": "The proposed triple connects entities from different domains (Resources and Evaluation, Tasks and Concepts) without a clear established relationship within the existing graph structure. While 'image_information' could be a resource used in evaluating 'reconstruction_results', the confidence score is low (0.35), and there's no existing path connecting these domains. Further investigation is needed to determine if this connection is valid and how it fits within the broader knowledge graph."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "posterior",
+        "relation": "Feature-of",
+        "object": "regularization",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "posterior",
+        "Feature-of",
+        "dependents"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "escalate",
+      "rationale": "The proposed triple connects entities from different domains (Tasks & Concepts and Methods & Systems) with a 'Feature-of' relation. While not inherently incorrect, this cross-domain relationship lacks strong support within the existing knowledge graph. The confidence score is low (0.35), and there are no existing paths connecting 'posterior' and 'regularization' directly or indirectly. Given the conservative governance policy, further review by a cross-domain expert is required to validate the relationship's accuracy and relevance."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "structural_constraints",
+        "relation": "Part-of",
+        "object": "differential_features",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "structural_constraints",
+        "Part-of",
+        "constrained_optimization_scheme"
+      ],
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple (structural_constraints) -[Part-of]-> (differential_features) lacks strong support within the existing knowledge graph and source text. While both entities exist within the 'tasks_and_concepts' domain, the 'Part-of' relationship doesn't align with established connections. 'structural_constraints' is linked to 'constrained_optimization_scheme', and 'differential_features' is linked to '3d_reconstruction'. A direct 'Part-of' relationship between these two seems unsupported and potentially inaccurate given the current graph structure and low confidence score (0.35)."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "morphological_analysis",
+        "relation": "Used-for",
+        "object": "rule_application",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "morphological_analysis",
+        "Used-for",
+        "recognition_of_proper_nouns"
+      ],
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple suggests morphological analysis is used for rule application. While both entities exist within the knowledge graph, the low confidence score (0.35) and lack of strong supporting evidence within the existing relationships or domain description warrant rejection. The existing relationships show morphological analysis being *used for* things like proper noun recognition and temporal expressions, and rule application is *used for* Japanese text. A direct 'used for' relationship between these two isn't strongly supported by the current graph structure."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "constrained_optimization_scheme",
+        "relation": "Feature-of",
+        "object": "3_--_d_shape",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "constrained_optimization_scheme",
+        "Feature-of",
+        "reconstruction_results"
+      ],
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed object '3_--_d_shape' is not present within the existing knowledge graph entities and lacks sufficient context for integration. The confidence score of 0.35 is also low. Without further information or a clear mapping to existing concepts, adding this triple would introduce an unsupported entity and potentially degrade graph quality."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "morphological_analysis",
+        "relation": "Used-for",
+        "object": "3d_reconstruction",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "morphological_analysis",
+        "Used-for",
+        "temporal_expressions"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple connects a linguistic method ('morphological_analysis') to a geometric task ('3d_reconstruction') without clear supporting evidence within the existing knowledge graph or provided source text. While 'morphological_analysis' is used for tasks like proper noun recognition and temporal expression analysis, there's no established link to 3D reconstruction. The low confidence score (0.35) further reinforces the need for caution. This connection appears unsupported and potentially erroneous."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "bayesian_inference",
+        "relation": "Used-for",
+        "object": "3d_reconstruction",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "bayesian_inference",
+        "Used-for",
+        "hand_crafted_rules"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "escalate",
+      "rationale": "The proposed triple connects entities from different domains (Methods and Systems, Tasks and Concepts) with a 'Used-for' relationship. While not inherently incorrect, the confidence score is low (0.35), and the connection isn't strongly supported by existing relationships within either domain.  The existing relationships show 'bayesian_inference' used for 'hand_crafted_rules' and '3d_reconstruction' having 'differential_features', but no direct link between them.  Given the cross-domain nature and low confidence, escalation to a joint review is necessary to validate the connection and ensure consistency with the overall knowledge graph structure."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "anisotropic_meshing",
+        "relation": "Conjunction",
+        "object": "head_word",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "anisotropic_meshing",
+        "Conjunction",
+        "non_quadratic_approach"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple connects a method ('anisotropic_meshing') to a scientific term ('head_word') with a 'Conjunction' relation. This connection lacks clear semantic justification within the established knowledge graph structure and existing relationships. The confidence score of 0.35 is also low. No supporting evidence is provided to explain this conjunction."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "non_quadratic_approach",
+        "relation": "Conjunction",
+        "object": "structural_constraints",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "non_quadratic_approach",
+        "Conjunction",
+        "regularization"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple connects two entities within the established knowledge graph, and the relationship 'Conjunction' is consistent with existing relationships like '(anisotropic_meshing) -[Conjunction]-> (non_quadratic_approach)' and '(non_quadratic_approach) -[Conjunction]-> (regularization)'. While the confidence score is relatively low (0.35), it is not significantly lower than other existing relationships and the connection appears plausible given the domain knowledge."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "recognition_of_proper_nouns",
+        "relation": "Part-of",
+        "object": "japanese_information_extraction",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "recognition_of_proper_nouns",
+        "Part-of",
+        "morphological_analysis"
+      ],
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple attempts to relate a specific task (recognition_of_proper_nouns) to another task (japanese_information_extraction) using 'Part-of'. While conceptually possible, the confidence score is low (0.35), and there's no existing relationship pattern in the established knowledge graph to support this specific connection. The existing 'Part-of' relationships link tasks to more abstract concepts like 'morphological_analysis'. Adding this without stronger evidence would dilute the graph's coherence."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "morphological_analysis",
+        "relation": "Used-for",
+        "object": "annotated_training_corpus",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "morphological_analysis",
+        "Used-for",
+        "dictionary_lookup"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "escalate",
+      "rationale": "The proposed triple connects entities from different domains (Methods and Systems, Resources and Evaluation) with a 'Used-for' relationship. While plausible, the connection isn't strongly supported by the existing graph structure or provided context. The confidence score of 0.35 is low. Given the cross-domain nature, escalation to a joint governance review is necessary to ensure consistency and accuracy."
+    }
+  ]
+}

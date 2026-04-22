@@ -1,0 +1,276 @@
+{
+  "domains": [
+    {
+      "domain_id": "methods_and_systems",
+      "label": "Methods and Systems",
+      "description": "Preliminary governed domain for methods and systems inferred from schema.",
+      "entity_ids": [
+        "HPSG",
+        "LFG",
+        "TAG",
+        "bayesian_inference",
+        "clustering methods",
+        "dependency grammars",
+        "discriminative_model",
+        "domain_independent_model",
+        "intelligent_mobile_agents",
+        "listen_communicate_show",
+        "logistics_system",
+        "mathematical formalism",
+        "n_gram_models",
+        "plume",
+        "pustejovsky_principles",
+        "rewriting systems",
+        "rules",
+        "semantic_caseframe_instantiation",
+        "smoothing",
+        "spectral clustering",
+        "spoken_language_understanding_system",
+        "suffix_analysis",
+        "unlexicalized_parser",
+        "unsupervised learning approach",
+        "weakly_supervised_dependency_parser"
+      ],
+      "relation_schema": {},
+      "topics": [
+        {
+          "topic_id": "methods_and_systems_models",
+          "label": "Models",
+          "description": "Bootstrap topic for models.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "models"
+          ]
+        },
+        {
+          "topic_id": "methods_and_systems_algorithms",
+          "label": "Algorithms",
+          "description": "Bootstrap topic for algorithms.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "algorithms"
+          ]
+        },
+        {
+          "topic_id": "methods_and_systems_systems",
+          "label": "Systems",
+          "description": "Bootstrap topic for systems.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "systems"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Methods and Systems Expert",
+        "governance_scope": "Preliminary bootstrap scope for methods and systems",
+        "seed_entity_types": [
+          "METHOD"
+        ],
+        "seed_relation_types": [],
+        "bootstrap_source": "heuristic_schema"
+      }
+    },
+    {
+      "domain_id": "tasks_and_concepts",
+      "label": "Tasks and Concepts",
+      "description": "Preliminary governed domain for tasks and concepts inferred from schema.",
+      "entity_ids": [
+        "Laplacian",
+        "action_classification",
+        "adjacency graph",
+        "automated_interpretation_of_nominal_compounds",
+        "cluster number estimation",
+        "combination of various structures",
+        "complementary_semantic_information",
+        "dags",
+        "dependents",
+        "disambiguate various relations between named entities",
+        "domain_specific_semantic_information",
+        "eigenvectors",
+        "elementary structures",
+        "final structure",
+        "generalizable_semantic_principles",
+        "grammar formalisms",
+        "graphs",
+        "head_word",
+        "high dimensionality space",
+        "human_interaction_with_data_sources",
+        "interrogatives",
+        "lexical and syntactic features",
+        "lexical features",
+        "marines",
+        "morpho_syntactic_and_semantic_characteristics",
+        "named entities",
+        "nominal_compounds",
+        "nominal_constituents",
+        "nominals",
+        "parsing",
+        "parsing_results",
+        "passives",
+        "polarization",
+        "posterior",
+        "predicative_information",
+        "productive_rules_of_interpretation",
+        "products",
+        "relations between named entities",
+        "relative_clauses",
+        "saturation",
+        "selectional_preferences",
+        "semantic_characteristics",
+        "space_time_interest_point_detection",
+        "speech_syntax",
+        "strings",
+        "submanifold of data",
+        "supply_or_information_request",
+        "syntactic features",
+        "syntactic_knowledge",
+        "tactical_personnel",
+        "three_d_reconstruction",
+        "tree_structures",
+        "trees"
+      ],
+      "relation_schema": {
+        "Feature-of": "",
+        "Part-of": "",
+        "Hyponym-of": "",
+        "Conjunction": ""
+      },
+      "topics": [
+        {
+          "topic_id": "tasks_and_concepts_tasks",
+          "label": "Tasks",
+          "description": "Bootstrap topic for tasks.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "tasks"
+          ]
+        },
+        {
+          "topic_id": "tasks_and_concepts_concepts",
+          "label": "Concepts",
+          "description": "Bootstrap topic for concepts.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "concepts"
+          ]
+        },
+        {
+          "topic_id": "tasks_and_concepts_structures",
+          "label": "Structures",
+          "description": "Bootstrap topic for structures.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "structures"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Tasks and Concepts Expert",
+        "governance_scope": "Preliminary bootstrap scope for tasks and concepts",
+        "seed_entity_types": [
+          "TASK",
+          "OTHERSCIENTIFICTERM"
+        ],
+        "seed_relation_types": [
+          "Feature-of",
+          "Part-of",
+          "Hyponym-of",
+          "Conjunction"
+        ],
+        "bootstrap_source": "heuristic_schema"
+      }
+    },
+    {
+      "domain_id": "resources_and_evaluation",
+      "label": "Resources and Evaluation",
+      "description": "Preliminary governed domain for resources and evaluation inferred from schema.",
+      "entity_ids": [
+        "ACE corpora",
+        "accuracy",
+        "annotated_training_corpus",
+        "czech",
+        "data_sources",
+        "database",
+        "declarative_and_imperative_utterances",
+        "declarative_utterances",
+        "distinctiveness",
+        "efficiency",
+        "english",
+        "english_and_czech_newspaper_texts",
+        "french",
+        "french_broadcast_news_transcriptions",
+        "german",
+        "grammatical_input",
+        "imperative_utterances",
+        "japanese_character_strings",
+        "labelled_bracket_f_score",
+        "negra_corpus",
+        "newspaper_texts",
+        "real_texts",
+        "robustness",
+        "syntactic_coverage",
+        "ungrammatical_input",
+        "unlabeled_corpus"
+      ],
+      "relation_schema": {
+        "Used-for": "",
+        "Compare": "",
+        "Evaluate-for": ""
+      },
+      "topics": [
+        {
+          "topic_id": "resources_and_evaluation_datasets",
+          "label": "Datasets",
+          "description": "Bootstrap topic for datasets.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "datasets"
+          ]
+        },
+        {
+          "topic_id": "resources_and_evaluation_metrics",
+          "label": "Metrics",
+          "description": "Bootstrap topic for metrics.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "metrics"
+          ]
+        },
+        {
+          "topic_id": "resources_and_evaluation_benchmarks",
+          "label": "Benchmarks",
+          "description": "Bootstrap topic for benchmarks.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "benchmarks"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Resources and Evaluation Expert",
+        "governance_scope": "Preliminary bootstrap scope for resources and evaluation",
+        "seed_entity_types": [
+          "METRIC",
+          "MATERIAL"
+        ],
+        "seed_relation_types": [
+          "Used-for",
+          "Compare",
+          "Evaluate-for"
+        ],
+        "bootstrap_source": "heuristic_schema"
+      }
+    }
+  ],
+  "cross_domain_relation_count": 21
+}
