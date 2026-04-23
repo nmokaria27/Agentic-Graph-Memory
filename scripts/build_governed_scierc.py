@@ -37,6 +37,7 @@ from multi_agent_kg.core import (
     LLMConfig,
     save_governed_kg,
 )
+from multi_agent_kg.agents.base import ModelTier
 
 
 CHECKPOINT_KEY = "_processed_doc_ids"
@@ -93,7 +94,7 @@ def main() -> None:
     parser.add_argument(
         "--governance-mode",
         default="audit_only",
-        choices=["strict", "permissive", "audit_only"],
+        choices=["strict", "triage", "permissive", "audit_only"],
     )
     parser.add_argument(
         "--output",
@@ -126,6 +127,7 @@ def main() -> None:
     documents = adapter.to_pipeline_input(max_docs=args.max_docs)
 
     llm_config = LLMConfig(model=args.model, temperature=0.2, max_tokens=4096)
+    model_tiers = {tier: args.model for tier in ModelTier}
 
     checkpoint_path = f"{args.output}.checkpoint.json"
     processed_ids: Set[str] = set()
@@ -157,6 +159,7 @@ def main() -> None:
         enable_open_world=not args.fixed_schema,
         enable_cross_document=True,
         enable_deliberation=False,
+        model_tiers=model_tiers,
         schema_override=SCIERC_SCHEMA if args.fixed_schema else None,
     )
 
@@ -194,12 +197,16 @@ def main() -> None:
                 processed_ids.add(doc_id)
             newly_processed += 1
         except Exception as exc:
+            import traceback
+            tb = traceback.format_exc()
             failure = {
                 "document_id": doc.get("id"),
                 "error": str(exc),
+                "traceback": tb,
             }
             failed_documents.append(failure)
             print(f"  ERROR: {failure['document_id']} failed: {failure['error']}")
+            print(tb)
 
         if args.checkpoint_every > 0 and newly_processed > 0 and newly_processed % args.checkpoint_every == 0:
             _save_checkpoint(governed_kg, processed_ids, checkpoint_path)
@@ -239,6 +246,27 @@ def main() -> None:
     _save_checkpoint(governed_kg, processed_ids, checkpoint_path)
 
     save_governed_kg(governed_kg, args.output)
+    # Record actual runtime config (model, tier mapping, ollama host) in the KG
+    # JSON so future inspections aren't misled by --model that was ignored.
+    try:
+        with open(args.output, "r", encoding="utf-8") as handle:
+            kg_payload = json.load(handle)
+        kg_payload["runtime_config"] = {
+            "model": args.model,
+            "model_tiers": {t.value: m for t, m in model_tiers.items()},
+            "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
+            "governance_mode": args.governance_mode,
+            "fixed_schema": args.fixed_schema,
+            "reuse_corpus_schema": args.reuse_corpus_schema,
+            "skip_evidence_linking": args.skip_evidence_linking,
+            "skip_verification": args.skip_verification,
+            "split": args.split,
+            "max_docs": args.max_docs,
+        }
+        with open(args.output, "w", encoding="utf-8") as handle:
+            json.dump(kg_payload, handle, indent=2, default=str)
+    except Exception as exc:
+        print(f"WARN: could not stamp runtime_config into {args.output}: {exc}")
     with open(args.org_output, "w", encoding="utf-8") as handle:
         json.dump(governed_kg.org_chart.to_dict(), handle, indent=2)
 

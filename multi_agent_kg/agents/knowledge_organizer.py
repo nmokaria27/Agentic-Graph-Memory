@@ -26,6 +26,7 @@ from multi_agent_kg.agents.base import (
 )
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Entity, Triple
 from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
+from multi_agent_kg.core.governance import coerce_metadata
 from multi_agent_kg.core.memory import SharedMemory
 from multi_agent_kg.core.communication import MessageBus, CommunicationType
 from multi_agent_kg.core.config import LLMConfig
@@ -737,9 +738,10 @@ class KnowledgeOrganizer(BaseAgent):
             seen_triples.add(triple_key)
 
             if self.governed_kg:
+                triple_metadata = coerce_metadata(triple.get("metadata", {}))
                 already_repaired = bool(
                     triple.get("governance_repair")
-                    or triple.get("metadata", {}).get("governance_repair")
+                    or triple_metadata.get("governance_repair")
                 )
                 decision = self.governed_kg.propose_triple(
                     subject=resolved_subj,
@@ -756,7 +758,7 @@ class KnowledgeOrganizer(BaseAgent):
                 )
                 if (
                     decision.action in {"reject", "escalate"}
-                    and self.governed_kg.governance_mode == "strict"
+                    and self.governed_kg.governance_mode in {"strict", "triage"}
                     and not already_repaired
                 ):
                     # Single-attempt repair semantics: once a triple has been
@@ -816,7 +818,8 @@ class KnowledgeOrganizer(BaseAgent):
         allowed: Set[str] = set()
         for domain in self.governed_kg.org_chart.domains:
             allowed.update(domain.relation_schema.keys())
-            allowed.update(domain.metadata.get("seed_relation_types", []))
+            domain_metadata = coerce_metadata(domain.metadata)
+            allowed.update(domain_metadata.get("seed_relation_types", []))
         return {relation for relation in allowed if relation}
 
     def _enforce_relation_schema(

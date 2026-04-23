@@ -45,6 +45,60 @@ class DiscoveredRelation:
     source_documents: List[str] = field(default_factory=list)
 
 
+SCIERC_FIXED_TYPE_GUIDE = """ALLOWED RELATION TYPES (use ONLY these exact names).
+IMPORTANT: each relation has a fixed HEAD -> TAIL direction. Follow it exactly.
+
+- Used-for: HEAD is a method/tool/system/material, TAIL is the task/application it is used for.
+  Direction: (method/tool) -[Used-for]-> (task/application)
+  Example: (CNN) -[Used-for]-> (image classification)
+  Example: (rule-based parser) -[Used-for]-> (Japanese morphological analysis)
+
+- Part-of: HEAD is a component/subset/stage, TAIL is the whole system or larger entity that contains it.
+  Direction: (component) -[Part-of]-> (whole)
+  Example: (dictionary lookup) -[Part-of]-> (Amorph)
+
+- Feature-of: HEAD is a feature/property/attribute/characteristic, TAIL is the entity that HAS that feature.
+  Direction: (feature/property) -[Feature-of]-> (entity_that_has_the_feature)
+  Example: (object shape) -[Feature-of]-> (priori knowledge)
+  Example: (robustness) -[Feature-of]-> (Plume system)
+
+- Compare: HEAD and TAIL are two things being directly compared or contrasted (order does not matter semantically; pick one direction consistently).
+  Direction: (thing_A) -[Compare]-> (thing_B)
+  Example: (our method) -[Compare]-> (baseline)
+
+- Hyponym-of: HEAD is the specific subtype/instance, TAIL is the more general category.
+  Direction: (specific_subtype) -[Hyponym-of]-> (general_category)
+  Example: (NE items) -[Hyponym-of]-> (proper names)
+
+- Conjunction: HEAD and TAIL are coordinated, listed, or used jointly (either side may come first; pick one direction consistently).
+  Direction: (item_A) -[Conjunction]-> (item_B)
+  Example: (dictionary lookup) -[Conjunction]-> (rule application)
+
+- Evaluate-for: HEAD is the METRIC or MATERIAL (dataset/corpus) used to evaluate, TAIL is the METHOD or system BEING evaluated. NEVER put the method/system on the HEAD side.
+  Direction: (metric_or_dataset) -[Evaluate-for]-> (method_being_evaluated)
+  Example: (F1 score) -[Evaluate-for]-> (unlexicalized parser)
+  Example: (NEGRA corpus) -[Evaluate-for]-> (unlexicalized parser)
+  Example: (repeatability) -[Evaluate-for]-> (interest point detectors)
+"""
+
+
+# Short direction-only hint used in Stage 2 (head binding) and Stage 3 (tail binding).
+# Unlike SCIERC_FIXED_TYPE_GUIDE (which is given to Stage 1 for type *selection*),
+# the binding stages already know the relation types — they only need to be reminded
+# of which side is HEAD and which is TAIL. Keep this compact to avoid blowing up
+# prompt length and confusing JSON output.
+SCIERC_DIRECTION_HINT = """
+HEAD -> TAIL direction reminder:
+- Used-for:   (method/tool) -> (task/application)
+- Part-of:    (component) -> (whole)
+- Feature-of: (feature/property) -> (entity that has it)
+- Compare:    (thing_A) -> (thing_B)   [symmetric — pick one order]
+- Hyponym-of: (specific subtype) -> (general category)
+- Conjunction:(item_A) -> (item_B)     [symmetric — pick one order]
+- Evaluate-for: (metric or dataset) -> (method being evaluated)
+"""
+
+
 RELATION_IDENTIFICATION_PROMPT = """Identify all relation types present in the following text.
 
 DISCOVER relations from scratch by analyzing the actual text:
@@ -102,13 +156,14 @@ ENTITIES:
 
 RELATION TYPES TO BIND:
 {relation_types}
-
+{direction_guide}
 For each relation occurrence, identify what entity is the SUBJECT (head) of that relation.
 
 CRITICAL RULES:
 - The subject must be copied VERBATIM from the ENTITIES list.
 - Never output a generic paraphrase when a concrete entity exists in ENTITIES.
 - If no exact entity from ENTITIES expresses the subject, SKIP that occurrence.
+- Respect the HEAD -> TAIL direction for each relation type defined above.
 
 Return:
 {{
@@ -134,7 +189,7 @@ ENTITIES:
 
 HEAD BINDINGS (subject-relation pairs):
 {head_bindings}
-
+{direction_guide}
 For each head binding, identify what entity is the OBJECT (tail) of that relation.
 
 CRITICAL RULES:
@@ -145,6 +200,7 @@ CRITICAL RULES:
 - Focus on what the subject ACTS ON, RELATES TO, or AFFECTS — that target is the object.
 - Never use generic summaries such as "products of them", "detectors", or "data sources" unless that exact phrase appears as an entity in ENTITIES.
 - For conjunctions, connect the explicit coordinated entities themselves, not a generic phrase describing the list.
+- Respect the HEAD -> TAIL direction above. For Evaluate-for in particular, the HEAD must be the metric/dataset and the TAIL must be the method being evaluated.
 
 EXAMPLES:
 Head binding: {{"relation_type": "REDUCES_BIOMARKER", "head_entity": "Metformin", "context": "Metformin reduces HbA1c levels"}}
@@ -330,6 +386,7 @@ class RelationExtractor(BaseAgent):
         all_triples = []
         low_confidence_triples = []
         new_relations_discovered = []
+        identified_relation_types = []
         
         texts_to_process = []
         if segments:
@@ -371,6 +428,9 @@ class RelationExtractor(BaseAgent):
                     self._register_new_relation(rel, context.document_id)
 
             relation_types = [r["relation_type"] for r in relations_found]
+            identified_relation_types.extend(
+                relation_type for relation_type in relation_types if relation_type
+            )
 
             if not relation_types:
                 continue
@@ -452,7 +512,9 @@ class RelationExtractor(BaseAgent):
                 "document_id": context.document_id,
                 "low_confidence_count": len(low_confidence_triples),
                 "new_relations_discovered": len(new_relations_discovered),
+                "relation_types_found": sorted(set(identified_relation_types)),
                 "relation_types_used": list(set(t.get("relation", "") for t in all_triples)),
+                "suggested_relation_types": suggested_types,
             },
             needs_escalation=len(low_confidence_triples) > 0 or len(new_relations_discovered) > 0,
             escalation_reason=self._get_escalation_reason(low_confidence_triples, new_relations_discovered),
@@ -501,29 +563,7 @@ class RelationExtractor(BaseAgent):
 
         # If open_world is disabled, we're in fixed-schema mode — force the types
         if not self.enable_open_world and suggested_types:
-            fixed_type_guide = """ALLOWED RELATION TYPES (use ONLY these exact names):
-
-- Used-for: Method/tool/system X is used for or applied to task/purpose Y
-  Example: (CNN) -[Used-for]-> (image classification)
-
-- Part-of: X is a component, subset, stage, or internal part of Y
-  Example: (dictionary lookup) -[Part-of]-> (Amorph)
-
-- Feature-of: X is a feature, property, signal, or characteristic of Y
-  Example: (object shape) -[Feature-of]-> (priori knowledge)
-
-- Compare: X is compared or contrasted with Y
-  Example: (our method) -[Compare]-> (baseline)
-
-- Hyponym-of: X is a subtype, instance, or special case of Y
-  Example: (NE items) -[Hyponym-of]-> (proper names)
-
-- Conjunction: X and Y are paired, coordinated, used together, or jointly listed
-  Example: (dictionary lookup) -[Conjunction]-> (rule application)
-
-- Evaluate-for: X is evaluated, tested, or measured for Y
-  Example: (model) -[Evaluate-for]-> (test set)
-"""
+            fixed_type_guide = SCIERC_FIXED_TYPE_GUIDE
             prompt = (
                 f"Identify which of these SPECIFIC relation types are present in the text.\n\n"
                 f"{fixed_type_guide}\n"
@@ -584,10 +624,12 @@ class RelationExtractor(BaseAgent):
         
         entities_json = json.dumps(entities, indent=2)
         
+        direction_guide = SCIERC_DIRECTION_HINT if not self.enable_open_world else ""
         prompt = HEAD_BINDING_PROMPT.format(
             text=text,
             entities=entities_json,
             relation_types=", ".join(relation_types),
+            direction_guide=direction_guide,
         )
         
         result = self.call_llm(
@@ -621,10 +663,12 @@ class RelationExtractor(BaseAgent):
             batch = head_bindings[i:i+batch_size]
             head_bindings_json = json.dumps(batch, indent=2)
             
+            direction_guide = SCIERC_DIRECTION_HINT if not self.enable_open_world else ""
             prompt = TAIL_BINDING_PROMPT.format(
                 text=text,
                 entities=entities_json,
                 head_bindings=head_bindings_json,
+                direction_guide=direction_guide,
             )
             
             if self.use_self_consistency:

@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Callable, Dict, List, Optional
 
-from multi_agent_kg.core.governance import GovernanceAssignment, OrgChart
+from multi_agent_kg.core.governance import GovernanceAssignment, OrgChart, coerce_metadata
 from multi_agent_kg.core.knowledge_graph import Entity, KnowledgeGraph, Triple
 
 
@@ -136,6 +136,13 @@ class GovernedKnowledgeGraph:
         self._pending_review: List[Triple] = []
         self._review_callback = review_callback
         self._bootstrap_assignment_stats: Dict[str, Any] = {}
+        self._triage_threshold = 0.7
+        self._triage_stats: Dict[str, Any] = {
+            "auto_approved_low_risk": 0,
+            "reviewed": 0,
+            "escalated_without_callback": 0,
+            "review_reasons": {},
+        }
 
     @property
     def kg(self) -> KnowledgeGraph:
@@ -248,6 +255,55 @@ class GovernedKnowledgeGraph:
             self.commit_decision(decision)
             return decision
 
+        if self._governance_mode == "triage":
+            review_reason = self._triage_reason(triple, assignment)
+            if review_reason is None:
+                self._triage_stats["auto_approved_low_risk"] += 1
+                decision = GovernanceDecision(
+                    triple=triple,
+                    action="auto_approve",
+                    domain_id=assignment.primary_domain_id,
+                    rationale=(
+                        "Triaged governance auto-approved a low-risk proposal "
+                        "after ownership routing."
+                    ),
+                    assignment=assignment,
+                )
+                self.commit_decision(decision)
+                return decision
+
+            if self._review_callback is not None:
+                self._triage_stats["reviewed"] += 1
+                self._triage_stats["review_reasons"][review_reason] = (
+                    self._triage_stats["review_reasons"].get(review_reason, 0) + 1
+                )
+                decision = self._review_callback(triple, assignment, self._kg, self._org_chart)
+                if decision.assignment is None:
+                    decision.assignment = assignment
+                if review_reason:
+                    suffix = f" [triage_reason={review_reason}]"
+                    decision.rationale = (decision.rationale or "").strip() + suffix
+                self.commit_decision(decision)
+                return decision
+
+            self._triage_stats["escalated_without_callback"] += 1
+            self._triage_stats["review_reasons"][review_reason] = (
+                self._triage_stats["review_reasons"].get(review_reason, 0) + 1
+            )
+            decision = GovernanceDecision(
+                triple=triple,
+                action="escalate",
+                domain_id=assignment.primary_domain_id,
+                rationale=(
+                    "Triaged governance flagged the proposal for explicit review "
+                    f"({review_reason}), but no review callback was configured."
+                ),
+                assignment=assignment,
+            )
+            self._audit_log.append(decision)
+            self._pending_review.append(triple)
+            return decision
+
         if self._review_callback is not None:
             decision = self._review_callback(triple, assignment, self._kg, self._org_chart)
             if decision.assignment is None:
@@ -299,6 +355,43 @@ class GovernedKnowledgeGraph:
         if result is not None:
             self._org_chart.update_cross_domain_relation(result)
         return result
+
+    def _triage_reason(
+        self,
+        triple: Triple,
+        assignment: GovernanceAssignment,
+    ) -> Optional[str]:
+        """Return a review reason for risky triples, or ``None`` if low-risk."""
+        confidence = triple.confidence if triple.confidence is not None else 0.0
+        if confidence < self._triage_threshold:
+            return "low_confidence"
+        if assignment.assignment_type in {"cross_domain", "unowned"}:
+            return assignment.assignment_type
+        if triple.metadata.get("schema_novel"):
+            return "schema_novel"
+        if self._relation_outside_schema(triple.relation):
+            return "schema_novel"
+        if self._kg.find_conflicts([triple]):
+            return "conflict"
+        return None
+
+    def _relation_outside_schema(self, relation: str) -> bool:
+        if not self._org_chart.domains:
+            return False
+        allowed_relations = set()
+        for domain in self._org_chart.domains:
+            allowed_relations.update(domain.relation_schema.keys())
+            domain_metadata = coerce_metadata(domain.metadata)
+            allowed_relations.update(domain_metadata.get("seed_relation_types", []))
+        if not allowed_relations:
+            return False
+        if relation in allowed_relations:
+            return False
+        normalized = relation.upper().replace("-", "_").replace(" ", "_")
+        for allowed in allowed_relations:
+            if allowed.upper().replace("-", "_").replace(" ", "_") == normalized:
+                return False
+        return True
 
     def add_triple_bypass(
         self,
@@ -389,6 +482,7 @@ class GovernedKnowledgeGraph:
                 ),
             },
             "bootstrap_assignment_stats": self._bootstrap_assignment_stats,
+            "triage_stats": self._triage_stats,
         }
 
     def to_dict(self) -> Dict[str, Any]:
@@ -398,6 +492,7 @@ class GovernedKnowledgeGraph:
             "governance_mode": self._governance_mode,
             "audit_log": [decision.to_dict() for decision in self._audit_log],
             "bootstrap_assignment_stats": self._bootstrap_assignment_stats,
+            "triage_stats": self._triage_stats,
         }
 
     def to_json(self) -> str:
@@ -422,6 +517,15 @@ class GovernedKnowledgeGraph:
             for item in data.get("audit_log", [])
         ]
         graph._bootstrap_assignment_stats = data.get("bootstrap_assignment_stats", {})
+        graph._triage_stats = data.get(
+            "triage_stats",
+            {
+                "auto_approved_low_risk": 0,
+                "reviewed": 0,
+                "escalated_without_callback": 0,
+                "review_reasons": {},
+            },
+        )
         return graph
 
 

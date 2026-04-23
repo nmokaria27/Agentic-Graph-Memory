@@ -278,7 +278,21 @@ class DeliberativeOrchestrator:
         
         # Visualizer will be initialized on-demand when export() is called
         self.visualizer = None
-        
+
+        # Propagate orchestrator model_tiers to every agent so --model truly routes
+        # to the LLM at runtime (agent subclasses don't forward model_tiers via super()).
+        for agent in (
+            self.document_processor,
+            self.domain_classifier,
+            self.entity_extractor,
+            self.relation_extractor,
+            self.evidence_linker,
+            self.extraction_validator,
+            self.verification_agent,
+            self.knowledge_organizer,
+        ):
+            agent.model_tiers = self.model_tiers
+
         # Set deliberation coordinator on all agents
         if self.deliberation_coordinator:
             self._setup_deliberation()
@@ -304,7 +318,7 @@ class DeliberativeOrchestrator:
         if self.governed_kg is None:
             self._strict_review_board = None
             return
-        if self.governance_mode != "strict":
+        if self.governance_mode not in {"strict", "triage"}:
             self.governed_kg.set_review_callback(None)
             self._strict_review_board = None
             return
@@ -557,11 +571,21 @@ class DeliberativeOrchestrator:
                 self.debug_logger.log_stage_header(4, "Connectivity Pass")
             print(f"\n[4b/9] Connectivity Pass ({disconnected_count} disconnected entities)")
             print("-" * 50)
+            connectivity_relation_types = (
+                relation_result.metadata.get("relation_types_found")
+                or relation_result.metadata.get("relation_types_used")
+                or relation_result.metadata.get("suggested_relation_types")
+                or [
+                    rt.get("type")
+                    for rt in domain_config.get("relation_types", [])
+                    if isinstance(rt, dict) and rt.get("type")
+                ]
+            )
             connectivity_triples = self.relation_extractor.extract_connectivity_relations(
                 text=context.text,
                 entities=entities,
                 triples=triples,
-                relation_types=relation_result.metadata.get("relation_types_used"),
+                relation_types=connectivity_relation_types,
             )
             if connectivity_triples:
                 triples.extend(connectivity_triples)

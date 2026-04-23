@@ -59,6 +59,76 @@ def test_audit_only_passes_everything() -> None:
     assert gkg.triples[0].relation == "AFFECTS"
 
 
+def test_triage_auto_approves_low_risk_triples_without_callback() -> None:
+    kg = KnowledgeGraph()
+    kg.add_entity("heart", ["Heart"], "ORGAN")
+    kg.add_entity("blood_pressure", ["Blood Pressure"], "MEASUREMENT")
+    gkg = GovernedKnowledgeGraph(kg=kg, org_chart=_simple_org_chart(), governance_mode="triage")
+
+    decision = gkg.propose_triple("heart", "AFFECTS", "blood_pressure", confidence=0.9)
+
+    assert decision.action == "auto_approve"
+    assert decision.committed is True
+    assert len(gkg.triples) == 1
+
+
+def test_triage_reviews_low_confidence_triples_when_callback_available() -> None:
+    kg = KnowledgeGraph()
+    kg.add_entity("heart", ["Heart"], "ORGAN")
+    kg.add_entity("blood_pressure", ["Blood Pressure"], "MEASUREMENT")
+    gkg = GovernedKnowledgeGraph(kg=kg, org_chart=_simple_org_chart(), governance_mode="triage")
+
+    callback_calls = {"count": 0}
+
+    def callback(triple, assignment, _kg, _org_chart):
+        callback_calls["count"] += 1
+        return GovernanceDecision(
+            triple=triple,
+            action="approve",
+            domain_id=assignment.primary_domain_id,
+            rationale="approved after triage review",
+            assignment=assignment,
+        )
+
+    gkg.set_review_callback(callback)
+    decision = gkg.propose_triple("heart", "AFFECTS", "blood_pressure", confidence=0.4)
+
+    assert callback_calls["count"] == 1
+    assert decision.action == "approve"
+    assert decision.committed is True
+    assert "triage_reason=low_confidence" in decision.rationale
+
+
+def test_triage_reviews_conflicts_when_callback_available() -> None:
+    kg = KnowledgeGraph()
+    kg.add_entity("heart", ["Heart"], "ORGAN")
+    kg.add_entity("blood_pressure", ["Blood Pressure"], "MEASUREMENT")
+    kg.add_entity("artery", ["Artery"], "ORGAN")
+    kg.add_triple("heart", "AFFECTS", "blood_pressure", confidence=0.9)
+    gkg = GovernedKnowledgeGraph(kg=kg, org_chart=_simple_org_chart(), governance_mode="triage")
+    gkg.assign_entity_to_domains("artery", ["cardio"])
+
+    callback_calls = {"count": 0}
+
+    def callback(triple, assignment, _kg, _org_chart):
+        callback_calls["count"] += 1
+        return GovernanceDecision(
+            triple=triple,
+            action="reject",
+            domain_id=assignment.primary_domain_id,
+            rationale="rejected conflicting triple",
+            assignment=assignment,
+        )
+
+    gkg.set_review_callback(callback)
+    decision = gkg.propose_triple("heart", "AFFECTS", "artery", confidence=0.95)
+
+    assert callback_calls["count"] == 1
+    assert decision.action == "reject"
+    assert decision.committed is False
+    assert "triage_reason=conflict" in decision.rationale
+
+
 def test_serialization_round_trip() -> None:
     kg = KnowledgeGraph()
     kg.add_entity("heart", ["Heart"], "ORGAN")

@@ -19,6 +19,7 @@ sys.path.insert(0, PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "evaluation"))
 
 from evaluation.adapters.scierc_adapter import SciERCAdapter
+from evaluation.run_evaluation import SCIERC_SCHEMA
 from multi_agent_kg.core import (
     GovernedKnowledgeGraph,
     IncrementalEnricher,
@@ -51,6 +52,18 @@ def main() -> None:
     parser.add_argument("--model", default="gemma4:31b")
     parser.add_argument("--skip-evidence-linking", action="store_true")
     parser.add_argument("--skip-verification", action="store_true")
+    parser.add_argument("--fixed-schema", action="store_true")
+    parser.add_argument("--reuse-corpus-schema", action="store_true", default=True)
+    parser.add_argument(
+        "--governance-review-mode",
+        default="triage",
+        choices=["triage", "strict", "audit_only", "permissive"],
+    )
+    parser.add_argument(
+        "--disable-base-context",
+        action="store_true",
+        help="Extract enrichment docs against an empty working KG instead of a seeded copy of the base KG.",
+    )
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
@@ -68,6 +81,11 @@ def main() -> None:
         enable_governance=True,
         skip_evidence_linking=args.skip_evidence_linking,
         skip_verification=args.skip_verification,
+        governance_review_mode=args.governance_review_mode,
+        use_base_context=not args.disable_base_context,
+        fixed_schema=args.fixed_schema,
+        reuse_corpus_schema=args.reuse_corpus_schema,
+        schema_override=SCIERC_SCHEMA if args.fixed_schema else None,
     )
     unguided_enricher = IncrementalEnricher(
         governed_kg=unguided_gkg,
@@ -75,6 +93,10 @@ def main() -> None:
         enable_governance=False,
         skip_evidence_linking=args.skip_evidence_linking,
         skip_verification=args.skip_verification,
+        use_base_context=not args.disable_base_context,
+        fixed_schema=args.fixed_schema,
+        reuse_corpus_schema=args.reuse_corpus_schema,
+        schema_override=SCIERC_SCHEMA if args.fixed_schema else None,
     )
 
     governed_before = _snapshot_stats(governed_gkg)

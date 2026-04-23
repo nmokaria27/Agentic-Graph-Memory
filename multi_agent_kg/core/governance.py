@@ -12,10 +12,24 @@ Definition 1 (Governed Knowledge Graph primitives):
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from multi_agent_kg.core.knowledge_graph import Entity, KnowledgeGraph, Triple
+
+
+def coerce_metadata(value: Any) -> Dict[str, Any]:
+    """Return a metadata dict even if upstream passed a JSON string or junk."""
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {}
+        return parsed if isinstance(parsed, dict) else {}
+    return {}
 
 
 @dataclass
@@ -65,11 +79,13 @@ class Domain:
 
     @property
     def owner_label(self) -> str:
-        return self.metadata.get("owner_label") or f"{self.label} Expert"
+        metadata = coerce_metadata(self.metadata)
+        return metadata.get("owner_label") or f"{self.label} Expert"
 
     @property
     def governance_scope(self) -> str:
-        return self.metadata.get("governance_scope") or self.description
+        metadata = coerce_metadata(self.metadata)
+        return metadata.get("governance_scope") or self.description
 
     def add_entity(self, entity_id: str) -> None:
         self.entity_ids.add(entity_id)
@@ -129,7 +145,7 @@ class Domain:
             entity_ids=set(data.get("entity_ids", [])),
             relation_schema=data.get("relation_schema", {}),
             topics=[TopicSubAgent.from_dict(item) for item in data.get("topics", [])],
-            metadata=data.get("metadata", {}),
+            metadata=coerce_metadata(data.get("metadata", {})),
         )
 
 
@@ -300,7 +316,8 @@ class OrgChart:
             if triple.relation in domain.relation_schema:
                 score += 1
                 reasons.append("relation is in domain schema")
-            seed_relations = set(domain.metadata.get("seed_relation_types", []))
+            domain_metadata = coerce_metadata(domain.metadata)
+            seed_relations = set(domain_metadata.get("seed_relation_types", []))
             if triple.relation in seed_relations and "relation is in domain schema" not in reasons:
                 score += 1
                 reasons.append("relation matches seed schema")

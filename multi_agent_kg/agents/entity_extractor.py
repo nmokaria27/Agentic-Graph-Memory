@@ -227,6 +227,43 @@ class EntityExtractor(BaseAgent):
         self.use_self_consistency = use_self_consistency
         self.n_consistency_samples = n_consistency_samples
 
+    def _enforce_strict_schema(
+        self,
+        entities: List[Dict[str, Any]],
+        allowed_types: List[str],
+    ) -> List[Dict[str, Any]]:
+        """Drop or remap entities whose type is not in the allowed set.
+
+        Handles the two common leak patterns: (1) casing variants like
+        OTHERSCIENTIFICTERM vs OtherScientificTerm, (2) invented types like
+        PERSON, RESEARCHER, ORGANIZATION that aren't in the fixed schema.
+        Normalized-name matches are kept with the canonical casing; everything
+        else is dropped so the SciERC F1 eval doesn't see schema leaks.
+        """
+        if not entities or not allowed_types:
+            return entities
+
+        def _norm(s: str) -> str:
+            return "".join(ch for ch in str(s).lower() if ch.isalnum())
+
+        allowed_by_norm = {_norm(t): t for t in allowed_types}
+        filtered: List[Dict[str, Any]] = []
+        dropped = 0
+        for ent in entities:
+            etype = ent.get("type", "")
+            canon = allowed_by_norm.get(_norm(etype))
+            if canon is None:
+                dropped += 1
+                continue
+            ent["type"] = canon
+            filtered.append(ent)
+        if dropped:
+            self.log(
+                f"Strict schema enforcement dropped {dropped} out-of-schema entities; "
+                f"kept {len(filtered)}"
+            )
+        return filtered
+
     def _normalize_entity_types(self, entity_types_raw: Any) -> List[str]:
         """Normalize entity types to list of strings, handling dict format from DomainClassifier.
 
@@ -320,6 +357,9 @@ class EntityExtractor(BaseAgent):
                 strict_types=strict_types,
             )
 
+            if strict_types and entity_types:
+                typed = self._enforce_strict_schema(typed, entity_types)
+
             # Include ALL entities in output; track low-confidence separately for logging/escalation
             for entity in typed:
                 entity["source_segment"] = segment_id
@@ -334,6 +374,9 @@ class EntityExtractor(BaseAgent):
             all_entities,
             known_entities,
         )
+
+        if strict_types and entity_types:
+            resolved = self._enforce_strict_schema(resolved, entity_types)
         
         # Handle low confidence entities
         print(f"\n[ENTITY EXTRACTOR DEBUG]")

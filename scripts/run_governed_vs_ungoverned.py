@@ -171,7 +171,7 @@ def main() -> None:
     parser.add_argument("--reuse-corpus-schema", action="store_true", default=True)
     parser.add_argument("--skip-evidence-linking", action="store_true")
     parser.add_argument("--skip-verification", action="store_true")
-    parser.add_argument("--governance-mode", default="audit_only", choices=["strict", "permissive", "audit_only"])
+    parser.add_argument("--governance-mode", default="audit_only", choices=["strict", "triage", "permissive", "audit_only"])
     parser.add_argument("--output", required=True)
     parser.add_argument("--governed-kg-output", default="")
     parser.add_argument("--ungoverned-kg-output", default="")

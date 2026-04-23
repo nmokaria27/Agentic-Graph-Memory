@@ -20,15 +20,18 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from multi_agent_kg.core.config import LLMConfig
+from multi_agent_kg.core.domain_builder import DomainBuilder
 from multi_agent_kg.core.domain_experts import OrgChart
-from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
-from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
+from multi_agent_kg.core.governance import coerce_metadata
+from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph, GovernanceDecision
+from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
 from multi_agent_kg.core.kg_operations import (
     KGDiff,
     compute_diff,
     load_kg,
     merge_kg,
     save_kg,
+    save_governed_kg,
 )
 from multi_agent_kg.core.deliberative_orchestrator import DeliberativeOrchestrator
 from multi_agent_kg.llm.openai_client import chat_completion, chat_completion_json
@@ -331,6 +334,12 @@ class IncrementalEnricher:
         governed_kg: Optional[GovernedKnowledgeGraph] = None,
         skip_evidence_linking: bool = False,
         skip_verification: bool = False,
+        governance_review_mode: str = "triage",
+        triage_confidence_threshold: float = 0.7,
+        use_base_context: bool = True,
+        fixed_schema: bool = False,
+        reuse_corpus_schema: bool = True,
+        schema_override: Optional[Dict[str, Any]] = None,
     ):
         if governed_kg is not None:
             base_kg = governed_kg.kg
@@ -346,6 +355,13 @@ class IncrementalEnricher:
         self.enable_governance = enable_governance and org_chart is not None
         self.skip_evidence_linking = skip_evidence_linking
         self.skip_verification = skip_verification
+        self.governance_review_mode = governance_review_mode
+        self.triage_confidence_threshold = triage_confidence_threshold
+        self.use_base_context = use_base_context
+        self.fixed_schema = fixed_schema
+        self.reuse_corpus_schema = reuse_corpus_schema
+        self.schema_override = schema_override
+        self.domain_builder = DomainBuilder(self.llm_config)
         self.conflict_resolver = ConflictResolver(self.llm_config)
         self.governance_board = (
             GovernanceReviewBoard(org_chart, base_kg, self.llm_config)
@@ -376,25 +392,43 @@ class IncrementalEnricher:
             "diffs": [],
             "merge_stats": {},
             "conflicts_resolved": 0,
+            "extraction": {
+                "use_base_context": self.use_base_context,
+                "fixed_schema": self.fixed_schema,
+                "reuse_corpus_schema": self.reuse_corpus_schema,
+            },
             "governance": {
                 "enabled": self.enable_governance,
+                "review_mode": self.governance_review_mode,
+                "bootstrap_assignment_stats": {},
+                "new_entities_domain_assigned": 0,
                 "new_triples_reviewed": 0,
+                "new_triples_auto_approved": 0,
                 "new_triples_approved": 0,
                 "new_triples_revised": 0,
                 "new_triples_rejected": 0,
                 "new_triples_escalated": 0,
                 "conflicts_reviewed": 0,
                 "conflicts_escalated": 0,
+                "triage_reasons": {},
                 "decisions": [],
             },
         }
 
         # Step 1: Run the extraction pipeline on new documents into a
-        #         *separate* KG so we don't pollute the base yet.
-        delta_kg = KnowledgeGraph()
+        #         *separate* working KG so we don't pollute the base yet.
+        #
+        # Important: by default we seed this working KG with the current
+        # base graph. That makes enrichment behave more like creation:
+        # new documents are processed against existing canonical entities
+        # instead of against an empty graph.
+        if self.use_base_context:
+            working_kg = KnowledgeGraph.from_dict(self.base_kg.to_dict())
+        else:
+            working_kg = KnowledgeGraph()
         pipeline = DeliberativeOrchestrator(
             llm_config=self.llm_config,
-            knowledge_graph=delta_kg,
+            knowledge_graph=working_kg,
             enable_governance=False,
             governance_mode="audit_only",
             skip_evidence_linking=self.skip_evidence_linking,
@@ -402,9 +436,11 @@ class IncrementalEnricher:
             quality_threshold=quality_threshold,
             max_refinement_iterations=1,
             enable_self_consistency=False,  # Speed: skip broken SC
-            enable_open_world=True,
-            enable_cross_document=False,
+            enable_open_world=not self.fixed_schema,
+            enable_cross_document=self.use_base_context,
             enable_deliberation=False,  # Speed: skip fake deliberation
+            reuse_corpus_schema=self.reuse_corpus_schema,
+            schema_override=self.schema_override if self.fixed_schema else None,
         )
 
         print("\n" + "=" * 70)
@@ -418,7 +454,7 @@ class IncrementalEnricher:
         print("INCREMENTAL ENRICHMENT: Computing diff")
         print("=" * 70)
 
-        diff = compute_diff(self.base_kg, delta_kg, self.match_threshold)
+        diff = compute_diff(self.base_kg, working_kg, self.match_threshold)
         print(diff.summary())
         report["diffs"].append({
             "new_entities": len(diff.new_entities),
@@ -429,19 +465,91 @@ class IncrementalEnricher:
 
         source_texts = " ".join(d.get("text", "")[:1000] for d in documents)
 
+        # Step 2b: Mirror creation-time provisional entity assignment so
+        # enrichment routes new-entity triples through the current org chart
+        # before governance review.
+        if diff.new_entities and self.enable_governance and self.org_chart is not None:
+            entity_payload = []
+            for entity in diff.new_entities:
+                labels = list(entity.labels or [])
+                entity_payload.append({
+                    "id": entity.id,
+                    "text": labels[0] if labels else entity.id,
+                    "labels": labels,
+                    "mentions": labels,
+                    "type": entity.type or "",
+                })
+            provisional_assignments, bootstrap_stats = self.domain_builder.assign_entities_to_org_chart(
+                entity_payload,
+                self.org_chart,
+                return_diagnostics=True,
+            )
+            assigned_count = 0
+            for entity in diff.new_entities:
+                domain_ids = provisional_assignments.get(entity.id, [])
+                if domain_ids:
+                    self.org_chart.assign_entity(entity.id, domain_ids)
+                    assigned_count += 1
+            report["governance"]["bootstrap_assignment_stats"] = bootstrap_stats
+            report["governance"]["new_entities_domain_assigned"] = assigned_count
+
         # Step 3: Review new triples with the governing expert(s)
+        governed_new_triple_decisions: List[GovernanceDecision] = []
         if diff.new_triples and self.governance_board:
             print(f"\nReviewing {len(diff.new_triples)} proposed triples with domain owners...")
+            approved_triples = []
+            triples_to_review = []
+            precomputed_assignment: Dict[int, Dict[str, Any]] = {}
+
+            for idx, candidate_t in enumerate(diff.new_triples):
+                assignment = self.org_chart.route_triple_for_governance(candidate_t)
+                triage_reason = self._triage_reason(candidate_t, assignment)
+                precomputed_assignment[idx] = {
+                    "assignment": assignment,
+                    "triage_reason": triage_reason,
+                }
+                if self.governance_review_mode == "triage" and triage_reason is None:
+                    approved_triples.append(candidate_t)
+                    report["governance"]["new_triples_auto_approved"] += 1
+                    governed_new_triple_decisions.append(
+                        GovernanceDecision(
+                            triple=candidate_t,
+                            action="auto_approve",
+                            domain_id=assignment.primary_domain_id,
+                            rationale="Triaged enrichment auto-approved a low-risk proposal.",
+                            assignment=assignment,
+                        )
+                    )
+                    report["governance"]["decisions"].append({
+                        "triple": {
+                            "subject": candidate_t.subject,
+                            "relation": candidate_t.relation,
+                            "object": candidate_t.object,
+                        },
+                        "action": "auto_approve",
+                        "owner_domains": assignment.domain_ids,
+                        "rationale": "Triaged enrichment auto-approved a low-risk proposal.",
+                    })
+                    continue
+                triples_to_review.append((idx, candidate_t))
+                if triage_reason is not None:
+                    report["governance"]["triage_reasons"][triage_reason] = (
+                        report["governance"]["triage_reasons"].get(triage_reason, 0) + 1
+                    )
+
             governance_decisions = self.governance_board.review_new_triples(
-                diff.new_triples,
+                [candidate for _, candidate in triples_to_review],
                 source_texts,
             )
-            approved_triples = []
-            from multi_agent_kg.core.knowledge_graph import Triple
 
-            for candidate_t, decision in zip(diff.new_triples, governance_decisions):
+            for (idx, candidate_t), decision in zip(triples_to_review, governance_decisions):
                 action = decision.get("action", "reject")
+                triage_reason = precomputed_assignment[idx]["triage_reason"]
+                assignment = precomputed_assignment[idx]["assignment"]
                 report["governance"]["new_triples_reviewed"] += 1
+                rationale = decision.get("rationale", "")
+                if triage_reason:
+                    rationale = f"{rationale} [triage_reason={triage_reason}]".strip()
                 report["governance"]["decisions"].append({
                     "triple": {
                         "subject": candidate_t.subject,
@@ -450,34 +558,71 @@ class IncrementalEnricher:
                     },
                     "action": action,
                     "owner_domains": decision.get("owner_domains", []),
-                    "rationale": decision.get("rationale", ""),
+                    "rationale": rationale,
                 })
 
                 if action == "approve":
                     approved_triples.append(candidate_t)
                     report["governance"]["new_triples_approved"] += 1
-                elif action == "revise" and decision.get("revised_triple"):
-                    revised = decision["revised_triple"]
-                    approved_triples.append(
-                        Triple(
-                            subject=revised.get("subject", candidate_t.subject),
-                            relation=revised.get("relation", candidate_t.relation),
-                            object=revised.get("object", candidate_t.object),
-                            confidence=candidate_t.confidence,
-                            source=candidate_t.source,
-                            metadata=candidate_t.metadata,
+                    governed_new_triple_decisions.append(
+                        GovernanceDecision(
+                            triple=candidate_t,
+                            action="approve",
+                            domain_id=assignment.primary_domain_id,
+                            rationale=rationale,
+                            assignment=assignment,
                         )
                     )
+                elif action == "revise" and decision.get("revised_triple"):
+                    revised = decision["revised_triple"]
+                    revised_triple = Triple(
+                        subject=revised.get("subject", candidate_t.subject),
+                        relation=revised.get("relation", candidate_t.relation),
+                        object=revised.get("object", candidate_t.object),
+                        confidence=candidate_t.confidence,
+                        source=candidate_t.source,
+                        metadata=candidate_t.metadata,
+                    )
+                    approved_triples.append(revised_triple)
                     report["governance"]["new_triples_revised"] += 1
+                    governed_new_triple_decisions.append(
+                        GovernanceDecision(
+                            triple=candidate_t,
+                            action="revise",
+                            domain_id=assignment.primary_domain_id,
+                            rationale=rationale,
+                            revised_triple=revised_triple,
+                            assignment=assignment,
+                        )
+                    )
                 elif action == "escalate":
                     report["governance"]["new_triples_escalated"] += 1
+                    governed_new_triple_decisions.append(
+                        GovernanceDecision(
+                            triple=candidate_t,
+                            action="escalate",
+                            domain_id=assignment.primary_domain_id,
+                            rationale=rationale,
+                            assignment=assignment,
+                        )
+                    )
                 else:
                     report["governance"]["new_triples_rejected"] += 1
+                    governed_new_triple_decisions.append(
+                        GovernanceDecision(
+                            triple=candidate_t,
+                            action="reject",
+                            domain_id=assignment.primary_domain_id,
+                            rationale=rationale,
+                            assignment=assignment,
+                        )
+                    )
 
             diff.new_triples = approved_triples
 
         # Step 4: Resolve conflicts
         conflict_strategy = "keep_higher_confidence"
+        governed_conflict_decisions: List[GovernanceDecision] = []
         if diff.conflicting_triples and self.auto_resolve_conflicts:
             print(f"\nResolving {len(diff.conflicting_triples)} conflicts...")
             if self.governance_board:
@@ -499,6 +644,11 @@ class IncrementalEnricher:
                 if idx < len(diff.conflicting_triples):
                     resolution = res.get("resolution", "keep_existing")
                     existing_t, candidate_t = diff.conflicting_triples[idx]
+                    assignment = (
+                        self.org_chart.route_triple_for_governance(candidate_t)
+                        if self.org_chart is not None
+                        else None
+                    )
                     if self.governance_board:
                         report["governance"]["conflicts_reviewed"] += 1
                         report["governance"]["decisions"].append({
@@ -516,11 +666,30 @@ class IncrementalEnricher:
                         # Move from conflicting to new
                         diff.new_triples.append(candidate_t)
                         resolved_triples.append(idx)
+                        if assignment is not None:
+                            governed_conflict_decisions.append(
+                                GovernanceDecision(
+                                    triple=candidate_t,
+                                    action="approve",
+                                    domain_id=assignment.primary_domain_id,
+                                    rationale=res.get("rationale", ""),
+                                    assignment=assignment,
+                                )
+                            )
                     elif resolution == "keep_both":
                         diff.new_triples.append(candidate_t)
                         resolved_triples.append(idx)
+                        if assignment is not None:
+                            governed_conflict_decisions.append(
+                                GovernanceDecision(
+                                    triple=candidate_t,
+                                    action="approve",
+                                    domain_id=assignment.primary_domain_id,
+                                    rationale=res.get("rationale", ""),
+                                    assignment=assignment,
+                                )
+                            )
                     elif resolution == "merge" and res.get("merged_triple"):
-                        from multi_agent_kg.core.knowledge_graph import Triple
                         mt = res["merged_triple"]
                         merged = Triple(
                             subject=mt.get("subject", existing_t.subject),
@@ -534,9 +703,40 @@ class IncrementalEnricher:
                         )
                         diff.new_triples.append(merged)
                         resolved_triples.append(idx)
+                        if assignment is not None:
+                            governed_conflict_decisions.append(
+                                GovernanceDecision(
+                                    triple=candidate_t,
+                                    action="revise",
+                                    domain_id=assignment.primary_domain_id,
+                                    rationale=res.get("rationale", ""),
+                                    revised_triple=merged,
+                                    assignment=assignment,
+                                )
+                            )
                     elif resolution == "escalate":
                         report["governance"]["conflicts_escalated"] += 1
+                        if assignment is not None:
+                            governed_conflict_decisions.append(
+                                GovernanceDecision(
+                                    triple=candidate_t,
+                                    action="escalate",
+                                    domain_id=assignment.primary_domain_id,
+                                    rationale=res.get("rationale", ""),
+                                    assignment=assignment,
+                                )
+                            )
                     # else: keep_existing, do nothing
+                    if resolution == "keep_existing" and assignment is not None:
+                        governed_conflict_decisions.append(
+                            GovernanceDecision(
+                                triple=candidate_t,
+                                action="reject",
+                                domain_id=assignment.primary_domain_id,
+                                rationale=res.get("rationale", ""),
+                                assignment=assignment,
+                            )
+                        )
 
             # Remove resolved conflicts
             diff.conflicting_triples = [
@@ -551,9 +751,16 @@ class IncrementalEnricher:
         print("INCREMENTAL ENRICHMENT: Merging into base KG")
         print("=" * 70)
 
-        merge_stats = merge_kg(self.base_kg, diff, conflict_strategy)
-        if self.governed_kg is not None:
-            self.governed_kg.org_chart.refresh_cross_domain_relations(self.base_kg)
+        if self.governed_kg is not None and self.enable_governance:
+            merge_stats = self._merge_governed_diff(
+                diff,
+                governed_new_triple_decisions,
+                governed_conflict_decisions,
+            )
+        else:
+            merge_stats = merge_kg(self.base_kg, diff, conflict_strategy)
+            if self.governed_kg is not None:
+                self.governed_kg.org_chart.refresh_cross_domain_relations(self.base_kg)
         report["merge_stats"] = merge_stats
         print(f"  Entities added:   {merge_stats['entities_added']}")
         print(f"  Entities updated: {merge_stats['entities_updated']}")
@@ -566,9 +773,84 @@ class IncrementalEnricher:
         self.enrichment_log.append(report)
         return report
 
+    def _triage_reason(self, candidate: Any, assignment: Any) -> Optional[str]:
+        confidence = candidate.confidence or 0.0
+        if confidence < self.triage_confidence_threshold:
+            return "low_confidence"
+        if assignment.assignment_type in {"cross_domain", "unowned"}:
+            return assignment.assignment_type
+        if self._relation_outside_schema(candidate.relation):
+            return "schema_novel"
+        return None
+
+    def _relation_outside_schema(self, relation: str) -> bool:
+        if self.org_chart is None or not self.org_chart.domains:
+            return False
+        allowed_relations = set()
+        for domain in self.org_chart.domains:
+            allowed_relations.update(domain.relation_schema.keys())
+            domain_metadata = coerce_metadata(domain.metadata)
+            allowed_relations.update(domain_metadata.get("seed_relation_types", []))
+        if not allowed_relations:
+            return False
+        if relation in allowed_relations:
+            return False
+        normalized = relation.upper().replace("-", "_").replace(" ", "_")
+        for allowed in allowed_relations:
+            if allowed.upper().replace("-", "_").replace(" ", "_") == normalized:
+                return False
+        return True
+
+    def _merge_governed_diff(
+        self,
+        diff: KGDiff,
+        new_triple_decisions: List[GovernanceDecision],
+        conflict_decisions: List[GovernanceDecision],
+    ) -> Dict[str, Any]:
+        stats = {
+            "entities_added": 0,
+            "entities_updated": 0,
+            "triples_added": 0,
+            "conflicts_resolved": len(conflict_decisions),
+        }
+
+        for entity in diff.new_entities:
+            self.base_kg.add_entity(
+                entity_id=entity.id,
+                labels=entity.labels,
+                entity_type=entity.type,
+                metadata=entity.metadata,
+            )
+            stats["entities_added"] += 1
+
+        for existing, incoming in diff.updated_entities:
+            entity = self.base_kg.entities[existing.id]
+            for label in incoming.labels:
+                if label not in entity.labels:
+                    entity.labels.append(label)
+            if incoming.type and not entity.type:
+                entity.type = incoming.type
+            entity.metadata.update(incoming.metadata)
+            stats["entities_updated"] += 1
+
+        for decision in [*new_triple_decisions, *conflict_decisions]:
+            if decision.action in {"approve", "auto_approve", "revise"}:
+                result = self.governed_kg.commit_decision(decision)
+                if result is not None:
+                    stats["triples_added"] += 1
+            else:
+                if decision not in self.governed_kg.audit_log:
+                    self.governed_kg.audit_log.append(decision)
+
+        self.governed_kg.org_chart.refresh_cross_domain_relations(self.base_kg)
+        return stats
+
     def save(self, path: str) -> None:
         """Save the enriched KG to disk."""
-        save_kg(self.base_kg, path)
+        if self.governed_kg is not None:
+            save_governed_kg(self.governed_kg, path)
+        else:
+            save_kg(self.base_kg, path)
 
     @classmethod
     def from_file(
