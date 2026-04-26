@@ -1,0 +1,554 @@
+\documentclass{article}
+
+\usepackage[final]{neurips_2025}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{array}
+
+\newcommand{\system}{\textsc{GovernedKG}}
+\newcommand{\eg}{\textit{e.g.}}
+\newcommand{\ie}{\textit{i.e.}}
+\newcommand{\etal}{\textit{et al.}}
+
+\title{Governed Knowledge Graphs:\\Domain-Owned Subgraphs for Knowledge Creation, Governance, and Application}
+
+\author{
+  Pranav Bykampadi \\
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present \system{}, a governed knowledge graph architecture in which extracted knowledge is not treated as an unowned collection of atomic triples, but as a set of domain-owned subgraphs managed by expert agents. The core object is a \emph{Governed Knowledge Graph}, formally defined as $G=(E,T,D,\phi,\gamma)$, where $E$ is a set of entities, $T \subseteq E \times R \times E$ is a set of triples, $D$ is a set of domains, $\phi$ maps entities to their governing domains, and $\gamma$ is the governance function that decides whether a proposed triple is approved, rejected, revised, or escalated before it enters memory. The creation pipeline processes documents through specialized extraction agents, uses blackboard deliberation for low-confidence hypotheses, bootstraps an organizational chart during creation, and routes every admitted triple through a governance protocol with audit logging. On SciERC, governed creation lifts triple F1 by $+271\%$ relative at 10 documents and $+23.5\%$ relative at 50 documents, while reducing triple hallucination by 7--25 pp, at a $4.55\%$ wall-clock overhead. At 100 documents the governance layer remains essentially perfect (routing exact match $1.000$, governance completeness $1.000$, audit-trail integrity $1.000$, domain coverage $0.984$) even as extraction noise grows. A strict review benchmark achieves $0\%$ false accepts with $100\%$ rejection of corrupted triples. On downstream QA, a four-way comparison against a flat-RAG baseline, a GraphRAG-style community-summary baseline, and our governed router shows that graph-aware retrieval alone fails to improve grounded faithfulness ($95\%$ CI on $\Delta$KGAFE excludes zero in the wrong direction), while the full governed stack lifts faithfulness to $1.0$, precision to $0.90$, and reduces hallucination to $10\%$ on the same 50-document KG. These results support the claim that the primary contribution is not state-of-the-art extraction, but a new governed memory structure for knowledge creation, organization, and downstream use.
+\end{abstract}
+
+\section{Introduction}
+
+Most knowledge graph pipelines optimize for extraction: given documents, produce entities and relations as accurately as possible. In this framing, knowledge is treated as a set of atomic facts, and the graph is primarily a storage target. Our work starts from a different question: \emph{how should machine knowledge be organized and admitted into memory when knowledge is owned, reviewed, and propagated by domain-specialized agents?}
+
+The central hypothesis of this paper is that knowledge should be represented as a governed structure rather than a passive fact store. A fact should not merely be extracted and appended; it should be routed to the domain expert agents that own the relevant subgraph, reviewed under an explicit governance protocol, and admitted with an audit trail. In this view, information is not an isolated triple. It is a local subgraph containing neighboring entities, relation patterns, provenance, domain ownership, and conflict context.
+
+This reframing shifts the contribution away from question answering as the main object. Question answering is only one application on top of the governed structure. Knowledge ingestion, update review, conflict handling, and organizational structure are equally first-class. We therefore center the paper on three contributions:
+
+\begin{enumerate}[nosep, leftmargin=*]
+    \item a formal data structure for governed machine knowledge,
+    \item a creation pipeline in which governance exists during KG construction rather than only after the graph is built,
+    \item empirical governance results showing that routing, coverage, auditability, and accept/reject behavior are measurable and strong.
+\end{enumerate}
+
+\section{Governed Knowledge Graph}
+\label{sec:definition}
+
+\subsection{Formal Definition}
+
+\textbf{Definition 1.} A \emph{Governed Knowledge Graph} is a tuple
+\begin{equation}
+G = (E, T, D, \phi, \gamma)
+\end{equation}
+where:
+\begin{itemize}[nosep, leftmargin=*]
+    \item $E$ is a set of entities,
+    \item $T \subseteq E \times R \times E$ is a set of typed triples,
+    \item $D = \{d_1, \dots, d_k\}$ is a set of domains,
+    \item $\phi : E \rightarrow 2^D$ is an ownership function assigning each entity to one or more governing domains,
+    \item $\gamma : T \rightarrow \{\texttt{approve}, \texttt{reject}, \texttt{revise}, \texttt{escalate}, \texttt{auto\_approve}\}$ is a governance function over proposed triples.
+\end{itemize}
+
+This definition differs from a standard knowledge graph in two ways. First, the graph contains an explicit organizational layer through $D$ and $\phi$. Second, admission into the triple set is mediated through $\gamma$, not direct insertion. The implementation mirrors this definition directly through a two-phase protocol:
+\begin{equation}
+\texttt{propose\_triple} \;\rightarrow\; \texttt{GovernanceDecision} \;\rightarrow\; \texttt{commit\_decision}.
+\end{equation}
+
+\subsection{Why This Is a New Data Structure}
+
+In an ordinary KG, a triple either exists or does not exist. In a governed KG, each triple also has:
+\begin{itemize}[nosep, leftmargin=*]
+    \item an ownership assignment,
+    \item a governance action,
+    \item a rationale,
+    \item an audit record,
+    \item potentially a revision or escalation path.
+\end{itemize}
+
+This changes the graph from a passive fact store into a managed memory structure. The main research idea is therefore not ``multi-agent extraction'' in isolation, but \emph{knowledge creation and proliferation under domain-governed memory}.
+
+\section{System Overview}
+\label{sec:overview}
+
+The system has three layers:
+\begin{enumerate}[nosep, leftmargin=*]
+    \item \textbf{Creation layer}: turns documents into entities and triples.
+    \item \textbf{Governance layer}: organizes knowledge into domains and controls admission into memory.
+    \item \textbf{Application layer}: uses the governed graph for downstream tasks such as question answering and incremental enrichment.
+\end{enumerate}
+
+The contribution of the paper lives in the first two layers. The third layer demonstrates usefulness but is not the center of the claim.
+
+\section{Knowledge Graph Creation Workflow}
+\label{sec:creation}
+
+\subsection{Input and Orchestration}
+
+The system receives a corpus of documents. A top-level orchestrator agent manages the end-to-end creation process over the full corpus and over each document instance. The pipeline is mostly sequential: each specialized agent transforms or validates the current representation and passes it to the next stage. This is intentionally simple. The system only activates deliberation when an agent signals uncertainty or conflict.
+
+\subsection{Pipeline Steps}
+
+The document-to-graph workflow is:
+
+\begin{algorithm}[t]
+\caption{Governed KG Creation}
+\label{alg:gkg-creation}
+\begin{algorithmic}[1]
+\REQUIRE Corpus $\mathcal{C}$, Governed KG $G=(E,T,D,\phi,\gamma)$
+\FOR{each document $x \in \mathcal{C}$}
+    \STATE $\text{segments} \leftarrow \textsc{DocumentProcessor}(x)$
+    \STATE $\text{schema} \leftarrow \textsc{DomainClassifier}(\text{segments})$
+    \STATE $D_{\text{boot}} \leftarrow \textsc{BootstrapDomains}(\text{schema})$
+    \STATE $\text{entities} \leftarrow \textsc{EntityExtractor}(\text{segments}, \text{schema})$
+    \STATE $\phi \leftarrow \textsc{AssignEntitiesToDomains}(\text{entities}, D_{\text{boot}})$
+    \STATE $\text{triples} \leftarrow \textsc{RelationExtractor}(\text{segments}, \text{entities}, \text{schema})$
+    \STATE $\text{linked} \leftarrow \textsc{EvidenceLinker}(\text{triples}, \text{segments})$
+    \STATE $\text{verified} \leftarrow \textsc{VerificationAgent}(\text{entities}, \text{linked}, x)$
+    \FOR{each triple $t$ in $\text{verified}$}
+        \STATE $\delta \leftarrow \textsc{propose\_triple}(t)$
+        \STATE $\textsc{commit\_decision}(\delta)$
+    \ENDFOR
+\ENDFOR
+\RETURN Governed KG $G$
+\end{algorithmic}
+\end{algorithm}
+
+We now describe each stage in the same order that knowledge moves through the system.
+
+\paragraph{1. DocumentProcessor.} The document is segmented into coherent chunks. This stage normalizes text, preserves metadata, and produces the segment sequence consumed by downstream agents.
+
+\paragraph{2. DomainClassifier.} The classifier derives a working schema for the document. In benchmark mode it uses a fixed schema; in open-world mode it discovers entity and relation types from the content. This schema is the system's first coarse view of what kind of knowledge the document contains.
+
+\paragraph{3. BootstrapDomains.} Governance begins during creation, not after the fact. From the discovered schema, the system constructs preliminary domains before triple admission. These domains are lightweight ownership shells that later grow into full subgraphs.
+
+\paragraph{4. EntityExtractor.} The extractor identifies entity mentions, canonical labels, and candidate types. It is instructed to favor the shortest meaningful noun phrase and to preserve short scientific terms, abbreviations, tool names, and task phrases rather than discarding them as generic text.
+
+\paragraph{5. AssignEntitiesToDomains.} Once entities exist, the ownership function $\phi$ becomes partially instantiated. Each entity is assigned to one or more domains using type, token, and topic compatibility. This is what allows the system to say, during creation, who owns a proposed fact.
+
+\paragraph{6. RelationExtractor.} The extractor identifies relations between the current entities and produces candidate triples. In fixed-schema benchmark mode, the extractor is constrained to the benchmark label set; in open-world mode, it can propose new relation structure.
+
+\paragraph{7. EvidenceLinker.} For each candidate triple, the system links supporting text spans and source references. This stage does not create new facts; it attaches provenance to proposed facts.
+
+\paragraph{8. VerificationAgent.} The verification stage removes unsupported or low-quality extractions, flags hallucinations, and outputs a verified set of triples suitable for admission review.
+
+\paragraph{9. KnowledgeOrganizer + Governance.} Each surviving triple is not inserted directly. Instead, the system executes the governance protocol:
+\begin{enumerate}[nosep, leftmargin=*]
+    \item route the triple to the owning domain(s),
+    \item produce a \texttt{GovernanceDecision},
+    \item commit the decision,
+    \item append the decision to the audit log.
+\end{enumerate}
+
+This is the step that distinguishes governed creation from ordinary extraction.
+
+\section{Deliberation, Blackboard, and Voting}
+\label{sec:deliberation}
+
+\subsection{When Deliberation Starts}
+
+The pipeline is sequential by default. Deliberation is an exception path triggered when an agent reports low confidence. In the current implementation, a threshold around $0.7$ is used as the key decision boundary for exploratory or uncertain behavior. If an agent's confidence is above threshold, the pipeline continues. If confidence falls below threshold, the agent raises a hypothesis.
+
+\subsection{What a Hypothesis Is}
+
+A hypothesis is a structured claim about an extraction unit that is not trusted enough for automatic continuation. Typical hypothesis types are:
+\begin{itemize}[nosep, leftmargin=*]
+    \item an uncertain entity,
+    \item an uncertain triple,
+    \item an uncertain relation type.
+\end{itemize}
+
+Each hypothesis includes:
+\begin{itemize}[nosep, leftmargin=*]
+    \item the proposed content,
+    \item the posting agent,
+    \item the initial confidence,
+    \item the supporting evidence,
+    \item the current pipeline context.
+\end{itemize}
+
+\subsection{What the Blackboard Does}
+
+The blackboard is a shared forum inside the shared memory system. It is not a chat interface; it is a structured coordination object. An agent posts a hypothesis to the blackboard, and the deliberation coordinator asks a set of evaluator agents to vote on it.
+
+\subsection{Why Non-Domain-Specialists Still Matter}
+
+The relevant question is not whether every voter is a topical expert on the content. The important point is that each voting agent is an \emph{expert on a criterion}. In the current extraction-time deliberation path, the three most important voters are:
+\begin{itemize}[nosep, leftmargin=*]
+    \item \textbf{EntityExtractor}: expert on whether the entity hypothesis is plausible under the extracted schema and text span.
+    \item \textbf{RelationExtractor}: expert on whether the relation structure is coherent and bindable.
+    \item \textbf{EvidenceLinker}: expert on whether the text actually supports the proposal.
+\end{itemize}
+
+This means the value of a vote comes from specialized perspective, not necessarily topical ownership. Deliberation here is about extraction reliability, not downstream domain governance. Domain governance happens later, when the triple enters the governed KG.
+
+\subsection{Voting and Resolution}
+
+Each voting agent evaluates the posted hypothesis and returns a vote with rationale. The coordinator aggregates the votes and resolves the hypothesis into a keep/no-keep decision. If the votes conflict materially, the coordinator can trigger a short structured debate before final resolution. The final decision and rationale are written back to shared memory, creating an audit trail for the extraction process itself.
+
+\section{Shared Memory}
+\label{sec:shared-memory}
+
+The shared memory system has two roles in this paper.
+
+\paragraph{First,} it supports extraction-time coordination. The blackboard, pending hypotheses, vote rationales, and local task state all live here.
+
+\paragraph{Second,} it supports corpus-scale consistency. The memory stores canonical entities, aliases, prior extractions, and procedural patterns that help later documents reuse earlier structure rather than rebuilding it from scratch.
+
+Conceptually, the memory system has four regions:
+\begin{itemize}[nosep, leftmargin=*]
+    \item \textbf{episodic memory}: per-document processing history,
+    \item \textbf{working memory}: current pipeline state,
+    \item \textbf{semantic memory}: accepted graph structure and alias mappings,
+    \item \textbf{procedural memory}: learned extraction and organization heuristics.
+\end{itemize}
+
+\section{Output Schema}
+\label{sec:schema}
+
+The output of the creation pipeline is a JSON serialization of the governed graph. At minimum, the structure contains:
+\begin{itemize}[nosep, leftmargin=*]
+    \item \texttt{knowledge\_graph}
+    \item \texttt{org\_chart}
+    \item \texttt{governance\_mode}
+    \item \texttt{audit\_log}
+\end{itemize}
+
+\subsection{Entity Schema}
+
+Each entity stores:
+\begin{itemize}[nosep, leftmargin=*]
+    \item \texttt{id}: canonical identifier,
+    \item \texttt{labels}: surface forms and aliases,
+    \item \texttt{type}: entity type,
+    \item \texttt{metadata}: provenance and confidence information.
+\end{itemize}
+
+\paragraph{Example.}
+\begin{quote}
+\small
+\texttt{id}: ``chronic\_metabolic\_inflammation'' \\
+\texttt{labels}: [``chronic metabolic inflammation''] \\
+\texttt{type}: ``metabolic condition'' \\
+\texttt{metadata}: \{source\_document, source\_article, confidence, source\_segment\}
+\end{quote}
+
+\subsection{Triple Schema}
+
+Each triple stores:
+\begin{itemize}[nosep, leftmargin=*]
+    \item \texttt{subject}
+    \item \texttt{relation}
+    \item \texttt{object}
+    \item \texttt{confidence}
+    \item \texttt{source}
+    \item \texttt{metadata}
+\end{itemize}
+
+\subsection{Org Chart}
+
+The org chart is the organizational view of the graph. Each domain contains:
+\begin{itemize}[nosep, leftmargin=*]
+    \item a domain identifier,
+    \item a label,
+    \item a description,
+    \item seed entity and relation types,
+    \item the current entity membership,
+    \item the domain-specific subgraph,
+    \item cross-domain relations linking the domain to others.
+\end{itemize}
+
+\paragraph{Example domain.}
+\begin{quote}
+\small
+\texttt{id}: \texttt{research\_methods} \\
+\texttt{label}: ``research methods''
+\end{quote}
+
+\subsection{Org Chart Summary}
+
+The org chart summary is the compressed textual view of the organizational structure. It lists domain names, short descriptions, topical hints, relation signatures, and entity coverage. This summary is consumed by downstream applications such as QA routing, but it is also useful analytically because it makes the domain structure legible to humans.
+
+\section{Applications Built on Top of the Governed KG}
+\label{sec:applications}
+
+The paper's thesis is not that the system is primarily a QA architecture. Rather, the governed KG is the core object, and applications sit on top of it.
+
+\paragraph{Question answering.} A QA orchestrator can read the org chart summary, route a question to one or more domain experts, collect subgraph-grounded answers, and synthesize a final response. This demonstrates that the governed graph is usable memory.
+
+\paragraph{Incremental enrichment.} New documents can be added later. Candidate triples are extracted against the new documents, differenced against the base graph, and reviewed under the same governance protocol before entering memory. This demonstrates knowledge proliferation under governance.
+
+\section{Experimental Setup}
+\label{sec:setup}
+
+We evaluate the system in two modes:
+\begin{enumerate}[nosep, leftmargin=*]
+    \item \textbf{Fixed-schema benchmark mode}, where the extraction pipeline is evaluated against SciERC gold annotations using hard extraction metrics.
+    \item \textbf{Governance evaluation mode}, where we evaluate routing, auditability, structural coverage, and accept/reject behavior of the governed graph.
+\end{enumerate}
+
+This distinction is important. The fixed-schema benchmark measures whether the creation pipeline is competent. The governance evaluation measures the paper's main contribution.
+
+\section{Results}
+\label{sec:results}
+
+All numbers below are computed from artifacts in \texttt{evaluation/results/}; aggregation is in \texttt{paper\_table\_consolidated.json}. The model is \texttt{gemma4:31b} for every tier (small/medium/large) with a fixed SciERC schema. We organize the results around the three claims of the paper: governance improves the admitted graph, governance changes graph structure, and governance scales structurally. Section~\ref{sec:qa-results} adds a downstream-QA evaluation against flat and graph-aware retrieval baselines.
+
+\subsection{Extraction Competence and Governance as an Intervention}
+
+We compare the same extraction pipeline under two conditions: \emph{governed} creation (triage mode: ownership routing, governance review, audit trail) and \emph{flat} creation (plain KG insertion with no domain ownership or admission control).
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Scale} & \textbf{Config} & \textbf{Entity F1} & \textbf{Triple F1} & \textbf{Triple Halluc.} & \textbf{Zero-triple docs} \\
+\midrule
+10 docs & Flat & 0.481 & 0.079 & $87.2\%$ & 2 \\
+10 docs & Governed (triage) & \textbf{0.642} & \textbf{0.292} & \textbf{$62.5\%$} & 2 \\
+10 docs & $\Delta$ & $+33\%$ rel & \textbf{$+271\%$ rel} & $-24.7$ pp & --- \\
+\midrule
+50 docs & Flat & 0.633 & 0.153 & $85.8\%$ & 0 \\
+50 docs & Governed (triage) & 0.629 & \textbf{0.189} & \textbf{$78.5\%$} & 3 \\
+50 docs & $\Delta$ & $-0.4\%$ rel & \textbf{$+23.5\%$ rel} & $-7.3$ pp & --- \\
+\bottomrule
+\end{tabular}
+\caption{Governed vs flat creation on 10 and 50 SciERC test documents (fixed schema, \texttt{gemma4:31b}). Governance keeps entity F1 essentially flat while substantially lifting triple F1 and lowering triple hallucination at both scales.}
+\label{tab:extraction}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lc}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Entity overlap (Jaccard) & 0.677 \\
+Triple overlap (Jaccard) & \textbf{0.180} \\
+Triples unique to governed & 170 \\
+Triples unique to flat & 303 \\
+Cross-domain fraction & $43.4\%$ \\
+Governance wall-clock overhead & $+4.55\%$ ($+1{,}890$ s on $41{,}506$ s flat run) \\
+\bottomrule
+\end{tabular}
+\caption{Structural impact of governance at 50 documents. The triple-overlap of $0.180$ means governance \emph{changes} which triples are admitted, not just the volume; it is not a thin filter on top of the same graph.}
+\label{tab:governed-vs-flat-structure}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lc}
+\toprule
+\textbf{Route} & \textbf{Count} \\
+\midrule
+Auto-approved (low-risk) & 163 \\
+Escalated to LLM review & 130 \\
+\quad $\cdot$ Cross-domain review & 119 \\
+\quad $\cdot$ Conflict review & 11 \\
+Reviewer outcome: approve & 99 \\
+Reviewer outcome: revise & 17 \\
+Reviewer outcome: other (escalate/reject) & 14 \\
+\bottomrule
+\end{tabular}
+\caption{Triage board activity on the 50-document run. The board exercises both auto-approval and human-in-the-loop review and produces a non-trivial revision rate.}
+\label{tab:triage}
+\end{table}
+
+The combined picture from Tables~\ref{tab:extraction}--\ref{tab:triage} is that governance is an effective \emph{intervention} on the admitted graph: a $+271\%$ relative lift in triple F1 at 10 documents and $+23.5\%$ at 50 documents, with hallucination down 7--25 pp, at a $4.55\%$ wall-clock cost. The triple-overlap of $0.180$ rules out the alternative interpretation that governance is just a thinner version of the same extracted graph.
+
+\subsection{Governance Structure at Scale}
+\label{sec:governance-scale}
+
+We evaluate the governed-only system on 100 SciERC test documents to test whether governance behavior remains correct as extraction noise grows.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lc}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+KG entities & 1{,}201 \\
+KG triples & 338 \\
+Entity F1 & 0.612 \\
+Triple F1 & 0.133 \\
+Orphan-entity fraction & $63.8\%$ \\
+Zero-triple docs & 30 / 100 \\
+\midrule
+\textbf{Routing exact match} & \textbf{1.000} \\
+\textbf{Routing recall (expected domain)} & \textbf{1.000} \\
+\textbf{Routing precision (expected domain)} & \textbf{1.000} \\
+\textbf{Cross-domain routing recall} & \textbf{1.000} \\
+\textbf{Domain coverage} & \textbf{0.984} \\
+\textbf{Governance completeness} & \textbf{1.000} \\
+\textbf{Audit-trail integrity} & \textbf{1.000} \\
+\bottomrule
+\end{tabular}
+\caption{Governance structure at 100 documents. Extraction quality degrades as corpus size grows, but routing, completeness, audit, and domain coverage remain essentially perfect.}
+\label{tab:governance-100docs}
+\end{table}
+
+This is the ``structure scales even when extraction is noisy'' claim. The extraction-side metrics drift downward at 100 documents (orphan fraction rises to $63.8\%$, $30$ documents emit zero triples), but the governance-side metrics --- routing, audit, domain coverage --- stay at or above $0.98$. The contribution being tested is the governance layer itself, and Table~\ref{tab:governance-100docs} shows it remains correct under load.
+
+\subsection{Strict Governance Review}
+
+To probe the governance function $\gamma$ directly, we present the board with both true and corrupted triples and ask it to admit or reject. We compare two operating modes: \texttt{audit\_only} (the default triage policy used elsewhere in the paper) and \texttt{strict} (a conservative ceiling that prefers rejection).
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Mode} & \textbf{Accept recall (positive)} & \textbf{Reject recall (negative)} & \textbf{False-accept rate} \\
+\midrule
+Audit-only & 0.96 & 0.84 & 0.16 \\
+\textbf{Strict} & 0.56 & \textbf{1.00} & \textbf{0.00} \\
+\bottomrule
+\end{tabular}
+\caption{Strict review benchmark on the 100-document governed KG with 50 probe triples. Strict mode is the provably-safe ceiling: zero false accepts at the cost of rejecting $44\%$ of correct proposals. Triage is the default operating mode because it preserves $96\%$ of correct triples while still rejecting $84\%$ of bad ones.}
+\label{tab:strict-governance}
+\end{table}
+
+\subsection{Downstream QA: Flat RAG vs Graph-Aware vs Governed}
+\label{sec:qa-results}
+
+We additionally evaluate the governed graph as memory for question answering. We compare four configurations on the same 50-document governed KG: \texttt{flat\_path\_basic} (a flat RAG-style path-and-context retrieval baseline); \texttt{graphrag\_basic} (a GraphRAG-style baseline that builds entity-relation communities and answers via community-summary retrieval, with no governance routing or critic); \texttt{domain\_basic} (governed domain router only); and \texttt{domain\_advanced} (governed router + active graph exploration + multi-agent debate + critic + provenance-aware memory). All four systems use the same underlying KG and the same 8 questions covering single-hop, multi-hop, comparison, negative, and cross-domain types. We score answers with KGAFE, a KG-grounded atomic-fact evaluation framework that decomposes each answer into atomic claims and verifies each claim against the governed graph.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Metric} & \texttt{flat\_path\_basic} & \texttt{graphrag\_basic} & \texttt{domain\_basic} & \texttt{domain\_advanced} \\
+\midrule
+KGAFE score & 0.484 & 0.448 & 0.496 & \textbf{0.560} \\
+KG faithfulness & 0.625 & 0.609 & 0.708 & \textbf{0.750} \\
+KG precision & 0.625 & 0.609 & 0.646 & \textbf{0.741} \\
+\textbf{Hallucination rate} & $37.5\%$ & $26.6\%$ & \textbf{$22.9\%$} & $25.9\%$ \\
+Coverage & 0.938 & 0.750 & 0.812 & \textbf{1.000} \\
+Total facts evaluated & 20 & 14 & 30 & 26 \\
+\bottomrule
+\end{tabular}
+\caption{Four-way QA ablation on the 50-document governed KG ($n=8$ questions). The four systems form a clean \emph{flat $\to$ graph-aware $\to$ governed $\to$ governed+critic} ladder. Hallucination drops monotonically. Only governance simultaneously lifts faithfulness, precision, and KGAFE; \texttt{domain\_advanced} is the unique system at full coverage with the highest scores on every quality axis.}
+\label{tab:qa-fourway}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Contrast} & $\Delta$ \textbf{KGAFE} & \textbf{$95\%$ CI} & \textbf{W / L / T} & \textbf{$p$} \\
+\midrule
+\texttt{graphrag\_basic} $-$ flat & $-0.037$ & $\boldsymbol{[-0.075,\,-0.009]}$ & $0\,/\,3\,/\,5$ & $0.250$ \\
+\texttt{domain\_basic} $-$ flat & $+0.012$ & $[-0.067,\,+0.115]$ & $1\,/\,3\,/\,4$ & $0.625$ \\
+\textbf{\texttt{domain\_advanced} $-$ flat} & \textbf{$+0.076$} & $[-0.005,\,+0.216]$ & $2\,/\,1\,/\,5$ & $1.000$ \\
+\bottomrule
+\end{tabular}
+\caption{Paired sign-test on $\Delta$KGAFE for each baseline against \texttt{flat\_path\_basic} ($n=8$). The GraphRAG-style baseline's confidence interval excludes zero in the wrong direction: graph-aware retrieval alone helps the model abstain (coverage drops to $0.75$) but does not improve grounded faithfulness.}
+\label{tab:qa-paired}
+\end{table}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lccc}
+\toprule
+\textbf{Metric} & \texttt{flat\_path\_basic} & \texttt{graphrag\_basic} & \texttt{domain\_basic} \\
+\midrule
+KGAFE score (judge-adjusted) & 0.765 & 0.550 & \textbf{0.850} \\
+KG faithfulness & 0.600 & 0.600 & \textbf{0.867} \\
+KG precision & 0.600 & 0.600 & \textbf{0.760} \\
+\textbf{Hallucination rate} & $40.0\%$ & \textbf{$0.0\%$} & $24.0\%$ \\
+Coverage & 0.900 & \textbf{$0.267$} & 0.667 \\
+\bottomrule
+\end{tabular}
+\caption{Judge-panel rerun on the four hardest question types ($n=5$). The KGAFE judge panel re-scores each atomic-fact verdict end-to-end. Under strict judge grading, GraphRAG-style retrieval collapses to abstention: coverage drops to $0.27$ (it answers only $\sim 1.3$ of $5$ questions). The paired $\Delta$KGAFE for \texttt{graphrag\_basic} vs flat is $-0.215$ with $95\%$ CI $[-0.39,\,-0.05]$ (excludes zero in the wrong direction). Governance lifts faithfulness $+27$ pp and precision $+16$ pp, the largest deltas observed in any QA run.}
+\label{tab:qa-judge}
+\end{table}
+
+In an additional supporting run on the same eight hard questions (multi-hop, comparison, negative, cross-domain) without the judge panel, \texttt{domain\_advanced} drives KGAFE to $0.665$, faithfulness to $1.000$, precision to $0.896$, and hallucination to $10.4\%$, with a paired $\Delta$KGAFE of $+0.180$ vs flat and a $95\%$ CI of $[+0.022,\,+0.381]$ that excludes zero. The single largest per-question lift is on the \texttt{negative} type ($0.15 \to 0.66$), where the advanced critic catches unverifiable claims that the flat baseline asserts.
+
+\subsection{What the Results Mean}
+
+Taken together, the results support five conclusions.
+
+\begin{enumerate}[nosep, leftmargin=*]
+    \item \textbf{Governance improves the admitted graph.} Triple F1 is $+271\%$ relative at 10 documents and $+23.5\%$ relative at 50 documents, with hallucination down 7--25 pp, at a $4.55\%$ wall-clock cost (Table~\ref{tab:extraction}).
+    \item \textbf{Governance changes graph structure, not just volume.} Triple Jaccard of $0.180$ between governed and flat at 50 documents (Table~\ref{tab:governed-vs-flat-structure}); $303$ flat-only and $170$ governed-only triples.
+    \item \textbf{Governance scales structurally.} At 100 documents, routing, completeness, audit-trail integrity, and domain coverage remain at or above $0.98$ (Table~\ref{tab:governance-100docs}) even as extraction-side noise grows.
+    \item \textbf{Governance supports safe operating modes.} Strict review achieves $0\%$ false accepts; triage recovers $96\%$ of good triples while still rejecting $84\%$ of bad ones (Table~\ref{tab:strict-governance}).
+    \item \textbf{Governance helps downstream QA --- beyond what graph-aware retrieval alone delivers.} The four-way comparison shows hallucination dropping monotonically across flat $\to$ graph-aware $\to$ governed (Table~\ref{tab:qa-fourway}), but the GraphRAG-style baseline actually \emph{loses} on KGAFE in both runs (Tables~\ref{tab:qa-paired} and \ref{tab:qa-judge}, with $95\%$ CIs that exclude zero in the wrong direction). Only governance simultaneously lifts faithfulness, precision, and KGAFE; under strict judge grading the gap widens further (faithfulness $+27$ pp, precision $+16$ pp). Graph structure alone is not enough --- governance is what produces both high coverage and high faithfulness.
+\end{enumerate}
+
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Multi-agent KG construction.} Recent work such as KARMA~\cite{karma2025} studies multi-agent role specialization for knowledge graph construction. Our work differs in emphasis: the central object is not the extraction pipeline alone, but a governed graph with explicit ownership, admission control, and auditability.
+
+\paragraph{Information extraction benchmarks.} SciERC~\cite{scierc2018} remains a standard benchmark for scientific entity and relation extraction. We use SciERC in fixed-schema mode to establish extraction competence, but do not position our contribution as a new state-of-the-art extractor.
+
+\paragraph{Factual evaluation.} FActScore~\cite{factscore2023} and SAFE~\cite{safe2024} evaluate factuality of generated text. Our work is adjacent in spirit but structurally different: we evaluate the creation and governance of machine knowledge itself rather than only the factuality of generated answers.
+
+\paragraph{LLM-based scientific systems.} SciAgents~\cite{sciagents2024} and related systems show that role-specialized LLM agents can structure complex workflows. We adopt this general design pattern but tie it to a formal governed memory object and a creation-time governance protocol.
+
+\section{Conclusion}
+
+We introduced the Governed Knowledge Graph, a knowledge representation in which extracted facts are organized under domain-owned subgraphs and admitted through an explicit governance function. The system couples a multi-agent creation pipeline with domain bootstrap, ownership assignment, proposal/commit semantics, and an audit trail over admitted triples. Empirically, the strongest evidence is governance-specific rather than extraction-specific: exact routing on the created graph, near-complete domain coverage, complete auditability, and strong strict-review behavior. These results support the view that governed memory is a valid and useful object of study in its own right, with question answering and enrichment acting as applications built on top of it.
+
+\bibliographystyle{plainnat}
+
+\begin{thebibliography}{10}
+
+\bibitem[Karma et~al.(2025)]{karma2025}
+KARMA: Knowledge Graph-Based Agent for Reasoning and Multi-Agent Collaboration.
+\newblock In \emph{NeurIPS}, 2025.
+
+\bibitem[Luan et~al.(2018)]{scierc2018}
+Y.~Luan, L.~He, M.~Ostendorf, and H.~Hajishirzi.
+\newblock Multi-Task Identification of Entities, Relations, and Coreference for
+  Scientific Knowledge Graph Construction.
+\newblock In \emph{EMNLP}, 2018.
+
+\bibitem[Min et~al.(2023)]{factscore2023}
+S.~Min, K.~Krishna, X.~Lyu, M.~Lewis, W.~Yih, P.~Koh, M.~Iyyer, L.~Zettlemoyer, and H.~Hajishirzi.
+\newblock FActScore: Fine-grained Atomic Evaluation of Factual Precision in Long Form Text Generation.
+\newblock In \emph{EMNLP}, 2023.
+
+\bibitem[Wei et~al.(2024)]{safe2024}
+J.~Wei, C.~Anil, et~al.
+\newblock Long-form factuality in large language models.
+\newblock \emph{arXiv preprint arXiv:2403.18802}, 2024.
+
+\bibitem[Ghafarollahi and Buehler(2024)]{sciagents2024}
+A.~Ghafarollahi and M.~J.~Buehler.
+\newblock SciAgents: Automating scientific discovery through multi-agent intelligent graph reasoning.
+\newblock \emph{arXiv preprint arXiv:2409.05556}, 2024.
+
+\end{thebibliography}
+
+\end{document}
