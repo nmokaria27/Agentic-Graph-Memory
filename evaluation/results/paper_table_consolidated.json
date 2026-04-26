@@ -1,0 +1,643 @@
+{
+  "extraction_competence": {
+    "10_docs": {
+      "governed_triage": {
+        "entity_strict": {
+          "precision": 0.6139,
+          "recall": 0.6736,
+          "f1": 0.6424,
+          "tp": 97,
+          "fp": 61,
+          "fn": 47
+        },
+        "triple_strict": {
+          "precision": 0.375,
+          "recall": 0.2386,
+          "f1": 0.2917,
+          "tp": 21,
+          "fp": 35,
+          "fn": 67
+        },
+        "entity_hallucination_rate": 0.3861,
+        "triple_hallucination_rate": 0.625,
+        "orphan_fraction": 0.5328,
+        "zero_triple_docs": 2,
+        "total_entities": 137,
+        "total_triples": 56
+      },
+      "flat": {
+        "entity_strict": {
+          "precision": 0.6129,
+          "recall": 0.3958,
+          "f1": 0.481,
+          "tp": 57,
+          "fp": 36,
+          "fn": 87
+        },
+        "triple_strict": {
+          "precision": 0.1282,
+          "recall": 0.0568,
+          "f1": 0.0787,
+          "tp": 5,
+          "fp": 34,
+          "fn": 83
+        },
+        "entity_hallucination_rate": 0.3871,
+        "triple_hallucination_rate": 0.8718,
+        "orphan_fraction": 0.3151,
+        "zero_triple_docs": 2,
+        "total_entities": 73,
+        "total_triples": 39
+      }
+    },
+    "50_docs": {
+      "governed_triage": {
+        "entity_strict": {
+          "precision": 0.5897,
+          "recall": 0.6744,
+          "f1": 0.6292,
+          "tp": 437,
+          "fp": 304,
+          "fn": 211
+        },
+        "triple_strict": {
+          "precision": 0.2153,
+          "recall": 0.1681,
+          "f1": 0.1888,
+          "tp": 59,
+          "fp": 215,
+          "fn": 292
+        },
+        "entity_hallucination_rate": 0.4103,
+        "triple_hallucination_rate": 0.7847,
+        "orphan_fraction": 0.4477,
+        "zero_triple_docs": 3,
+        "total_entities": 621,
+        "total_triples": 274
+      },
+      "flat": {
+        "entity_strict": {
+          "precision": 0.575,
+          "recall": 0.7037,
+          "f1": 0.6329,
+          "tp": 456,
+          "fp": 337,
+          "fn": 192
+        },
+        "triple_strict": {
+          "precision": 0.1425,
+          "recall": 0.1652,
+          "f1": 0.153,
+          "tp": 58,
+          "fp": 349,
+          "fn": 293
+        },
+        "entity_hallucination_rate": 0.425,
+        "triple_hallucination_rate": 0.8575,
+        "orphan_fraction": 0.2776,
+        "zero_triple_docs": 0,
+        "total_entities": 634,
+        "total_triples": 407
+      }
+    }
+  },
+  "governance_intervention": {
+    "10_docs": {
+      "governed_triage": {
+        "entity_strict": {
+          "precision": 0.6139,
+          "recall": 0.6736,
+          "f1": 0.6424,
+          "tp": 97,
+          "fp": 61,
+          "fn": 47
+        },
+        "triple_strict": {
+          "precision": 0.375,
+          "recall": 0.2386,
+          "f1": 0.2917,
+          "tp": 21,
+          "fp": 35,
+          "fn": 67
+        },
+        "entity_hallucination_rate": 0.3861,
+        "triple_hallucination_rate": 0.625,
+        "orphan_fraction": 0.5328,
+        "zero_triple_docs": 2,
+        "total_entities": 137,
+        "total_triples": 56
+      },
+      "flat": {
+        "entity_strict": {
+          "precision": 0.6129,
+          "recall": 0.3958,
+          "f1": 0.481,
+          "tp": 57,
+          "fp": 36,
+          "fn": 87
+        },
+        "triple_strict": {
+          "precision": 0.1282,
+          "recall": 0.0568,
+          "f1": 0.0787,
+          "tp": 5,
+          "fp": 34,
+          "fn": 83
+        },
+        "entity_hallucination_rate": 0.3871,
+        "triple_hallucination_rate": 0.8718,
+        "orphan_fraction": 0.3151,
+        "zero_triple_docs": 2,
+        "total_entities": 73,
+        "total_triples": 39
+      }
+    },
+    "50_docs": {
+      "governed_triage": {
+        "entity_strict": {
+          "precision": 0.5897,
+          "recall": 0.6744,
+          "f1": 0.6292,
+          "tp": 437,
+          "fp": 304,
+          "fn": 211
+        },
+        "triple_strict": {
+          "precision": 0.2153,
+          "recall": 0.1681,
+          "f1": 0.1888,
+          "tp": 59,
+          "fp": 215,
+          "fn": 292
+        },
+        "entity_hallucination_rate": 0.4103,
+        "triple_hallucination_rate": 0.7847,
+        "orphan_fraction": 0.4477,
+        "zero_triple_docs": 3,
+        "total_entities": 621,
+        "total_triples": 274
+      },
+      "flat": {
+        "entity_strict": {
+          "precision": 0.575,
+          "recall": 0.7037,
+          "f1": 0.6329,
+          "tp": 456,
+          "fp": 337,
+          "fn": 192
+        },
+        "triple_strict": {
+          "precision": 0.1425,
+          "recall": 0.1652,
+          "f1": 0.153,
+          "tp": 58,
+          "fp": 349,
+          "fn": 293
+        },
+        "entity_hallucination_rate": 0.425,
+        "triple_hallucination_rate": 0.8575,
+        "orphan_fraction": 0.2776,
+        "zero_triple_docs": 0,
+        "total_entities": 634,
+        "total_triples": 407
+      },
+      "comparison": {
+        "entity_overlap_jaccard": 0.6774,
+        "triple_overlap_jaccard": 0.1802,
+        "unique_to_governed_triples": 170,
+        "unique_to_ungoverned_triples": 303,
+        "cross_domain_fraction": 0.4343,
+        "governance_overhead_seconds": 1890.38,
+        "governance_overhead_pct": 4.55,
+        "orphan_fraction_delta": null,
+        "zero_triple_docs_delta": null
+      },
+      "triage_stats": {
+        "auto_approved_low_risk": 163,
+        "reviewed": 130,
+        "escalated_without_callback": 0,
+        "review_reasons": {
+          "cross_domain": 119,
+          "conflict": 11
+        }
+      }
+    }
+  },
+  "governance_structure_100_docs": {
+    "kg_basics": {
+      "entity_strict": {
+        "precision": 0.5847,
+        "recall": 0.6429,
+        "f1": 0.6124,
+        "tp": 846,
+        "fp": 601,
+        "fn": 470
+      },
+      "triple_strict": {
+        "precision": 0.2041,
+        "recall": 0.0986,
+        "f1": 0.1329,
+        "tp": 69,
+        "fp": 269,
+        "fn": 631
+      },
+      "entity_hallucination_rate": 0.4153,
+      "triple_hallucination_rate": 0.7959,
+      "orphan_fraction": 0.6378,
+      "zero_triple_docs": 30,
+      "total_entities": 1201,
+      "total_triples": 338
+    },
+    "route_metrics": {
+      "num_examples": 80,
+      "routing_exact_match": 1.0,
+      "assignment_type_accuracy": 1.0,
+      "expected_domain_recall": 1.0,
+      "expected_domain_precision": 1.0,
+      "cross_domain_routing_recall": 1.0,
+      "cross_domain_escalation_accuracy": 0.0,
+      "decision_coverage": 0.0
+    },
+    "route_structure": {
+      "domain_coverage": 0.9842,
+      "governance_completeness": 1.0,
+      "audit_trail_integrity": 1.0
+    },
+    "audit_only_benchmark": {
+      "num_examples": 50,
+      "routing_exact_match": 1.0,
+      "assignment_type_accuracy": 1.0,
+      "expected_domain_recall": 1.0,
+      "expected_domain_precision": 1.0,
+      "cross_domain_routing_recall": 1.0,
+      "cross_domain_escalation_accuracy": 0.2188,
+      "decision_coverage": 1.0,
+      "accept_recall_positive": 0.96,
+      "reject_recall_negative": 0.84,
+      "false_accept_rate_negative": 0.16
+    },
+    "strict_benchmark": {
+      "num_examples": 50,
+      "routing_exact_match": 1.0,
+      "assignment_type_accuracy": 1.0,
+      "expected_domain_recall": 1.0,
+      "expected_domain_precision": 1.0,
+      "cross_domain_routing_recall": 1.0,
+      "cross_domain_escalation_accuracy": 0.0,
+      "decision_coverage": 1.0,
+      "accept_recall_positive": 0.56,
+      "reject_recall_negative": 1.0,
+      "false_accept_rate_negative": 0.0
+    }
+  },
+  "qa_downstream": {
+    "source_main_nojudge": "evaluation/results/scierc_50docs_qa_ablation_nojudge.json",
+    "source_supporting": "evaluation/results/scierc_50docs_qa_ablation_plus_advanced.json",
+    "source_with_graphrag": "evaluation/results/scierc_50docs_qa_ablation_with_graphrag.json",
+    "with_graphrag_baseline": {
+      "n_questions": 8,
+      "question_types": ["single_hop", "multi_hop", "comparison", "negative", "cross_domain"],
+      "judge_panel_enabled": false,
+      "configs": {
+        "flat_path_basic": {
+          "kgafe_score": 0.4844,
+          "kg_faithfulness": 0.625,
+          "kg_precision": 0.625,
+          "hallucination_rate": 0.375,
+          "coverage": 0.9375,
+          "total_facts_evaluated": 20,
+          "total_supported": 17,
+          "total_unverifiable": 3
+        },
+        "graphrag_basic": {
+          "kgafe_score": 0.4477,
+          "kg_faithfulness": 0.6094,
+          "kg_precision": 0.6094,
+          "hallucination_rate": 0.2656,
+          "coverage": 0.75,
+          "total_facts_evaluated": 14,
+          "total_supported": 11,
+          "total_unverifiable": 2,
+          "description": "GraphRAG-style baseline: community-summary retrieval over the same 50-doc corpus, no governance"
+        },
+        "domain_basic": {
+          "kgafe_score": 0.4958,
+          "kg_faithfulness": 0.7083,
+          "kg_precision": 0.6458,
+          "hallucination_rate": 0.2292,
+          "coverage": 0.8125,
+          "total_facts_evaluated": 30,
+          "total_supported": 24,
+          "total_unverifiable": 5
+        },
+        "domain_advanced": {
+          "kgafe_score": 0.5603,
+          "kg_faithfulness": 0.75,
+          "kg_precision": 0.7411,
+          "hallucination_rate": 0.2589,
+          "coverage": 1.0,
+          "total_facts_evaluated": 26,
+          "total_supported": 23,
+          "total_unverifiable": 3
+        }
+      },
+      "paired_vs_flat": {
+        "graphrag_basic": {
+          "delta_kgafe": -0.0367,
+          "paired_ci95": [-0.075, -0.0086],
+          "win_loss_tie": [0, 3, 5],
+          "sign_test_p": 0.25,
+          "interpretation": "graph-aware retrieval alone is more conservative (cov 0.75, halluc 26.6%) but loses to flat on aggregate KGAFE — community summaries help abstain but don't improve grounded faithfulness"
+        },
+        "domain_basic": {
+          "delta_kgafe": 0.0115,
+          "paired_ci95": [-0.0667, 0.1146],
+          "win_loss_tie": [1, 3, 4],
+          "sign_test_p": 0.625
+        },
+        "domain_advanced": {
+          "delta_kgafe": 0.0759,
+          "paired_ci95": [-0.0045, 0.2156],
+          "win_loss_tie": [2, 1, 5],
+          "sign_test_p": 1.0,
+          "interpretation": "best on every quality axis: highest KGAFE, faithfulness, precision, and coverage; CI just touches zero at lower bound"
+        }
+      },
+      "headline": "flat → graphrag → governed shows monotone hallucination drop (37.5% → 26.6% → 22.9%/25.9%); governance (domain_*) is the only family that ALSO lifts faithfulness, precision, and KGAFE — graph structure alone is not enough"
+    },
+    "main_nojudge": {
+      "n_questions": 8,
+      "question_types": [
+        "single_hop",
+        "multi_hop",
+        "comparison",
+        "negative",
+        "cross_domain"
+      ],
+      "configs": {
+        "flat_path_basic": {
+          "kgafe_score": 0.474,
+          "kg_faithfulness": 0.625,
+          "kg_precision": 0.583,
+          "hallucination_rate": 0.417,
+          "coverage": 0.938,
+          "total_facts_evaluated": 23,
+          "total_supported": 18,
+          "total_unverifiable": 5
+        },
+        "domain_basic": {
+          "kgafe_score": 0.486,
+          "kg_faithfulness": 0.672,
+          "kg_precision": 0.651,
+          "hallucination_rate": 0.224,
+          "coverage": 0.812,
+          "total_facts_evaluated": 20,
+          "total_supported": 16,
+          "total_unverifiable": 2
+        }
+      },
+      "paired_vs_flat": {
+        "domain_basic": {
+          "delta_kgafe": 0.012,
+          "delta_hallucination": -0.193,
+          "delta_faithfulness": 0.047,
+          "delta_precision": 0.068
+        }
+      }
+    },
+    "supporting": {
+      "n_questions": 8,
+      "question_types": [
+        "multi_hop",
+        "comparison",
+        "negative",
+        "cross_domain"
+      ],
+      "configs": {
+        "flat_path_basic": {
+          "kgafe_score": 0.4844,
+          "kg_faithfulness": 0.625,
+          "kg_precision": 0.625,
+          "hallucination_rate": 0.375,
+          "coverage": 0.938,
+          "total_facts_evaluated": 20,
+          "total_supported": 17,
+          "total_unverifiable": 3,
+          "avg_answer_words": 17.75
+        },
+        "domain_basic": {
+          "kgafe_score": 0.4563,
+          "kg_faithfulness": 0.625,
+          "kg_precision": 0.625,
+          "hallucination_rate": 0.125,
+          "coverage": 0.75,
+          "total_facts_evaluated": 18,
+          "total_supported": 17,
+          "total_unverifiable": 1,
+          "avg_answer_words": 19.75
+        },
+        "domain_advanced": {
+          "kgafe_score": 0.6646,
+          "kg_faithfulness": 1.0,
+          "kg_precision": 0.8958,
+          "hallucination_rate": 0.1042,
+          "coverage": 0.9375,
+          "total_facts_evaluated": 34,
+          "total_supported": 32,
+          "total_unverifiable": 2,
+          "avg_answer_words": 31.25
+        }
+      },
+      "paired_vs_flat": {
+        "domain_basic": {
+          "delta_kgafe": -0.0281,
+          "delta_hallucination": -0.25,
+          "delta_faithfulness": 0.0,
+          "delta_precision": 0.0,
+          "delta_coverage": -0.1875
+        },
+        "domain_advanced": {
+          "delta_kgafe": 0.1802,
+          "delta_hallucination": -0.2708,
+          "delta_faithfulness": 0.375,
+          "delta_precision": 0.2708,
+          "delta_coverage": 0.0,
+          "paired_ci95": [
+            0.0219,
+            0.3812
+          ],
+          "win_loss_tie": [
+            3,
+            1,
+            4
+          ],
+          "sign_test_p": 0.625
+        }
+      },
+      "per_question_type_kgafe": {
+        "negative": {
+          "flat_path_basic": 0.15,
+          "domain_basic": 0.05,
+          "domain_advanced": 0.6583
+        },
+        "single_hop": {
+          "flat_path_basic": 0.7,
+          "domain_basic": 0.7,
+          "domain_advanced": 0.6583
+        },
+        "comparison": {
+          "flat_path_basic": 0.7,
+          "domain_basic": 0.7,
+          "domain_advanced": 0.7
+        },
+        "cross_domain": {
+          "flat_path_basic": 0.6625,
+          "domain_basic": 0.7,
+          "domain_advanced": 0.6625
+        }
+      }
+    },
+    "judge_mode": {
+      "source": "evaluation/results/scierc_50docs_qa_ablation_judge.json",
+      "n_questions": 5,
+      "question_types_requested": [
+        "multi_hop",
+        "comparison",
+        "negative",
+        "cross_domain"
+      ],
+      "judge_panel_enabled": true,
+      "configs": {
+        "flat_path_basic": {
+          "kgafe_score": 0.735,
+          "kg_faithfulness": 0.6,
+          "kg_precision": 0.6,
+          "hallucination_rate": 0.4,
+          "coverage": 0.7,
+          "total_facts_evaluated": 17,
+          "total_supported": 15,
+          "total_unverifiable": 2
+        },
+        "domain_basic": {
+          "kgafe_score": 0.84,
+          "kg_faithfulness": 0.7714,
+          "kg_precision": 0.7143,
+          "hallucination_rate": 0.2857,
+          "coverage": 0.8667,
+          "total_facts_evaluated": 21,
+          "total_supported": 17,
+          "total_unverifiable": 3
+        }
+      },
+      "paired_vs_flat": {
+        "domain_basic": {
+          "delta_kgafe": 0.105,
+          "delta_faithfulness": 0.1714,
+          "delta_precision": 0.1143,
+          "delta_hallucination": -0.1143,
+          "delta_coverage": 0.1667,
+          "paired_ci95": [
+            -0.0414,
+            0.3407
+          ],
+          "win_loss_tie": [
+            2,
+            2,
+            1
+          ],
+          "sign_test_p": 1.0
+        }
+      }
+    }
+  },
+  "pairwise_v2_sidebar": {
+    "note": "Phase 2 follow-up comparing pairwise v2 relation extraction at 10 docs. Both governed and flat sides now completed end-to-end after pipeline hardening (LLM retry + triple-coercion + per-doc checkpoint).",
+    "governed_10docs_pairwise_v2": {
+      "source": "evaluation/results/analyze_governed_10docs_pairwise_v2.json",
+      "entities": 120,
+      "triples": 82,
+      "orphan_fraction": 0.4083,
+      "entity_strict": {
+        "tp": 82,
+        "fp": 65,
+        "fn": 62,
+        "precision": 0.5578,
+        "recall": 0.5694,
+        "f1": 0.5636,
+        "hallucination_rate": 0.4422
+      },
+      "triple_strict": {
+        "tp": 27,
+        "fp": 55,
+        "fn": 61,
+        "precision": 0.3293,
+        "recall": 0.3068,
+        "f1": 0.3176,
+        "hallucination_rate": 0.6707
+      },
+      "docs_with_entities_but_zero_triples": [
+        "ICCV_2001_47_abs",
+        "INTERSPEECH_2013_21_abs"
+      ]
+    },
+    "flat_10docs_pairwise_v2_redo": {
+      "source": "evaluation/results/analyze_ungoverned_10docs_pairwise_v2_redo.json",
+      "kg_path": "evaluation/results/ungoverned_created_10docs_pairwise_v2_redo.json",
+      "entities": 125,
+      "triples": 122,
+      "orphan_fraction": 0.176,
+      "zero_triple_docs": 1,
+      "docs_with_entities_but_zero_triples": [
+        "ICCV_2001_47_abs"
+      ],
+      "entity_strict": {
+        "tp": 96,
+        "fp": 66,
+        "fn": 48,
+        "precision": 0.5926,
+        "recall": 0.6667,
+        "f1": 0.6273,
+        "hallucination_rate": 0.4074
+      },
+      "triple_strict": {
+        "tp": 21,
+        "fp": 101,
+        "fn": 67,
+        "precision": 0.1721,
+        "recall": 0.2386,
+        "f1": 0.2,
+        "hallucination_rate": 0.8279
+      },
+      "completed_after_hardening": {
+        "fixes_applied": [
+          "_coerce_llm_items in relation_extractor (handles nested-list LLM output)",
+          "knowledge_organizer drops non-dict triples defensively",
+          "openai_client retry: 8 attempts, exponential backoff (cap 60s) + active Ollama health probe (300s)",
+          "build_ungoverned_scierc.py rewritten with per-doc loop + atomic checkpoint-every-N + --resume-from-checkpoint"
+        ],
+        "docs_processed": 10,
+        "docs_failed": 0,
+        "previously_failed_docs_now_succeed": [
+          "INTERSPEECH_2013_21_abs",
+          "P06-2012",
+          "P06-1018"
+        ]
+      }
+    },
+    "delta_vs_triage_10docs": {
+      "triage_entity_f1": 0.642,
+      "pairwise_v2_entity_f1": 0.5636,
+      "delta": 0.046,
+      "triage_triple_f1": 0.292,
+      "pairwise_v2_triple_f1": 0.3176,
+      "triage_triple_halluc": 0.625,
+      "pairwise_v2_triple_halluc": 0.6707
+    },
+    "governed_vs_flat_pairwise_v2_10docs": {
+      "delta_entity_f1": -0.0637,
+      "delta_triple_f1": 0.1176,
+      "delta_triple_hallucination": -0.1572,
+      "interpretation": "At 10 docs with the same v2 pairwise relation extractor, governance trades a small hit on entity F1 (−6.4 pp) for a +59% relative lift in triple F1 (0.200 → 0.318) and a 15.7-pp drop in triple hallucination (82.8% → 67.1%). Direction matches the headline 10-doc triage-vs-flat result."
+    }
+  }
+}

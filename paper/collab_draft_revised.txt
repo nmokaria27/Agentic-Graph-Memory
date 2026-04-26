@@ -1,0 +1,214 @@
+Story/thesis:
+Existing multi-agent KG construction systems (KARMA, CooperKGC, OneKE) treat the knowledge graph as a flat output artifact which agents extract, a controller merges, and the pipeline terminates. The resulting graph has no organizational memory: no record of which agent produced which fact, no domain structure governing updates, and no mechanism for routing queries to the knowledge owners. We argue that a knowledge graph should not be a passive store but a governed memory partitioned into domain-owned subgraphs where every triple is admitted through an explicit governance decision, every decision is auditable, and downstream applications like QA route through domain experts rather than flat retrieval.
+
+What is, in one sentence, the takeaway for this whole system- We propose the Governed Knowledge Graph, a data structure in which every triple is admitted through an explicit ownership-and-review protocol, and show that governance shapes graph structure and enables principled downstream reasoning.
+
+Why this methodology or architecture is necessary
+Agents vs. other approaches?-
+1. Specialization reduces error modes. Entity extraction, relation extraction, and evidence verification have different failure modes. Specializing agents lets you diagnose and fix each independently.
+2. Conflict resolution requires arbitration. When two agents disagree on a triple, you need structured deliberation, not a single model's confidence score. Multi-agent voting produces a decision with a rationale.
+3. Domain ownership requires distributed expertise. A single model has no principled reason to route a triple about methodology to a "methods" domain. Domain expert agents instantiate the ownership function φ. A single LLM baseline can't do any of these.
+
+Domain-expertise for data modularity - Each domain d ∈ D is a coherent subgraph- a region of the graph with a common conceptual scope, a set of owning entities, and a relation schema. The ownership function φ partitions the graph into these regions. This enables: (a) modular updates- only the owning domain validates a proposed new triple; (b) modular queries- downstream applications route to the relevant expert rather than doing flat retrieval; (c) modular auditing- every decision is traceable to a specific domain owner.
+
+Self-organization
+
+KARMA and their claim
+
+Does it make sense to run a comparison to this system vs. KARMA? Maybe not
+→ Proving Data is stored in a better way
+
+Governed Knowledge Graph
+Definition 1.
+ A Governed Knowledge Graph is a tuple (G = (E, T, D, φ, γ)), where:
+E is a set of entities.
+ T ⊆ E × R × E is a set of typed triples.
+ D = {d₁, …, d_k} is a set of domains.
+ φ: E → 2^D is an ownership function assigning each entity to one or more governing domains.
+ γ: T → {approve, reject, revise, escalate, auto_approve} is a governance function over proposed triples.
+
+This definition differs from a standard knowledge graph in two ways.
+First, the graph contains an explicit organizational layer through domains and ownership.
+Second, admission into the triple set is mediated through governance rather than direct insertion.
+In implementation, this is realized through a two-phase protocol: propose a triple, obtain a governance decision, and then commit that decision. This changes the graph from a passive fact store into a managed memory structure.
+
+The ownership function is written as φ: E → 2^D, rather than φ: E → D, because one entity may legitimately belong to more than one domain. In a scientific corpus, the same entity can participate in multiple conceptual regions of the graph: a method may belong to a methods domain and also sit inside a task-specific domain; a biomarker may belong to both an inflammation domain and a cardiometabolic domain. Using 2^D means φ(e) returns a set of owners, not a single owner. This is what makes cross-domain governance possible. Once entities have domain assignments, a triple can be classified as single-owner, cross-domain, or unowned depending on the ownership of its endpoints.
+
+Operationally, the data structure consists of more than entities and triples. A governed triple also carries an ownership assignment, a governance action, a rationale, and an audit record. In the implementation, every admitted triple passes through propose_triple(...), produces a GovernanceDecision, and is then committed through commit_decision(...). This is the concrete mechanism that instantiates γ. The graph therefore stores not only what is known, but also how that knowledge entered memory and who was responsible for it.
+
+The main research idea is therefore not multi-agent extraction in isolation, but knowledge creation and proliferation under domain-governed memory.
+
+System Overview
+The system has three layers.
+The first is the creation layer, which turns documents into entities and triples.
+ The second is the governance layer, which organizes knowledge into domains and controls admission into memory.
+ The third is the application layer, which uses the governed graph for downstream tasks such as question answering and incremental enrichment.
+The contribution of the paper lives in the first two layers. The third layer demonstrates usefulness but is not the center of the claim.
+
+One additional point is important for understanding the real system behavior: the graph is built cumulatively over a corpus, not rebuilt from scratch for each document. After document 1 is processed, accepted entities and triples become part of the shared governed memory. Document 2 is then processed against that already-populated memory, and so on. This means the system is not simply extracting isolated document-level KGs. It is constructing one accumulating governed KG whose entity inventory, domain structure, aliases, and audit log grow over time.
+
+The implementation also supports multiple governance regimes. In audit_only mode, every triple is routed and logged but automatically admitted after routing. In permissive mode, ownership routing is still recorded but review is lightweight. In strict mode, the governance board can actively approve, reject, revise, or escalate a proposal. This matters for the experiments: the large creation runs mainly demonstrate routing, ownership, and auditability, while the separate strict-governance benchmark demonstrates selective review quality.
+
+Knowledge Graph Creation Workflow
+The system receives a corpus of documents. A top-level orchestrator agent manages the end-to-end creation process over the full corpus and over each document instance.
+The pipeline is mostly sequential. Each specialized agent transforms or validates the current representation and passes it to the next stage. This is intentionally simple. The system only activates deliberation when an agent signals uncertainty or conflict.
+
+The workflow is as follows.
+The DocumentProcessor segments each document into coherent chunks.
+The DomainClassifier derives a working schema for the document. In benchmark mode it uses a fixed schema; in open-world mode it discovers entity and relation types from the content. From this schema, the system bootstraps preliminary domains before any triples are admitted. This is the first point at which governance becomes active during creation.
+The EntityExtractor identifies entity mentions, canonical labels, and candidate types. It is instructed to favor the shortest meaningful noun phrase and to preserve short scientific terms, abbreviations, tool names, and task phrases rather than discarding them as generic text.
+Once entities exist, they are assigned to one or more domains. This partially instantiates the ownership function (φ), allowing the system to know who owns a proposed fact during creation.
+The RelationExtractor identifies relations between current entities and produces candidate triples. In fixed-schema benchmark mode, the extractor is constrained to the benchmark label set; in open-world mode, it can propose a new relation structure.
+The EvidenceLinker attaches supporting text spans and source references to each candidate triple.
+The VerificationAgent removes unsupported or low-quality extractions and outputs a verified set of triples suitable for admission review.
+At that point, the KnowledgeOrganizer and governance layer take over. Each verified triple is proposed to the governed graph rather than inserted directly. The system routes the triple to the relevant domain or domains, produces a governance decision, commits the decision, and appends that decision to the audit log.
+This is the step that distinguishes governed creation from ordinary extraction.
+
+There are several important operational details that the workflow above relies on:
+
+1. The corpus is processed incrementally. After each document, newly accepted entities and triples are committed to the shared KG. Later documents therefore see a richer memory than earlier documents.
+2. Entity resolution happens against both the current document and the pre-existing graph. A new mention is compared to entities already extracted in the current document, entities already present in the KG, and aliases stored in shared memory. This allows later documents to attach to canonical entities created earlier in the corpus.
+3. Domain bootstrapping happens before triple admission, but domain ownership becomes sharper as more entities are assigned and the graph grows. Early domains are preliminary ownership shells; later they become coherent subgraphs with actual members and cross-domain edges.
+4. Governance happens after extraction-time deliberation, not instead of it. Deliberation asks whether an uncertain extraction should survive. Governance asks how a surviving triple should enter memory.
+
+What happens when a new document arrives can therefore be described precisely. The system does not create a separate mini-KG and merge it blindly. It segments the document, derives a schema, extracts entities, resolves those entities against the existing graph and alias store, assigns them to one or more domains, extracts candidate triples, attaches evidence, filters low-quality proposals, and only then proposes each surviving triple to the governed memory. The routing step uses the ownership assignments of the subject and object to determine whether the triple is single-owner, cross-domain, or effectively unowned. The governance regime then determines whether the triple is automatically accepted after routing, or whether it must be actively reviewed by the responsible domain expert(s).
+
+The post-routing cases should be stated explicitly:
+- Single-owner triple: both endpoints resolve to the same governing domain, so that domain becomes the primary owner.
+- Cross-domain triple: the endpoints belong to different domains, so the triple is treated as shared knowledge between owners.
+- Unowned triple: no stable owner can be derived from the current org chart, so the triple is escalated or logged accordingly.
+
+The governance action itself can be one of five outcomes:
+- approve: accept the triple as-is
+- reject: do not admit it to memory
+- revise: admit a normalized or corrected version of the triple
+- escalate: mark it for explicit review because ownership or evidence is insufficient
+- auto_approve: admit it automatically under a lightweight governance regime while still recording the event
+
+Deliberation, Blackboard, and Voting
+The pipeline is sequential by default. Deliberation is an exceptional path triggered when an agent reports low confidence. In the current implementation, a threshold around 0.7 is used as the key decision boundary.
+If an agent’s confidence is above threshold, the pipeline continues.
+ If confidence falls below threshold, the agent raises a hypothesis.
+A hypothesis is a structured claim about an extraction unit that is not trusted enough for automatic continuation. Typical hypothesis types are an uncertain entity, an uncertain triple, or an uncertain relation type.
+Each hypothesis includes the proposed content, the posting agent, the initial confidence, the supporting evidence, and the current pipeline context.
+The blackboard is a shared forum inside the shared memory system. It is not a chat interface; it is a structured coordination object.
+An agent posts a hypothesis to the blackboard, and the deliberation coordinator asks a set of evaluator agents to vote on it.
+Each voter is not necessarily a topical expert, but an expert on a criterion.
+The EntityExtractor evaluates whether the entity hypothesis is plausible.
+The RelationExtractor evaluates whether the relation structure is coherent.
+The EvidenceLinker evaluates whether the text supports the proposal.
+This means the value of a vote comes from specialized perspective, not topical ownership. Deliberation here is about extraction reliability.
+Domain governance happens later, when the triple enters the governed KG.
+Each voting agent returns a vote with rationale. The coordinator aggregates the votes and resolves the hypothesis into a keep or no-keep decision. If votes conflict, the coordinator can trigger a short structured debate.
+The final decision and rationale are written back to shared memory, creating an audit trail.
+
+This distinction between deliberation and governance is central and should be explicit in the paper. Deliberation is an extraction-time reliability mechanism. It is triggered by uncertainty in an intermediate hypothesis. Governance is a memory-admission mechanism. It is triggered when a triple is proposed to the governed KG. The blackboard helps decide whether a questionable extraction should survive the pipeline. The governance protocol decides how an extracted fact enters long-term memory and which domain owner is accountable for that admission.
+
+Example. During extraction of the sentence "Amorph identifies proper nouns and NE items in Japanese text," the EntityExtractor proposes the entity "Amorph" with type Method and confidence 0.48- below the 0.7 deliberation threshold. It posts a hypothesis to the blackboard: {type: "entity", content: "Amorph", label: "Method", confidence: 0.48, evidence: "appears as subject of verb 'identifies'"} The deliberation coordinator asks three agents to vote. The EntityExtractor votes Accept (0.75): "Short noun in subject position is consistent with a tool name." The RelationExtractor votes Accept (0.80): "The entity participates as subject of a typed action, consistent with Method." The EvidenceLinker votes Strong Accept (0.90): "Explicit agent-action pattern in source text." Weighted consensus: 0.82 > threshold. The hypothesis is accepted and written to semantic memory. The pipeline continues. Had the RelationExtractor voted Reject ("no semantic consistency with known method types"), the coordinator would have triggered a one-round debate. If still unresolved, the entity would have been discarded.
+
+Shared Memory
+The shared memory system has two roles.
+First, it supports extraction-time coordination. The blackboard, pending hypotheses, vote rationales, and local task state all live here.
+Second, it supports corpus-scale consistency. The memory stores canonical entities, aliases, prior extractions, and procedural patterns.
+Conceptually, the memory system has four regions:
+Episodic memory for per-document processing history.
+ Working memory for current pipeline state.
+ Semantic memory for accepted graph structure and alias mappings.
+ Procedural memory for learned extraction and organization heuristics.
+
+The alias and canonicalization functionality is especially important for corpus-scale operation. When a later document mentions an entity already seen earlier, the system can resolve that mention to the existing canonical node rather than creating an unnecessary duplicate. This is one of the main ways the system turns multiple document-level extractions into one accumulating governed memory.
+
+Output Schema
+The output of the creation pipeline is a JSON serialization of the governed graph.
+At minimum, it contains the knowledge graph, the org chart, the governance mode, and the audit log.
+Each entity stores an ID, labels, a type, and metadata (such as source document and confidence).
+Each triple stores a subject, relation, object, confidence, source, and metadata.
+The org chart is the organizational view of the graph. Each domain includes:
+A domain identifier
+A label and description
+Seed entity and relation types
+Current entity membership
+A domain-specific subgraph
+Cross-domain relations
+The org chart summary is a compressed textual view listing domain names, descriptions, relation signatures, and entity coverage.
+
+The audit log should also be described concretely. Each governance record stores the proposed triple, the assigned owner domain(s), the governance action, a rationale, a timestamp, and whether the decision was eventually committed. If a triple is revised, the revised triple is also stored. This makes the auditability claim operational rather than rhetorical: the graph can be inspected not only as a set of facts, but as a history of how those facts were admitted.
+
+Applications Built on Top of the Governed KG
+The governed KG is the core object, and applications sit on top of it.
+One application is question answering. A QA orchestrator reads the org chart summary, routes a question to domain experts, collects subgraph-grounded answers, and synthesizes a final response.
+Another application is incremental enrichment. New documents are processed, candidate triples are extracted, compared to the base graph, and reviewed under the same governance protocol before being added.
+
+The enrichment path is worth stating more explicitly because it is the true "new information arrives" setting. The system first runs extraction on the new documents into a temporary delta KG. It then computes a diff between the delta KG and the base KG, identifying new entities, new triples, and conflicts with existing triples. New triples are sent to the governing owner domains for review. Conflicting triples are resolved either by the governance board or by a fallback conflict resolver. Only accepted changes are merged back into the base KG. In this sense, enrichment is not a second unrelated system: it is the additive counterpart to the initial governed creation pipeline.
+
+Experimental Setup
+We evaluate the system in two modes.
+First, fixed-schema benchmark mode evaluates extraction quality against SciERC annotations.
+Second, governance evaluation mode evaluates routing, auditability, structural coverage, and decision behavior.
+The first measures pipeline competence. The second measures the main contribution.
+
+These two modes use different notions of ground truth and therefore answer different questions. In fixed-schema benchmark mode, entity and triple extraction are compared against human-annotated SciERC document labels. This gives hard benchmark metrics such as entity F1 and triple F1. In governance evaluation mode, the graph is evaluated as a governed memory structure: routing is checked against expected owner domains implied by the current org chart, and structural metrics such as coverage, completeness, and audit integrity are computed directly from the governed graph and its audit log.
+
+It is also important to state what the large audit_only builds do and do not prove. The large corpus runs demonstrate that routing, ownership assignment, domain coverage, and auditability all scale during creation. They do not, by themselves, demonstrate selective expert filtering of every triple, because audit_only mode records and routes every proposal but does not invoke full review on every one. That selective decision quality is evaluated separately in the strict governance benchmark, where true and corrupted triples are explicitly reviewed by the governance board.
+
+Results
+The results section should center three main empirical claims and keep the rest for the appendix. The main text should therefore focus on: (1) governed versus flat KG creation, (2) governed structure at scale, and (3) downstream QA usefulness of the governed data structure. Additional ablations such as pairwise-v2 extraction, detailed triage activity, strict-review operating-mode tradeoffs, and judge-panel reruns should be described as supporting appendix results rather than allowed to dominate the main narrative.
+
+1. Governed vs Flat KG Creation
+
+The main head-to-head comparison is governed triage versus flat unguided creation on matched SciERC test subsets. The most important result is that governance improves the admitted relational graph without materially harming entity extraction.
+
+Table 1 — Governed vs Flat KG creation at 10 and 50 SciERC test documents
+
+| Scale | Config | Entity F1 | Triple F1 | Triple Hallucination | Entity Overlap | Triple Overlap | Cross-Domain Fraction | Overhead |
+|---|---|---|---|---|---|---|---|---|
+| 10 docs | Flat | 0.481 | 0.079 | 87.2% | — | — | — | — |
+| 10 docs | Governed (triage) | 0.642 | 0.292 | 62.5% | 0.340 | 0.092 | 0.375 | — |
+| 50 docs | Flat | 0.633 | 0.153 | 85.8% | — | — | — | — |
+| 50 docs | Governed (triage) | 0.629 | 0.189 | 78.5% | 0.677 | 0.180 | 0.434 | +4.55% |
+
+At 10 documents, governed creation strongly outperforms the flat graph on the main relation metric: triple F1 rises from 0.079 to 0.292, and triple hallucination falls from 87.2% to 62.5%. At 50 documents, the effect becomes more conservative but still meaningful: entity F1 remains effectively unchanged (0.633 flat versus 0.629 governed), while triple F1 improves from 0.153 to 0.189 and triple hallucination falls from 85.8% to 78.5%. The low triple-overlap values show that governance is not a thin filter layered on top of the same graph; it changes which relational structure is ultimately admitted.
+
+This is the main empirical claim of the paper: governance improves the admitted relational graph relative to a flat KG while keeping entity extraction roughly stable.
+
+2. Governed Structure at Scale
+
+The second core claim is that the governed-memory structure remains correct and auditable at larger corpus scale.
+
+Table 2 — Governed structure at 100 documents
+
+| Metric | Value |
+|---|---|
+| Routing exact match | 1.000 |
+| Domain coverage | 0.984 |
+| Governance completeness | 1.000 |
+| Audit integrity | 1.000 |
+| Cross-domain fraction | 0.444 |
+| Orphan-entity fraction | 0.638 |
+| Zero-triple docs | 30 / 100 |
+
+The 100-document governed audit_only build shows that routing, ownership assignment, coverage, completeness, and auditability remain essentially perfect at scale. The graph itself is still sparse and extraction quality remains noisy, but that is exactly the point of separating the claims: extraction degrades with scale, while the governed-memory structure remains intact.
+
+This is the second main claim of the paper: the governance layer scales structurally even when extraction quality is imperfect.
+
+3. Downstream QA Usefulness
+
+The third main claim is that the governed data structure is not only cleaner as a storage object, but more useful for downstream question answering.
+
+Table 3 — QA on the governed 50-document KG
+
+| Metric | flat_path_basic | domain_basic | domain_advanced |
+|---|---|---|---|
+| KGAFE score | 0.474 | 0.486 | 0.665 |
+| KG faithfulness | 0.625 | 0.672 | 1.000 |
+| KG precision | 0.583 | 0.651 | 0.896 |
+| Hallucination rate | 0.417 | 0.224 | 0.104 |
+| Coverage | 0.938 | 0.812 | 0.938 |
+
+The most important comparison is between the flat-path baseline and the governed QA systems. Domain-routed QA nearly halves hallucination relative to the flat baseline while improving faithfulness and precision. The strongest result comes from the full governed stack, domain_advanced, which raises KGAFE from 0.474 to 0.665, drives KG faithfulness to 1.0, and lowers hallucination to 10.4%. This shows that the governed representation is not only better organized, but also more useful for grounded downstream reasoning.
+
+This is the third main claim of the paper: the governed data structure improves downstream QA quality, especially on groundedness and hallucination control.
+
+Main Takeaway
+
+The ideal main-paper takeaway should now be simple. First, governance improves the admitted relational graph relative to a flat KG. Second, the governed-memory structure remains correct and auditable at 100-document scale. Third, the governed representation improves downstream QA faithfulness and reduces hallucination. Everything else — pairwise-v2 extraction robustness, detailed triage activity, strict-review tradeoffs, and judge-panel reruns — should be retained as supporting appendix evidence rather than crowding the main results section.

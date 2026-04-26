@@ -111,6 +111,7 @@ class DeliberativeOrchestrator:
         max_refinement_iterations: int = 4,
         enable_self_consistency: bool = True,
         enable_open_world: bool = True,
+        enable_fixed_schema_pairwise: bool = True,
         enable_cross_document: bool = True,
         enable_deliberation: bool = True,
         model_tiers: Optional[Dict[ModelTier, str]] = None,
@@ -127,6 +128,8 @@ class DeliberativeOrchestrator:
             max_refinement_iterations: Max refinement loops (default 4)
             enable_self_consistency: Use self-consistency for confidence
             enable_open_world: Allow discovery of new relation types
+            enable_fixed_schema_pairwise: In fixed-schema mode, add pairwise
+                relation scoring over local entity pairs
             enable_cross_document: Enable cross-document entity resolution
             enable_deliberation: Enable multi-agent voting and debate
             model_tiers: Custom model tier mapping
@@ -161,6 +164,7 @@ class DeliberativeOrchestrator:
         self.max_refinement_iterations = max_refinement_iterations
         self.enable_self_consistency = enable_self_consistency
         self.enable_open_world = enable_open_world
+        self.enable_fixed_schema_pairwise = enable_fixed_schema_pairwise
         self.enable_cross_document = enable_cross_document
         self.enable_deliberation = enable_deliberation
         self.debug_logger = debug_logger
@@ -239,6 +243,7 @@ class DeliberativeOrchestrator:
             quality_threshold=self.quality_threshold,
             use_self_consistency=self.enable_self_consistency,
             enable_open_world=self.enable_open_world,
+            enable_fixed_schema_pairwise=self.enable_fixed_schema_pairwise,
         )
         
         self.evidence_linker = EvidenceLinker(
@@ -346,9 +351,11 @@ class DeliberativeOrchestrator:
                 assignment=assignment,
                 source_text=self._active_source_text,
             )
+            if not isinstance(result, dict):
+                result = {"action": "escalate", "rationale": f"malformed review response: {result!r}"}
             revised_triple = None
             revised_payload = result.get("revised_triple")
-            if result.get("action") == "revise" and revised_payload:
+            if result.get("action") == "revise" and isinstance(revised_payload, dict):
                 revised_triple = Triple(
                     subject=revised_payload.get("subject", triple.subject),
                     relation=revised_payload.get("relation", triple.relation),
@@ -548,6 +555,13 @@ class DeliberativeOrchestrator:
         print(f"  Triples: {len(triples)} (confidence: {relation_result.confidence:.2f})")
         if relation_result.metadata.get("new_relations_discovered"):
             print(f"  New Relation Types: {relation_result.metadata['new_relations_discovered']}")
+        if relation_result.metadata.get("pairwise_pairs_considered"):
+            print(
+                "  Pairwise scoring:"
+                f" pairs={relation_result.metadata['pairwise_pairs_considered']}"
+                f", positives={relation_result.metadata.get('pairwise_positive_predictions', 0)}"
+                f", added={relation_result.metadata.get('pairwise_triples_added', 0)}"
+            )
 
         # Step 4b: Connectivity Pass — find relations for disconnected entities
         connected_ids = set()

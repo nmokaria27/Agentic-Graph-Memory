@@ -1127,6 +1127,21 @@ class AdvancedQAOrchestrator:
         self.session_memory = SessionMemory()
         self.provenance_tracker = ProvenanceChain()
 
+    def _extract_query_entities(self, text: str) -> List[str]:
+        import re
+        query_lower = text.lower()
+        matched = []
+        for entity_id, entity in self.full_kg.entities.items():
+            names = [entity_id.replace("_", " ")] + entity.labels
+            for name in names:
+                name_lower = name.lower()
+                if len(name_lower) < 3:
+                    continue
+                if re.search(r"\b" + re.escape(name_lower) + r"\b", query_lower):
+                    matched.append(entity_id)
+                    break
+        return matched
+
     def query_benchmark_question(self, benchmark_question: Any) -> Dict[str, Any]:
         """Evaluate benchmark questions without leaking memory across independent items."""
         original_memory = self.session_memory

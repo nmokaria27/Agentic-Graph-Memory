@@ -22,8 +22,12 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 
 # Timeout for Ollama calls (local models can be slow)
 _TIMEOUT = float(os.getenv("LLM_TIMEOUT", "300"))  # 5 min default
-_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "4"))
-_RETRY_BACKOFF = float(os.getenv("LLM_RETRY_BACKOFF", "2.0"))
+_MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "8"))
+_RETRY_BACKOFF = float(os.getenv("LLM_RETRY_BACKOFF", "3.0"))
+_RETRY_BACKOFF_CAP = float(os.getenv("LLM_RETRY_BACKOFF_CAP", "60.0"))
+# When Ollama is unreachable (tunnel dropped, process restart), keep polling the
+# /api/tags endpoint for this many seconds before giving up on the call.
+_HEALTHCHECK_TIMEOUT = float(os.getenv("LLM_HEALTHCHECK_TIMEOUT", "300"))
 
 if LLM_BACKEND == "openai":
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -33,6 +37,33 @@ else:
         api_key="ollama",
         timeout=_TIMEOUT,
     )
+
+
+def _ollama_is_up() -> bool:
+    """Quick TCP probe of the Ollama health endpoint. Returns False on any error."""
+    if LLM_BACKEND == "openai":
+        return True
+    try:
+        import urllib.request
+        import urllib.error
+        base = OLLAMA_BASE_URL.rstrip("/")
+        # OLLAMA_BASE_URL commonly includes /v1; strip it for the native health endpoint.
+        if base.endswith("/v1"):
+            base = base[:-3]
+        url = f"{base}/api/tags"
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            return 200 <= resp.status < 500
+    except Exception:
+        return False
+
+
+def _wait_for_ollama(deadline: float) -> bool:
+    """Poll Ollama until it responds or the deadline passes. Returns True on recovery."""
+    while time.time() < deadline:
+        if _ollama_is_up():
+            return True
+        time.sleep(5.0)
+    return False
 
 # Map old OpenAI model names → Ollama equivalents (for backward compat)
 _OPENAI_TO_OLLAMA = {
@@ -194,21 +225,52 @@ def chat_completion(
 
             transient_markers = [
                 "Connection error",
+                "ConnectError",
                 "ReadError",
+                "RemoteProtocolError",
                 "timed out",
                 "Timeout",
                 "connection reset",
+                "connection aborted",
+                "connection refused",
                 "temporarily unavailable",
+                "service unavailable",
+                "bad gateway",
+                "gateway timeout",
+                "server disconnected",
                 "EOF",
+                "502",
+                "503",
+                "504",
             ]
-            should_retry = attempt < _MAX_RETRIES and any(marker.lower() in err.lower() for marker in transient_markers)
+            err_lower = err.lower()
+            is_transient = any(marker.lower() in err_lower for marker in transient_markers)
+            should_retry = attempt < _MAX_RETRIES and is_transient
             if should_retry:
-                sleep_s = _RETRY_BACKOFF * attempt
+                # Exponential backoff with jitter, capped — gives Ollama time to recover
+                # from tunnel drops and model reloads instead of giving up in ~12s.
+                base_sleep = min(_RETRY_BACKOFF * (2 ** (attempt - 1)), _RETRY_BACKOFF_CAP)
+                # If the error looks like Ollama is down, actively wait for it to come back
+                # up before the next attempt so we don't burn a retry on a still-dead server.
+                connection_like = any(
+                    m in err_lower for m in ("connection", "refused", "reset", "eof", "server disconnected")
+                )
+                if connection_like and LLM_BACKEND != "openai":
+                    print(
+                        f"  WARNING: Ollama appears unreachable on attempt {attempt}/{_MAX_RETRIES}; "
+                        f"polling /api/tags for up to {_HEALTHCHECK_TIMEOUT:.0f}s before retrying"
+                    )
+                    deadline = time.time() + _HEALTHCHECK_TIMEOUT
+                    recovered = _wait_for_ollama(deadline)
+                    if recovered:
+                        print(f"  Ollama came back up — retrying call")
+                        continue
+                    print(f"  Ollama still down after {_HEALTHCHECK_TIMEOUT:.0f}s; falling back to backoff sleep")
                 print(
                     f"  WARNING: transient LLM failure on attempt {attempt}/{_MAX_RETRIES} "
-                    f"for {resolved_model}; retrying in {sleep_s:.1f}s"
+                    f"for {resolved_model}; retrying in {base_sleep:.1f}s"
                 )
-                time.sleep(sleep_s)
+                time.sleep(base_sleep)
                 continue
             raise Exception(f"LLM API call failed ({resolved_model}): {err}")
 

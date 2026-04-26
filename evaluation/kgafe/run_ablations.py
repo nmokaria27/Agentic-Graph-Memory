@@ -52,6 +52,12 @@ EXPERIMENTS: Dict[str, ExperimentConfig] = {
         orchestrator="basic",
         num_domains=1,
     ),
+    "graphrag_basic": ExperimentConfig(
+        name="graphrag_basic",
+        description="Graph-aware retrieval baseline using community summaries",
+        orchestrator="basic",
+        num_domains=1,
+    ),
     "domain_basic": ExperimentConfig(
         name="domain_basic",
         description="Clustered domain experts without active exploration/debate",
@@ -115,7 +121,7 @@ def build_qa_system(
         builder = DomainBuilder(llm_config, target_num_domains=config.num_domains)
         org_chart = builder.build(kg)
 
-    if config.name in {"flat_path_basic", "oracle_domain_basic"}:
+    if config.name in {"flat_path_basic", "graphrag_basic", "oracle_domain_basic"}:
         baseline = build_baseline_system(
             config.name,
             kg=kg,

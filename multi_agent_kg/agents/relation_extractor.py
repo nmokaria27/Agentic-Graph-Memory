@@ -16,6 +16,7 @@ Features:
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 from dataclasses import dataclass, field
 import json
+import re
 
 from multi_agent_kg.agents.base import (
     BaseAgent,
@@ -228,6 +229,40 @@ Return:
 }}"""
 
 
+PAIRWISE_RELATION_SCORING_PROMPT = """Classify candidate entity pairs into one of the allowed relation types or NONE.
+
+You are working in fixed-schema benchmark mode. Use ONLY these relation labels:
+{allowed_relation_types}
+
+{direction_guide}
+
+DOCUMENT TEXT:
+{text}
+
+CANDIDATE ENTITY PAIRS:
+{candidate_pairs}
+
+Instructions:
+1. Each candidate pair is already an exact entity pair from the extracted entity list.
+2. For each pair, choose exactly one label from the allowed relation types or NONE.
+3. Only assign a relation if the text explicitly or strongly supports it.
+4. Respect the required HEAD -> TAIL direction for asymmetric relations.
+5. For symmetric relations such as Conjunction / Compare, you may keep the presented order.
+
+Return JSON:
+{{
+  "predictions": [
+    {{
+      "pair_index": <index from candidate pairs>,
+      "relation": "<allowed relation type or NONE>",
+      "confidence": <0.0-1.0>,
+      "evidence": "<supporting text span>",
+      "direction_rationale": "<short reason>"
+    }}
+  ]
+}}"""
+
+
 def _normalize_surface(text: str) -> str:
     """Normalize entity surface forms for exact benchmark matching."""
     return " ".join(
@@ -238,6 +273,38 @@ def _normalize_surface(text: str) -> str:
         .replace("-", " ")
         .split()
     )
+
+
+def _coerce_llm_items(result: Any, preferred_keys: Tuple[str, ...]) -> List[Dict[str, Any]]:
+    """Coerce a raw LLM response into a flat list of dict items.
+
+    The LLM occasionally returns nested lists, the wrong wrapper key, or stringified
+    rows instead of a flat list-of-dicts. Without this guard, downstream code that
+    calls ``item.get(...)`` crashes with ``'list' object has no attribute 'get'``
+    and drops the whole document.
+    """
+    if result is None:
+        return []
+    if isinstance(result, dict):
+        for key in preferred_keys:
+            if key in result:
+                result = result[key]
+                break
+        else:
+            return []
+    if not isinstance(result, list):
+        return []
+    flat: List[Dict[str, Any]] = []
+    for item in result:
+        if isinstance(item, dict):
+            flat.append(item)
+        elif isinstance(item, list):
+            # Nested list: recurse one level.
+            for sub in item:
+                if isinstance(sub, dict):
+                    flat.append(sub)
+        # strings / numbers / None get dropped silently.
+    return flat
 
 
 CONNECTIVITY_PASS_PROMPT = """You are given a document and a knowledge graph that was extracted from it.
@@ -309,6 +376,7 @@ class RelationExtractor(BaseAgent):
         use_self_consistency: bool = True,
         n_consistency_samples: int = 3,
         enable_open_world: bool = True,
+        enable_fixed_schema_pairwise: bool = True,
     ):
         super().__init__(
             name="RelationExtractor",
@@ -323,6 +391,7 @@ class RelationExtractor(BaseAgent):
         self.use_self_consistency = use_self_consistency
         self.n_consistency_samples = n_consistency_samples
         self.enable_open_world = enable_open_world
+        self.enable_fixed_schema_pairwise = enable_fixed_schema_pairwise
         
         # Track discovered relation types
         self.discovered_relations: Dict[str, DiscoveredRelation] = {}
@@ -346,6 +415,182 @@ class RelationExtractor(BaseAgent):
                 normalized.append(rt)
         
         return normalized
+
+    def _is_fixed_schema_mode(
+        self,
+        suggested_types: List[str],
+        domain_config: Optional[Dict[str, Any]],
+    ) -> bool:
+        """Return True when benchmark/fixed-schema extraction should use constrained scoring."""
+        if self.enable_open_world:
+            return False
+        if suggested_types:
+            return True
+        if domain_config and domain_config.get("relation_types"):
+            return True
+        return False
+
+    def _entity_surface_forms(self, entity: Dict[str, Any]) -> List[str]:
+        surfaces: List[str] = []
+        if entity.get("text"):
+            surfaces.append(str(entity["text"]))
+        for label in entity.get("labels", []) or []:
+            if label:
+                surfaces.append(str(label))
+        if entity.get("id"):
+            surfaces.append(str(entity["id"]))
+        return list(dict.fromkeys(surfaces))
+
+    def _build_local_entity_pairs(
+        self,
+        text: str,
+        entities: List[Dict[str, Any]],
+        max_pairs_per_window: int = 18,
+    ) -> List[Dict[str, Any]]:
+        """Build directed candidate pairs from sentence-local entity co-occurrence."""
+        if not text or len(entities) < 2:
+            return []
+
+        windows = [
+            chunk.strip()
+            for chunk in re.split(r"(?<=[.!?])\s+|\n+", text)
+            if chunk and chunk.strip()
+        ]
+        if not windows:
+            windows = [text]
+
+        candidate_pairs: List[Dict[str, Any]] = []
+        seen: set[tuple[str, str, int]] = set()
+
+        for window_idx, window in enumerate(windows):
+            window_lower = window.lower()
+            window_entities: List[Dict[str, Any]] = []
+            for entity in entities:
+                surfaces = self._entity_surface_forms(entity)
+                if any(surface.lower() in window_lower for surface in surfaces if surface):
+                    window_entities.append(entity)
+
+            if len(window_entities) < 2:
+                continue
+
+            added_for_window = 0
+            for head in window_entities:
+                for tail in window_entities:
+                    head_id = str(head.get("id") or head.get("text") or "").strip()
+                    tail_id = str(tail.get("id") or tail.get("text") or "").strip()
+                    if not head_id or not tail_id or head_id == tail_id:
+                        continue
+                    key = (head_id.lower(), tail_id.lower(), window_idx)
+                    if key in seen:
+                        continue
+                    candidate_pairs.append(
+                        {
+                            "pair_index": len(candidate_pairs),
+                            "sentence_index": window_idx,
+                            "sentence": window,
+                            "head_candidate": head.get("text") or head_id,
+                            "head_candidate_id": head_id,
+                            "head_type": head.get("type", ""),
+                            "tail_candidate": tail.get("text") or tail_id,
+                            "tail_candidate_id": tail_id,
+                            "tail_type": tail.get("type", ""),
+                        }
+                    )
+                    seen.add(key)
+                    added_for_window += 1
+                    if added_for_window >= max_pairs_per_window:
+                        break
+                if added_for_window >= max_pairs_per_window:
+                    break
+
+        return candidate_pairs
+
+    def _stage_pairwise_relation_scoring(
+        self,
+        text: str,
+        entities: List[Dict[str, Any]],
+        allowed_relation_types: List[str],
+        stage1_relation_types: Optional[List[str]] = None,
+    ) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
+        """Classify sentence-local entity pairs into the fixed schema or NONE."""
+        constrained_types = [rt for rt in (stage1_relation_types or []) if rt in allowed_relation_types]
+        relation_types = constrained_types or list(dict.fromkeys(allowed_relation_types))
+        candidate_pairs = self._build_local_entity_pairs(text, entities)
+        stats = {
+            "pairwise_pairs_considered": len(candidate_pairs),
+            "pairwise_positive_predictions": 0,
+            "pairwise_triples_added": 0,
+        }
+        if not candidate_pairs or not relation_types:
+            return [], stats
+
+        triples: List[Dict[str, Any]] = []
+        batch_size = 10
+        direction_guide = SCIERC_DIRECTION_HINT
+
+        for start in range(0, len(candidate_pairs), batch_size):
+            batch = candidate_pairs[start:start + batch_size]
+            prompt = PAIRWISE_RELATION_SCORING_PROMPT.format(
+                allowed_relation_types=", ".join(relation_types + ["NONE"]),
+                direction_guide=direction_guide,
+                text=text,
+                candidate_pairs=json.dumps(batch, indent=2),
+            )
+            result = self.call_llm(
+                prompt=prompt,
+                system_prompt=(
+                    "You are an expert at relation classification. "
+                    "Classify each directed entity pair conservatively and return valid JSON."
+                ),
+                tier=ModelTier.MEDIUM,
+                max_tokens=4096,
+            )
+            predictions = _coerce_llm_items(result, ("predictions",))
+            pair_lookup = {pair["pair_index"]: pair for pair in batch}
+            for prediction in predictions:
+                relation = str(prediction.get("relation", "")).strip()
+                if not relation or relation.upper() == "NONE" or relation not in relation_types:
+                    continue
+                pair_index = prediction.get("pair_index")
+                if pair_index not in pair_lookup:
+                    continue
+                pair = pair_lookup[pair_index]
+                stats["pairwise_positive_predictions"] += 1
+                triples.append(
+                    {
+                        "subject": pair["head_candidate"],
+                        "subject_id": pair["head_candidate_id"],
+                        "relation": relation,
+                        "object": pair["tail_candidate"],
+                        "object_id": pair["tail_candidate_id"],
+                        "confidence": float(prediction.get("confidence", 0.5)),
+                        "evidence": prediction.get("evidence", pair["sentence"]),
+                        "metadata": {
+                            "pairwise_scored": True,
+                            "sentence_index": pair["sentence_index"],
+                            "direction_rationale": prediction.get("direction_rationale", ""),
+                        },
+                    }
+                )
+
+        stats["pairwise_triples_added"] = len(triples)
+        return triples, stats
+
+    def _dedupe_triples(self, triples: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Dedupe triples, preferring the higher-confidence version."""
+        best: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
+        for triple in triples:
+            key = (
+                str(triple.get("subject_id") or triple.get("subject") or "").strip().lower(),
+                str(triple.get("relation") or "").strip(),
+                str(triple.get("object_id") or triple.get("object") or "").strip().lower(),
+            )
+            if not all(key):
+                continue
+            current = best.get(key)
+            if current is None or float(triple.get("confidence", 0.0)) > float(current.get("confidence", 0.0)):
+                best[key] = triple
+        return list(best.values())
 
     def run(
         self,
@@ -387,6 +632,9 @@ class RelationExtractor(BaseAgent):
         low_confidence_triples = []
         new_relations_discovered = []
         identified_relation_types = []
+        pairwise_pairs_considered = 0
+        pairwise_positive_predictions = 0
+        pairwise_triples_added = 0
         
         texts_to_process = []
         if segments:
@@ -435,25 +683,44 @@ class RelationExtractor(BaseAgent):
             if not relation_types:
                 continue
 
+            pairwise_triples: List[Dict[str, Any]] = []
+            if (
+                self.enable_fixed_schema_pairwise
+                and self._is_fixed_schema_mode(suggested_types, domain_config)
+            ):
+                pairwise_triples, pairwise_stats = self._stage_pairwise_relation_scoring(
+                    text=text,
+                    entities=segment_entities,
+                    allowed_relation_types=suggested_types,
+                    stage1_relation_types=relation_types,
+                )
+                pairwise_pairs_considered += pairwise_stats["pairwise_pairs_considered"]
+                pairwise_positive_predictions += pairwise_stats["pairwise_positive_predictions"]
+                pairwise_triples_added += pairwise_stats["pairwise_triples_added"]
+
             # Stage 2: Head Entity Binding
             head_bindings = self._stage2_head_binding(
                 text,
                 segment_entities,
                 relation_types,
             )
-            
-            if not head_bindings:
+
+            triples = []
+            if head_bindings:
+                # Stage 3: Tail Entity Binding
+                triples = self._stage3_tail_binding(
+                    text,
+                    segment_entities,
+                    head_bindings,
+                )
+            triples.extend(pairwise_triples)
+
+            if not triples:
                 continue
-            
-            # Stage 3: Tail Entity Binding
-            triples = self._stage3_tail_binding(
-                text,
-                segment_entities,
-                head_bindings,
-            )
 
             if not self.enable_open_world:
                 triples = self._align_triples_to_known_entities(triples, segment_entities)
+            triples = self._dedupe_triples(triples)
             
             # Include ALL triples in output; filter self-referencing and track low-confidence
             for triple in triples:
@@ -515,6 +782,9 @@ class RelationExtractor(BaseAgent):
                 "relation_types_found": sorted(set(identified_relation_types)),
                 "relation_types_used": list(set(t.get("relation", "") for t in all_triples)),
                 "suggested_relation_types": suggested_types,
+                "pairwise_pairs_considered": pairwise_pairs_considered,
+                "pairwise_positive_predictions": pairwise_positive_predictions,
+                "pairwise_triples_added": pairwise_triples_added,
             },
             needs_escalation=len(low_confidence_triples) > 0 or len(new_relations_discovered) > 0,
             escalation_reason=self._get_escalation_reason(low_confidence_triples, new_relations_discovered),
@@ -680,7 +950,7 @@ class RelationExtractor(BaseAgent):
                 )
                 
                 # Adjust confidences based on consistency
-                triples = result if isinstance(result, list) else result.get("triples", [])
+                triples = _coerce_llm_items(result, ("triples",))
                 for t in triples:
                     # Combine LLM confidence with self-consistency
                     t["confidence"] = (t.get("confidence", 0.7) + confidence) / 2
@@ -692,7 +962,7 @@ class RelationExtractor(BaseAgent):
                     tier=ModelTier.MEDIUM,
                     max_tokens=4096,
                 )
-                triples = result if isinstance(result, list) else result.get("triples", [])
+                triples = _coerce_llm_items(result, ("triples",))
                 all_triples.extend(triples)
 
         return all_triples
@@ -1063,7 +1333,7 @@ class RelationExtractor(BaseAgent):
                 max_tokens=4096,
             )
 
-            new_triples = result if isinstance(result, list) else result.get("triples", [])
+            new_triples = _coerce_llm_items(result, ("triples",))
 
             # Filter self-referencing triples
             for t in new_triples:

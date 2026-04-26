@@ -398,6 +398,16 @@ class KnowledgeOrganizer(BaseAgent):
         if not triples:
             return triples, 0
 
+        # Drop any non-dict item that slipped through upstream LLM parsing.
+        # Without this, a malformed row (e.g. a nested list) crashes the whole
+        # document with "'list' object has no attribute 'get'".
+        bad = sum(1 for t in triples if not isinstance(t, dict))
+        if bad:
+            print(f"  WARNING: dropping {bad} non-dict triple(s) before relation normalization")
+            triples = [t for t in triples if isinstance(t, dict)]
+            if not triples:
+                return triples, 0
+
         allowed_relations = self._allowed_relation_types()
         if allowed_relations:
             normalized_count = 0
