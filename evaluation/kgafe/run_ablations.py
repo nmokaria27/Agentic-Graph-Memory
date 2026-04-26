@@ -40,6 +40,12 @@ class ExperimentConfig:
 
 
 EXPERIMENTS: Dict[str, ExperimentConfig] = {
+    "rag_basic": ExperimentConfig(
+        name="rag_basic",
+        description="Document-RAG baseline over the source corpus",
+        orchestrator="basic",
+        num_domains=1,
+    ),
     "flat_basic": ExperimentConfig(
         name="flat_basic",
         description="Single global expert over the full KG",
@@ -121,7 +127,7 @@ def build_qa_system(
         builder = DomainBuilder(llm_config, target_num_domains=config.num_domains)
         org_chart = builder.build(kg)
 
-    if config.name in {"flat_path_basic", "graphrag_basic", "oracle_domain_basic"}:
+    if config.name in {"rag_basic", "flat_path_basic", "graphrag_basic", "oracle_domain_basic"}:
         baseline = build_baseline_system(
             config.name,
             kg=kg,

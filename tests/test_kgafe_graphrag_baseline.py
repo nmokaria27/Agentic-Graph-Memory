@@ -1,4 +1,8 @@
-from evaluation.kgafe.baselines import GraphRAGQAOrchestrator, build_baseline_system
+from evaluation.kgafe.baselines import (
+    DocumentRAGQAOrchestrator,
+    GraphRAGQAOrchestrator,
+    build_baseline_system,
+)
 from multi_agent_kg.core import LLMConfig
 from multi_agent_kg.core.domain_experts import Domain, OrgChart
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
@@ -44,6 +48,35 @@ def test_build_baseline_system_constructs_graphrag() -> None:
     assert len(result.qa_system.communities) >= 1
 
 
+def test_build_baseline_system_constructs_rag() -> None:
+    kg = _sample_kg()
+    kg.entities["bert"].metadata = {"source_document": "X96-1059"}
+    kg.triples[0].source = "X96-1059"
+    org_chart = OrgChart(
+        domains=[
+            Domain(
+                domain_id="global",
+                label="Global",
+                description="All entities",
+                entity_ids=list(kg.entities.keys()),
+                relation_schema=["Used-for", "Evaluate-for"],
+                topics=[],
+            )
+        ],
+        cross_domain_relations=[],
+    )
+
+    result = build_baseline_system(
+        "rag_basic",
+        kg=kg,
+        llm_config=LLMConfig(model="test-model"),
+        org_chart=org_chart,
+        advanced_orchestrator_cls=object,
+    )
+
+    assert isinstance(result.qa_system, DocumentRAGQAOrchestrator)
+
+
 def test_graphrag_query_returns_final_answer(monkeypatch) -> None:
     kg = _sample_kg()
     system = GraphRAGQAOrchestrator(kg, LLMConfig(model="test-model"))
@@ -67,3 +100,30 @@ def test_graphrag_query_returns_final_answer(monkeypatch) -> None:
     assert result["final_answer"] == "BERT is used for classification."
     assert result["retrieval_mode"] == "community_summary"
     assert result["community_ids"]
+
+
+def test_rag_query_returns_final_answer(monkeypatch) -> None:
+    kg = _sample_kg()
+    kg.entities["bert"].metadata = {"source_document": "X96-1059"}
+    kg.triples[0].source = "X96-1059"
+    system = DocumentRAGQAOrchestrator(kg, LLMConfig(model="test-model"))
+
+    def fake_chat_completion_json(*args, **kwargs):
+        return {
+            "answer": "The document says BERT is used for classification.",
+            "coverage": 0.8,
+            "evidence": ["BERT is used for classification."],
+            "confidence": 0.9,
+            "out_of_scope_aspects": [],
+        }
+
+    monkeypatch.setattr(
+        "evaluation.kgafe.baselines.chat_completion_json",
+        fake_chat_completion_json,
+    )
+
+    result = system.query("What is BERT used for?")
+
+    assert result["final_answer"] == "The document says BERT is used for classification."
+    assert result["retrieval_mode"] == "document_rag"
+    assert result["doc_keys"]

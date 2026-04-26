@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
+import json
+from pathlib import Path
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -175,6 +177,160 @@ class PathFocusedQAOrchestrator(QAOrchestrator):
                 full_kg=full_kg,
                 llm_config=llm_config,
             )
+
+
+@dataclass
+class RetrievedDocument:
+    doc_key: str
+    text: str
+    keyword_index: Set[str] = field(default_factory=set)
+
+
+class DocumentRAGQAOrchestrator:
+    """Document-level RAG baseline over the original SciERC corpus."""
+
+    def __init__(self, full_kg: KnowledgeGraph, llm_config: LLMConfig):
+        self.full_kg = full_kg
+        self.llm_config = llm_config
+        self.documents = self._load_documents()
+
+    def _source_doc_keys(self) -> Set[str]:
+        doc_keys: Set[str] = set()
+        for triple in self.full_kg.triples:
+            if getattr(triple, "source", None):
+                doc_keys.add(triple.source)
+        for entity in self.full_kg.entities.values():
+            source_document = (entity.metadata or {}).get("source_document")
+            if source_document:
+                doc_keys.add(source_document)
+        return doc_keys
+
+    def _load_documents(self) -> List[RetrievedDocument]:
+        doc_keys = self._source_doc_keys()
+        if not doc_keys:
+            return []
+
+        candidate_paths = [
+            Path("evaluation/datasets/scierc/test.json"),
+            Path("evaluation/datasets/scierc/dev.json"),
+            Path("evaluation/datasets/scierc/train.json"),
+        ]
+
+        documents: List[RetrievedDocument] = []
+        seen: Set[str] = set()
+        for path in candidate_paths:
+            if not path.exists():
+                continue
+            for line in path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                doc_key = record.get("doc_key")
+                if not doc_key or doc_key not in doc_keys or doc_key in seen:
+                    continue
+                text = " ".join(" ".join(sentence) for sentence in record.get("sentences", []))
+                text = (
+                    text.replace("-LRB-", "(")
+                    .replace("-RRB-", ")")
+                    .replace("-LSB-", "[")
+                    .replace("-RSB-", "]")
+                )
+                documents.append(
+                    RetrievedDocument(
+                        doc_key=doc_key,
+                        text=text,
+                        keyword_index=_normalize_terms(text),
+                    )
+                )
+                seen.add(doc_key)
+        return documents
+
+    def _score_document(self, document: RetrievedDocument, question: str) -> Tuple[int, int]:
+        query_terms = _normalize_terms(question)
+        lexical_overlap = len(query_terms & document.keyword_index)
+        dense_overlap = sum(1 for term in query_terms if term in document.text.lower())
+        return (lexical_overlap, dense_overlap)
+
+    def query(self, question: str) -> Dict[str, Any]:
+        if not self.documents:
+            return {
+                "answer": "",
+                "final_answer": "",
+                "coverage": 0.0,
+                "evidence": [],
+                "confidence": 0.0,
+                "out_of_scope_aspects": [question],
+                "retrieval_mode": "document_rag",
+                "doc_keys": [],
+            }
+
+        ranked = sorted(
+            self.documents,
+            key=lambda document: self._score_document(document, question),
+            reverse=True,
+        )
+        selected = ranked[:3]
+        evidence_lines: List[str] = []
+        for document in selected:
+            evidence_lines.append(f"[{document.doc_key}]")
+            evidence_lines.append(document.text[:2500])
+            evidence_lines.append("")
+
+        prompt = f"""You are a document-RAG QA baseline.
+
+You are given retrieved source documents from the corpus.
+Answer the question using ONLY the document evidence below. If the answer is not supported,
+say so directly. Prefer a short direct answer.
+
+RETRIEVED DOCUMENTS:
+{chr(10).join(evidence_lines)}
+
+QUESTION: {question}
+
+Return JSON:
+{{
+  "answer": "Short evidence-grounded answer.",
+  "coverage": 0.0-1.0,
+  "evidence": ["quoted or paraphrased supporting snippets"],
+  "confidence": 0.0-1.0,
+  "out_of_scope_aspects": ["missing aspects"]
+}}
+
+Rules:
+- Do not use outside knowledge.
+- If evidence is incomplete, answer only the supported part.
+- If the documents do not support the relation, say that the evidence is insufficient.
+- Be concise.
+- Return ONLY valid JSON."""
+
+        try:
+            result = chat_completion_json(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a strict document-RAG QA system. "
+                            "Answer only from the retrieved documents and return JSON."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.llm_config.model,
+                temperature=0.1,
+            )
+        except Exception:
+            result = {
+                "answer": "",
+                "coverage": 0.0,
+                "evidence": [],
+                "confidence": 0.0,
+                "out_of_scope_aspects": [question],
+            }
+
+        result["final_answer"] = result.get("answer", "")
+        result["retrieval_mode"] = "document_rag"
+        result["doc_keys"] = [document.doc_key for document in selected]
+        return result
 
 
 @dataclass
@@ -416,6 +572,22 @@ def build_baseline_system(
         global_chart = OrgChart(domains=[global_domain], cross_domain_relations=[])
         system = PathFocusedQAOrchestrator(
             org_chart=global_chart,
+            full_kg=kg,
+            llm_config=llm_config,
+        )
+        return BaselineBuildResult(qa_system=system, org_chart=global_chart)
+
+    if baseline_name == "rag_basic":
+        global_domain = Domain(
+            domain_id="global_rag",
+            label="Document RAG Baseline",
+            description="Document retrieval baseline over the source SciERC corpus.",
+            entity_ids=set(kg.entities.keys()),
+            relation_schema={triple.relation: triple.relation for triple in kg.triples},
+            topics=[],
+        )
+        global_chart = OrgChart(domains=[global_domain], cross_domain_relations=[])
+        system = DocumentRAGQAOrchestrator(
             full_kg=kg,
             llm_config=llm_config,
         )
