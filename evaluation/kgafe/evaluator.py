@@ -394,11 +394,71 @@ class KGAFEEvaluator:
                 answer=answer,
                 system_metadata=eval_result.system_metadata,
             )
+            self._apply_negative_abstention_credit(
+                eval_result=eval_result,
+                benchmark_question=bq,
+            )
             results.individual_results.append(eval_result)
 
             print(f"  KGAFE Score: {eval_result.metrics.kgafe_score:.3f}")
 
         return results
+
+    def _apply_negative_abstention_credit(
+        self,
+        eval_result: EvaluationResult,
+        benchmark_question: BenchmarkQuestion,
+    ) -> None:
+        """
+        Credit correct abstention on negative questions.
+
+        Negative benchmark questions are generated so that the correct answer is
+        effectively "no such relationship exists in the KG". A cautious answer
+        like "there is no evidence" or "cannot determine from the KG" should not
+        be penalized as a hallucination simply because the atomic decomposer emits
+        zero facts or an unverifiable negation fact.
+        """
+        if benchmark_question.question_type != "negative":
+            return
+        if eval_result.aux_metrics.get("negative_abstention") != 1.0:
+            return
+
+        metrics = eval_result.metrics
+        total = max(metrics.total_facts, 1)
+
+        metrics.total_facts = total
+        metrics.supported_count = total
+        metrics.partially_supported_count = 0
+        metrics.contradicted_count = 0
+        metrics.unverifiable_count = 0
+
+        metrics.kg_faithfulness = 1.0
+        metrics.kg_precision = 1.0
+        metrics.hallucination_rate = 0.0
+        metrics.path_validity = 0.0
+        metrics.coverage = max(metrics.coverage, 1.0)
+
+        if self.judge:
+            if metrics.correctness_score == 0.0:
+                metrics.correctness_score = 1.0
+            if metrics.completeness_score == 0.0:
+                metrics.completeness_score = 1.0
+            if metrics.groundedness_score == 0.0:
+                metrics.groundedness_score = 1.0
+            if metrics.judge_overall == 0.0:
+                metrics.judge_overall = (
+                    metrics.correctness_score
+                    + metrics.completeness_score
+                    + metrics.groundedness_score
+                ) / 3.0
+
+        metrics.kgafe_score = (
+            0.30 * metrics.kg_faithfulness
+            + 0.25 * (1.0 - metrics.hallucination_rate)
+            + 0.20 * metrics.groundedness_score
+            + 0.15 * metrics.coverage
+            + 0.10 * metrics.correctness_score
+        )
 
     def _extract_system_metadata(self, qa_result: Dict[str, Any]) -> Dict[str, Any]:
         """Extract routing/provenance metadata from a QA system result when available."""

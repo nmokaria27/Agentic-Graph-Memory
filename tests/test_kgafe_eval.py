@@ -1,6 +1,7 @@
 from evaluation.kgafe.atomic_decomposer import AtomicFact
 from evaluation.kgafe.benchmark_generator import BenchmarkGenerator, BenchmarkQuestion
 from evaluation.kgafe.evaluator import EvaluationResult, KGAFEEvaluator, KGAFEMetrics
+from evaluation.kgafe.judge_panel import JudgeVerdict, PanelVerdict
 from evaluation.kgafe.triple_verifier import VerificationResult, Verdict
 from evaluation.kgafe.triple_verifier import TripleVerifier
 from multi_agent_kg.core.domain_experts import Domain, OrgChart
@@ -253,3 +254,93 @@ def test_aux_metrics_capture_routing_and_support_recall(monkeypatch) -> None:
     assert aux["support_triple_recall"] == 1.0
     assert aux["expected_domain_recall"] == 2 / 3
     assert aux["expected_domain_precision"] == 1.0
+
+
+def test_negative_abstention_gets_credit_without_judge() -> None:
+    evaluator = KGAFEEvaluator(kg=KnowledgeGraph(), enable_judge_panel=False)
+    question = BenchmarkQuestion(
+        question_id="neg_0001",
+        question="Is saturation a hyponym of exhaustive search?",
+        gold_answer="No, the knowledge graph does not contain this relationship.",
+        question_type="negative",
+        difficulty="medium",
+    )
+    result = EvaluationResult(
+        question=question.question,
+        answer="There is no evidence that saturation is a hyponym of exhaustive search.",
+        metrics=KGAFEMetrics(
+            total_facts=0,
+            supported_count=0,
+            contradicted_count=0,
+            partially_supported_count=0,
+            unverifiable_count=0,
+            kgafe_score=0.0,
+            kg_faithfulness=0.0,
+            kg_precision=0.0,
+            hallucination_rate=0.0,
+            coverage=0.0,
+        ),
+        aux_metrics={"negative_abstention": 1.0},
+    )
+
+    evaluator._apply_negative_abstention_credit(result, question)
+
+    assert result.metrics.total_facts == 1
+    assert result.metrics.supported_count == 1
+    assert result.metrics.hallucination_rate == 0.0
+    assert result.metrics.kg_faithfulness == 1.0
+    assert result.metrics.kg_precision == 1.0
+    assert result.metrics.coverage == 1.0
+    assert result.metrics.correctness_score == 0.0
+    assert result.metrics.completeness_score == 0.0
+    assert result.metrics.groundedness_score == 0.0
+    assert round(result.metrics.kgafe_score, 4) == 0.7
+
+
+def test_negative_abstention_gets_credit_with_judge_scores() -> None:
+    evaluator = KGAFEEvaluator(kg=KnowledgeGraph(), enable_judge_panel=True)
+    question = BenchmarkQuestion(
+        question_id="neg_0002",
+        question="Is method A part of dataset B?",
+        gold_answer="No, the knowledge graph does not contain this relationship.",
+        question_type="negative",
+        difficulty="hard",
+    )
+    result = EvaluationResult(
+        question=question.question,
+        answer="It cannot be determined from the KG.",
+        metrics=KGAFEMetrics(
+            total_facts=0,
+            supported_count=0,
+            contradicted_count=0,
+            partially_supported_count=0,
+            unverifiable_count=0,
+            correctness_score=0.0,
+            completeness_score=0.0,
+            groundedness_score=0.0,
+            judge_overall=0.0,
+            kgafe_score=0.0,
+            kg_faithfulness=0.0,
+            kg_precision=0.0,
+            hallucination_rate=0.0,
+            coverage=0.0,
+        ),
+        judge_verdict=PanelVerdict(
+            overall_score=1.0,
+            overall_pass=True,
+            individual_verdicts=[
+                JudgeVerdict("correctness", 1.0, "Correct abstention."),
+                JudgeVerdict("completeness", 1.0, "Fully answers the negative query."),
+                JudgeVerdict("groundedness", 1.0, "Grounded in KG absence."),
+            ],
+        ).to_dict(),
+        aux_metrics={"negative_abstention": 1.0},
+    )
+
+    evaluator._apply_negative_abstention_credit(result, question)
+
+    assert result.metrics.correctness_score == 1.0
+    assert result.metrics.completeness_score == 1.0
+    assert result.metrics.groundedness_score == 1.0
+    assert result.metrics.judge_overall == 1.0
+    assert result.metrics.kgafe_score > 0.9

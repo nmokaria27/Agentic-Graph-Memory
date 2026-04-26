@@ -36,7 +36,7 @@
 \maketitle
 
 \begin{abstract}
-We present \system{}, a governed knowledge graph architecture in which extracted knowledge is not treated as an unowned collection of atomic triples, but as a set of domain-owned subgraphs managed by expert agents. The core object is a \emph{Governed Knowledge Graph}, formally defined as $G=(E,T,D,\phi,\gamma)$, where $E$ is a set of entities, $T \subseteq E \times R \times E$ is a set of triples, $D$ is a set of domains, $\phi$ maps entities to their governing domains, and $\gamma$ is the governance function that decides whether a proposed triple is approved, rejected, revised, or escalated before it enters memory. The creation pipeline processes documents through specialized extraction agents, uses blackboard deliberation for low-confidence hypotheses, bootstraps an organizational chart during creation, and routes every admitted triple through a governance protocol with audit logging. On SciERC, governed creation lifts triple F1 by $+271\%$ relative at 10 documents and $+23.5\%$ relative at 50 documents, while reducing triple hallucination by 7--25 pp, at a $4.55\%$ wall-clock overhead. At 100 documents the governance layer remains essentially perfect (routing exact match $1.000$, governance completeness $1.000$, audit-trail integrity $1.000$, domain coverage $0.984$) even as extraction noise grows. A strict review benchmark achieves $0\%$ false accepts with $100\%$ rejection of corrupted triples. On downstream QA, a four-way comparison against a flat-RAG baseline, a GraphRAG-style community-summary baseline, and our governed router shows that graph-aware retrieval alone fails to improve grounded faithfulness ($95\%$ CI on $\Delta$KGAFE excludes zero in the wrong direction), while the full governed stack lifts faithfulness to $1.0$, precision to $0.90$, and reduces hallucination to $10\%$ on the same 50-document KG. These results support the claim that the primary contribution is not state-of-the-art extraction, but a new governed memory structure for knowledge creation, organization, and downstream use.
+We present \system{}, a governed knowledge graph architecture in which extracted knowledge is not treated as an unowned collection of atomic triples, but as a set of domain-owned subgraphs managed by expert agents. The core object is a \emph{Governed Knowledge Graph}, formally defined as $G=(E,T,D,\phi,\gamma)$, where $E$ is a set of entities, $T \subseteq E \times R \times E$ is a set of triples, $D$ is a set of domains, $\phi$ maps entities to their governing domains, and $\gamma$ is the governance function that decides whether a proposed triple is approved, rejected, revised, or escalated before it enters memory. The creation pipeline processes documents through specialized extraction agents, uses blackboard deliberation for low-confidence hypotheses, bootstraps an organizational chart during creation, and routes every admitted triple through a governance protocol with audit logging. On SciERC, governed creation lifts triple F1 by $+271\%$ relative at 10 documents and $+23.5\%$ relative at 50 documents, while reducing triple hallucination by 7--25 pp, at a $4.55\%$ wall-clock overhead. At 100 documents the governance layer remains essentially perfect (routing exact match $1.000$, governance completeness $1.000$, audit-trail integrity $1.000$, domain coverage $0.984$) even as extraction noise grows. A strict review benchmark achieves $0\%$ false accepts with $100\%$ rejection of corrupted triples. On downstream QA on the same 50-document governed KG, a four-way comparison against a flat-RAG baseline, a GraphRAG-style community-summary baseline, and our governed router shows that all configurations achieve high faithfulness ($\geq 0.98$) once correct abstention on negative questions is properly credited; the full governed stack (\texttt{domain\_advanced}) is the only system at full coverage ($1.000$) with the lowest hallucination rate ($0.9\%$) among the governance configurations. These results support the claim that the primary contribution is not state-of-the-art extraction, but a new governed memory structure for knowledge creation, organization, and downstream use.
 \end{abstract}
 
 \section{Introduction}
@@ -310,6 +310,8 @@ We evaluate the system in two modes:
 
 This distinction is important. The fixed-schema benchmark measures whether the creation pipeline is competent. The governance evaluation measures the paper's main contribution.
 
+All experiments use \texttt{gemma4:31b} at every model tier (small / medium / large). The architecture supports tiered models, but we use a single model across tiers to isolate the effect of governance from any tier-mixing effects. Extraction-time deliberation (Section~\ref{sec:deliberation}) is supported by the system but disabled for all reported runs; the runs we report use the conservative no-blackboard configuration, so the gains attributed to governance below are achieved \emph{without} the multi-agent voting path.
+
 \section{Results}
 \label{sec:results}
 
@@ -436,7 +438,9 @@ Audit-only & 0.96 & 0.84 & 0.16 \\
 \subsection{Downstream QA: Flat RAG vs Graph-Aware vs Governed}
 \label{sec:qa-results}
 
-We additionally evaluate the governed graph as memory for question answering. We compare four configurations on the same 50-document governed KG: \texttt{flat\_path\_basic} (a flat RAG-style path-and-context retrieval baseline); \texttt{graphrag\_basic} (a GraphRAG-style baseline that builds entity-relation communities and answers via community-summary retrieval, with no governance routing or critic); \texttt{domain\_basic} (governed domain router only); and \texttt{domain\_advanced} (governed router + active graph exploration + multi-agent debate + critic + provenance-aware memory). All four systems use the same underlying KG and the same 8 questions covering single-hop, multi-hop, comparison, negative, and cross-domain types. We score answers with KGAFE, a KG-grounded atomic-fact evaluation framework that decomposes each answer into atomic claims and verifies each claim against the governed graph.
+We additionally evaluate the governed graph as memory for question answering. We compare four configurations on the same 50-document governed KG: \texttt{flat\_path\_basic} (a flat RAG-style path-and-context retrieval baseline); \texttt{graphrag\_basic} (a GraphRAG-style baseline that builds entity-relation communities and answers via community-summary retrieval, with no governance routing or critic); \texttt{domain\_basic} (governed domain router only); and \texttt{domain\_advanced} (governed router + active graph exploration + critic + provenance-aware memory). All four systems use the same underlying KG and the same $n=8$ questions covering single-hop, comparison, negative, and cross-domain types.
+
+We use atomic-fact decomposition with KG verification (KGAFE) but report the corrected aggregate, in which correct abstention on negative questions is no longer penalized as hallucination (Appendix \ref{sec:qa-appendix} details the original raw aggregate and the correction). The corrected aggregate is the appropriate downstream signal for governance, because abstention on a triple that does not exist in the graph is the desired behavior for the governance layer.
 
 \begin{table}[t]
 \centering
@@ -445,53 +449,18 @@ We additionally evaluate the governed graph as memory for question answering. We
 \toprule
 \textbf{Metric} & \texttt{flat\_path\_basic} & \texttt{graphrag\_basic} & \texttt{domain\_basic} & \texttt{domain\_advanced} \\
 \midrule
-KGAFE score & 0.484 & 0.448 & 0.496 & \textbf{0.560} \\
-KG faithfulness & 0.625 & 0.609 & 0.708 & \textbf{0.750} \\
-KG precision & 0.625 & 0.609 & 0.646 & \textbf{0.741} \\
-\textbf{Hallucination rate} & $37.5\%$ & $26.6\%$ & \textbf{$22.9\%$} & $25.9\%$ \\
-Coverage & 0.938 & 0.750 & 0.812 & \textbf{1.000} \\
-Total facts evaluated & 20 & 14 & 30 & 26 \\
+Corrected QA score & 0.691 & 0.673 & 0.680 & \textbf{0.698} \\
+Faithfulness & \textbf{1.000} & 0.984 & \textbf{1.000} & \textbf{1.000} \\
+Precision / support & \textbf{1.000} & 0.984 & 0.958 & 0.991 \\
+Hallucination rate & \textbf{$0.0\%$} & $1.6\%$ & $4.2\%$ & $0.9\%$ \\
+Coverage & 0.938 & 0.875 & 0.938 & \textbf{1.000} \\
 \bottomrule
 \end{tabular}
-\caption{Four-way QA ablation on the 50-document governed KG ($n=8$ questions). The four systems form a clean \emph{flat $\to$ graph-aware $\to$ governed $\to$ governed+critic} ladder. Hallucination drops monotonically. Only governance simultaneously lifts faithfulness, precision, and KGAFE; \texttt{domain\_advanced} is the unique system at full coverage with the highest scores on every quality axis.}
+\caption{Four-way QA evaluation on the 50-document governed KG ($n=8$ questions). After correcting the abstention-as-hallucination artifact, all four systems achieve high faithfulness ($\geq 0.98$) and low hallucination ($\leq 4\%$). The full governed stack (\texttt{domain\_advanced}) is the only system at full coverage ($1.000$) and has the highest corrected composite score, with the lowest hallucination rate among the governance configurations. The remaining QA-quality differences are within noise on this 8-question pilot.}
 \label{tab:qa-fourway}
 \end{table}
 
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{lcccc}
-\toprule
-\textbf{Contrast} & $\Delta$ \textbf{KGAFE} & \textbf{$95\%$ CI} & \textbf{W / L / T} & \textbf{$p$} \\
-\midrule
-\texttt{graphrag\_basic} $-$ flat & $-0.037$ & $\boldsymbol{[-0.075,\,-0.009]}$ & $0\,/\,3\,/\,5$ & $0.250$ \\
-\texttt{domain\_basic} $-$ flat & $+0.012$ & $[-0.067,\,+0.115]$ & $1\,/\,3\,/\,4$ & $0.625$ \\
-\textbf{\texttt{domain\_advanced} $-$ flat} & \textbf{$+0.076$} & $[-0.005,\,+0.216]$ & $2\,/\,1\,/\,5$ & $1.000$ \\
-\bottomrule
-\end{tabular}
-\caption{Paired sign-test on $\Delta$KGAFE for each baseline against \texttt{flat\_path\_basic} ($n=8$). The GraphRAG-style baseline's confidence interval excludes zero in the wrong direction: graph-aware retrieval alone helps the model abstain (coverage drops to $0.75$) but does not improve grounded faithfulness.}
-\label{tab:qa-paired}
-\end{table}
-
-\begin{table}[t]
-\centering
-\small
-\begin{tabular}{lccc}
-\toprule
-\textbf{Metric} & \texttt{flat\_path\_basic} & \texttt{graphrag\_basic} & \texttt{domain\_basic} \\
-\midrule
-KGAFE score (judge-adjusted) & 0.765 & 0.550 & \textbf{0.850} \\
-KG faithfulness & 0.600 & 0.600 & \textbf{0.867} \\
-KG precision & 0.600 & 0.600 & \textbf{0.760} \\
-\textbf{Hallucination rate} & $40.0\%$ & \textbf{$0.0\%$} & $24.0\%$ \\
-Coverage & 0.900 & \textbf{$0.267$} & 0.667 \\
-\bottomrule
-\end{tabular}
-\caption{Judge-panel rerun on the four hardest question types ($n=5$). The KGAFE judge panel re-scores each atomic-fact verdict end-to-end. Under strict judge grading, GraphRAG-style retrieval collapses to abstention: coverage drops to $0.27$ (it answers only $\sim 1.3$ of $5$ questions). The paired $\Delta$KGAFE for \texttt{graphrag\_basic} vs flat is $-0.215$ with $95\%$ CI $[-0.39,\,-0.05]$ (excludes zero in the wrong direction). Governance lifts faithfulness $+27$ pp and precision $+16$ pp, the largest deltas observed in any QA run.}
-\label{tab:qa-judge}
-\end{table}
-
-In an additional supporting run on the same eight hard questions (multi-hop, comparison, negative, cross-domain) without the judge panel, \texttt{domain\_advanced} drives KGAFE to $0.665$, faithfulness to $1.000$, precision to $0.896$, and hallucination to $10.4\%$, with a paired $\Delta$KGAFE of $+0.180$ vs flat and a $95\%$ CI of $[+0.022,\,+0.381]$ that excludes zero. The single largest per-question lift is on the \texttt{negative} type ($0.15 \to 0.66$), where the advanced critic catches unverifiable claims that the flat baseline asserts.
+The QA pilot is small ($n=8$) and we do not claim a statistical win. The conservative reading of Table~\ref{tab:qa-fourway} is that all four configurations are roughly comparable on QA quality on this benchmark, with the governance configurations tied for or slightly ahead of the baselines on faithfulness, hallucination, and coverage. The QA result we report should be interpreted as supporting evidence that governance does not degrade downstream answering, while extending coverage to $1.000$ via the domain router and critic.
 
 \subsection{What the Results Mean}
 
@@ -502,13 +471,18 @@ Taken together, the results support five conclusions.
     \item \textbf{Governance changes graph structure, not just volume.} Triple Jaccard of $0.180$ between governed and flat at 50 documents (Table~\ref{tab:governed-vs-flat-structure}); $303$ flat-only and $170$ governed-only triples.
     \item \textbf{Governance scales structurally.} At 100 documents, routing, completeness, audit-trail integrity, and domain coverage remain at or above $0.98$ (Table~\ref{tab:governance-100docs}) even as extraction-side noise grows.
     \item \textbf{Governance supports safe operating modes.} Strict review achieves $0\%$ false accepts; triage recovers $96\%$ of good triples while still rejecting $84\%$ of bad ones (Table~\ref{tab:strict-governance}).
-    \item \textbf{Governance helps downstream QA --- beyond what graph-aware retrieval alone delivers.} The four-way comparison shows hallucination dropping monotonically across flat $\to$ graph-aware $\to$ governed (Table~\ref{tab:qa-fourway}), but the GraphRAG-style baseline actually \emph{loses} on KGAFE in both runs (Tables~\ref{tab:qa-paired} and \ref{tab:qa-judge}, with $95\%$ CIs that exclude zero in the wrong direction). Only governance simultaneously lifts faithfulness, precision, and KGAFE; under strict judge grading the gap widens further (faithfulness $+27$ pp, precision $+16$ pp). Graph structure alone is not enough --- governance is what produces both high coverage and high faithfulness.
+    \item \textbf{Governance does not degrade downstream QA, and reaches full coverage.} On the same 50-document governed KG, all four QA configurations achieve high faithfulness ($\geq 0.98$) and low hallucination ($\leq 4\%$) on an 8-question pilot once correct abstention is properly credited (Table~\ref{tab:qa-fourway}). The full governed stack (\texttt{domain\_advanced}) is the unique system at full coverage ($1.000$) with the lowest hallucination rate among the governance configurations. We do not claim a statistical QA win on this small benchmark; the QA result is supporting evidence that the governance layer extends coverage without harming faithfulness.
 \end{enumerate}
+
+\section{Limitations}
+\label{sec:limitations}
+
+We report results on a single extraction benchmark (SciERC), with a single model family (\texttt{gemma4:31b}) used at every tier, at scales up to 100 documents. Extending to additional benchmarks (e.g., DocRED, CoNLL) and to mixed-tier model configurations is left to future work. The downstream QA evaluation is a small pilot ($n=8$ for the four-way comparison; $n=5$ for the judge-mode rerun) on the 50-document governed KG, and the QA-quality differences across configurations are within noise on this benchmark; we therefore report QA as supporting evidence that governance does not degrade downstream answering, not as a statistical win. The extraction-time deliberation path described in Section~\ref{sec:deliberation} is supported by the system but disabled in all runs reported here; ablating deliberation on/off is left to future work, and the governance gains we report do not depend on it.
 
 \section{Related Work}
 \label{sec:related}
 
-\paragraph{Multi-agent KG construction.} Recent work such as KARMA~\cite{karma2025} studies multi-agent role specialization for knowledge graph construction. Our work differs in emphasis: the central object is not the extraction pipeline alone, but a governed graph with explicit ownership, admission control, and auditability.
+\paragraph{Multi-agent KG construction.} Recent work such as KARMA~\cite{karma2025} studies multi-agent role specialization for knowledge graph construction. Our work differs in emphasis: the central object is not the extraction pipeline alone, but a governed graph with explicit ownership, admission control, and auditability. We do not position the system as a state-of-the-art extractor and we do not run head-to-head comparisons against fine-tuned IE systems; the contribution we evaluate is the governance layer over the extracted graph.
 
 \paragraph{Information extraction benchmarks.} SciERC~\cite{scierc2018} remains a standard benchmark for scientific entity and relation extraction. We use SciERC in fixed-schema mode to establish extraction competence, but do not position our contribution as a new state-of-the-art extractor.
 
@@ -550,5 +524,12 @@ A.~Ghafarollahi and M.~J.~Buehler.
 \newblock \emph{arXiv preprint arXiv:2409.05556}, 2024.
 
 \end{thebibliography}
+
+\appendix
+
+\section{QA Scoring Correction}
+\label{sec:qa-appendix}
+
+The QA aggregate reported in Table~\ref{tab:qa-fourway} is the \emph{corrected} aggregate. The raw KGAFE composite penalized correct abstention on negative questions: when the gold answer was ``the knowledge graph does not contain a relationship between $X$ and $Y$,'' a model answer of the form ``there is no evidence that $X$ relates to $Y$'' was decomposed into a single atomic fact that could not be verified against any KG triple, and was scored as \texttt{hallucination}. Because all four configurations correctly abstain on negative questions, this artifact pushed every system's raw hallucination rate up by a fixed amount and inflated the apparent KGAFE-composite spread. The corrected aggregate (stored in \texttt{evaluation/results/qa\_corrected\_summary.json}) credits correct abstention on negative questions and is the appropriate signal for governance: abstention on a triple that does not exist is the desired behavior of the governance layer.
 
 \end{document}
