@@ -104,6 +104,7 @@ class DeliberativeOrchestrator:
         enable_governance: bool = True,
         governance_mode: str = "audit_only",
         reuse_corpus_schema: bool = False,
+        expand_org_chart_with_schema: bool = False,
         continue_on_document_error: bool = True,
         skip_evidence_linking: bool = False,
         skip_verification: bool = False,
@@ -128,6 +129,9 @@ class DeliberativeOrchestrator:
             max_refinement_iterations: Max refinement loops (default 4)
             enable_self_consistency: Use self-consistency for confidence
             enable_open_world: Allow discovery of new relation types
+            expand_org_chart_with_schema: In open-world governed builds, add
+                newly discovered schema domains to the existing org chart
+                instead of freezing ownership after the first document.
             enable_fixed_schema_pairwise: In fixed-schema mode, add pairwise
                 relation scoring over local entity pairs
             enable_cross_document: Enable cross-document entity resolution
@@ -157,6 +161,7 @@ class DeliberativeOrchestrator:
             self.governed_kg.governance_mode if self.governed_kg is not None else "disabled"
         )
         self.reuse_corpus_schema = reuse_corpus_schema
+        self.expand_org_chart_with_schema = expand_org_chart_with_schema
         self.continue_on_document_error = continue_on_document_error
         self.skip_evidence_linking = skip_evidence_linking
         self.skip_verification = skip_verification
@@ -498,6 +503,12 @@ class DeliberativeOrchestrator:
             preliminary_org = self._bootstrap_domains_from_schema(domain_config)
             self.governed_kg.set_org_chart(preliminary_org)
             print(f"  Bootstrapped {len(preliminary_org.domains)} preliminary domains")
+        elif self.expand_org_chart_with_schema and domain_config:
+            added, merged = self._expand_org_chart_from_schema(domain_config)
+            print(
+                "  Expanded governed org chart "
+                f"(added {added}, merged {merged}, total {len(self.governed_kg.org_chart.domains)} domains)"
+            )
         else:
             print(f"  Reusing existing governed org chart ({len(self.governed_kg.org_chart.domains)} domains)")
         
@@ -761,6 +772,38 @@ class DeliberativeOrchestrator:
         if not domain_config:
             return self.governed_kg.org_chart
         return self.domain_builder.bootstrap_from_schema(domain_config)
+
+    def _expand_org_chart_from_schema(self, domain_config: Dict[str, Any]) -> Tuple[int, int]:
+        """Merge domains from a newly discovered schema into the current org chart."""
+        if self.governed_kg is None or not domain_config:
+            return 0, 0
+        candidate_org = self.domain_builder.bootstrap_from_schema(domain_config)
+        current = self.governed_kg.org_chart
+        existing = {domain.domain_id: domain for domain in current.domains}
+        added = 0
+        merged = 0
+        for candidate in candidate_org.domains:
+            existing_domain = existing.get(candidate.domain_id)
+            if existing_domain is None:
+                current.domains.append(candidate)
+                existing[candidate.domain_id] = candidate
+                added += 1
+                continue
+
+            merged += 1
+            existing_domain.description = existing_domain.description or candidate.description
+            existing_domain.relation_schema.update(candidate.relation_schema)
+            existing_meta = existing_domain.metadata if isinstance(existing_domain.metadata, dict) else {}
+            candidate_meta = candidate.metadata if isinstance(candidate.metadata, dict) else {}
+            for key in ("seed_entity_types", "seed_relation_types"):
+                values = list(existing_meta.get(key, []))
+                for value in candidate_meta.get(key, []):
+                    if value not in values:
+                        values.append(value)
+                existing_meta[key] = values
+            existing_domain.metadata = existing_meta
+        current._entity_domain_map_cache = None
+        return added, merged
 
     def _assign_entities_to_domains(
         self,

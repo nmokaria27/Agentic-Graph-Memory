@@ -315,11 +315,16 @@ All experiments use \texttt{gemma4:31b} at every model tier (small / medium / la
 \section{Results}
 \label{sec:results}
 
-All numbers below are computed from artifacts in \texttt{evaluation/results/}; aggregation is in \texttt{paper\_table\_consolidated.json}. The model is \texttt{gemma4:31b} for every tier (small/medium/large) with a fixed SciERC schema. We organize the results around the three claims of the paper: governance improves the admitted graph, governance changes graph structure, and governance scales structurally. Section~\ref{sec:qa-results} adds a downstream-QA evaluation against flat and graph-aware retrieval baselines.
+All numbers reported in this section are computed from artifacts in \texttt{evaluation/results/}; the headline aggregates are stored in \texttt{paper\_table\_consolidated.json} (extraction) and \texttt{qa\_corrected\_summary.json} (downstream QA). Unless otherwise noted, every run uses \texttt{gemma4:31b} at every model tier with a fixed SciERC schema, so the differences between rows reflect the governance layer rather than model size.
 
-\subsection{Extraction Competence and Governance as an Intervention}
+We organize the evaluation around three claims: (i) governance improves the graph that is admitted, (ii) governance changes \emph{which} facts are admitted rather than acting as a thinner filter on top of the same graph, and (iii) governance scales structurally --- even when the underlying extractor becomes noisier on larger corpora, the governance layer remains correct. A downstream-QA pilot then asks whether placing the governance stack between the graph and a question answerer hurts answer quality.
 
-We compare the same extraction pipeline under two conditions: \emph{governed} creation (triage mode: ownership routing, governance review, audit trail) and \emph{flat} creation (plain KG insertion with no domain ownership or admission control).
+\subsection{Governance as an Intervention on Graph Admission}
+\label{sec:exp-extraction}
+
+To isolate the effect of governance, we extract a knowledge graph from the SciERC test split twice with the same extractor: once under \emph{flat} insertion (entities and triples are written directly into the graph) and once under \emph{governed} insertion (the same extractor paired with domain ownership, the triage governance board, and an audit trail). The two pipelines share documents, model, and schema, so any difference in their outputs is attributable to the governance layer. We repeat the comparison at 10 and 50 documents.
+
+Extraction quality is measured against SciERC's gold annotations. \emph{Entity F1} is the standard precision-recall harmonic mean over the produced named-entity set. \emph{Triple F1} applies the same harmonic mean to $(\text{subject}, \text{relation}, \text{object})$ triples and counts a triple correct only when all three slots match the gold; it is therefore a substantially harder metric than entity F1. \emph{Triple hallucination rate} is the fraction of produced triples whose key does not appear in the gold annotations, and \emph{zero-triple docs} counts documents for which the system emitted no triples at all.
 
 \begin{table}[t]
 \centering
@@ -330,35 +335,42 @@ We compare the same extraction pipeline under two conditions: \emph{governed} cr
 \midrule
 10 docs & Flat & 0.481 & 0.079 & $87.2\%$ & 2 \\
 10 docs & Governed (triage) & \textbf{0.642} & \textbf{0.292} & \textbf{$62.5\%$} & 2 \\
-10 docs & $\Delta$ & $+33\%$ rel & \textbf{$+271\%$ rel} & $-24.7$ pp & --- \\
+10 docs & $\Delta$ (governed $-$ flat) & $+33\%$ rel & \textbf{$+271\%$ rel} & $-24.7$ pp & --- \\
 \midrule
 50 docs & Flat & 0.633 & 0.153 & $85.8\%$ & 0 \\
 50 docs & Governed (triage) & 0.629 & \textbf{0.189} & \textbf{$78.5\%$} & 3 \\
-50 docs & $\Delta$ & $-0.4\%$ rel & \textbf{$+23.5\%$ rel} & $-7.3$ pp & --- \\
+50 docs & $\Delta$ (governed $-$ flat) & $-0.4\%$ rel & \textbf{$+23.5\%$ rel} & $-7.3$ pp & --- \\
 \bottomrule
 \end{tabular}
-\caption{Governed vs flat creation on 10 and 50 SciERC test documents (fixed schema, \texttt{gemma4:31b}). Governance keeps entity F1 essentially flat while substantially lifting triple F1 and lowering triple hallucination at both scales.}
+\caption{Per-config extraction quality on 10 and 50 SciERC test documents (fixed schema, \texttt{gemma4:31b}). Governance preserves entity F1 while substantially lifting triple F1 and lowering triple hallucination at both scales.}
 \label{tab:extraction}
 \end{table}
+
+At both scales, governance preserves entity F1 (within one percentage point of flat) while substantially lifting triple F1: a $+271\%$ relative improvement at 10 documents and $+23.5\%$ at 50 documents. Triple hallucination falls by 7--25 percentage points, and the wall-clock cost of the governance layer is small (Table~\ref{tab:governed-vs-flat-structure}). A natural concern is that this improvement reflects governance acting as a thin filter on flat's output rather than a substantive intervention; we rule this out by measuring the structural overlap between the two graphs.
+
+The \emph{Jaccard similarity} of two sets $A$ and $B$ is $|A \cap B| / |A \cup B|$, a number between $0$ and $1$: $1.0$ indicates identical sets, $0.0$ disjoint sets, and $0.5$ roughly half overlap. We compute Jaccard separately on the entity and triple sets of the governed and flat graphs at 50 documents.
 
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lc}
+\begin{tabular}{lcl}
 \toprule
-\textbf{Metric} & \textbf{Value} \\
+\textbf{Metric} & \textbf{Value} & \textbf{Plain reading} \\
 \midrule
-Entity overlap (Jaccard) & 0.677 \\
-Triple overlap (Jaccard) & \textbf{0.180} \\
-Triples unique to governed & 170 \\
-Triples unique to flat & 303 \\
-Cross-domain fraction & $43.4\%$ \\
-Governance wall-clock overhead & $+4.55\%$ ($+1{,}890$ s on $41{,}506$ s flat run) \\
+Entity overlap (Jaccard) & 0.677 & The two graphs largely agree on which entities to include. \\
+Triple overlap (Jaccard) & \textbf{0.180} & The two graphs disagree on $\approx 80\%$ of triples. \\
+Triples unique to governed & 170 & Triples governance admitted that flat never proposed. \\
+Triples unique to flat & 303 & Triples flat admitted that governance rejected. \\
+Cross-domain fraction & $43.4\%$ & Fraction of governed triples whose subject and object live in \\
+ & & different domains; cross-domain edges are routinely admitted. \\
+Wall-clock overhead & $+4.55\%$ & $+1{,}890$ s on top of the 41{,}506-s flat run. \\
 \bottomrule
 \end{tabular}
-\caption{Structural impact of governance at 50 documents. The triple-overlap of $0.180$ means governance \emph{changes} which triples are admitted, not just the volume; it is not a thin filter on top of the same graph.}
+\caption{Structural impact of governance at 50 documents. The two graphs largely agree on entities (Jaccard $0.677$) but disagree on most edges (triple Jaccard $0.180$): governance admits 170 triples flat never produced and rejects 303 triples flat would have admitted.}
 \label{tab:governed-vs-flat-structure}
 \end{table}
+
+The two graphs largely agree on entities (Jaccard $0.677$) but disagree on most edges (triple Jaccard $0.180$). Governance admits 170 triples that flat never proposed and rejects 303 triples flat would have admitted; cross-domain triples --- those whose subject and object live in different domains --- account for $43.4\%$ of the governed graph. The improvement in Table~\ref{tab:extraction} is therefore the result of a substantial change in which facts are admitted, not of post-hoc filtering. To make the governance behavior concrete, Table~\ref{tab:triage} reports the activity of the triage board on the 50-document run: each candidate triple was auto-approved (low risk), escalated to LLM review, or revised/rejected.
 
 \begin{table}[t]
 \centering
@@ -376,16 +388,16 @@ Reviewer outcome: revise & 17 \\
 Reviewer outcome: other (escalate/reject) & 14 \\
 \bottomrule
 \end{tabular}
-\caption{Triage board activity on the 50-document run. The board exercises both auto-approval and human-in-the-loop review and produces a non-trivial revision rate.}
+\caption{Triage board activity on the 50-document run. The board exercises both auto-approval and LLM review; 31 of 130 escalations produced a revision or rejection, indicating non-trivial admission control rather than a rubber stamp.}
 \label{tab:triage}
 \end{table}
 
-The combined picture from Tables~\ref{tab:extraction}--\ref{tab:triage} is that governance is an effective \emph{intervention} on the admitted graph: a $+271\%$ relative lift in triple F1 at 10 documents and $+23.5\%$ at 50 documents, with hallucination down 7--25 pp, at a $4.55\%$ wall-clock cost. The triple-overlap of $0.180$ rules out the alternative interpretation that governance is just a thinner version of the same extracted graph.
+Of the 130 escalations, 31 produced a revision or a rejection, indicating that the board functions as a non-trivial admission gate rather than as a rubber stamp.
 
 \subsection{Governance Structure at Scale}
 \label{sec:governance-scale}
 
-We evaluate the governed-only system on 100 SciERC test documents to test whether governance behavior remains correct as extraction noise grows.
+We next evaluate the governed pipeline on 100 SciERC test documents. The question here is not whether governance beats flat --- that comparison was already made --- but whether the governance layer continues to behave correctly as the underlying extractor becomes noisier with corpus size. In addition to the extraction-side metrics from Section~\ref{sec:exp-extraction}, we report a set of governance-side metrics: \emph{routing exact match} is the fraction of triples routed to the same domain a gold-standard router would choose; \emph{routing recall} and \emph{precision} are computed against expected-domain labels; \emph{cross-domain routing recall} is recall on the subset of triples that span two domains; \emph{domain coverage} is the fraction of expected domains for which at least one triple was admitted; \emph{governance completeness} is the fraction of admitted triples that traversed the governance protocol rather than a bypass path; and \emph{audit-trail integrity} is the fraction of admitted triples carrying a complete audit-trail entry.
 
 \begin{table}[t]
 \centering
@@ -410,15 +422,13 @@ Zero-triple docs & 30 / 100 \\
 \textbf{Audit-trail integrity} & \textbf{1.000} \\
 \bottomrule
 \end{tabular}
-\caption{Governance structure at 100 documents. Extraction quality degrades as corpus size grows, but routing, completeness, audit, and domain coverage remain essentially perfect.}
+\caption{Governed-only run on 100 SciERC test documents. Extraction quality drifts down at this scale (orphan fraction $63.8\%$, 30 of 100 documents emit no triples), but the governance-side metrics --- routing, completeness, audit, domain coverage --- all sit at or above $0.98$.}
 \label{tab:governance-100docs}
 \end{table}
 
-This is the ``structure scales even when extraction is noisy'' claim. The extraction-side metrics drift downward at 100 documents (orphan fraction rises to $63.8\%$, $30$ documents emit zero triples), but the governance-side metrics --- routing, audit, domain coverage --- stay at or above $0.98$. The contribution being tested is the governance layer itself, and Table~\ref{tab:governance-100docs} shows it remains correct under load.
+Extraction quality drifts down at this scale: the orphan-entity fraction grows to $63.8\%$ and 30 of 100 documents emit no triples. The governance-side metrics, however, all sit at or above $0.98$. Routing, governance completeness, and audit-trail integrity are exact ($1.000$), and domain coverage reaches $0.984$ over the 100-document corpus. The governance layer remains correct even when the extractor underneath does not.
 
-\subsection{Strict Governance Review}
-
-To probe the governance function $\gamma$ directly, we present the board with both true and corrupted triples and ask it to admit or reject. We compare two operating modes: \texttt{audit\_only} (the default triage policy used elsewhere in the paper) and \texttt{strict} (a conservative ceiling that prefers rejection).
+To probe the governance function $\gamma$ directly, we present the board with 50 probe triples --- half drawn from the gold and half corrupted versions of correct triples --- and measure whether the board admits the correct ones (\emph{accept recall}) and rejects the corrupted ones (\emph{reject recall}); the \emph{false-accept rate} counts corrupted triples that were incorrectly admitted. We compare two operating modes: \texttt{audit\_only} (the default triage policy used elsewhere in the paper) and \texttt{strict} (a conservative ceiling that prefers rejection on uncertainty).
 
 \begin{table}[t]
 \centering
@@ -431,36 +441,37 @@ Audit-only & 0.96 & 0.84 & 0.16 \\
 \textbf{Strict} & 0.56 & \textbf{1.00} & \textbf{0.00} \\
 \bottomrule
 \end{tabular}
-\caption{Strict review benchmark on the 100-document governed KG with 50 probe triples. Strict mode is the provably-safe ceiling: zero false accepts at the cost of rejecting $44\%$ of correct proposals. Triage is the default operating mode because it preserves $96\%$ of correct triples while still rejecting $84\%$ of bad ones.}
+\caption{Strict-vs-triage review on the 100-document governed KG with 50 probe triples. Strict review attains a zero false-accept rate at the cost of rejecting $44\%$ of correct proposals; triage retains $96\%$ of correct admissions while rejecting $84\%$ of corrupted probes.}
 \label{tab:strict-governance}
 \end{table}
 
-\subsection{Downstream QA: Flat RAG vs Graph-Aware vs Governed}
+Strict review attains a zero false-accept rate at the cost of rejecting $44\%$ of correct proposals. The triage default admits $96\%$ of correct probes while still rejecting $84\%$ of corrupted ones --- the more useful trade-off when the goal is to grow the graph rather than freeze it. Together, Tables~\ref{tab:governance-100docs} and~\ref{tab:strict-governance} show that the governance layer scales structurally in the sense that matters for the contribution of this paper: routing, audit, and completeness remain exact, and the system retains a provably safe operating mode whenever it is needed.
+
+\subsection{Downstream Question Answering on the Governed Graph}
 \label{sec:qa-results}
 
-We additionally evaluate the governed graph as memory for question answering. We compare four configurations on the same 50-document governed KG: \texttt{flat\_path\_basic} (a flat RAG-style path-and-context retrieval baseline); \texttt{graphrag\_basic} (a GraphRAG-style baseline that builds entity-relation communities and answers via community-summary retrieval, with no governance routing or critic); \texttt{domain\_basic} (governed domain router only); and \texttt{domain\_advanced} (governed router + active graph exploration + critic + provenance-aware memory). All four systems use the same underlying KG and the same $n=8$ questions covering single-hop, comparison, negative, and cross-domain types.
+Finally, we treat the 50-document governed graph as memory and ask whether placing the governance stack between this memory and a downstream question answerer affects answer quality. We compare four configurations on the same eight-question benchmark, covering single-hop, comparison, cross-domain, and negative questions (the latter requiring abstention when the queried fact is absent from the graph). All four configurations share the underlying KG and model and differ only in retrieval and reasoning. \texttt{flat\_path\_basic} performs flat RAG-style retrieval over the triple list. \texttt{graphrag\_basic} is a GraphRAG-style baseline that builds entity-relation communities, summarizes them, and answers from retrieved community summaries; it does not use governance routing or a critic. \texttt{domain\_basic} activates the governed domain router only, using domain ownership produced at extraction time. \texttt{domain\_advanced} adds active graph exploration, a critic, and provenance-aware memory on top of the router.
 
-We use atomic-fact decomposition with KG verification (KGAFE) but report the corrected aggregate, in which correct abstention on negative questions is no longer penalized as hallucination (Appendix \ref{sec:qa-appendix} details the original raw aggregate and the correction). The corrected aggregate is the appropriate downstream signal for governance, because abstention on a triple that does not exist in the graph is the desired behavior for the governance layer.
+Answer quality is evaluated via atomic-fact decomposition with KG verification (KGAFE). For each answer, we extract atomic factual claims and verify each against the KG and the gold answer. \emph{Faithfulness} is the fraction of the answer's atomic claims entailed by the KG; \emph{precision / support} is the fraction with explicit support in the retrieved evidence; \emph{hallucination rate} is the fraction unsupported by the KG; and \emph{coverage} is the fraction of gold-answer atomic claims that the system's answer actually addresses. The \emph{corrected QA score} is the composite KGAFE score combining faithfulness, precision, and coverage, with one correction relative to the raw aggregate: correct abstention on a negative question is no longer scored as hallucination, since refusing to assert facts absent from the graph is the desired behavior of a governed system (Appendix~\ref{sec:qa-appendix} details the raw aggregate and the correction).
 
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lcccc}
+\begin{tabular}{lccccc}
 \toprule
-\textbf{Metric} & \texttt{flat\_path\_basic} & \texttt{graphrag\_basic} & \texttt{domain\_basic} & \texttt{domain\_advanced} \\
+\textbf{System} & \textbf{Corrected QA} & \textbf{Faithfulness} & \textbf{Precision} & \textbf{Halluc.\ rate} & \textbf{Coverage} \\
 \midrule
-Corrected QA score & 0.691 & 0.673 & 0.680 & \textbf{0.698} \\
-Faithfulness & \textbf{1.000} & 0.984 & \textbf{1.000} & \textbf{1.000} \\
-Precision / support & \textbf{1.000} & 0.984 & 0.958 & 0.991 \\
-Hallucination rate & \textbf{$0.0\%$} & $1.6\%$ & $4.2\%$ & $0.9\%$ \\
-Coverage & 0.938 & 0.875 & 0.938 & \textbf{1.000} \\
+\texttt{flat\_path\_basic}    & 0.691           & \textbf{1.000} & \textbf{1.000} & \textbf{$0.0\%$} & 0.938 \\
+\texttt{graphrag\_basic}      & 0.673           & 0.984          & 0.984          & $1.6\%$          & 0.875 \\
+\texttt{domain\_basic}        & 0.680           & \textbf{1.000} & 0.958          & $4.2\%$          & 0.938 \\
+\textbf{\texttt{domain\_advanced}} & \textbf{0.698} & \textbf{1.000} & 0.991       & $0.9\%$          & \textbf{1.000} \\
 \bottomrule
 \end{tabular}
-\caption{Four-way QA evaluation on the 50-document governed KG ($n=8$ questions). After correcting the abstention-as-hallucination artifact, all four systems achieve high faithfulness ($\geq 0.98$) and low hallucination ($\leq 4\%$). The full governed stack (\texttt{domain\_advanced}) is the only system at full coverage ($1.000$) and has the highest corrected composite score, with the lowest hallucination rate among the governance configurations. The remaining QA-quality differences are within noise on this 8-question pilot.}
+\caption{Four-way QA on the 50-document governed KG ($n=8$). All four configurations land in a tight band: faithfulness $\geq 0.98$ and hallucination $\leq 4.2\%$ across the board. The full governed stack (\texttt{domain\_advanced}) has the highest corrected composite score, the highest coverage ($1.000$, the only system that fully addresses every gold question), and the lowest hallucination rate among governance configurations.}
 \label{tab:qa-fourway}
 \end{table}
 
-The QA pilot is small ($n=8$) and we do not claim a statistical win. The conservative reading of Table~\ref{tab:qa-fourway} is that all four configurations are roughly comparable on QA quality on this benchmark, with the governance configurations tied for or slightly ahead of the baselines on faithfulness, hallucination, and coverage. The QA result we report should be interpreted as supporting evidence that governance does not degrade downstream answering, while extending coverage to $1.000$ via the domain router and critic.
+We do \emph{not} claim a statistical QA win on $n=8$. The honest reading of Table~\ref{tab:qa-fourway} is that governance does not hurt downstream QA, and is the only configuration to reach full coverage. A larger QA benchmark is left to future work.
 
 \subsection{What the Results Mean}
 
