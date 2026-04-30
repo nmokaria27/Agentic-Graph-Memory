@@ -36,7 +36,7 @@ from multi_agent_kg.core.config import LLMConfig
 from multi_agent_kg.core.deliberation import DeliberationCoordinator, VoteType
 from multi_agent_kg.core.domain_builder import DomainBuilder
 
-from multi_agent_kg.agents.base import AgentContext, ModelTier
+from multi_agent_kg.agents.base import AgentContext, ModelTier, AGENT_MODEL_OVERRIDES
 from multi_agent_kg.agents.document_processor import DocumentProcessor
 from multi_agent_kg.agents.domain_classifier import DomainClassifier
 from multi_agent_kg.agents.entity_extractor import EntityExtractor
@@ -385,9 +385,13 @@ class DeliberativeOrchestrator:
         print("\n" + "=" * 70)
         print("DELIBERATIVE MULTI-AGENT KNOWLEDGE GRAPH FRAMEWORK")
         print("=" * 70)
-        print(f"Model Tiers:")
+        print(f"Model Tiers (default mapping):")
         for tier, model in self.model_tiers.items():
             print(f"  {tier.value}: {model}")
+        if AGENT_MODEL_OVERRIDES:
+            print(f"\nPer-agent model overrides:")
+            for agent_name, model in sorted(AGENT_MODEL_OVERRIDES.items()):
+                print(f"  {agent_name}: {model}")
         print(f"\nFeatures:")
         print(f"  Self-Consistency: {'Enabled' if self.enable_self_consistency else 'Disabled'}")
         print(f"  Open-World Relations: {'Enabled' if self.enable_open_world else 'Disabled'}")
