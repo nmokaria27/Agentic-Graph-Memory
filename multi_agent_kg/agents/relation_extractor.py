@@ -16,6 +16,7 @@ Features:
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 from dataclasses import dataclass, field
 import json
+import os
 import re
 
 from multi_agent_kg.agents.base import (
@@ -180,7 +181,28 @@ Return:
 }}"""
 
 
-TAIL_BINDING_PROMPT = """Complete the triples by adding TAIL (object) entities.
+_STRICT_RELATIONS = os.getenv("STRICT_RELATIONS") == "1"
+
+_STRICT_PRECISION_BLOCK = """
+
+PRECISION OVER RECALL — emit a triple ONLY if BOTH:
+  (a) the text contains an explicit linguistic marker that licenses the relation
+      (e.g., a verb, preposition, or coordinator: "is", "uses", "founded", "born in",
+      "located in", "part of", "evaluated on", "compared with", coordinated NPs); AND
+  (b) the head and tail are both syntactically tied to that marker in the same sentence
+      (or the immediately preceding sentence via clear coreference).
+If either condition fails, SKIP. False triples are penalized far more than missed ones.
+Do NOT emit relations based on co-occurrence, plausibility, or domain knowledge.
+
+CONFIDENCE GRADING — use the FULL 0.0-1.0 range:
+  - 0.85-1.0: relation is explicitly stated with a clear marker.
+  - 0.55-0.84: relation is implied by strong syntactic evidence but no exact marker.
+  - 0.0-0.54: weak/uncertain — DO NOT EMIT (skip the triple).
+""" if _STRICT_RELATIONS else ""
+
+
+TAIL_BINDING_PROMPT = """Complete the triples by adding TAIL (object) entities.""" + _STRICT_PRECISION_BLOCK + """
+
 
 TEXT:
 {text}
@@ -346,6 +368,46 @@ Return:
 }}"""
 
 
+RELATION_GLEANING_PROMPT = """Review the extracted graph and recover MISSING supported triples.
+
+TEXT:
+{text}
+
+ENTITIES:
+{entities}
+
+ALLOWED / SUGGESTED RELATION TYPES:
+{relation_types}
+{direction_guide}
+
+ALREADY EXTRACTED TRIPLES:
+{existing_triples}
+
+Instructions:
+1. Add only facts explicitly supported by the text.
+2. Prefer important facts that connect named entities, dates, values, roles, tasks, datasets, metrics, methods, locations, capacities, or titles.
+3. Do not duplicate an already extracted triple.
+4. In fixed-schema mode, use only the allowed relation labels and copy subject/object from the ENTITIES list.
+5. In open-domain mode, relation names may be concise UPPER_SNAKE_CASE predicates, but subject/object must still be concrete mentions from the text.
+6. If no supported fact is missing, return an empty list.
+
+Return JSON:
+{{
+  "missing_triples": [
+    {{
+      "subject": "<entity text>",
+      "subject_id": "<entity id if known>",
+      "relation": "<relation label>",
+      "object": "<entity/value text>",
+      "object_id": "<entity id if known>",
+      "confidence": <0.0-1.0>,
+      "evidence": "<supporting text span>",
+      "rationale": "<why this was missed and why it is supported>"
+    }}
+  ]
+}}"""
+
+
 class RelationExtractor(BaseAgent):
     """
     Relation Extractor Agent - RHF multi-stage relation extraction.
@@ -377,6 +439,8 @@ class RelationExtractor(BaseAgent):
         n_consistency_samples: int = 3,
         enable_open_world: bool = True,
         enable_fixed_schema_pairwise: bool = True,
+        enable_relation_gleaning: bool = True,
+        enable_deterministic_attribute_binding: bool = False,
     ):
         super().__init__(
             name="RelationExtractor",
@@ -392,10 +456,68 @@ class RelationExtractor(BaseAgent):
         self.n_consistency_samples = n_consistency_samples
         self.enable_open_world = enable_open_world
         self.enable_fixed_schema_pairwise = enable_fixed_schema_pairwise
+        self.enable_relation_gleaning = enable_relation_gleaning
+        self.enable_deterministic_attribute_binding = enable_deterministic_attribute_binding
         
         # Track discovered relation types
         self.discovered_relations: Dict[str, DiscoveredRelation] = {}
         self.domain_relations: Dict[str, List[str]] = {}
+
+    def _new_funnel_diagnostics(self, document_id: str) -> Dict[str, Any]:
+        return {
+            "document_id": document_id,
+            "segments_processed": 0,
+            "entities_seen": 0,
+            "relations_found": 0,
+            "head_bindings": 0,
+            "tail_triples": 0,
+            "pairwise_pairs_considered": 0,
+            "pairwise_positive_predictions": 0,
+            "pairwise_triples_added": 0,
+            "gleaned_triples_added": 0,
+            "invalid_self_refs_filtered": 0,
+            "post_alignment_triples": 0,
+            "post_dedupe_triples": 0,
+            "final_triples": 0,
+            "segment_summaries": [],
+        }
+
+    def _record_funnel_segment(
+        self,
+        diagnostics: Dict[str, Any],
+        *,
+        segment_id: Optional[str],
+        entities_seen: int,
+        relations_found: int,
+        head_bindings: int,
+        tail_triples: int,
+        pairwise_pairs: int,
+        pairwise_positives: int,
+        pairwise_triples: int,
+        gleaned_triples: int,
+        invalid_self_refs: int,
+        post_align_triples: int,
+        post_dedupe_triples: int,
+    ) -> None:
+        summary = {
+            "segment_id": segment_id,
+            "entities_seen": entities_seen,
+            "relations_found": relations_found,
+            "head_bindings": head_bindings,
+            "tail_triples": tail_triples,
+            "pairwise_pairs_considered": pairwise_pairs,
+            "pairwise_positive_predictions": pairwise_positives,
+            "pairwise_triples_added": pairwise_triples,
+            "gleaned_triples_added": gleaned_triples,
+            "invalid_self_refs_filtered": invalid_self_refs,
+            "post_alignment_triples": post_align_triples,
+            "post_dedupe_triples": post_dedupe_triples,
+        }
+        diagnostics["segments_processed"] += 1
+        for key, value in summary.items():
+            if key != "segment_id":
+                diagnostics[key] += value
+        diagnostics["segment_summaries"].append(summary)
 
     def _normalize_relation_types(self, relation_types_raw: Any) -> List[str]:
         """Normalize relation types from various formats to List[str]."""
@@ -513,8 +635,13 @@ class RelationExtractor(BaseAgent):
         stage1_relation_types: Optional[List[str]] = None,
     ) -> Tuple[List[Dict[str, Any]], Dict[str, int]]:
         """Classify sentence-local entity pairs into the fixed schema or NONE."""
-        constrained_types = [rt for rt in (stage1_relation_types or []) if rt in allowed_relation_types]
-        relation_types = constrained_types or list(dict.fromkeys(allowed_relation_types))
+        # In fixed-schema benchmark mode, Stage 1 should not be a hard gate.
+        # SciERC is dominated by Used-for; if Stage 1 detects any other label
+        # but misses Used-for, constraining pairwise classification to Stage-1
+        # labels prevents recovery and destroys recall. Pairwise sees concrete
+        # entity pairs, so it should consider the full allowed schema and choose
+        # NONE when no relation is supported.
+        relation_types = list(dict.fromkeys(allowed_relation_types))
         candidate_pairs = self._build_local_entity_pairs(text, entities)
         stats = {
             "pairwise_pairs_considered": len(candidate_pairs),
@@ -635,6 +762,8 @@ class RelationExtractor(BaseAgent):
         pairwise_pairs_considered = 0
         pairwise_positive_predictions = 0
         pairwise_triples_added = 0
+        gleaned_triples_added = 0
+        funnel_diagnostics = self._new_funnel_diagnostics(context.document_id)
         
         texts_to_process = []
         if segments:
@@ -651,14 +780,20 @@ class RelationExtractor(BaseAgent):
             segment_entities = [
                 e for e in entities
                 if e.get("source_segment") == segment_id
-                or (e.get("text", "") and e.get("text", "").lower() in text_lower)
+                or segment_id in (e.get("source_segments") or [])
+                or self._entity_has_surface_in_text(e, text_lower)
             ]
             # Fallback: if no segment match, use entities whose text appears in segment
             if not segment_entities:
                 segment_entities = [
                     e for e in entities
-                    if e.get("text", "") and e.get("text", "").lower() in text_lower
+                    if self._entity_has_surface_in_text(e, text_lower)
                 ]
+            # Coreference can canonicalize entity text away from the literal
+            # surface form in a single-segment document. In that case, using
+            # all entities is safer than dropping the entire relation stage.
+            if len(texts_to_process) == 1 and len(segment_entities) < 2 and len(entities) >= 2:
+                segment_entities = entities
 
             # RHF Pipeline
             # Stage 1: Relation Identification
@@ -668,6 +803,11 @@ class RelationExtractor(BaseAgent):
                 suggested_types,
                 context.domain,
             )
+            relations_found = [
+                relation
+                for relation in relations_found
+                if isinstance(relation, dict) and relation.get("relation_type")
+            ]
 
             # Track new relation types
             for rel in relations_found:
@@ -679,20 +819,59 @@ class RelationExtractor(BaseAgent):
             identified_relation_types.extend(
                 relation_type for relation_type in relation_types if relation_type
             )
+            deterministic_value_triples = []
+            if self.enable_open_world and self.enable_deterministic_attribute_binding:
+                deterministic_value_triples = self._extract_answer_bearing_value_triples(
+                    text=text,
+                    entities=segment_entities,
+                )
+                deterministic_value_triples.extend(
+                    self._extract_typed_attribute_facts(
+                        text=text,
+                        entities=segment_entities,
+                    )
+                )
 
-            if not relation_types:
+            fixed_schema_mode = self._is_fixed_schema_mode(suggested_types, domain_config)
+            relation_types_for_recovery = relation_types or (
+                suggested_types if fixed_schema_mode else []
+            )
+            if not relation_types_for_recovery and not deterministic_value_triples:
+                self._record_funnel_segment(
+                    funnel_diagnostics,
+                    segment_id=segment_id,
+                    entities_seen=len(segment_entities),
+                    relations_found=0,
+                    head_bindings=0,
+                    tail_triples=0,
+                    pairwise_pairs=0,
+                    pairwise_positives=0,
+                    pairwise_triples=0,
+                    gleaned_triples=0,
+                    invalid_self_refs=0,
+                    post_align_triples=0,
+                    post_dedupe_triples=0,
+                )
                 continue
+            if deterministic_value_triples:
+                if "ANSWER_BEARING_VALUE" not in identified_relation_types:
+                    identified_relation_types.append("ANSWER_BEARING_VALUE")
 
             pairwise_triples: List[Dict[str, Any]] = []
+            pairwise_stats = {
+                "pairwise_pairs_considered": 0,
+                "pairwise_positive_predictions": 0,
+                "pairwise_triples_added": 0,
+            }
             if (
                 self.enable_fixed_schema_pairwise
-                and self._is_fixed_schema_mode(suggested_types, domain_config)
+                and fixed_schema_mode
             ):
                 pairwise_triples, pairwise_stats = self._stage_pairwise_relation_scoring(
                     text=text,
                     entities=segment_entities,
                     allowed_relation_types=suggested_types,
-                    stage1_relation_types=relation_types,
+                    stage1_relation_types=relation_types_for_recovery,
                 )
                 pairwise_pairs_considered += pairwise_stats["pairwise_pairs_considered"]
                 pairwise_positive_predictions += pairwise_stats["pairwise_positive_predictions"]
@@ -713,16 +892,49 @@ class RelationExtractor(BaseAgent):
                     segment_entities,
                     head_bindings,
                 )
+            tail_triple_count = len(triples)
             triples.extend(pairwise_triples)
+            triples.extend(deterministic_value_triples)
+
+            gleaned_triples = self._stage4_glean_missing_triples(
+                text=text,
+                entities=segment_entities,
+                relation_types=(
+                    suggested_types
+                    if fixed_schema_mode
+                    else list(dict.fromkeys(relation_types_for_recovery + suggested_types))
+                ),
+                existing_triples=triples,
+            )
+            gleaned_triples_added += len(gleaned_triples)
+            triples.extend(gleaned_triples)
 
             if not triples:
+                self._record_funnel_segment(
+                    funnel_diagnostics,
+                    segment_id=segment_id,
+                    entities_seen=len(segment_entities),
+                    relations_found=len(relation_types),
+                    head_bindings=len(head_bindings),
+                    tail_triples=tail_triple_count,
+                    pairwise_pairs=pairwise_stats["pairwise_pairs_considered"],
+                    pairwise_positives=pairwise_stats["pairwise_positive_predictions"],
+                    pairwise_triples=pairwise_stats["pairwise_triples_added"],
+                    gleaned_triples=len(gleaned_triples) + len(deterministic_value_triples),
+                    invalid_self_refs=0,
+                    post_align_triples=0,
+                    post_dedupe_triples=0,
+                )
                 continue
 
             if not self.enable_open_world:
                 triples = self._align_triples_to_known_entities(triples, segment_entities)
+            post_align_count = len(triples)
             triples = self._dedupe_triples(triples)
+            post_dedupe_count = len(triples)
             
             # Include ALL triples in output; filter self-referencing and track low-confidence
+            invalid_self_refs = 0
             for triple in triples:
                 # Filter self-referencing triples (subject == object)
                 subj = (triple.get("subject") or "").strip().lower()
@@ -730,19 +942,40 @@ class RelationExtractor(BaseAgent):
                 subj_id = (triple.get("subject_id") or "").strip().lower()
                 obj_id = (triple.get("object_id") or "").strip().lower()
                 if subj and obj and (subj == obj or (subj_id and obj_id and subj_id == obj_id)):
+                    invalid_self_refs += 1
                     continue
                 triple["source_segment"] = segment_id
                 triple["document_id"] = context.document_id
+                try:
+                    triple["confidence"] = float(triple.get("confidence", 0) or 0)
+                except (TypeError, ValueError):
+                    triple["confidence"] = 0.0
                 all_triples.append(triple)
-                if triple.get("confidence", 0) < self.quality_threshold:
+                if triple["confidence"] < self.quality_threshold:
                     low_confidence_triples.append(triple)
+            self._record_funnel_segment(
+                funnel_diagnostics,
+                segment_id=segment_id,
+                entities_seen=len(segment_entities),
+                relations_found=len(relation_types),
+                head_bindings=len(head_bindings),
+                tail_triples=tail_triple_count,
+                pairwise_pairs=pairwise_stats["pairwise_pairs_considered"],
+                pairwise_positives=pairwise_stats["pairwise_positive_predictions"],
+                pairwise_triples=pairwise_stats["pairwise_triples_added"],
+                gleaned_triples=len(gleaned_triples) + len(deterministic_value_triples),
+                invalid_self_refs=invalid_self_refs,
+                post_align_triples=post_align_count,
+                post_dedupe_triples=post_dedupe_count,
+            )
         
         # Handle low confidence triples
         print(f"\n[RELATION EXTRACTOR DEBUG]")
         print(f"  Total extracted: {len(all_triples)}")
-        print(f"  High confidence (>={self.quality_threshold}): {len(all_triples)}")
+        print(f"  High confidence (>={self.quality_threshold}): {len(all_triples) - len(low_confidence_triples)}")
         print(f"  Low confidence (<{self.quality_threshold}): {len(low_confidence_triples)}")
         print(f"  New relation types discovered: {len(new_relations_discovered)}")
+        print(f"  Gleaned triples added: {gleaned_triples_added}")
         
         if low_confidence_triples:
             self._handle_low_confidence_triples(
@@ -766,6 +999,7 @@ class RelationExtractor(BaseAgent):
             avg_confidence = sum(t.get("confidence", 0.5) for t in all_triples) / len(all_triples)
         else:
             avg_confidence = 0.0
+        funnel_diagnostics["final_triples"] = len(all_triples)
         
         self.log(
             f"Extracted {len(all_triples)} triples, "
@@ -785,10 +1019,321 @@ class RelationExtractor(BaseAgent):
                 "pairwise_pairs_considered": pairwise_pairs_considered,
                 "pairwise_positive_predictions": pairwise_positive_predictions,
                 "pairwise_triples_added": pairwise_triples_added,
+                "gleaned_triples_added": gleaned_triples_added,
+                "funnel_diagnostics": funnel_diagnostics,
             },
             needs_escalation=len(low_confidence_triples) > 0 or len(new_relations_discovered) > 0,
             escalation_reason=self._get_escalation_reason(low_confidence_triples, new_relations_discovered),
         )
+
+    def _extract_answer_bearing_value_triples(
+        self,
+        *,
+        text: str,
+        entities: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Create simple attribute facts for QA-bearing value entities."""
+        if not text or len(entities) < 2:
+            return []
+        value_types = {"year", "daterange", "date", "quantity", "nationality", "location", "role", "office"}
+        values = [
+            entity for entity in entities
+            if str(entity.get("type", "")).lower() in value_types
+            or entity.get("extraction_method") == "deterministic_open_domain_value_harvester"
+        ]
+        anchors = [entity for entity in entities if entity not in values]
+        if not values or not anchors:
+            return []
+
+        text_lower = text.lower()
+        triples: List[Dict[str, Any]] = []
+        for value in values:
+            value_text = str(value.get("text") or (value.get("labels") or [""])[0])
+            value_key = value_text.lower()
+            value_pos = text_lower.find(value_key)
+            if value_pos < 0:
+                source_text = str(value.get("source_text", ""))
+                value_pos = text_lower.find(source_text.lower()[:40]) if source_text else -1
+            relation = self._relation_for_answer_value(value, text)
+            best_anchor = None
+            best_distance = 10**9
+            for anchor in anchors:
+                if not self._subject_allowed_for_typed_attribute(anchor, value, relation):
+                    continue
+                surfaces = [
+                    anchor.get("text", ""),
+                    *(anchor.get("labels") or []),
+                    *(anchor.get("mentions") or []),
+                ]
+                positions = [text_lower.find(str(surface).lower()) for surface in surfaces if surface]
+                positions = [position for position in positions if position >= 0]
+                if not positions:
+                    continue
+                distance = min(abs(position - value_pos) for position in positions) if value_pos >= 0 else min(positions)
+                if distance < best_distance:
+                    best_distance = distance
+                    best_anchor = anchor
+            if best_anchor is None:
+                continue
+
+            triples.append(
+                {
+                    "subject": best_anchor.get("text") or best_anchor.get("id"),
+                    "subject_id": best_anchor.get("id"),
+                    "relation": relation,
+                    "object": value_text,
+                    "object_id": value.get("id"),
+                    "confidence": 0.74,
+                    "evidence": value.get("source_text") or self._sentence_containing(text, value_text),
+                    "metadata": {
+                        "answer_bearing_value": True,
+                        "deterministic_attribute": True,
+                    },
+                }
+            )
+        return triples
+
+    @staticmethod
+    def _relation_for_answer_value(value: Dict[str, Any], text: str) -> str:
+        value_type = str(value.get("type", "")).lower()
+        window = (value.get("source_text") or text or "").lower()
+        if value_type == "year":
+            return "HAS_YEAR"
+        if value_type in {"daterange", "date"}:
+            return "HAS_TIMEFRAME"
+        if value_type == "quantity":
+            if any(term in window for term in ("capacity", "seat", "seated")):
+                return "HAS_CAPACITY"
+            return "HAS_QUANTITY"
+        if value_type in {"role", "office"}:
+            return "HELD_POSITION"
+        if value_type == "nationality":
+            return "HAS_NATIONALITY"
+        if value_type == "location":
+            return "LOCATED_IN"
+        return "HAS_ATTRIBUTE"
+
+    @staticmethod
+    def _sentence_containing(text: str, needle: str) -> str:
+        for sentence in re.split(r"(?<=[.!?])\s+", text):
+            if needle and needle.lower() in sentence.lower():
+                return sentence.strip()
+        return text[:300].strip()
+
+    # Generic typed attribute extraction -------------------------------------------
+    @staticmethod
+    def _entity_surfaces(entity: Dict[str, Any]) -> List[str]:
+        surfaces = [
+            entity.get("text", ""),
+            *(entity.get("labels") or []),
+            *(entity.get("mentions") or []),
+        ]
+        out: List[str] = []
+        for s in surfaces:
+            s = str(s or "").strip()
+            if len(s) >= 2 and s not in out:
+                out.append(s)
+        return out
+
+    @staticmethod
+    def _is_value_like(entity: Dict[str, Any]) -> bool:
+        etype = str(entity.get("type", "")).lower()
+        return etype in {
+            "value", "year", "date", "daterange", "quantity", "nationality",
+            "role", "office", "location", "profession", "occupation", "title",
+        }
+
+    @staticmethod
+    def _relation_for_typed_attribute(entity: Dict[str, Any], evidence: str) -> str:
+        etype = str(entity.get("type", "")).lower()
+        evidence_lower = evidence.lower()
+        if etype == "nationality":
+            return "HAS_NATIONALITY"
+        if etype in {"role", "profession", "occupation"}:
+            return "EXERCISES_PROFESSIONAL_ROLE"
+        if etype in {"office", "title"}:
+            return "HELD_POSITION"
+        if etype in {"date", "daterange"}:
+            if "born" in evidence_lower:
+                return "BORN_ON_DATE"
+            return "HAS_TIMEFRAME"
+        if etype == "year":
+            return "HAS_YEAR"
+        if etype == "location":
+            return "LOCATED_IN"
+        if etype == "quantity":
+            if any(term in evidence_lower for term in ("capacity", "seat", "seated")):
+                return "HAS_CAPACITY"
+            return "HAS_QUANTITY"
+        return "HAS_ATTRIBUTE"
+
+    @staticmethod
+    def _looks_like_named_subject(entity: Dict[str, Any]) -> bool:
+        """Return true for entities that can plausibly own attribute facts.
+
+        This is intentionally type/shape based, not relation-specific. It
+        prevents typed attributes like Nationality or Date from being attached
+        to nearby common nouns such as "film producer" just because they are
+        closer than the actual subject.
+        """
+        etype = str(entity.get("type", "")).lower()
+        if any(
+            token in etype
+            for token in (
+                "person", "human", "organization", "organisation", "company",
+                "institution", "place", "location", "facility", "venue",
+                "building", "work", "film", "album", "book", "event",
+            )
+        ):
+            return True
+
+        for surface in RelationExtractor._entity_surfaces(entity):
+            tokens = re.findall(r"[A-Za-z][A-Za-z0-9'.-]*", surface)
+            if not tokens:
+                continue
+            title_like = sum(1 for token in tokens if token[:1].isupper())
+            if title_like >= 2:
+                return True
+            if title_like == 1 and len(tokens) == 1 and len(tokens[0]) >= 3:
+                return True
+        return False
+
+    @staticmethod
+    def _subject_allowed_for_typed_attribute(
+        subject: Dict[str, Any],
+        value: Dict[str, Any],
+        relation: str,
+    ) -> bool:
+        if RelationExtractor._is_value_like(subject):
+            return False
+        if not RelationExtractor._looks_like_named_subject(subject):
+            return False
+
+        subject_type = str(subject.get("type", "")).lower()
+        value_type = str(value.get("type", "")).lower()
+
+        personish_relations = {
+            "HAS_NATIONALITY",
+            "EXERCISES_PROFESSIONAL_ROLE",
+            "BORN_ON_DATE",
+            "HELD_POSITION",
+        }
+        if relation in personish_relations:
+            # These facts should attach to named people or organizations, not
+            # nearby role/value entities. Unknown-type named entities are
+            # allowed because open-world corpora often type people loosely.
+            return (
+                any(token in subject_type for token in ("person", "human", "organization", "organisation", "company", "institution"))
+                or not subject_type
+                or subject_type in {"entity", "unknown", "propernoun", "proper_noun"}
+            )
+
+        if relation == "HAS_CAPACITY":
+            return value_type == "quantity"
+
+        return True
+
+    def _extract_typed_attribute_facts(
+        self,
+        *,
+        text: str,
+        entities: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Bind typed answer-candidate entities to the nearest subject entity.
+
+        This is deliberately generic: it relies on upstream entity typing
+        (Nationality, Role, Date, Quantity, Location, etc.) rather than a
+        demonym/profession whitelist. It fixes missed copular/attribute facts
+        without baking Wikipedia biography templates into the extractor.
+        """
+        if not text or not entities:
+            return []
+
+        triples: List[Dict[str, Any]] = []
+        seen: set = set()
+
+        def add(subject: Dict[str, Any], obj_entity: Dict[str, Any], relation: str, evidence: str):
+            obj = str(obj_entity.get("text") or (obj_entity.get("labels") or [""])[0]).strip()
+            subject_id = str(subject.get("id") or subject.get("text") or "").strip()
+            subject_text = str(subject.get("text") or subject_id).strip()
+            key = (subject_id, relation, obj.lower())
+            if key in seen or not subject_id or not obj:
+                return
+            seen.add(key)
+            triples.append({
+                "subject": subject_text,
+                "subject_id": subject_id,
+                "relation": relation,
+                "object": obj,
+                "object_id": obj_entity.get("id"),
+                "confidence": 0.78,
+                "evidence": evidence.strip(),
+                "metadata": {
+                    "typed_attribute_fact": True,
+                    "deterministic_attribute": True,
+                },
+            })
+
+        text_lower = text.lower()
+        subjects = [entity for entity in entities if not self._is_value_like(entity)]
+        values = [entity for entity in entities if self._is_value_like(entity)]
+        if not subjects or not values:
+            return triples
+
+        for value in values:
+            value_surfaces = self._entity_surfaces(value)
+            positions = [
+                text_lower.find(surface.lower())
+                for surface in value_surfaces
+                if surface and text_lower.find(surface.lower()) >= 0
+            ]
+            if not positions:
+                continue
+            value_pos = min(positions)
+            evidence = value.get("source_text") or self._sentence_containing(text, value_surfaces[0])
+            relation = self._relation_for_typed_attribute(value, evidence)
+
+            best_subject = None
+            best_distance = 10**9
+            for subject in subjects:
+                if not self._subject_allowed_for_typed_attribute(subject, value, relation):
+                    continue
+                for surface in self._entity_surfaces(subject):
+                    subject_pos = text_lower.find(surface.lower())
+                    if subject_pos < 0:
+                        continue
+                    distance = abs(subject_pos - value_pos)
+                    # Prefer subjects occurring before the attribute in the same sentence.
+                    if subject_pos <= value_pos:
+                        distance -= 50
+                    if distance < best_distance:
+                        best_distance = distance
+                        best_subject = subject
+
+            if best_subject is None:
+                continue
+            add(
+                best_subject,
+                value,
+                relation,
+                evidence,
+            )
+
+        return triples
+
+    def _entity_has_surface_in_text(self, entity: Dict[str, Any], text_lower: str) -> bool:
+        """Return true when any known entity surface appears in segment text."""
+        candidates = [
+            entity.get("text", ""),
+            entity.get("id", "").replace("_", " "),
+            *(entity.get("labels") or []),
+            *(entity.get("mentions") or []),
+        ]
+        for candidate in candidates:
+            candidate_lower = str(candidate).lower().strip()
+            if len(candidate_lower) >= 2 and candidate_lower in text_lower:
+                return True
+        return False
 
     def _get_suggested_relation_types(
         self,
@@ -966,6 +1511,57 @@ class RelationExtractor(BaseAgent):
                 all_triples.extend(triples)
 
         return all_triples
+
+    def _stage4_glean_missing_triples(
+        self,
+        text: str,
+        entities: List[Dict[str, Any]],
+        relation_types: List[str],
+        existing_triples: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Recall-oriented second pass for supported facts missed by RHF."""
+        if not self.enable_relation_gleaning or not text or len(entities) < 2:
+            return []
+        if not relation_types:
+            return []
+
+        prompt = RELATION_GLEANING_PROMPT.format(
+            text=text,
+            entities=json.dumps(entities, indent=2),
+            relation_types=", ".join(relation_types),
+            direction_guide=SCIERC_DIRECTION_HINT if not self.enable_open_world else "",
+            existing_triples=json.dumps(existing_triples[:40], indent=2),
+        )
+        result = self.call_llm(
+            prompt=prompt,
+            system_prompt=(
+                "You are a recall-oriented relation extraction reviewer. "
+                "Recover only missing facts that are directly supported by the text."
+            ),
+            tier=ModelTier.MEDIUM,
+            max_tokens=4096,
+        )
+        triples = _coerce_llm_items(result, ("missing_triples", "triples"))
+        cleaned: List[Dict[str, Any]] = []
+        allowed = set(relation_types)
+        for triple in triples:
+            relation = str(triple.get("relation", "")).strip()
+            if not relation:
+                continue
+            if not self.enable_open_world and relation not in allowed:
+                continue
+            if not triple.get("subject") or not triple.get("object"):
+                continue
+            triple.setdefault("confidence", 0.65)
+            metadata = triple.get("metadata")
+            if not isinstance(metadata, dict):
+                metadata = {}
+            metadata["gleaned"] = True
+            if triple.get("rationale"):
+                metadata["gleaning_rationale"] = triple.get("rationale")
+            triple["metadata"] = metadata
+            cleaned.append(triple)
+        return cleaned
 
     def _align_triples_to_known_entities(
         self,

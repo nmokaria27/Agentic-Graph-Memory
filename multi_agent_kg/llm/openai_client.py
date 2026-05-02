@@ -38,6 +38,34 @@ else:
         timeout=_TIMEOUT,
     )
 
+# Optional per-call usage logging. When LLM_USAGE_LOG points to a file path,
+# each completion appends one JSON line with {model, prompt_tokens,
+# completion_tokens, cached_tokens, reasoning_tokens}. Used for cost analysis.
+_USAGE_LOG_PATH = os.getenv("LLM_USAGE_LOG")
+
+
+def _log_usage(model: str, response: Any) -> None:
+    if not _USAGE_LOG_PATH:
+        return
+    usage = getattr(response, "usage", None)
+    if usage is None:
+        return
+    prompt_details = getattr(usage, "prompt_tokens_details", None)
+    completion_details = getattr(usage, "completion_tokens_details", None)
+    record = {
+        "ts": time.time(),
+        "model": model,
+        "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+        "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
+        "cached_tokens": getattr(prompt_details, "cached_tokens", 0) if prompt_details else 0,
+        "reasoning_tokens": getattr(completion_details, "reasoning_tokens", 0) if completion_details else 0,
+    }
+    try:
+        with open(_USAGE_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
+    except Exception:
+        pass
+
 
 def _ollama_is_up() -> bool:
     """Quick TCP probe of the Ollama health endpoint. Returns False on any error."""
@@ -184,6 +212,21 @@ def _extract_json(text: str) -> Any:
     return None
 
 
+def _unwrap_json_mode_array(result: Any) -> Any:
+    """Recover top-level arrays wrapped by JSON-object constrained decoding.
+
+    Ollama/OpenAI JSON-object mode requires a top-level object. Some older
+    prompts legitimately asked for a top-level array, so models often return
+    ``{"items": [...]}``, ``{"domains": [...]}``, etc. Returning the sole
+    list value preserves the old callsite contract without weakening JSON mode.
+    """
+    if isinstance(result, dict) and len(result) == 1:
+        sole_value = next(iter(result.values()))
+        if isinstance(sole_value, list):
+            return sole_value
+    return result
+
+
 def chat_completion(
     messages: List[Dict[str, str]],
     model: str = "gemma4:31b",
@@ -197,13 +240,35 @@ def chat_completion(
     """
     resolved_model = _resolve_model(model)
 
+    # GPT-5 / o-series reasoning models reject `max_tokens` and non-default `temperature`.
+    is_reasoning = LLM_BACKEND == "openai" and (
+        resolved_model.startswith("gpt-5")
+        or resolved_model.startswith("o1")
+        or resolved_model.startswith("o3")
+        or resolved_model.startswith("o4")
+    )
+
     params: Dict[str, Any] = {
         "model": resolved_model,
         "messages": messages,
-        "temperature": temperature,
     }
+    if not is_reasoning:
+        params["temperature"] = temperature
     if max_tokens is not None:
-        params["max_tokens"] = max_tokens
+        if is_reasoning:
+            # Reasoning models share max_completion_tokens between hidden reasoning
+            # AND visible output. With low caps the model burns the whole budget on
+            # reasoning and emits empty content. Inflate so visible output survives.
+            params["max_completion_tokens"] = max(max_tokens * 4, 16384)
+            # Keep reasoning lightweight so cost stays bounded for extraction tasks.
+            params["reasoning_effort"] = os.getenv("OPENAI_REASONING_EFFORT", "minimal")
+        else:
+            params["max_tokens"] = max_tokens
+    # Ollama's OpenAI-compatible endpoint supports response_format for JSON
+    # mode. Pass it through for both backends, but keep arbitrary provider
+    # kwargs restricted to OpenAI so local calls don't receive unknown options.
+    if "response_format" in kwargs:
+        params["response_format"] = kwargs["response_format"]
     if LLM_BACKEND == "openai":
         params.update(kwargs)
 
@@ -211,6 +276,7 @@ def chat_completion(
     for attempt in range(1, _MAX_RETRIES + 1):
         try:
             response = client.chat.completions.create(**params)
+            _log_usage(resolved_model, response)
             content = response.choices[0].message.content
             return content if content is not None else ""
         except Exception as e:
@@ -272,6 +338,13 @@ def chat_completion(
                 )
                 time.sleep(base_sleep)
                 continue
+            if "response_format" in params and any(
+                marker in err_lower
+                for marker in ("response_format", "unsupported", "unknown field", "invalid parameter")
+            ):
+                params.pop("response_format", None)
+                print("  WARNING: JSON response_format unsupported by backend; retrying without constrained decoding")
+                continue
             raise Exception(f"LLM API call failed ({resolved_model}): {err}")
 
     raise Exception(f"LLM API call failed ({resolved_model}): {last_error}")
@@ -282,12 +355,19 @@ def chat_completion_json(
     model: str = "gemma4:31b",
     temperature: float = 0.2,
     max_tokens: Optional[int] = None,
+    unwrap_array: bool = False,
     **kwargs: Any,
 ) -> Any:
     """
     Call LLM requesting JSON output and parse the response.
     Includes robust JSON extraction that handles markdown fences,
     preamble text, thinking tags, and minor formatting issues.
+
+    When ``unwrap_array=True``, a single-key dict-of-list response
+    (e.g. ``{"items": [...]}``) is unwrapped to the inner list to
+    support callsites that originally requested top-level arrays.
+    Default is False so callers expecting dicts (e.g. ``{"sub_questions": [...]}``)
+    are not silently stripped of their wrapper key.
     """
     # Strengthen the JSON instruction in the system prompt
     modified_messages = []
@@ -322,13 +402,14 @@ def chat_completion_json(
             model=resolved_model,
             temperature=temperature + (0.1 * (attempt - 1)),  # slightly raise temp on retry
             max_tokens=max_tokens,
+            response_format={"type": "json_object"},
             **kwargs,
         )
         last_response_text = response_text
 
         result = _extract_json(response_text)
         if result is not None:
-            return result
+            return _unwrap_json_mode_array(result) if unwrap_array else result
 
         if attempt < max_retries:
             print(f"  WARNING: JSON parse failed (attempt {attempt}/{max_retries}), retrying...")
