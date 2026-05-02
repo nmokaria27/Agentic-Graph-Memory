@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from evaluation.hotpotqa.utils import aggregate_answer_metrics, answer_metrics, clean_prediction_for_scoring, lexical_retrieve
 from evaluation.musique.utils import load_prepared_examples
+from multi_agent_kg.core._qa_commit import ANTI_HEDGE_RIDER
 from multi_agent_kg.llm.openai_client import chat_completion
 
 
@@ -27,7 +28,8 @@ def _build_prompt(question: str, contexts: List[Dict[str, Any]]) -> str:
         blocks.append(f"[{index}] {context.get('title', 'Untitled')}\n{_context_text(context)}")
     return (
         "Answer the multi-hop question using only the retrieved context below.\n"
-        "Return only the short answer string, not JSON and not an explanation.\n\n"
+        "Return only the short answer string, not JSON and not an explanation.\n"
+        + ANTI_HEDGE_RIDER + "\n"
         f"Question: {question}\n\n"
         "Retrieved context:\n"
         + "\n\n".join(blocks)
