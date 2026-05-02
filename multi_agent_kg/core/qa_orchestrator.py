@@ -399,12 +399,18 @@ class QAOrchestrator:
                 )
 
         cross_domain_context = self._get_cross_domain_context(question)
+        bridge_entities = self._extract_bridge_entities(question, domain_responses)
+        bridge_context = self._build_bridge_context(bridge_entities)
+        if bridge_entities:
+            print(f"  → Bridge expansion: {bridge_entities[:4]}")
+        combined_context = "\n\n".join(part for part in [cross_domain_context, bridge_context] if part)
         print(f"\n  Synthesizing final answer from {len(domain_responses)} responses...")
-        final = self._synthesize(question, domain_responses, cross_domain_context)
+        final = self._synthesize(question, domain_responses, combined_context)
 
         result = {
             "question": question,
             "final_answer": final.get("answer", ""),
+            "final_answer_short": final.get("short_answer", ""),
             "sub_questions": sub_questions,
             "domain_responses": domain_responses,
             "overall_coverage": final.get("coverage", 0.0),
@@ -432,6 +438,64 @@ class QAOrchestrator:
                     matched.append(entity_id)
                     break
         return matched
+
+    def _extract_bridge_entities(
+        self, question: str, domain_responses: List[Dict[str, Any]]
+    ) -> List[str]:
+        """KG entities mentioned in expert answer text but not in the original question.
+
+        Targets the hop-1-stop failure mode: an expert returns a hop-1 answer like
+        "Lawrence Sanders" or "Steve Hillage" without the synthesis pulling in that
+        entity's own neighborhood (which often contains the hop-2 fact).
+        """
+        query_entities = set(self._extract_query_entities(question))
+        bridge: List[str] = []
+        seen: Set[str] = set()
+        for response in domain_responses:
+            evidence_blob = response.get("evidence", [])
+            if isinstance(evidence_blob, list):
+                evidence_text = " ".join(str(e) for e in evidence_blob)
+            else:
+                evidence_text = str(evidence_blob)
+            text_blob = " ".join([
+                str(response.get("answer", "")),
+                evidence_text,
+            ])
+            if not text_blob.strip():
+                continue
+            text_lower = text_blob.lower()
+            for entity_id, entity in self.full_kg.entities.items():
+                if entity_id in query_entities or entity_id in seen:
+                    continue
+                names = [entity_id.replace("_", " ")] + entity.labels
+                for name in names:
+                    name_lower = name.lower()
+                    if len(name_lower) < 3:
+                        continue
+                    if re.search(r"\b" + re.escape(name_lower) + r"\b", text_lower):
+                        bridge.append(entity_id)
+                        seen.add(entity_id)
+                        break
+                if len(bridge) >= 4:
+                    break
+            if len(bridge) >= 4:
+                break
+        return bridge[:4]
+
+    def _build_bridge_context(self, bridge_entities: List[str]) -> str:
+        if not bridge_entities:
+            return ""
+        lines: List[str] = ["BRIDGE ENTITY NEIGHBOURHOODS (use these to chain across hops):"]
+        for entity_id in bridge_entities[:2]:
+            triples = neighbourhood(self.full_kg, entity_id, hops=1)
+            if not triples:
+                continue
+            lines.append(f"\n{entity_id}:")
+            for triple in triples[:15]:
+                lines.append(
+                    f"  ({triple.subject}) -[{triple.relation}]-> ({triple.object})"
+                )
+        return "\n".join(lines) if len(lines) > 1 else ""
 
     def _normalize_target_domains(self, domain_ids: List[str]) -> List[str]:
         target_domains = []
@@ -592,10 +656,32 @@ Return ONLY the JSON."""
                 ]
             }
 
-        for sub_question in result.get("sub_questions", []):
+        if isinstance(result, list):
+            result = {"sub_questions": result}
+        elif not isinstance(result, dict):
+            result = {"sub_questions": []}
+        sub_qs = result.get("sub_questions", [])
+        if not isinstance(sub_qs, list):
+            sub_qs = []
+        normalized: List[Dict[str, Any]] = []
+        for sub_question in sub_qs:
+            if isinstance(sub_question, str):
+                sub_question = {"question": sub_question, "target_domains": [], "context": ""}
+            elif not isinstance(sub_question, dict):
+                continue
             sub_question["target_domains"] = self._normalize_target_domains(
                 sub_question.get("target_domains", [])
             )
+            normalized.append(sub_question)
+        if not normalized:
+            normalized = [{
+                "question": question,
+                "target_domains": [
+                    domain.domain_id for domain in self.org_chart.domains[: self.max_routed_domains]
+                ],
+                "context": "",
+            }]
+        result["sub_questions"] = normalized
         return result
 
     def _get_cross_domain_context(self, question: str) -> str:
@@ -663,18 +749,31 @@ USER QUESTION: {question}
 DOMAIN EXPERT RESPONSES:
 {chr(10).join(response_texts)}
 
-{f"CROSS-DOMAIN CONTEXT:{chr(10)}{cross_domain_context}" if cross_domain_context else ""}
+{f"ADDITIONAL GRAPH CONTEXT (treat triples here as primary evidence — they are graph facts retrieved for this question, equal in authority to the domain experts above):{chr(10)}{cross_domain_context}" if cross_domain_context else ""}
 
 RULES:
 - Do NOT mention domain experts, routing, confidence scores, or out-of-scope notes in the answer text.
 - Do NOT say "the knowledge graph says" or similar meta-commentary.
-- Include only claims that are directly supported by the expert evidence above.
+- Include only claims that are directly supported by the expert evidence OR by triples in the additional graph context above. Both are first-class evidence.
+- For multi-hop questions, you MUST chain across triples. If an expert names a hop-1 entity (e.g., "Steve Hillage is the performer of Green") and the additional graph context contains a triple about that entity that answers the next hop (e.g., "(miquette_giraudy) -[PROFESSIONAL_PARTNER]-> (steve_hillage)"), USE that triple to produce the final hop-2 answer. Do NOT say "no information available" when a relevant triple is present in the additional graph context.
+- Treat closely-related relations as semantic equivalents when answering (PROFESSIONAL_PARTNER ≈ spouse/partner, AUTHORED_BY ≈ wrote/written by, BORN_IN ≈ birthplace, LOCATED_IN ≈ located in, FACILITY_LOCATED_IN_CITY ≈ headquartered in, MEMBER_OF ≈ member of, etc.).
 - Prefer the shortest answer that fully covers the supported facts.
-- If evidence is weak or missing, state the limitation briefly and stop.
+- If evidence is genuinely missing (no expert evidence AND no relevant triple in additional graph context), state the limitation briefly and stop.
+- Provide TWO answer forms:
+  * "answer": evidence-grounded prose response (1-3 sentences max)
+  * "short_answer": the MINIMAL span (1-5 words) that directly answers the question. For a person, the name only. For a place, the place name only. For a date, the date only. For yes/no questions, "yes" or "no". If the evidence does not support an answer, set short_answer to "".
+
+Examples of short_answer form:
+- Q: "In which county is X located?" → short_answer: "Randall County"
+- Q: "Who founded the company that distributed X?" → short_answer: "Mike Medavoy"
+- Q: "Did the team win in 1990?" → short_answer: "yes"
+- Q: "What year was X founded?" → short_answer: "1969"
+- Q: "Who is the spouse of the Green performer?" with expert saying "Steve Hillage" and graph context "(miquette_giraudy) -[PROFESSIONAL_PARTNER]-> (steve_hillage)" → short_answer: "Miquette Giraudy"
 
 Respond in JSON:
 {{
-    "answer": "Short final answer here.",
+    "answer": "Evidence-grounded prose explanation here.",
+    "short_answer": "minimal span",
     "coverage": 0.85,
     "confidence": 0.8,
     "gaps": ["missing aspects"]

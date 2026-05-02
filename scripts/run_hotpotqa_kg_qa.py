@@ -21,6 +21,7 @@ from evaluation.hotpotqa.utils import (
 )
 from evaluation.kgafe.run_ablations import EXPERIMENTS, build_qa_system
 from multi_agent_kg.core import LLMConfig, load_kg
+from multi_agent_kg.llm.openai_client import chat_completion
 
 
 def _load_existing(path: Path) -> Dict[str, Dict[str, Any]]:
@@ -34,6 +35,64 @@ def _extract_answer(result: Dict[str, Any]) -> str:
     if isinstance(answer, dict):
         answer = answer.get("answer", "")
     return str(answer).strip()
+
+
+def _extract_hotpot_short_answer(question: str, answer: str, *, model: str) -> str:
+    """Convert graph-grounded prose into HotpotQA's short-answer format.
+
+    This postprocessor is shared across KG QA systems and does not see the
+    gold answer. It fixes an evaluation mismatch: our QA systems are prompted
+    to answer with evidence-grounded prose, while HotpotQA expects a short
+    answer span such as "yes", "no", or an entity name.
+    """
+    answer = (answer or "").strip()
+    if not answer:
+        return ""
+    lowered = answer.lower()
+    if lowered.startswith("yes"):
+        return "yes"
+    if lowered.startswith("no"):
+        return "no"
+    if any(phrase in lowered for phrase in ("unable to", "cannot answer", "cannot determine", "no evidence")):
+        return ""
+
+    prompt = f"""Extract the HotpotQA short answer from the model answer.
+
+Rules:
+- Return ONLY the short answer string.
+- If the answer is yes/no, return exactly "yes" or "no".
+- If the answer names an entity/title/person/place/position, return only that name.
+- If the model answer does not actually answer the question, return an empty string.
+- Do not explain.
+
+Question: {question}
+Model answer: {answer}
+
+Short answer:"""
+    try:
+        result = chat_completion(
+            [
+                {
+                    "role": "system",
+                    "content": "Extract concise HotpotQA answer spans. Return only the answer string.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            model=model,
+            temperature=0.0,
+            max_tokens=64,
+        )
+    except Exception:
+        return answer
+
+    lines = (result or "").strip().splitlines()
+    if not lines:
+        return answer
+    short = lines[0].strip().strip('"').strip("'")
+    for prefix in ("Answer:", "Short answer:", "Final answer:"):
+        if short.lower().startswith(prefix.lower()):
+            short = short[len(prefix):].strip()
+    return short.rstrip(".") or answer
 
 
 def _write_output(
@@ -94,13 +153,15 @@ def main() -> None:
             start = time.time()
             result = qa_system.query(example.question)
             answer = _extract_answer(result)
+            short_answer = _extract_hotpot_short_answer(example.question, answer, model=args.model)
             row = {
                 "question_id": example.question_id,
                 "question": example.question,
                 "gold_answer": example.answer,
                 "answer": answer,
-                "scored_answer": clean_prediction_for_scoring(answer, example.answer),
-                "metrics": answer_metrics(answer, example.answer),
+                "scored_answer": clean_prediction_for_scoring(short_answer, example.answer),
+                "short_answer": short_answer,
+                "metrics": answer_metrics(short_answer, example.answer),
                 "duration_seconds": round(time.time() - start, 3),
                 "system_metadata": result,
             }
@@ -112,7 +173,7 @@ def main() -> None:
             }
             _write_output(output, args=args, runs=runs)
             print(
-                f"[{config_name}] answer={answer[:100]!r} gold={example.answer!r} "
+                f"[{config_name}] answer={short_answer[:100]!r} gold={example.answer!r} "
                 f"em={row['metrics']['exact_match']:.1f} f1={row['metrics']['token_f1']:.3f}",
                 flush=True,
             )

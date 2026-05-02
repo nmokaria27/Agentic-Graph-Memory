@@ -355,12 +355,23 @@ class DomainClassifier(BaseAgent):
         
         return analysis, confidence
 
-    def _normalize_analysis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize and validate the domain analysis response."""
+    def _normalize_analysis(self, analysis: Any) -> Dict[str, Any]:
+        """Normalize and validate the domain analysis response.
+
+        Tolerates non-dict LLM outputs (lists, scalars) by coercing them to a
+        minimal valid analysis shape, so a single malformed response never
+        kills an entire document.
+        """
+        if not isinstance(analysis, dict):
+            if isinstance(analysis, list):
+                analysis = {"entity_types": analysis} if all(isinstance(x, (str, dict)) for x in analysis) else {}
+            else:
+                analysis = {}
+
         # Ensure required fields exist
         if "primary_domain" not in analysis:
             analysis["primary_domain"] = "General"
-        
+
         if "sub_domains" not in analysis:
             analysis["sub_domains"] = [analysis["primary_domain"]]
         

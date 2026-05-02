@@ -120,6 +120,20 @@ def main() -> None:
         action="store_true",
         help="If <output>.checkpoint.json exists, resume from it and skip already-processed docs.",
     )
+    parser.add_argument(
+        "--no-relation-gleaning",
+        action="store_true",
+        help="Disable the secondary relation-gleaning LLM pass (precision-favoring).",
+    )
+    parser.add_argument(
+        "--no-fixed-schema-pairwise",
+        action="store_true",
+        help=(
+            "Disable fixed-schema pairwise relation scoring. This avoids one "
+            "extra LLM classification pass over sentence-local entity pairs "
+            "and is the scalable setting for large SciERC builds."
+        ),
+    )
     args = parser.parse_args()
 
     scierc_path = os.path.join(args.data_dir, f"{args.split}.json")
@@ -156,11 +170,15 @@ def main() -> None:
         max_refinement_iterations=1,
         enable_self_consistency=False,
         enable_open_world=not args.fixed_schema,
+        enable_fixed_schema_pairwise=not args.no_fixed_schema_pairwise,
         enable_cross_document=True,
         enable_deliberation=False,
         model_tiers=model_tiers,
         schema_override=SCIERC_SCHEMA if args.fixed_schema else None,
     )
+
+    if args.no_relation_gleaning:
+        orchestrator.relation_extractor.enable_relation_gleaning = False
 
     if args.clear_caches:
         _clear_doc_caches(documents)
@@ -246,6 +264,9 @@ def main() -> None:
             "skip_evidence_linking": args.skip_evidence_linking,
             "skip_verification": args.skip_verification,
             "governance_enabled": False,
+            "relation_gleaning_enabled": getattr(
+                orchestrator.relation_extractor, "enable_relation_gleaning", False
+            ),
         },
         "entities": len(target.entities),
         "triples": len(target.triples),
@@ -253,6 +274,7 @@ def main() -> None:
         "failed_documents": failed_documents,
         "elapsed_seconds": round(elapsed, 2),
         "elapsed_hours": round(elapsed / 3600, 3),
+        "relation_funnel_summary": orchestrator.get_relation_funnel_summary(),
     }
 
     if args.stats_output:

@@ -585,9 +585,11 @@ class KnowledgeOrganizer(BaseAgent):
             for alias, canonical in self.shared_memory.entity_aliases.items():
                 name_to_id[alias.lower().strip()] = canonical
 
-        def _resolve_entity_name(name: str) -> Optional[str]:
+        def _resolve_entity_name(name: Optional[str]) -> Optional[str]:
             """Resolve a triple subject/object text to an entity ID."""
-            key = name.lower().strip()
+            if not name:
+                return None
+            key = str(name).lower().strip()
             if key in name_to_id:
                 return name_to_id[key]
             normalized = " ".join(key.replace("_", " ").replace("-", " ").split())
@@ -645,6 +647,11 @@ class KnowledgeOrganizer(BaseAgent):
                         metadata={
                             "source_document": document_id,
                             "confidence": entity.get("confidence", 0.7),
+                            "source_segment": entity.get("source_segment"),
+                            "source_segments": entity.get("source_segments", []),
+                            "source_text": entity.get("source_text", ""),
+                            "source_texts": entity.get("source_texts", []),
+                            "extraction_method": entity.get("extraction_method", ""),
                         },
                     )
                     if entity.get("candidate_domains"):
@@ -660,6 +667,11 @@ class KnowledgeOrganizer(BaseAgent):
                         metadata={
                             "source_document": document_id,
                             "confidence": entity.get("confidence", 0.7),
+                            "source_segment": entity.get("source_segment"),
+                            "source_segments": entity.get("source_segments", []),
+                            "source_text": entity.get("source_text", ""),
+                            "source_texts": entity.get("source_texts", []),
+                            "extraction_method": entity.get("extraction_method", ""),
                         },
                     )
                 added_entities += 1
@@ -760,7 +772,7 @@ class KnowledgeOrganizer(BaseAgent):
                     confidence=triple.get("final_confidence", triple.get("confidence", 0.7)),
                     source=document_id,
                     metadata={
-                        "evidence": triple.get("supporting_evidence", ""),
+                        "evidence": (triple.get("supporting_evidence") or triple.get("evidence") or ""),
                         "verification_status": triple.get("verification_status", "unknown"),
                         "original_subject": raw_subj,
                         "original_object": raw_obj,
@@ -778,7 +790,7 @@ class KnowledgeOrganizer(BaseAgent):
                         subject=resolved_subj,
                         relation=relation,
                         obj=resolved_obj,
-                        evidence=triple.get("supporting_evidence", ""),
+                        evidence=(triple.get("supporting_evidence") or triple.get("evidence") or ""),
                         allowed_relations=allowed_relations,
                         rationale=decision.rationale,
                     )
@@ -791,7 +803,7 @@ class KnowledgeOrganizer(BaseAgent):
                             confidence=triple.get("final_confidence", triple.get("confidence", 0.7)),
                             source=document_id,
                             metadata={
-                                "evidence": triple.get("supporting_evidence", ""),
+                                "evidence": (triple.get("supporting_evidence") or triple.get("evidence") or ""),
                                 "verification_status": triple.get("verification_status", "unknown"),
                                 "original_subject": raw_subj,
                                 "original_object": raw_obj,
@@ -807,7 +819,7 @@ class KnowledgeOrganizer(BaseAgent):
                     confidence=triple.get("final_confidence", triple.get("confidence", 0.7)),
                     source=document_id,
                     metadata={
-                        "evidence": triple.get("supporting_evidence", ""),
+                        "evidence": (triple.get("supporting_evidence") or triple.get("evidence") or ""),
                         "verification_status": triple.get("verification_status", "unknown"),
                         "original_subject": raw_subj,
                         "original_object": raw_obj,
@@ -851,6 +863,16 @@ class KnowledgeOrganizer(BaseAgent):
             if normalized == canonical_relation:
                 self.integration_stats["relations_schema_mapped"] += 1
                 return allowed, True
+
+        # Permissive / audit_only modes admit open-world relations; governance
+        # records them via the audit log and memory cards rather than rejecting
+        # at integration. Strict / triage modes still gate at the schema.
+        permissive_modes = {"permissive", "audit_only"}
+        if self.governed_kg and self.governed_kg.governance_mode in permissive_modes:
+            self.integration_stats["relations_schema_admitted_open_world"] = (
+                self.integration_stats.get("relations_schema_admitted_open_world", 0) + 1
+            )
+            return relation, True
         return relation, False
 
     def _repair_triple_for_governance(

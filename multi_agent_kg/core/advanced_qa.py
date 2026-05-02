@@ -464,6 +464,13 @@ Return ONLY the JSON."""
                 "unanswered_aspects": [query],
             }
 
+        if not isinstance(result, dict):
+            result = {
+                "answer": "",
+                "confidence": 0.0,
+                "evidence": [],
+                "unanswered_aspects": [query],
+            }
         return result
 
     def _assess_gaps(
@@ -517,6 +524,13 @@ Return ONLY the JSON."""
                 "reasoning": "Gap assessment failed; stopping exploration safely.",
             }
 
+        if not isinstance(result, dict):
+            result = {
+                "unanswered_aspects": [],
+                "explore_entities": [],
+                "explore_relations": [],
+                "reasoning": "Gap assessment returned non-dict; stopping exploration safely.",
+            }
         return result
 
     def _expand_exploration(
@@ -701,7 +715,16 @@ Summarization that omits non-essential detail is acceptable and should be rated 
                 "revised_answer": None,
             }
 
-        # If critical issues, generate a revised answer
+        if not isinstance(result, dict):
+            result = {
+                "approved": True,
+                "overall_severity": "minor",
+                "issues": [],
+                "suggestions": [],
+                "reasoning": "Critic returned non-dict; preserving synthesized answer.",
+                "revised_answer": None,
+            }
+
         revised = None
         severity = result.get("overall_severity", "none")
         if severity in ("critical", "major"):
@@ -722,11 +745,14 @@ Summarization that omits non-essential detail is acceptable and should be rated 
         kg_evidence: str,
     ) -> str:
         """Generate a revised answer that fixes identified issues."""
-        issues_text = "\n".join(
-            f"  - [{i.get('severity', '?')}] {i.get('type', '?')}: {i.get('description', '')}"
-            for i in issues
+        def _fmt_issue(i: Any) -> str:
+            if isinstance(i, dict):
+                return f"  - [{i.get('severity', '?')}] {i.get('type', '?')}: {i.get('description', '')}"
+            return f"  - {str(i)}"
+        issues_text = "\n".join(_fmt_issue(i) for i in (issues or []))
+        suggestions_text = "\n".join(
+            f"  - {s if isinstance(s, str) else str(s)}" for s in (suggestions or [])
         )
-        suggestions_text = "\n".join(f"  - {s}" for s in suggestions)
 
         prompt = f"""Revise this answer to fix the identified issues.
 
@@ -772,6 +798,8 @@ Return ONLY the JSON."""
         except Exception:
             return original_answer
 
+        if not isinstance(result, dict):
+            return original_answer
         return result.get("revised_answer", original_answer)
 
 
@@ -872,6 +900,8 @@ Return ONLY the JSON."""
         except Exception:
             return []
 
+        if not isinstance(result, dict):
+            return []
         return result.get("conflicts", [])
 
     def resolve_conflict(
@@ -983,6 +1013,8 @@ Return ONLY the JSON."""
         except Exception:
             return f"[{my_domain}] maintains its position."
 
+        if not isinstance(result, dict):
+            return f"[{my_domain}] maintains its position."
         return result.get("counter_argument", f"[{my_domain}] maintains its position.")
 
     def _arbitrate(
@@ -1315,6 +1347,7 @@ class AdvancedQAOrchestrator:
         result = {
             "question": question,
             "final_answer": final_answer,
+            "final_answer_short": synthesized.get("short_answer", ""),
             "sub_questions": sub_questions,
             "domain_responses": domain_responses,
             "overall_coverage": synthesized.get("coverage", 0.0),
@@ -1409,12 +1442,32 @@ Return ONLY the JSON."""
                 }]
             }
 
+        if isinstance(result, list):
+            result = {"sub_questions": result}
+        elif not isinstance(result, dict):
+            result = {"sub_questions": []}
         sub_questions = result.get("sub_questions", [])
+        if not isinstance(sub_questions, list):
+            sub_questions = []
+        normalized = []
         for sq in sub_questions:
+            if isinstance(sq, str):
+                sq = {"question": sq, "target_domains": [], "context": ""}
+            elif not isinstance(sq, dict):
+                continue
             sq["target_domains"] = QAOrchestrator._normalize_target_domains(
                 self, sq.get("target_domains", [])
             )
-
+            normalized.append(sq)
+        if not normalized:
+            normalized = [{
+                "question": question,
+                "target_domains": [
+                    d.domain_id for d in self.org_chart.domains[: self.max_routed_domains]
+                ],
+                "context": "",
+            }]
+        result["sub_questions"] = normalized
         return result
 
     def _get_cross_domain_context(self, question: str) -> str:
@@ -1514,10 +1567,19 @@ RULES:
 7. Do NOT define entities or add background explanations unless explicitly supported by expert evidence
 8. Limit the answer to at most 4 sentences
 9. For each major claim, include the supporting KG triple(s)
+10. Provide TWO answer forms:
+    * "answer": evidence-grounded prose response (1-4 sentences)
+    * "short_answer": the MINIMAL span (1-5 words) that directly answers the question. For a person, the name only. For a place, the place name only. For a date, the date only. For yes/no questions, "yes" or "no". If evidence does not support an answer, set short_answer to "".
+
+Examples of short_answer form:
+- Q: "In which county is X located?" → short_answer: "Randall County"
+- Q: "Who founded the company that distributed X?" → short_answer: "Mike Medavoy"
+- Q: "Did the team win in 1990?" → short_answer: "yes"
 
 Return JSON:
 {{
-    "answer": "Short final answer.",
+    "answer": "Final answer prose here.",
+    "short_answer": "minimal span",
     "coverage": 0.85,
     "confidence": 0.8,
     "gaps": ["unanswered aspects"],
@@ -1557,6 +1619,14 @@ Return ONLY the JSON."""
                 "key_claims": [],
             }
 
+        if not isinstance(result, dict):
+            result = {
+                "answer": "I do not have enough supported evidence to answer confidently.",
+                "coverage": sum(r.get("coverage", 0) for r in domain_responses) / max(len(domain_responses), 1),
+                "confidence": sum(r.get("confidence", 0) for r in domain_responses) / max(len(domain_responses), 1),
+                "gaps": [],
+                "key_claims": [],
+            }
         return result
 
     def _build_provenance(

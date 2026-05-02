@@ -17,6 +17,8 @@ import argparse
 import json
 import os
 import sys
+import time
+from pathlib import Path
 from typing import Any, Dict, List, Set, Tuple
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,6 +43,17 @@ from multi_agent_kg.agents.base import ModelTier
 
 
 CHECKPOINT_KEY = "_processed_doc_ids"
+
+
+def _clear_doc_caches(documents: List[Dict[str, Any]]) -> None:
+    results_dir = Path("evaluation/results")
+    for doc in documents:
+        doc_id = doc.get("id")
+        if not doc_id:
+            continue
+        cache_path = results_dir / f"{doc_id}.json"
+        if cache_path.exists():
+            cache_path.unlink()
 
 
 def _save_checkpoint(
@@ -92,6 +105,11 @@ def main() -> None:
     parser.add_argument("--skip-evidence-linking", action="store_true")
     parser.add_argument("--skip-verification", action="store_true")
     parser.add_argument(
+        "--clear-caches",
+        action="store_true",
+        help="Clear per-doc caches before running for fresh extraction.",
+    )
+    parser.add_argument(
         "--governance-mode",
         default="audit_only",
         choices=["strict", "triage", "permissive", "audit_only"],
@@ -103,6 +121,11 @@ def main() -> None:
     parser.add_argument(
         "--org-output",
         default=os.path.join("evaluation", "results", "scierc_governed_created_org_chart.json"),
+    )
+    parser.add_argument(
+        "--stats-output",
+        default="",
+        help="Optional path to write run stats and extraction-funnel diagnostics.",
     )
     parser.add_argument(
         "--checkpoint-every",
@@ -120,11 +143,27 @@ def main() -> None:
         action="store_true",
         help="After creation, rebuild a full org chart from the KG and compare assignment agreement.",
     )
+    parser.add_argument(
+        "--no-relation-gleaning",
+        action="store_true",
+        help="Disable the secondary relation-gleaning LLM pass (precision-favoring).",
+    )
+    parser.add_argument(
+        "--no-fixed-schema-pairwise",
+        action="store_true",
+        help=(
+            "Disable fixed-schema pairwise relation scoring. This avoids one "
+            "extra LLM classification pass over sentence-local entity pairs "
+            "and is the scalable setting for large SciERC builds."
+        ),
+    )
     args = parser.parse_args()
 
     scierc_path = os.path.join(args.data_dir, f"{args.split}.json")
     adapter = SciERCAdapter(scierc_path, skip_generic=True)
     documents = adapter.to_pipeline_input(max_docs=args.max_docs)
+    if args.clear_caches:
+        _clear_doc_caches(documents)
 
     llm_config = LLMConfig(model=args.model, temperature=0.2, max_tokens=4096)
     model_tiers = {tier: args.model for tier in ModelTier}
@@ -157,11 +196,15 @@ def main() -> None:
         max_refinement_iterations=1,
         enable_self_consistency=False,
         enable_open_world=not args.fixed_schema,
+        enable_fixed_schema_pairwise=not args.no_fixed_schema_pairwise,
         enable_cross_document=True,
         enable_deliberation=False,
         model_tiers=model_tiers,
         schema_override=SCIERC_SCHEMA if args.fixed_schema else None,
     )
+
+    if args.no_relation_gleaning:
+        orchestrator.relation_extractor.enable_relation_gleaning = False
 
     print("=" * 72)
     print("  BUILD GOVERNED SCIERC KG")
@@ -178,6 +221,7 @@ def main() -> None:
 
     failed_documents: List[Dict[str, Any]] = []
     newly_processed = 0
+    started = time.perf_counter()
 
     print("=" * 70)
     print(f"PROCESSING CORPUS: {len(remaining)} documents (per-doc with checkpointing)")
@@ -260,8 +304,12 @@ def main() -> None:
             "reuse_corpus_schema": args.reuse_corpus_schema,
             "skip_evidence_linking": args.skip_evidence_linking,
             "skip_verification": args.skip_verification,
+            "clear_caches": args.clear_caches,
             "split": args.split,
             "max_docs": args.max_docs,
+            "relation_gleaning_enabled": getattr(
+                orchestrator.relation_extractor, "enable_relation_gleaning", False
+            ),
         }
         with open(args.output, "w", encoding="utf-8") as handle:
             json.dump(kg_payload, handle, indent=2, default=str)
@@ -271,6 +319,37 @@ def main() -> None:
         json.dump(governed_kg.org_chart.to_dict(), handle, indent=2)
 
     stats = governed_kg.get_stats()
+    elapsed = time.perf_counter() - started
+    run_stats = {
+        "config": {
+            "split": args.split,
+            "max_docs": len(documents),
+            "model": args.model,
+            "model_tiers": {t.value: m for t, m in model_tiers.items()},
+            "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
+            "fixed_schema": args.fixed_schema,
+            "reuse_corpus_schema": args.reuse_corpus_schema,
+            "skip_evidence_linking": args.skip_evidence_linking,
+            "skip_verification": args.skip_verification,
+            "clear_caches": args.clear_caches,
+            "governance_enabled": True,
+            "governance_mode": args.governance_mode,
+            "relation_gleaning_enabled": getattr(
+                orchestrator.relation_extractor, "enable_relation_gleaning", False
+            ),
+        },
+        "entities": stats.get("entities", 0),
+        "triples": stats.get("triples", 0),
+        "processed_documents": len(processed_ids),
+        "failed_documents": failed_documents,
+        "elapsed_seconds": round(elapsed, 2),
+        "elapsed_hours": round(elapsed / 3600, 3),
+        "relation_funnel_summary": orchestrator.get_relation_funnel_summary(),
+        "kg_stats": stats,
+    }
+    if args.stats_output:
+        with open(args.stats_output, "w", encoding="utf-8") as handle:
+            json.dump(run_stats, handle, indent=2, default=str)
     print("\nFinal governed KG stats:")
     print(json.dumps(stats, indent=2))
     print(f"Processed this run: {newly_processed}")
@@ -279,6 +358,8 @@ def main() -> None:
         print(json.dumps(failed_documents, indent=2))
     print(f"Saved governed KG to {args.output}")
     print(f"Saved org chart to {args.org_output}")
+    if args.stats_output:
+        print(f"Saved stats to {args.stats_output}")
     print(f"Checkpoint retained at {checkpoint_path}")
 
 

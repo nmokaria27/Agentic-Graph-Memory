@@ -14,6 +14,7 @@ Features:
 
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 from dataclasses import dataclass, field
+import re
 
 from multi_agent_kg.agents.base import (
     BaseAgent,
@@ -89,7 +90,7 @@ CRITICAL SPAN RULES:
 DO NOT EXTRACT:
 - Articles, prepositions, pronouns, conjunctions alone
 - Generic phrases ("the study", "the results", "the authors", "the data")
-- Bare numbers without meaning ("0.85", "38614", "42")
+- Bare numbers without meaning ("0.85", "38614", "42"); extract numbers when they are answer-bearing dates, measurements, capacities, populations, scores, or time ranges.
 - Common adjectives alone ("high", "low", "greater", "significant")
 
 IMPORTANT:
@@ -134,6 +135,19 @@ Return a JSON object:
 }}
 
 Extract ALL entities. Be thorough. Prefer precise entity spans over long descriptive spans."""
+
+
+OPEN_DOMAIN_VALUE_ENTITY_GUIDANCE = """
+OPEN-DOMAIN VALUE ENTITY RULES:
+- Extract answer-bearing literal values when they are meaningful facts, including years, date ranges, capacities, counts, populations, measurements, rankings, scores, ages, and time spans.
+- Extract offices, job titles, named roles, nationalities, country/city names, creative-work titles, organizations, bands, teams, conferences, arenas, campuses, and aliases.
+- Preserve exact short answers that could answer who/what/where/when/how-many questions. This includes full person names, organization names, titles of works, city/country/state names, dates, capacities, and explicit aliases.
+- If the text is a title-style encyclopedia paragraph, extract the title subject and its key attributes rather than only broad topical phrases.
+- For numeric values, keep the unit or qualifier when present.
+  GOOD: "3,677 seated", "from 1986 to 2013", "1999", "9,984 inhabitants"
+  BAD: dropping the number because it is a bare value
+- Do not extract meaningless isolated numbers, but DO extract numbers/dates that answer who/when/where/how-many questions.
+"""
 
 
 COREFERENCE_PROMPT = """Identify which entity mentions refer to the same real-world entity.
@@ -213,6 +227,7 @@ class EntityExtractor(BaseAgent):
         quality_threshold: float = 0.85,
         use_self_consistency: bool = True,
         n_consistency_samples: int = 3,
+        enable_deterministic_value_harvesting: bool = False,
     ):
         super().__init__(
             name="EntityExtractor",
@@ -226,6 +241,7 @@ class EntityExtractor(BaseAgent):
         )
         self.use_self_consistency = use_self_consistency
         self.n_consistency_samples = n_consistency_samples
+        self.enable_deterministic_value_harvesting = enable_deterministic_value_harvesting
 
     def _enforce_strict_schema(
         self,
@@ -359,12 +375,20 @@ class EntityExtractor(BaseAgent):
 
             if strict_types and entity_types:
                 typed = self._enforce_strict_schema(typed, entity_types)
+            if not strict_types and self.enable_deterministic_value_harvesting:
+                typed = self._augment_open_domain_entities(text, typed)
 
             # Include ALL entities in output; track low-confidence separately for logging/escalation
             for entity in typed:
                 entity["source_segment"] = segment_id
+                entity["source_document_id"] = context.document_id
+                entity.setdefault("source_text", text[:500])
+                try:
+                    entity["confidence"] = float(entity.get("confidence", 0) or 0)
+                except (TypeError, ValueError):
+                    entity["confidence"] = 0.0
                 all_entities.append(entity)
-                if entity.get("confidence", 0) < self.quality_threshold:
+                if entity["confidence"] < self.quality_threshold:
                     low_confidence_entities.append(entity)
         
         # Stage 4: Coreference Resolution (across all segments)
@@ -461,7 +485,11 @@ class EntityExtractor(BaseAgent):
 
         prompt = COMBINED_EXTRACTION_PROMPT.format(
             text=text,
-            entity_guidance=entity_guidance,
+            entity_guidance=(
+                entity_guidance
+                if strict_types
+                else (entity_guidance + "\n" + OPEN_DOMAIN_VALUE_ENTITY_GUIDANCE).strip()
+            ),
             domain=domain or "general",
         )
 
@@ -571,6 +599,32 @@ class EntityExtractor(BaseAgent):
                     if m != canonical_name and m not in labels:
                         labels.append(m)
 
+                source_segments: List[str] = []
+                source_document_ids: List[str] = []
+                source_texts: List[str] = []
+                mention_keys = {
+                    str(value).lower().strip()
+                    for value in [canonical_name, clean_id, raw_id, *mentions]
+                    if value
+                }
+                for original in batch:
+                    candidates = [
+                        original.get("id", ""),
+                        original.get("text", ""),
+                        *(original.get("labels") or []),
+                        *(original.get("mentions") or []),
+                    ]
+                    if any(str(candidate).lower().strip() in mention_keys for candidate in candidates if candidate):
+                        segment = original.get("source_segment")
+                        if segment and segment not in source_segments:
+                            source_segments.append(segment)
+                        document_id = original.get("source_document_id") or original.get("document_id")
+                        if document_id and document_id not in source_document_ids:
+                            source_document_ids.append(document_id)
+                        source_text = original.get("source_text")
+                        if source_text and source_text not in source_texts:
+                            source_texts.append(source_text)
+
                 resolved_entity = {
                     "id": clean_id,
                     "text": canonical_name,
@@ -580,6 +634,15 @@ class EntityExtractor(BaseAgent):
                     "confidence": 0.8 if group.get("is_known_entity") else 0.7,
                     "is_known_entity": group.get("is_known_entity", False),
                 }
+                if source_segments:
+                    resolved_entity["source_segment"] = source_segments[0]
+                    resolved_entity["source_segments"] = source_segments
+                if source_document_ids:
+                    resolved_entity["source_document_id"] = source_document_ids[0]
+                    resolved_entity["source_document_ids"] = source_document_ids
+                if source_texts:
+                    resolved_entity["source_text"] = source_texts[0]
+                    resolved_entity["source_texts"] = source_texts[:3]
                 all_resolved.append(resolved_entity)
 
                 # Register aliases in shared memory
@@ -590,6 +653,94 @@ class EntityExtractor(BaseAgent):
                             self.shared_memory.register_entity_alias(mention, canonical_id)
         
         return all_resolved if all_resolved else entities
+
+    def _augment_open_domain_entities(
+        self,
+        text: str,
+        entities: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Add deterministic answer-bearing value/name candidates.
+
+        LLM entity extraction often drops values that are crucial for QA
+        (years, date ranges, capacities, official titles). In open-world mode,
+        keeping these as low-cost candidates improves the graph's ability to
+        answer factual questions without hard-coding any benchmark labels.
+        """
+        augmented = list(entities)
+        seen = {
+            self._normalise_entity_surface(candidate.get("text", ""))
+            for candidate in augmented
+            if candidate.get("text")
+        }
+
+        patterns: List[Tuple[str, str]] = [
+            (
+                r"\b(?:born|died|opened|founded|released|launched|established)\s+(?:on\s+)?(?:\d{1,2}\s+[A-Z][a-z]+\s+\d{4}|[A-Z][a-z]+\s+\d{1,2},\s+\d{4}|\d{4})\b",
+                "Date",
+            ),
+            (r"\bfrom\s+(?:18|19|20)\d{2}\s+to\s+(?:18|19|20)\d{2}\b", "DateRange"),
+            (
+                r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+(?:18|19|20)\d{2}\b",
+                "Date",
+            ),
+            (
+                r"\b\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(?:18|19|20)\d{2}\b",
+                "Date",
+            ),
+            (r"\b(?:18|19|20)\d{2}\b", "Year"),
+            (
+                r"\b\d{1,3}(?:,\d{3})+(?:\s+(?:seated|seats|people|inhabitants|spectators|capacity))?\b",
+                "Quantity",
+            ),
+            (
+                r"\b\d{1,3}(?:\.\d+)?\s*(?:km|mi|miles|kilometers|metres|meters|kg|lb|tons|million|billion|percent|%)\b",
+                "Quantity",
+            ),
+            (
+                r"\b[A-Z][A-Za-z]+(?:\s+(?:of|the|and|for|in|on|at|de|van|von|[A-Z][A-Za-z]+)){1,6}(?:,\s+[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z]+)*)?\b",
+                "NamedEntity",
+            ),
+        ]
+
+        for pattern, entity_type in patterns:
+            for match in re.finditer(pattern, text):
+                surface = match.group(0).strip()
+                if len(surface) < 3:
+                    continue
+                if surface.lower() in {"title", "return only", "json object"}:
+                    continue
+                key = self._normalise_entity_surface(surface)
+                if not key or key in seen:
+                    continue
+                seen.add(key)
+                augmented.append(
+                    {
+                        "text": self._clean_answer_bearing_surface(surface, entity_type),
+                        "labels": [self._clean_answer_bearing_surface(surface, entity_type)],
+                        "type": entity_type,
+                        "confidence": 0.72,
+                        "source_text": self._window_around_span(text, match.start(), match.end()),
+                        "extraction_method": "deterministic_open_domain_value_harvester",
+                    }
+                )
+        return augmented
+
+    @staticmethod
+    def _clean_answer_bearing_surface(surface: str, entity_type: str) -> str:
+        cleaned = surface.strip()
+        if entity_type == "Date":
+            cleaned = re.sub(r"^(born|died|opened|founded|released|launched|established)\s+(on\s+)?", "", cleaned, flags=re.I)
+        return cleaned.strip()
+
+    @staticmethod
+    def _normalise_entity_surface(text: str) -> str:
+        return re.sub(r"[^a-z0-9]+", " ", (text or "").lower()).strip()
+
+    @staticmethod
+    def _window_around_span(text: str, start: int, end: int, radius: int = 180) -> str:
+        left = max(0, start - radius)
+        right = min(len(text), end + radius)
+        return text[left:right].strip()
 
     @staticmethod
     def _clean_entity_id(raw_id: str, canonical_name: str) -> str:

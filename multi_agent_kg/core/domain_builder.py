@@ -137,6 +137,7 @@ class DomainBuilder:
                 ],
                 model=self.llm_config.model,
                 temperature=0.1,
+                unwrap_array=True,
             )
             if not isinstance(domains_raw, list):
                 domains_raw = [domains_raw]
@@ -167,6 +168,8 @@ class DomainBuilder:
 
         domains: List[Domain] = []
         for raw in domains_raw:
+            if not isinstance(raw, dict):
+                continue
             relation_schema = {
                 rel: ""
                 for rel in raw.get("key_relations", [])
@@ -180,18 +183,26 @@ class DomainBuilder:
                     keywords=topic.get("keywords", []),
                 )
                 for topic in raw.get("topics", [])
-                if topic.get("topic_id") and topic.get("label")
+                if isinstance(topic, dict) and topic.get("topic_id") and topic.get("label")
             ]
+            domain_id = (
+                raw.get("domain_id")
+                or raw.get("id")
+                or (raw.get("name") or raw.get("label") or "").lower().replace(" ", "_")
+            )
+            if not domain_id:
+                continue
+            label = raw.get("label") or raw.get("name") or domain_id
             domains.append(
                 Domain(
-                    domain_id=raw["domain_id"],
-                    label=raw.get("label", raw["domain_id"]),
+                    domain_id=domain_id,
+                    label=label,
                     description=raw.get("description", ""),
                     entity_ids=set(),
                     relation_schema=relation_schema,
                     topics=topics,
                     metadata={
-                        "owner_label": raw.get("owner_label", f"{raw.get('label', raw['domain_id'])} Expert"),
+                        "owner_label": raw.get("owner_label", f"{label} Expert"),
                         "governance_scope": raw.get("description", ""),
                         "seed_entity_types": raw.get("key_entity_types", []),
                         "seed_relation_types": raw.get("key_relations", []),
@@ -307,7 +318,6 @@ class DomainBuilder:
                     },
                 )
             )
-
         return OrgChart(domains=domains, cross_domain_relations=[])
 
     def assign_entities_to_org_chart(
@@ -530,6 +540,7 @@ Return a JSON array and return ONLY the JSON array."""
                 ],
                 model=self.llm_config.model,
                 temperature=0.2,
+                unwrap_array=True,
             )
             if not isinstance(domains, list):
                 domains = [domains]

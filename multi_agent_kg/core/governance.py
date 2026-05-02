@@ -109,6 +109,10 @@ class Domain:
     def subgraph_summary(self, full_kg: KnowledgeGraph) -> str:
         entities, triples = self.get_subgraph(full_kg)
         lines = [f"Domain: {self.label}", f"Description: {self.description}", ""]
+        memory_card = self.memory_card_summary()
+        if memory_card:
+            lines.append(memory_card)
+            lines.append("")
         lines.append(f"Entities ({len(entities)}):")
         for entity in entities[:50]:
             type_str = f" [{entity.type}]" if entity.type else ""
@@ -123,6 +127,116 @@ class Domain:
             )
         if len(triples) > 80:
             lines.append(f"  ... and {len(triples) - 80} more")
+        return "\n".join(lines)
+
+    def refresh_memory_card(
+        self,
+        full_kg: KnowledgeGraph,
+        *,
+        max_entities: int = 12,
+        max_triples: int = 12,
+    ) -> Dict[str, Any]:
+        """Create a compact, deterministic domain-owned memory card.
+
+        The card is intentionally metadata, not a replacement for triples. It
+        gives domain experts a stable summary of their owned subgraph, aliases,
+        cross-domain facts, and evidence-bearing source IDs.
+        """
+        metadata = coerce_metadata(self.metadata)
+        entities, triples = self.get_subgraph(full_kg)
+        key_entities: List[str] = []
+        aliases: Dict[str, List[str]] = {}
+        evidence_snippets: List[str] = []
+        for entity in entities[:max_entities]:
+            label = entity.labels[0] if entity.labels else entity.id
+            key_entities.append(label)
+            entity_aliases = [alias for alias in entity.labels[1:] if alias != label]
+            if entity_aliases:
+                aliases[entity.id] = entity_aliases[:5]
+            entity_metadata = coerce_metadata(entity.metadata)
+            for key in ("source_text", "evidence", "snippet"):
+                value = entity_metadata.get(key)
+                if isinstance(value, str) and value.strip():
+                    snippet = value.strip()
+                    if len(snippet) > 220:
+                        snippet = snippet[:217].rstrip() + "..."
+                    if snippet not in evidence_snippets:
+                        evidence_snippets.append(snippet)
+                    break
+            for value in entity_metadata.get("source_texts", [])[:2]:
+                if isinstance(value, str) and value.strip():
+                    snippet = value.strip()
+                    if len(snippet) > 220:
+                        snippet = snippet[:217].rstrip() + "..."
+                    if snippet not in evidence_snippets:
+                        evidence_snippets.append(snippet)
+
+        core_facts: List[str] = []
+        evidence_sources: List[str] = []
+        cross_domain_facts: List[str] = []
+        owned = set(self.entity_ids)
+        for triple in triples[:max_triples]:
+            fact = f"({triple.subject}) -[{triple.relation}]-> ({triple.object})"
+            core_facts.append(fact)
+            if triple.source and triple.source not in evidence_sources:
+                evidence_sources.append(triple.source)
+            triple_metadata = coerce_metadata(triple.metadata)
+            for key in ("evidence", "evidence_text", "evidence_span", "source_text", "source_sentence", "snippet"):
+                value = triple_metadata.get(key)
+                if isinstance(value, str) and value.strip():
+                    snippet = value.strip()
+                    if len(snippet) > 220:
+                        snippet = snippet[:217].rstrip() + "..."
+                    if snippet not in evidence_snippets:
+                        evidence_snippets.append(snippet)
+                    break
+            if (triple.subject in owned) != (triple.object in owned):
+                cross_domain_facts.append(fact)
+
+        card = {
+            "domain_id": self.domain_id,
+            "label": self.label,
+            "scope": self.governance_scope,
+            "entity_count": len(entities),
+            "triple_count": len(triples),
+            "key_entities": key_entities,
+            "aliases": aliases,
+            "core_facts": core_facts,
+            "cross_domain_facts": cross_domain_facts[:max_triples],
+            "evidence_sources": evidence_sources[:max_triples],
+            "evidence_snippets": evidence_snippets[:max_triples],
+            "known_gaps": metadata.get("known_gaps", []),
+        }
+        metadata["memory_card"] = card
+        self.metadata = metadata
+        return card
+
+    def memory_card_summary(self) -> str:
+        metadata = coerce_metadata(self.metadata)
+        card = metadata.get("memory_card")
+        if not isinstance(card, dict):
+            return ""
+        lines = [
+            "DOMAIN MEMORY CARD:",
+            f"  Scope: {card.get('scope', self.description)}",
+            f"  Coverage: {card.get('entity_count', 0)} entities, {card.get('triple_count', 0)} triples",
+        ]
+        key_entities = card.get("key_entities", [])
+        if key_entities:
+            lines.append("  Key entities: " + ", ".join(str(item) for item in key_entities[:8]))
+        core_facts = card.get("core_facts", [])
+        if core_facts:
+            lines.append("  Core facts:")
+            for fact in core_facts[:6]:
+                lines.append(f"    - {fact}")
+        evidence_snippets = card.get("evidence_snippets", [])
+        if evidence_snippets:
+            lines.append("  Evidence snippets:")
+            for snippet in evidence_snippets[:4]:
+                lines.append(f"    - {snippet}")
+        gaps = card.get("known_gaps", [])
+        if gaps:
+            lines.append("  Known gaps: " + "; ".join(str(item) for item in gaps[:4]))
         return "\n".join(lines)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -277,6 +391,11 @@ class OrgChart:
             and entity_map.get(triple.object)
             and set(entity_map[triple.subject]) != set(entity_map[triple.object])
         ]
+        self.refresh_memory_cards(kg)
+
+    def refresh_memory_cards(self, kg: KnowledgeGraph) -> None:
+        for domain in self.domains:
+            domain.refresh_memory_card(kg)
 
     def route_triple_for_governance(self, triple: Triple) -> GovernanceAssignment:
         entity_map = self.entity_domain_map()

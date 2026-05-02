@@ -36,6 +36,7 @@ from multi_agent_kg.core import (
     save_governed_kg,
     save_kg,
 )
+from multi_agent_kg.agents.base import ModelTier
 
 
 def _entity_to_dict(entity: Any) -> Dict[str, Any]:
@@ -112,6 +113,7 @@ def _run_creation(
     *,
     documents: List[Dict[str, Any]],
     llm_config: LLMConfig,
+    model_tiers: Dict[ModelTier, str],
     fixed_schema: bool,
     reuse_corpus_schema: bool,
     skip_evidence_linking: bool,
@@ -134,6 +136,7 @@ def _run_creation(
             enable_open_world=not fixed_schema,
             enable_cross_document=True,
             enable_deliberation=False,
+            model_tiers=model_tiers,
             schema_override=SCIERC_SCHEMA if fixed_schema else None,
         )
     else:
@@ -152,11 +155,15 @@ def _run_creation(
             enable_open_world=not fixed_schema,
             enable_cross_document=True,
             enable_deliberation=False,
+            model_tiers=model_tiers,
             schema_override=SCIERC_SCHEMA if fixed_schema else None,
         )
 
     started = time.perf_counter()
     aggregate = orchestrator.process_corpus(documents)
+    aggregate["relation_gleaning_enabled"] = getattr(
+        orchestrator.relation_extractor, "enable_relation_gleaning", False
+    )
     elapsed = time.perf_counter() - started
     return aggregate, elapsed, target
 
@@ -181,11 +188,13 @@ def main() -> None:
     adapter = SciERCAdapter(scierc_path, skip_generic=True)
     documents = adapter.to_pipeline_input(max_docs=args.max_docs)
     llm_config = LLMConfig(model=args.model, temperature=0.2, max_tokens=4096)
+    model_tiers = {tier: args.model for tier in ModelTier}
 
     _clear_doc_caches(documents)
     governed_aggregate, governed_elapsed, governed_gkg = _run_creation(
         documents=documents,
         llm_config=llm_config,
+        model_tiers=model_tiers,
         fixed_schema=args.fixed_schema,
         reuse_corpus_schema=args.reuse_corpus_schema,
         skip_evidence_linking=args.skip_evidence_linking,
@@ -198,6 +207,7 @@ def main() -> None:
     ungoverned_aggregate, ungoverned_elapsed, ungoverned_kg = _run_creation(
         documents=documents,
         llm_config=llm_config,
+        model_tiers=model_tiers,
         fixed_schema=args.fixed_schema,
         reuse_corpus_schema=args.reuse_corpus_schema,
         skip_evidence_linking=args.skip_evidence_linking,
@@ -240,11 +250,14 @@ def main() -> None:
             "split": args.split,
             "max_docs": len(documents),
             "model": args.model,
+            "model_tiers": {t.value: m for t, m in model_tiers.items()},
+            "ollama_base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
             "fixed_schema": args.fixed_schema,
             "reuse_corpus_schema": args.reuse_corpus_schema,
             "skip_evidence_linking": args.skip_evidence_linking,
             "skip_verification": args.skip_verification,
             "governance_mode": args.governance_mode,
+            "relation_gleaning_enabled": governed_aggregate.get("relation_gleaning_enabled", False),
         },
         "governed": {
             "entities": len(governed_entities),
@@ -257,12 +270,14 @@ def main() -> None:
             "decision_distribution": governed_stats.get("decision_counts", {}),
             "processing_time_seconds": round(governed_elapsed, 2),
             "aggregate": governed_aggregate,
+            "relation_funnel_summary": governed_aggregate.get("relation_funnel_summary", {}),
         },
         "ungoverned": {
             "entities": len(ungoverned_entities),
             "triples": len(ungoverned_triples),
             "processing_time_seconds": round(ungoverned_elapsed, 2),
             "aggregate": ungoverned_aggregate,
+            "relation_funnel_summary": ungoverned_aggregate.get("relation_funnel_summary", {}),
         },
         "comparison": comparison,
     }

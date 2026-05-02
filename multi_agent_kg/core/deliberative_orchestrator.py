@@ -113,9 +113,12 @@ class DeliberativeOrchestrator:
         enable_self_consistency: bool = True,
         enable_open_world: bool = True,
         enable_fixed_schema_pairwise: bool = True,
+        enable_deterministic_value_harvesting: bool = False,
+        enable_deterministic_attribute_binding: bool = False,
         enable_cross_document: bool = True,
         enable_deliberation: bool = True,
         model_tiers: Optional[Dict[ModelTier, str]] = None,
+        target_num_domains: Optional[int] = None,
         debug_logger = None,
         schema_override: Optional[Dict[str, Any]] = None,
     ):
@@ -129,6 +132,12 @@ class DeliberativeOrchestrator:
             max_refinement_iterations: Max refinement loops (default 4)
             enable_self_consistency: Use self-consistency for confidence
             enable_open_world: Allow discovery of new relation types
+            enable_deterministic_value_harvesting: Opt-in rule-based
+                open-world value candidate harvesting. Disabled by default
+                to keep the general creation path schema/LLM-driven.
+            enable_deterministic_attribute_binding: Opt-in rule-based
+                value-to-subject relation binding. Disabled by default; the
+                general extraction path should use discovered/LLM relations.
             expand_org_chart_with_schema: In open-world governed builds, add
                 newly discovered schema domains to the existing org chart
                 instead of freezing ownership after the first document.
@@ -137,6 +146,9 @@ class DeliberativeOrchestrator:
             enable_cross_document: Enable cross-document entity resolution
             enable_deliberation: Enable multi-agent voting and debate
             model_tiers: Custom model tier mapping
+            target_num_domains: Optional cap/target for schema-bootstrap
+                domains. Useful for QA corpora where stable broad domain
+                ownership is better than per-document micro-domains.
             debug_logger: Debug logger for tracking communications
             schema_override: If provided, skip dynamic schema discovery and
                 use these fixed entity_types and relation_types. Format:
@@ -170,11 +182,14 @@ class DeliberativeOrchestrator:
         self.enable_self_consistency = enable_self_consistency
         self.enable_open_world = enable_open_world
         self.enable_fixed_schema_pairwise = enable_fixed_schema_pairwise
+        self.enable_deterministic_value_harvesting = enable_deterministic_value_harvesting
+        self.enable_deterministic_attribute_binding = enable_deterministic_attribute_binding
         self.enable_cross_document = enable_cross_document
         self.enable_deliberation = enable_deliberation
         self.debug_logger = debug_logger
         self.schema_override = schema_override
-        self.domain_builder = DomainBuilder(self.llm_config)
+        self.target_num_domains = target_num_domains
+        self.domain_builder = DomainBuilder(self.llm_config, target_num_domains=target_num_domains)
         self._active_source_text = ""
         self._strict_review_board = None
         
@@ -238,6 +253,7 @@ class DeliberativeOrchestrator:
             llm_config=self.llm_config,
             quality_threshold=self.quality_threshold,
             use_self_consistency=self.enable_self_consistency,
+            enable_deterministic_value_harvesting=self.enable_deterministic_value_harvesting,
         )
         
         self.relation_extractor = RelationExtractor(
@@ -249,6 +265,7 @@ class DeliberativeOrchestrator:
             use_self_consistency=self.enable_self_consistency,
             enable_open_world=self.enable_open_world,
             enable_fixed_schema_pairwise=self.enable_fixed_schema_pairwise,
+            enable_deterministic_attribute_binding=self.enable_deterministic_attribute_binding,
         )
         
         self.evidence_linker = EvidenceLinker(
@@ -573,6 +590,10 @@ class DeliberativeOrchestrator:
                 f", positives={relation_result.metadata.get('pairwise_positive_predictions', 0)}"
                 f", added={relation_result.metadata.get('pairwise_triples_added', 0)}"
             )
+        if relation_result.metadata.get("gleaned_triples_added"):
+            print(f"  Gleaning pass added: {relation_result.metadata['gleaned_triples_added']} triples")
+        if relation_result.metadata.get("funnel_diagnostics"):
+            results["relation_funnel_diagnostics"] = relation_result.metadata["funnel_diagnostics"]
 
         # Step 4b: Connectivity Pass — find relations for disconnected entities
         connected_ids = set()
@@ -740,6 +761,8 @@ class DeliberativeOrchestrator:
         kg_stats = integration_result.metadata.get("kg_stats", {})
         results["kg_entities"] = kg_stats.get("total_entities", 0)
         results["kg_triples"] = kg_stats.get("total_triples", 0)
+        if self.governed_kg is not None and self.governed_kg.org_chart.domains:
+            self.governed_kg.org_chart.refresh_memory_cards(self.governed_kg.kg)
         print(f"  KG Entities: {results['kg_entities']}")
         print(f"  KG Triples: {results['kg_triples']}")
         
@@ -784,6 +807,13 @@ class DeliberativeOrchestrator:
         merged = 0
         for candidate in candidate_org.domains:
             existing_domain = existing.get(candidate.domain_id)
+            if (
+                existing_domain is None
+                and self.target_num_domains
+                and len(current.domains) >= self.target_num_domains
+                and current.domains
+            ):
+                existing_domain = self._best_domain_merge_target(candidate, current.domains)
             if existing_domain is None:
                 current.domains.append(candidate)
                 existing[candidate.domain_id] = candidate
@@ -804,6 +834,37 @@ class DeliberativeOrchestrator:
             existing_domain.metadata = existing_meta
         current._entity_domain_map_cache = None
         return added, merged
+
+    @staticmethod
+    def _best_domain_merge_target(candidate, domains):
+        """Choose the closest existing domain using only domain/schema text."""
+        def tokens(domain) -> set:
+            metadata = domain.metadata if isinstance(domain.metadata, dict) else {}
+            text = " ".join(
+                [
+                    domain.domain_id,
+                    domain.label,
+                    domain.description,
+                    " ".join(metadata.get("seed_entity_types", [])),
+                    " ".join(metadata.get("seed_relation_types", [])),
+                    " ".join(domain.relation_schema.keys()),
+                ]
+            )
+            import re
+
+            return {token for token in re.findall(r"[a-z0-9]+", text.lower()) if len(token) >= 3}
+
+        candidate_tokens = tokens(candidate)
+        best_domain = domains[0]
+        best_score = -1.0
+        for domain in domains:
+            domain_tokens = tokens(domain)
+            union = candidate_tokens | domain_tokens
+            score = len(candidate_tokens & domain_tokens) / len(union) if union else 0.0
+            if score > best_score:
+                best_score = score
+                best_domain = domain
+        return best_domain
 
     def _assign_entities_to_domains(
         self,
@@ -1207,6 +1268,7 @@ class DeliberativeOrchestrator:
             "memory_stats": self.shared_memory.get_stats(),
             "kg_stats": self.knowledge_organizer.get_kg_stats(),
             "failed_documents": failed_documents,
+            "relation_funnel_summary": self.get_relation_funnel_summary(),
         }
         
         print("\n" + "=" * 70)
@@ -1220,6 +1282,69 @@ class DeliberativeOrchestrator:
         print("=" * 70 + "\n")
         
         return aggregate
+
+    def get_relation_funnel_summary(self) -> Dict[str, Any]:
+        """Aggregate relation-extraction funnel diagnostics across processed docs."""
+        numeric_fields = [
+            "segments_processed",
+            "entities_seen",
+            "relations_found",
+            "head_bindings",
+            "tail_triples",
+            "pairwise_pairs_considered",
+            "pairwise_positive_predictions",
+            "pairwise_triples_added",
+            "gleaned_triples_added",
+            "invalid_self_refs_filtered",
+            "post_alignment_triples",
+            "post_dedupe_triples",
+            "final_triples",
+        ]
+        totals: Dict[str, Any] = {field: 0 for field in numeric_fields}
+        docs_with_diagnostics = 0
+        docs_with_zero_final_triples: List[str] = []
+        docs_with_stage1_relations_but_no_final_triples: List[str] = []
+        per_doc: List[Dict[str, Any]] = []
+
+        for entry in self.processing_history:
+            results = entry.get("results", {}) if isinstance(entry, dict) else {}
+            diagnostics = results.get("relation_funnel_diagnostics")
+            if not isinstance(diagnostics, dict):
+                continue
+            docs_with_diagnostics += 1
+            doc_id = str(entry.get("document_id") or diagnostics.get("document_id") or "")
+            row = {"document_id": doc_id}
+            for field in numeric_fields:
+                value = diagnostics.get(field, 0)
+                value = value if isinstance(value, (int, float)) else 0
+                totals[field] += value
+                row[field] = value
+            if row["final_triples"] == 0:
+                docs_with_zero_final_triples.append(doc_id)
+            if row["relations_found"] > 0 and row["final_triples"] == 0:
+                docs_with_stage1_relations_but_no_final_triples.append(doc_id)
+            per_doc.append(row)
+
+        summary = {
+            **totals,
+            "documents_with_diagnostics": docs_with_diagnostics,
+            "docs_with_zero_final_triples": docs_with_zero_final_triples,
+            "docs_with_stage1_relations_but_no_final_triples": docs_with_stage1_relations_but_no_final_triples,
+            "per_doc": per_doc,
+        }
+        if totals["relations_found"]:
+            summary["tail_triples_per_stage1_relation"] = round(
+                totals["tail_triples"] / totals["relations_found"], 4
+            )
+        else:
+            summary["tail_triples_per_stage1_relation"] = 0.0
+        if totals["post_alignment_triples"]:
+            summary["dedupe_retention"] = round(
+                totals["post_dedupe_triples"] / totals["post_alignment_triples"], 4
+            )
+        else:
+            summary["dedupe_retention"] = 0.0
+        return summary
 
     def _resolve_cross_document_entities(self) -> None:
         """Resolve entities across documents using fuzzy matching.
