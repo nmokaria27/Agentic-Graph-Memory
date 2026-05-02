@@ -1,0 +1,20 @@
+{
+  "entity_strict": {
+    "precision": 0.5897,
+    "recall": 0.6744,
+    "f1": 0.6292,
+    "tp": 437,
+    "fp": 304,
+    "fn": 211
+  },
+  "triple_strict": {
+    "precision": 0.2153,
+    "recall": 0.1681,
+    "f1": 0.1888,
+    "tp": 59,
+    "fp": 215,
+    "fn": 292
+  },
+  "entity_hallucination_rate": 0.4103,
+  "triple_hallucination_rate": 0.7847
+}

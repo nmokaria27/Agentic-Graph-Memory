@@ -1,0 +1,1230 @@
+{
+  "kg_path": "evaluation/results/governed_created_100docs.json",
+  "org_chart": null,
+  "model": "gemma4:31b",
+  "route_only": false,
+  "metrics": {
+    "num_examples": 50,
+    "routing_exact_match": 1.0,
+    "assignment_type_accuracy": 1.0,
+    "expected_domain_recall": 1.0,
+    "expected_domain_precision": 1.0,
+    "cross_domain_routing_recall": 1.0,
+    "cross_domain_escalation_accuracy": 0.0,
+    "decision_coverage": 1.0,
+    "accept_recall_positive": 0.56,
+    "reject_recall_negative": 1.0,
+    "false_accept_rate_negative": 0.0
+  },
+  "governed_kg_stats": {
+    "entities": 1201,
+    "triples": 338,
+    "domains": 3,
+    "cross_domain_relations": 152,
+    "governance_mode": "audit_only",
+    "audit_log_entries": 338,
+    "pending_review": 0,
+    "decision_counts": {
+      "auto_approve": 338
+    },
+    "assignment_counts": {
+      "cross_domain": 150,
+      "single_owner": 188
+    },
+    "domain_decision_counts": {
+      "methods_and_systems": 163,
+      "tasks_and_concepts": 246,
+      "resources_and_evaluation": 79
+    },
+    "domain_coverage": {
+      "entities_with_domains": 1182,
+      "multi_domain_entities": 0,
+      "fraction_entities_assigned": 0.9842
+    },
+    "bootstrap_assignment_stats": {
+      "num_entities": 8,
+      "assigned_entities": 8,
+      "unassigned_entities": 0,
+      "multi_assigned_entities": 0,
+      "avg_assignment_score": 5.0938,
+      "assignment_coverage": 1.0
+    },
+    "triage_stats": {
+      "auto_approved_low_risk": 0,
+      "reviewed": 0,
+      "escalated_without_callback": 0,
+      "review_reasons": {}
+    }
+  },
+  "structure_metrics": {
+    "domain_coverage": 0.9842,
+    "governance_completeness": 1.0,
+    "audit_trail_integrity": 1.0
+  },
+  "examples": [
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "syntactic_structure_features",
+        "relation": "Used-for",
+        "object": "relation_extraction",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the knowledge graph with a confidence of 0.90; the update to 0.95 is consistent with existing data."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "knowledge_of_the_domain",
+        "relation": "Used-for",
+        "object": "recognition_tasks",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "No source text was provided to support the proposed triple. The statement is a general assertion rather than a specific knowledge extraction, and without evidence, it cannot be approved under a conservative governance policy."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "computing_power_per_area",
+        "relation": "Conjunction",
+        "object": "power_consumption",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the existing relationships list with a confidence of 0.90. Approving this update maintains consistency and slightly increases the confidence score."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "single_linkage",
+        "relation": "Conjunction",
+        "object": "sum_of_pairs",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the knowledge graph with a confidence of 1.00, confirming its validity within the domain."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "convolution_kernel_over_parse_trees",
+        "relation": "Evaluate-for",
+        "object": "ace_2003_corpus",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the knowledge graph for both the 'Methods and Systems' and 'Resources and Evaluation' domains with a confidence of 0.80. The update simply increases the confidence score to 0.95 for a known fact."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "line_assisted_graph_cut",
+        "relation": "Used-for",
+        "object": "light_field_stereo_matching",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple introduces two new entities ('line_assisted_graph_cut' and 'light_field_stereo_matching') that are not present in the current knowledge graph. Furthermore, no source text was provided to verify the relationship between these entities. Per the conservative governance policy, unsupported updates must be rejected."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "operators",
+        "relation": "Hyponym-of",
+        "object": "nl_requirements",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple is semantically illogical; 'operators' is not a hyponym (a specific type) of 'nl_requirements' (natural language requirements). Additionally, no source text was provided to justify this relationship."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "nl_requirements",
+        "relation": "Used-for",
+        "object": "data_retrieval",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple is unsupported because no source text was provided to verify the relationship between 'nl_requirements' and 'data_retrieval'."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "operators",
+        "relation": "Conjunction",
+        "object": "complex_contextual_reference",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "No source text was provided to support the proposed triple, making it impossible to verify the relationship between 'operators' and 'complex_contextual_reference'."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "disambiguated_morphological_analysis",
+        "relation": "Part-of",
+        "object": "intelligent_computer_assisted_morphological_analysis",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple introduces two new entities ('disambiguated_morphological_analysis' and 'intelligent_computer_assisted_morphological_analysis') that are not present in the current knowledge graph. Furthermore, no source text was provided to support the validity of the 'Part-of' relationship between these entities. Following the conservative governance policy, unsupported updates must be rejected."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "regularized_empirical_risk_minimization",
+        "relation": "Conjunction",
+        "object": "theoretical_generalization_result",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the knowledge graph under the Methods and Systems domain with a confidence of 0.90. The proposed update with a confidence of 0.95 is consistent with the existing data."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "mixed_signal_paradigm",
+        "relation": "Used-for",
+        "object": "high_resolution_parallel_inner_product_computation",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the knowledge graph for both the 'Methods and Systems' and 'Tasks and Concepts' domains with a confidence of 1.00, which strongly supports the validity of this relationship."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "noun_classifier_associations",
+        "relation": "Used-for",
+        "object": "classifier_selection",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the existing knowledge graph relationships with a confidence of 0.90. The update to 0.95 is a minor adjustment to an existing, supported fact within the Tasks and Concepts domain."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "motor_control_representation",
+        "relation": "Used-for",
+        "object": "cursive_handwriting_recognition",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple is unsupported as no source text was provided to verify the claim, and neither 'motor_control_representation' nor 'cursive_handwriting_recognition' exist in the current domain entities."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "complex_contextual_reference",
+        "relation": "Conjunction",
+        "object": "reference_to_the_structure_of_the_information_source",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple introduces two new entities ('complex_contextual_reference' and 'reference_to_the_structure_of_the_information_source') that are not present in the current domain entities list, and no source text was provided to verify the relationship or the validity of these terms."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "conversational_context",
+        "relation": "Conjunction",
+        "object": "gaze",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "No source text was provided to support the proposed triple. Additionally, neither 'conversational_context' nor 'gaze' exist in the current domain entities list, and there is no evidence to justify their creation or the relationship between them."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "vowel_harmony",
+        "relation": "Hyponym-of",
+        "object": "phonetic_rules",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "Vowel harmony is a specific instance of a phonological/phonetic rule, making the 'Hyponym-of' relationship linguistically accurate. This aligns with the existing linguistic concepts and taxonomic relationships (e.g., Turkish as a hyponym of agglutinating languages) within the tasks_and_concepts domain."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "english_hungarian",
+        "relation": "Hyponym-of",
+        "object": "language_pairs",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the knowledge graph with a confidence of 0.90. This update confirms the existing relationship with a slightly higher confidence score."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "suffix_analysis",
+        "relation": "Feature-of",
+        "object": "unlexicalized_parser",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the existing knowledge graph relationships with a confidence of 0.90, confirming its validity and consistency with the current domain data."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "efficiency",
+        "relation": "Feature-of",
+        "object": "semantic_caseframe_instantiation",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the knowledge graph for both the 'methods_and_systems' and 'resources_and_evaluation' domains with a confidence of 0.90. The update is consistent with existing data and slightly increases the confidence score."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "english_bulgarian",
+        "relation": "Conjunction",
+        "object": "english_estonian",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The triple is already present in the knowledge graph with a confidence of 0.80; the proposed update confirms the relationship with a higher confidence of 0.95."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "savarese_et_al",
+        "relation": "Conjunction",
+        "object": "pascal_voc",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the existing knowledge graph relationships with a confidence of 0.90. The update is consistent with existing data."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "mixtures_of_feature_distributions",
+        "relation": "Conjunction",
+        "object": "probabilistic_shape_knowledge",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple introduces two new entities ('mixtures_of_feature_distributions' and 'probabilistic_shape_knowledge') that are not present in the existing knowledge graph, and no source text was provided to verify the relationship between them. Following the conservative governance policy, unsupported updates must be rejected."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "semi_supervised_methods",
+        "relation": "Used-for",
+        "object": "annotated_training_corpus",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "approve",
+      "rationale": "The proposed triple is already present in the knowledge graph under the Resources and Evaluation domain with a confidence of 0.80. The current proposal updates this relationship with a higher confidence of 0.95. The relationship is logically sound as semi-supervised methods are frequently employed to augment or generate pseudo-labeled data, effectively serving the purpose of expanding an annotated training corpus."
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "robustness_requirement",
+        "relation": "Feature-of",
+        "object": "image_understanding",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple is unsupported as there is no source text provided to verify the claim. Additionally, neither 'robustness_requirement' nor 'image_understanding' appear in the provided domain entity list, making the update unsupported by existing knowledge or evidence."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "syntactic_structure_features",
+        "relation": "Used-for",
+        "object": "expert_human_translation",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "syntactic_structure_features",
+        "Used-for",
+        "relation_extraction"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35) and lacks supporting source text. Furthermore, the claim that 'syntactic_structure_features' are 'used for' 'expert_human_translation' is conceptually unsound; syntactic features are typically used in computational models (e.g., relation extraction), whereas human translation relies on linguistic competence rather than discrete feature sets. As a conservative governance board, I reject this unsupported and unlikely update."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "knowledge_of_the_domain",
+        "relation": "Used-for",
+        "object": "automatically generated training data",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "knowledge_of_the_domain",
+        "Used-for",
+        "recognition_tasks"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35), and neither 'knowledge_of_the_domain' nor 'automatically generated training data' exist as entities in the current knowledge graph. Furthermore, no source text was provided to support the addition of these new entities and their relationship."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "computing_power_per_area",
+        "relation": "Conjunction",
+        "object": "dynamic_range",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "computing_power_per_area",
+        "Conjunction",
+        "power_consumption"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35) and there is no provided source text to support the relationship between 'computing_power_per_area' and 'dynamic_range'. Following the conservative governance policy, unsupported updates with low confidence must be rejected."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "single_linkage",
+        "relation": "Conjunction",
+        "object": "color",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "single_linkage",
+        "Conjunction",
+        "sum_of_pairs"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35) and lacks semantic coherence. 'single_linkage' is a clustering method, while 'color' is a visual attribute; a 'Conjunction' relationship between them is likely a result of spurious co-occurrence in text rather than a meaningful conceptual link. Following the conservative governance policy, this update is rejected."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "convolution_kernel_over_parse_trees",
+        "relation": "Evaluate-for",
+        "object": "corpus_based_method",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "convolution_kernel_over_parse_trees",
+        "Evaluate-for",
+        "ace_2003_corpus"
+      ],
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple uses the relation 'Evaluate-for' incorrectly. In the existing knowledge graph, 'Evaluate-for' connects a method to a dataset or a specific evaluation target (e.g., 'ace_2003_corpus'). 'corpus_based_method' is a general category of methods, not an evaluation target. Furthermore, the confidence score is very low (0.35), and there is no evidence in the provided context to support this specific relationship."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "line_assisted_graph_cut",
+        "relation": "Used-for",
+        "object": "newspaper_texts",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "line_assisted_graph_cut",
+        "Used-for",
+        "light_field_stereo_matching"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35) and is not supported by any provided source text. Additionally, neither 'line_assisted_graph_cut' nor 'newspaper_texts' exist in the current domain entities, and the board must be conservative in rejecting unsupported updates."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "operators",
+        "relation": "Hyponym-of",
+        "object": "random_sampling",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "operators",
+        "Hyponym-of",
+        "nl_requirements"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple is logically incorrect; 'operators' are not a type of 'random_sampling'. Furthermore, the confidence score is extremely low (0.35), and neither entity is present in the provided domain lists to support this specific relationship."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "nl_requirements",
+        "relation": "Used-for",
+        "object": "nagao",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "nl_requirements",
+        "Used-for",
+        "data_retrieval"
+      ],
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": "reject",
+      "rationale": "The proposed triple has an extremely low confidence score (0.35) and there is no source text provided to verify the relationship between 'nl_requirements' and 'nagao'. Following the conservative governance policy, unsupported updates must be rejected."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "operators",
+        "relation": "Conjunction",
+        "object": "evaluation met-rics",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "operators",
+        "Conjunction",
+        "complex_contextual_reference"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35). Furthermore, the subject 'operators' is not present in the current knowledge graph entities for either the 'Resources and Evaluation' or 'Tasks and Concepts' domains. There is no provided source text to justify the relationship, and 'operators' and 'evaluation metrics' are conceptually distinct, making the 'Conjunction' relationship unsupported."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "disambiguated_morphological_analysis",
+        "relation": "Part-of",
+        "object": "translation_performance",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "disambiguated_morphological_analysis",
+        "Part-of",
+        "intelligent_computer_assisted_morphological_analysis"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35) and the relationship 'Part-of' is semantically incorrect; a process like 'disambiguated_morphological_analysis' cannot be a part of a metric or outcome like 'translation_performance'. Additionally, neither entity exists in the current domain knowledge bases, and no source text was provided to justify the addition."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "regularized_empirical_risk_minimization",
+        "relation": "Conjunction",
+        "object": "geodesic_distance",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "regularized_empirical_risk_minimization",
+        "Conjunction",
+        "theoretical_generalization_result"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35) and uses a generic 'Conjunction' relationship that lacks semantic meaning. Furthermore, there is no source text provided to justify a connection between 'regularized_empirical_risk_minimization' and 'geodesic_distance'."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "mixed_signal_paradigm",
+        "relation": "Used-for",
+        "object": "general trajectories",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "mixed_signal_paradigm",
+        "Used-for",
+        "high_resolution_parallel_inner_product_computation"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35) and there is no source text provided to support the relationship. Additionally, 'general trajectories' is not a recognized entity in the provided domain lists."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "noun_classifier_associations",
+        "relation": "Used-for",
+        "object": "email_communication",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "noun_classifier_associations",
+        "Used-for",
+        "classifier_selection"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35) and there is no evidence in the provided knowledge graph or domain descriptions to support a relationship between 'noun_classifier_associations' and 'email_communication'."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "motor_control_representation",
+        "relation": "Used-for",
+        "object": "rule-based learning algorithm",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "motor_control_representation",
+        "Used-for",
+        "cursive_handwriting_recognition"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35). Additionally, neither 'motor_control_representation' nor 'rule-based learning algorithm' are present in the existing domain entities, and the direction of the 'Used-for' relationship is logically suspect (typically a method is used for a task/concept, not vice versa). Without source text to provide evidence, this update is unsupported."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "complex_contextual_reference",
+        "relation": "Conjunction",
+        "object": "regularizer",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "complex_contextual_reference",
+        "Conjunction",
+        "reference_to_the_structure_of_the_information_source"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35), and neither 'complex_contextual_reference' nor 'regularizer' are present in the existing knowledge graph entities. Without source text to verify the relationship, this update is unsupported and likely noise."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "conversational_context",
+        "relation": "Conjunction",
+        "object": "human translations",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "conversational_context",
+        "Conjunction",
+        "gaze"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35), and neither 'conversational_context' nor 'human translations' are present in the current knowledge graph entities. Furthermore, no source text was provided to justify the relationship."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "vowel_harmony",
+        "relation": "Hyponym-of",
+        "object": "planning systems",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "vowel_harmony",
+        "Hyponym-of",
+        "phonetic_rules"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple is logically unsound. 'Vowel harmony' is a linguistic phonological process, whereas 'planning systems' refers to computational or organizational systems. There is no hierarchical relationship (hyponymy) between these two distinct concepts."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "english_hungarian",
+        "relation": "Hyponym-of",
+        "object": "multi_layer_perceptrons",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "english_hungarian",
+        "Hyponym-of",
+        "language_pairs"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple contains a category error: 'english_hungarian' is a language pair (Material), while 'multi_layer_perceptrons' is a neural network architecture (Method). A language pair cannot be a hyponym of a machine learning model. Additionally, the confidence score is very low (0.35)."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "suffix_analysis",
+        "relation": "Feature-of",
+        "object": "english_and_czech_newspaper_texts",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "suffix_analysis",
+        "Feature-of",
+        "unlexicalized_parser"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple contains a semantic category error. 'suffix_analysis' is a Method, while 'english_and_czech_newspaper_texts' is a Material (dataset). A method cannot be a 'Feature-of' a dataset. Furthermore, the confidence score of 0.35 is significantly below the threshold for acceptance."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "efficiency",
+        "relation": "Feature-of",
+        "object": "parameter_training_algorithm",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "efficiency",
+        "Feature-of",
+        "semantic_caseframe_instantiation"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35) and the object entity 'parameter_training_algorithm' is not present in the current domain entities. Without supporting source text or a higher confidence level, this update is unsupported."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "english_bulgarian",
+        "relation": "Conjunction",
+        "object": "robust_principal_component_analysis",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "english_bulgarian",
+        "Conjunction",
+        "english_estonian"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple links a language pair ('english_bulgarian') and a computational method ('robust_principal_component_analysis') using a 'Conjunction' relationship. These entities are semantically unrelated and belong to different categories (Material vs. Method), making the relationship logically invalid. Furthermore, the confidence score is very low (0.35)."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "savarese_et_al",
+        "relation": "Conjunction",
+        "object": "global optimality",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "savarese_et_al",
+        "Conjunction",
+        "pascal_voc"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple is semantically incoherent. It attempts to link a person/citation ('savarese_et_al') to a mathematical concept ('global optimality') using the 'Conjunction' relation, which is inappropriate for these entity types. Additionally, the confidence score is very low (0.35) and there is no source text provided to support the update."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "mixtures_of_feature_distributions",
+        "relation": "Conjunction",
+        "object": "activation_valence_space",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "mixtures_of_feature_distributions",
+        "Conjunction",
+        "probabilistic_shape_knowledge"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35) and there is no source text provided to support the relationship. In the absence of evidence, the update must be rejected per the conservative governance policy."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "semi_supervised_methods",
+        "relation": "Used-for",
+        "object": "row_and_column_entities",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "semi_supervised_methods",
+        "Used-for",
+        "annotated_training_corpus"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35), and there is no source text provided to verify the claim. Furthermore, the relationship 'Used-for' between 'semi_supervised_methods' and 'row_and_column_entities' is semantically vague and unsupported by the existing knowledge graph entities."
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "robustness_requirement",
+        "relation": "Feature-of",
+        "object": "pattern_matching_language",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "robustness_requirement",
+        "Feature-of",
+        "image_understanding"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": "reject",
+      "rationale": "The proposed triple has a very low confidence score (0.35), and neither 'robustness_requirement' nor 'pattern_matching_language' exist in the current knowledge graph entities. Furthermore, no source text was provided to verify the claim, making the update unsupported."
+    }
+  ]
+}

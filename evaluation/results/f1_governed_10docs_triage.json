@@ -1,0 +1,173 @@
+{
+  "documents_total": 10,
+  "documents_evaluated": 10,
+  "documents_missing_predictions": 0,
+  "entity_strict": {
+    "precision": 0.6139240506329114,
+    "recall": 0.6736111111111112,
+    "f1": 0.6423841059602649,
+    "tp": 97,
+    "fp": 61,
+    "fn": 47
+  },
+  "entity_strict_mapped": {
+    "precision": 0.6139240506329114,
+    "recall": 0.6736111111111112,
+    "f1": 0.6423841059602649,
+    "tp": 97,
+    "fp": 61,
+    "fn": 47
+  },
+  "entity_partial": {
+    "precision": 0.6934306569343066,
+    "recall": 0.5974842767295597,
+    "f1": 0.6418918918918919,
+    "tp": 95,
+    "fp": 42,
+    "fn": 64
+  },
+  "entity_per_type": {
+    "Method": {
+      "precision": 0.8387096774193549,
+      "recall": 0.7222222222222222,
+      "f1": 0.7761194029850746,
+      "tp": 26,
+      "fp": 5,
+      "fn": 10
+    },
+    "OtherScientificTerm": {
+      "precision": 0.49382716049382713,
+      "recall": 0.5970149253731343,
+      "f1": 0.5405405405405405,
+      "tp": 40,
+      "fp": 41,
+      "fn": 27
+    },
+    "Task": {
+      "precision": 0.7142857142857143,
+      "recall": 0.6818181818181818,
+      "f1": 0.6976744186046512,
+      "tp": 15,
+      "fp": 6,
+      "fn": 7
+    },
+    "Material": {
+      "precision": 0.6875,
+      "recall": 0.8461538461538461,
+      "f1": 0.7586206896551724,
+      "tp": 11,
+      "fp": 5,
+      "fn": 2
+    },
+    "RESEARCHER": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "Metric": {
+      "precision": 0.7142857142857143,
+      "recall": 0.8333333333333334,
+      "f1": 0.7692307692307692,
+      "tp": 5,
+      "fp": 2,
+      "fn": 1
+    },
+    "ORGANIZATION": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    }
+  },
+  "entity_type_accuracy": 0.8556701030927835,
+  "entity_type_accuracy_mapped": 0.8556701030927835,
+  "entity_hallucination_rate": 0.44525547445255476,
+  "triple_strict": {
+    "precision": 0.375,
+    "recall": 0.23863636363636365,
+    "f1": 0.2916666666666667,
+    "tp": 21,
+    "fp": 35,
+    "fn": 67
+  },
+  "triple_fuzzy": {
+    "precision": 0.39285714285714285,
+    "recall": 0.25,
+    "f1": 0.3055555555555556,
+    "tp": 22,
+    "fp": 34,
+    "fn": 66
+  },
+  "triple_mapped": {
+    "precision": 0.39285714285714285,
+    "recall": 0.25,
+    "f1": 0.3055555555555556,
+    "tp": 22,
+    "fp": 34,
+    "fn": 66
+  },
+  "triple_per_relation": {
+    "part-of": {
+      "precision": 0.3333333333333333,
+      "recall": 0.42857142857142855,
+      "f1": 0.375,
+      "tp": 3,
+      "fp": 6,
+      "fn": 4
+    },
+    "conjunction": {
+      "precision": 0.625,
+      "recall": 0.5555555555555556,
+      "f1": 0.5882352941176471,
+      "tp": 10,
+      "fp": 6,
+      "fn": 8
+    },
+    "used-for": {
+      "precision": 0.1111111111111111,
+      "recall": 0.024390243902439025,
+      "f1": 0.04,
+      "tp": 1,
+      "fp": 8,
+      "fn": 40
+    },
+    "hyponym-of": {
+      "precision": 0.4166666666666667,
+      "recall": 0.7142857142857143,
+      "f1": 0.5263157894736842,
+      "tp": 5,
+      "fp": 7,
+      "fn": 2
+    },
+    "feature-of": {
+      "precision": 0.125,
+      "recall": 0.16666666666666666,
+      "f1": 0.14285714285714288,
+      "tp": 1,
+      "fp": 7,
+      "fn": 5
+    },
+    "evaluate-for": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 7
+    },
+    "compare": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1": 0.6666666666666666,
+      "tp": 1,
+      "fp": 0,
+      "fn": 1
+    }
+  },
+  "triple_hallucination_rate": 0.625
+}

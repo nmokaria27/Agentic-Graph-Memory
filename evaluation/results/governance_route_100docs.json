@@ -1,0 +1,1933 @@
+{
+  "kg_path": "evaluation/results/governed_created_100docs.json",
+  "org_chart": null,
+  "model": "gemma4:31b",
+  "route_only": true,
+  "metrics": {
+    "num_examples": 80,
+    "routing_exact_match": 1.0,
+    "assignment_type_accuracy": 1.0,
+    "expected_domain_recall": 1.0,
+    "expected_domain_precision": 1.0,
+    "cross_domain_routing_recall": 1.0,
+    "cross_domain_escalation_accuracy": 0.0,
+    "decision_coverage": 0.0
+  },
+  "governed_kg_stats": {
+    "entities": 1201,
+    "triples": 338,
+    "domains": 3,
+    "cross_domain_relations": 152,
+    "governance_mode": "audit_only",
+    "audit_log_entries": 338,
+    "pending_review": 0,
+    "decision_counts": {
+      "auto_approve": 338
+    },
+    "assignment_counts": {
+      "cross_domain": 150,
+      "single_owner": 188
+    },
+    "domain_decision_counts": {
+      "methods_and_systems": 163,
+      "tasks_and_concepts": 246,
+      "resources_and_evaluation": 79
+    },
+    "domain_coverage": {
+      "entities_with_domains": 1182,
+      "multi_domain_entities": 0,
+      "fraction_entities_assigned": 0.9842
+    },
+    "bootstrap_assignment_stats": {
+      "num_entities": 8,
+      "assigned_entities": 8,
+      "unassigned_entities": 0,
+      "multi_assigned_entities": 0,
+      "avg_assignment_score": 5.0938,
+      "assignment_coverage": 1.0
+    },
+    "triage_stats": {
+      "auto_approved_low_risk": 0,
+      "reviewed": 0,
+      "escalated_without_callback": 0,
+      "review_reasons": {}
+    }
+  },
+  "structure_metrics": {
+    "domain_coverage": 0.9842,
+    "governance_completeness": 1.0,
+    "audit_trail_integrity": 1.0
+  },
+  "examples": [
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "syntactic_structure_features",
+        "relation": "Used-for",
+        "object": "relation_extraction",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "knowledge_of_the_domain",
+        "relation": "Used-for",
+        "object": "recognition_tasks",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "computing_power_per_area",
+        "relation": "Conjunction",
+        "object": "power_consumption",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "single_linkage",
+        "relation": "Conjunction",
+        "object": "sum_of_pairs",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "convolution_kernel_over_parse_trees",
+        "relation": "Evaluate-for",
+        "object": "ace_2003_corpus",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "line_assisted_graph_cut",
+        "relation": "Used-for",
+        "object": "light_field_stereo_matching",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "operators",
+        "relation": "Hyponym-of",
+        "object": "nl_requirements",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "nl_requirements",
+        "relation": "Used-for",
+        "object": "data_retrieval",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "operators",
+        "relation": "Conjunction",
+        "object": "complex_contextual_reference",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "disambiguated_morphological_analysis",
+        "relation": "Part-of",
+        "object": "intelligent_computer_assisted_morphological_analysis",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "regularized_empirical_risk_minimization",
+        "relation": "Conjunction",
+        "object": "theoretical_generalization_result",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "mixed_signal_paradigm",
+        "relation": "Used-for",
+        "object": "high_resolution_parallel_inner_product_computation",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "noun_classifier_associations",
+        "relation": "Used-for",
+        "object": "classifier_selection",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "motor_control_representation",
+        "relation": "Used-for",
+        "object": "cursive_handwriting_recognition",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "complex_contextual_reference",
+        "relation": "Conjunction",
+        "object": "reference_to_the_structure_of_the_information_source",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "conversational_context",
+        "relation": "Conjunction",
+        "object": "gaze",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "vowel_harmony",
+        "relation": "Hyponym-of",
+        "object": "phonetic_rules",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "english_hungarian",
+        "relation": "Hyponym-of",
+        "object": "language_pairs",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "suffix_analysis",
+        "relation": "Feature-of",
+        "object": "unlexicalized_parser",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "efficiency",
+        "relation": "Feature-of",
+        "object": "semantic_caseframe_instantiation",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "english_bulgarian",
+        "relation": "Conjunction",
+        "object": "english_estonian",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "savarese_et_al",
+        "relation": "Conjunction",
+        "object": "pascal_voc",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "mixtures_of_feature_distributions",
+        "relation": "Conjunction",
+        "object": "probabilistic_shape_knowledge",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "semi_supervised_methods",
+        "relation": "Used-for",
+        "object": "annotated_training_corpus",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "robustness_requirement",
+        "relation": "Feature-of",
+        "object": "image_understanding",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "feature_weighting_and_selection_function",
+        "relation": "Used-for",
+        "object": "word_similarity_performance",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "local_optimization",
+        "relation": "Used-for",
+        "object": "visual_object_tracking",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "random_projection_based_methods",
+        "relation": "Used-for",
+        "object": "nearest_neighbor_search",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "deep_metrics",
+        "relation": "Used-for",
+        "object": "person_re_identification",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "virtual_camera",
+        "relation": "Used-for",
+        "object": "novel_view_generation",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "projective unifocal",
+        "relation": "Conjunction",
+        "object": "bifo-cal",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "planning_algorithm",
+        "relation": "Used-for",
+        "object": "logical_expression",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "image matting",
+        "relation": "Conjunction",
+        "object": "boundary detection",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "quality improvement",
+        "relation": "Part-of",
+        "object": "stereo vision",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "sentence_by_sentence_error_correction_method",
+        "relation": "Hyponym-of",
+        "object": "language_model_adaptation",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "HPSG",
+        "relation": "Conjunction",
+        "object": "lexical_functional_grammars",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "embodied_conversational_agents",
+        "relation": "Used-for",
+        "object": "dialogue_state",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "events",
+        "relation": "Part-of",
+        "object": "event_terms",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "scanning_method",
+        "relation": "Used-for",
+        "object": "camera_projector_correspondence",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": null,
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "positive",
+      "triple": {
+        "subject": "piecewise stationary",
+        "relation": "Feature-of",
+        "object": "independent signals",
+        "confidence": 0.95
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": null,
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "syntactic_structure_features",
+        "relation": "Used-for",
+        "object": "expert_human_translation",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "syntactic_structure_features",
+        "Used-for",
+        "relation_extraction"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "knowledge_of_the_domain",
+        "relation": "Used-for",
+        "object": "automatically generated training data",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "knowledge_of_the_domain",
+        "Used-for",
+        "recognition_tasks"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "computing_power_per_area",
+        "relation": "Conjunction",
+        "object": "dynamic_range",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "computing_power_per_area",
+        "Conjunction",
+        "power_consumption"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "single_linkage",
+        "relation": "Conjunction",
+        "object": "color",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "single_linkage",
+        "Conjunction",
+        "sum_of_pairs"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "convolution_kernel_over_parse_trees",
+        "relation": "Evaluate-for",
+        "object": "corpus_based_method",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "convolution_kernel_over_parse_trees",
+        "Evaluate-for",
+        "ace_2003_corpus"
+      ],
+      "predicted_domains": [
+        "methods_and_systems"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "line_assisted_graph_cut",
+        "relation": "Used-for",
+        "object": "newspaper_texts",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "line_assisted_graph_cut",
+        "Used-for",
+        "light_field_stereo_matching"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "operators",
+        "relation": "Hyponym-of",
+        "object": "random_sampling",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "operators",
+        "Hyponym-of",
+        "nl_requirements"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "nl_requirements",
+        "relation": "Used-for",
+        "object": "nagao",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "single_owner",
+      "source_triple": [
+        "nl_requirements",
+        "Used-for",
+        "data_retrieval"
+      ],
+      "predicted_domains": [
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "single_owner",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "operators",
+        "relation": "Conjunction",
+        "object": "evaluation met-rics",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "operators",
+        "Conjunction",
+        "complex_contextual_reference"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "disambiguated_morphological_analysis",
+        "relation": "Part-of",
+        "object": "translation_performance",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "disambiguated_morphological_analysis",
+        "Part-of",
+        "intelligent_computer_assisted_morphological_analysis"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "regularized_empirical_risk_minimization",
+        "relation": "Conjunction",
+        "object": "geodesic_distance",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "regularized_empirical_risk_minimization",
+        "Conjunction",
+        "theoretical_generalization_result"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "mixed_signal_paradigm",
+        "relation": "Used-for",
+        "object": "general trajectories",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "mixed_signal_paradigm",
+        "Used-for",
+        "high_resolution_parallel_inner_product_computation"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "noun_classifier_associations",
+        "relation": "Used-for",
+        "object": "email_communication",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "noun_classifier_associations",
+        "Used-for",
+        "classifier_selection"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "motor_control_representation",
+        "relation": "Used-for",
+        "object": "rule-based learning algorithm",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "motor_control_representation",
+        "Used-for",
+        "cursive_handwriting_recognition"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "complex_contextual_reference",
+        "relation": "Conjunction",
+        "object": "regularizer",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "complex_contextual_reference",
+        "Conjunction",
+        "reference_to_the_structure_of_the_information_source"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "conversational_context",
+        "relation": "Conjunction",
+        "object": "human translations",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "conversational_context",
+        "Conjunction",
+        "gaze"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "vowel_harmony",
+        "relation": "Hyponym-of",
+        "object": "planning systems",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "vowel_harmony",
+        "Hyponym-of",
+        "phonetic_rules"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "english_hungarian",
+        "relation": "Hyponym-of",
+        "object": "multi_layer_perceptrons",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "english_hungarian",
+        "Hyponym-of",
+        "language_pairs"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "suffix_analysis",
+        "relation": "Feature-of",
+        "object": "english_and_czech_newspaper_texts",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "suffix_analysis",
+        "Feature-of",
+        "unlexicalized_parser"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "efficiency",
+        "relation": "Feature-of",
+        "object": "parameter_training_algorithm",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "efficiency",
+        "Feature-of",
+        "semantic_caseframe_instantiation"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "english_bulgarian",
+        "relation": "Conjunction",
+        "object": "robust_principal_component_analysis",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "english_bulgarian",
+        "Conjunction",
+        "english_estonian"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "savarese_et_al",
+        "relation": "Conjunction",
+        "object": "global optimality",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "savarese_et_al",
+        "Conjunction",
+        "pascal_voc"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "mixtures_of_feature_distributions",
+        "relation": "Conjunction",
+        "object": "activation_valence_space",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "mixtures_of_feature_distributions",
+        "Conjunction",
+        "probabilistic_shape_knowledge"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "semi_supervised_methods",
+        "relation": "Used-for",
+        "object": "row_and_column_entities",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "semi_supervised_methods",
+        "Used-for",
+        "annotated_training_corpus"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "robustness_requirement",
+        "relation": "Feature-of",
+        "object": "pattern_matching_language",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "robustness_requirement",
+        "Feature-of",
+        "image_understanding"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "feature_weighting_and_selection_function",
+        "relation": "Used-for",
+        "object": "blog_level",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "feature_weighting_and_selection_function",
+        "Used-for",
+        "word_similarity_performance"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "local_optimization",
+        "relation": "Used-for",
+        "object": "jointly diagonalizable",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "local_optimization",
+        "Used-for",
+        "visual_object_tracking"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "random_projection_based_methods",
+        "relation": "Used-for",
+        "object": "chinese_to_english_translation",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "random_projection_based_methods",
+        "Used-for",
+        "nearest_neighbor_search"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "deep_metrics",
+        "relation": "Used-for",
+        "object": "chat",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "deep_metrics",
+        "Used-for",
+        "person_re_identification"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "virtual_camera",
+        "relation": "Used-for",
+        "object": "kullback_leibler_distance",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "virtual_camera",
+        "Used-for",
+        "novel_view_generation"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "projective unifocal",
+        "relation": "Conjunction",
+        "object": "Branch and bound strategies",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "projective unifocal",
+        "Conjunction",
+        "bifo-cal"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "planning_algorithm",
+        "relation": "Used-for",
+        "object": "feature_extraction",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "planning_algorithm",
+        "Used-for",
+        "logical_expression"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "image matting",
+        "relation": "Conjunction",
+        "object": "translation_accuracy",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "image matting",
+        "Conjunction",
+        "boundary detection"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "quality improvement",
+        "relation": "Part-of",
+        "object": "HPSG",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "quality improvement",
+        "Part-of",
+        "stereo vision"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "sentence_by_sentence_error_correction_method",
+        "relation": "Hyponym-of",
+        "object": "recognition_scores",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "sentence_by_sentence_error_correction_method",
+        "Hyponym-of",
+        "language_model_adaptation"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "HPSG",
+        "relation": "Conjunction",
+        "object": "l0_unl_dictionary",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "HPSG",
+        "Conjunction",
+        "lexical_functional_grammars"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "resources_and_evaluation"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "embodied_conversational_agents",
+        "relation": "Used-for",
+        "object": "concept",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "embodied_conversational_agents",
+        "Used-for",
+        "dialogue_state"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "events",
+        "relation": "Part-of",
+        "object": "SemCor",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "events",
+        "Part-of",
+        "event_terms"
+      ],
+      "predicted_domains": [
+        "resources_and_evaluation",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "scanning_method",
+        "relation": "Used-for",
+        "object": "language_theories",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "scanning_method",
+        "Used-for",
+        "camera_projector_correspondence"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    },
+    {
+      "label": "negative",
+      "triple": {
+        "subject": "piecewise stationary",
+        "relation": "Feature-of",
+        "object": "joint_source_channel_transliteration_model",
+        "confidence": 0.35
+      },
+      "expected_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "expected_assignment_type": "cross_domain",
+      "source_triple": [
+        "piecewise stationary",
+        "Feature-of",
+        "independent signals"
+      ],
+      "predicted_domains": [
+        "methods_and_systems",
+        "tasks_and_concepts"
+      ],
+      "predicted_assignment_type": "cross_domain",
+      "decision": null,
+      "rationale": ""
+    }
+  ]
+}

@@ -1,0 +1,1608 @@
+{
+  "domains": [
+    {
+      "domain_id": "cross_domain_biographical_and_contextual_snapshots",
+      "label": "Cross-domain biographical and contextual snapshots of arts, entertainment, sports venues, and space missions",
+      "description": "Integrative domain that links brief biographies of creative professionals, production contexts for a film and an album, municipal and venue facts for Nuevo Laredo, and naming/operations context for the Philae lander.",
+      "entity_ids": [
+        "american_regional_sports_network",
+        "anne_of_austria",
+        "baseball_park",
+        "bombardier_inc",
+        "chicago_illinois",
+        "ciudad_deportiva_nuevo_laredo",
+        "cologne",
+        "dlr_lander_control_center",
+        "dorking_surrey",
+        "el_campanario_y_oradel",
+        "estadio_nuevo_laredo",
+        "executive",
+        "film_editor",
+        "film_producer",
+        "fourth_quarter_of",
+        "fourth_studio_album",
+        "from_1988_to",
+        "gaston_duke_of_orleans",
+        "german_astronaut_team",
+        "germany",
+        "jay_levey",
+        "liga_nacional_de_baloncesto_profesional",
+        "london",
+        "louis_xiv_of_france",
+        "matamoros",
+        "mexican_baseball_league",
+        "mike_medavoy",
+        "miquette_giraudy",
+        "motivation_radio",
+        "nice_france",
+        "nuevo_laredo",
+        "nuevo_laredo_multidisciplinary_gymnasium",
+        "nuevo_laredo_municipality",
+        "philae_obelisk",
+        "philae_spacecraft",
+        "phoenix_pictures",
+        "production_pause",
+        "reynosa",
+        "rio_grande",
+        "rosetta_stone",
+        "second_studio_album",
+        "steve_hillage",
+        "system",
+        "tamaulipas",
+        "tecolotes_de_nuevo_laredo",
+        "the_green_album",
+        "the_red_album",
+        "toros_de_nuevo_laredo",
+        "tulsa_oklahoma",
+        "uhf_film",
+        "ulrich_walter",
+        "united_artists",
+        "university_of_california_berkeley",
+        "wichita_kansas",
+        "yankovic",
+        "yankovics_second_studio_album"
+      ],
+      "relation_schema": {
+        "PERFORMS_WITH_OR_MEMBER_OF": "",
+        "FORMS_CORE_OF_BAND_WITH": "",
+        "PARTNERED_WITH_IN_CAREER": "",
+        "CREATED_MUSICAL_WORK": "",
+        "WROTE_FILM": "",
+        "FILM_FINANCED_BY": "",
+        "PRINCIPAL_FILMING_TOOK_PLACE_AT": "",
+        "HELD_POSITION_AT_OR_FOUNDED": "",
+        "RECORDED_AT_LOCATION": "",
+        "ALBUM_TITLE_CHANGE_FROM_TO": "",
+        "HAS_MUNICIPAL_SEAT": "",
+        "CONTAINS_LOCALITY": "",
+        "POPULATION_SHARE_OF_MUNICIPALITY": "",
+        "GEOGRAPHIC_POSITION_DESCRIPTION": "",
+        "VENUE_HOSTS_TEAM": ""
+      },
+      "topics": [
+        {
+          "topic_id": "creative_bios_and_affiliations_overview",
+          "label": "Creative bios and affiliations overview",
+          "description": "Cross-cutting view of creative people, their aliases, groups, and collaborations.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "biography",
+            "band_membership",
+            "partnerships",
+            "aliases"
+          ]
+        },
+        {
+          "topic_id": "audiovisual_projects_overview",
+          "label": "Audiovisual projects overview",
+          "description": "Unified snapshot of album and film creation, financing, writing, recording, and filming contexts.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "album",
+            "film",
+            "production",
+            "financing",
+            "recording",
+            "filming"
+          ]
+        },
+        {
+          "topic_id": "municipal_and_venue_facts_overview",
+          "label": "Municipal and venue facts overview",
+          "description": "Summary of municipal structure, population distribution, venues, and tenant teams.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "municipality",
+            "population",
+            "venues",
+            "tenants"
+          ]
+        },
+        {
+          "topic_id": "spacecraft_naming_and_ops_overview",
+          "label": "Spacecraft naming and operations overview",
+          "description": "High-level context on the Philae lander\u2019s naming referents and operations center.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Philae",
+            "naming",
+            "operations",
+            "DLR"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Cross-domain biographical and contextual snapshots of arts, entertainment, sports venues, and space missions Expert",
+        "governance_scope": "Integrative domain that links brief biographies of creative professionals, production contexts for a film and an album, municipal and venue facts for Nuevo Laredo, and naming/operations context for the Philae lander.",
+        "seed_entity_types": [
+          "CREATIVE_PERSON",
+          "FILM_EXECUTIVE_PRODUCER",
+          "MUSICAL_WORK",
+          "FILM_WORK",
+          "PRODUCTION_COMPANY",
+          "MUSIC_GROUP",
+          "GEOPOLITICAL_ENTITY",
+          "SPORTS_VENUE",
+          "SPORTS_TEAM",
+          "SPORTS_LEAGUE",
+          "SPACECRAFT_LANDER",
+          "NAMING_REFERENT_ARTIFACT",
+          "OPERATIONS_CENTER"
+        ],
+        "seed_relation_types": [
+          "PERFORMS_WITH_OR_MEMBER_OF",
+          "FORMS_CORE_OF_BAND_WITH",
+          "PARTNERED_WITH_IN_CAREER",
+          "CREATED_MUSICAL_WORK",
+          "WROTE_FILM",
+          "FILM_FINANCED_BY",
+          "PRINCIPAL_FILMING_TOOK_PLACE_AT",
+          "HELD_POSITION_AT_OR_FOUNDED",
+          "RECORDED_AT_LOCATION",
+          "ALBUM_TITLE_CHANGE_FROM_TO",
+          "HAS_MUNICIPAL_SEAT",
+          "CONTAINS_LOCALITY",
+          "POPULATION_SHARE_OF_MUNICIPALITY",
+          "GEOGRAPHIC_POSITION_DESCRIPTION",
+          "VENUE_HOSTS_TEAM"
+        ],
+        "bootstrap_source": "schema",
+        "memory_card": {
+          "domain_id": "cross_domain_biographical_and_contextual_snapshots",
+          "label": "Cross-domain biographical and contextual snapshots of arts, entertainment, sports venues, and space missions",
+          "scope": "Integrative domain that links brief biographies of creative professionals, production contexts for a film and an album, municipal and venue facts for Nuevo Laredo, and naming/operations context for the Philae lander.",
+          "entity_count": 56,
+          "triple_count": 95,
+          "key_entities": [
+            "German astronaut team",
+            "Tecolotes de Nuevo Laredo",
+            "Phoenix Pictures",
+            "Miquette Giraudy",
+            "Yankovic's second studio album",
+            "London",
+            "second studio album",
+            "University of California, Berkeley",
+            "United Artists",
+            "Dorking, Surrey",
+            "fourth studio album",
+            "Matamoros"
+          ],
+          "aliases": {
+            "university_of_california_berkeley": [
+              "University of California at Berkeley, California"
+            ]
+          },
+          "core_facts": [
+            "(miquette_giraudy) -[BORN_ON_DATE_AT_PLACE]-> (9_february)",
+            "(miquette_giraudy) -[BORN_ON_DATE_AT_PLACE]-> (nice_france)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (keyboard_player)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (vocalist)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (actress)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (film_editor)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (writer)",
+            "(miquette_giraudy) -[BEST_KNOWN_FOR_WORK_WITH]-> (gong)",
+            "(miquette_giraudy) -[BEST_KNOWN_FOR_WORK_WITH]-> (steve_hillage)",
+            "(miquette_giraudy) -[PARTNERS_IN_CAREER_AND_LIFE]-> (steve_hillage)",
+            "(miquette_giraudy) -[FORMS_CORE_OF_BAND_WITH]-> (system)",
+            "(system) -[BAND_GENRE_IS]-> (ambient_band)"
+          ],
+          "cross_domain_facts": [
+            "(miquette_giraudy) -[BORN_ON_DATE_AT_PLACE]-> (9_february)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (keyboard_player)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (vocalist)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (actress)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (writer)",
+            "(miquette_giraudy) -[BEST_KNOWN_FOR_WORK_WITH]-> (gong)",
+            "(system) -[BAND_GENRE_IS]-> (ambient_band)"
+          ],
+          "evidence_sources": [
+            "musique_combined_b000"
+          ],
+          "evidence_snippets": [
+            "It is home to the Tecolotes de Nuevo Laredo Mexican Baseball League team and the Toros de Nuevo Laredo Mexican professional basketball team from the Liga Nacional de Baloncesto Profesional. The Ciudad Deportiva's Esta...",
+            "=== Source: UHF (film) === Yankovic and Levey wrote the film after Yankovic's second studio album, looking to apply the musician's parody and comedy to film, and chose the approach of George being a straight man with...",
+            "=== Source: Miquette Giraudy === Miquette Giraudy (born 9 February 1953, Nice, France) is a keyboard player and vocalist, best known for her work in Gong and with her partner Steve Hillage. She and Hillage currently f...",
+            "Miquette Giraudy (born 9 February 1953, Nice, France)",
+            "is a keyboard player and vocalist ... she has also worked as an actress, film editor and writer.",
+            "is a keyboard player and vocalist",
+            "she has also worked as an actress, film editor and writer.",
+            "best known for her work in Gong and with her partner Steve Hillage.",
+            "with her partner Steve Hillage.",
+            "She and Hillage currently form the core of the ambient band System 7.",
+            "the core of the ambient band System 7."
+          ],
+          "known_gaps": []
+        }
+      }
+    },
+    {
+      "domain_id": "creative_person_profiles",
+      "label": "Creative person profiles",
+      "description": "Profiles of creative individuals, their roles, aliases, and affiliations with music groups and collaborators.",
+      "entity_ids": [
+        "ambient_band",
+        "anne_of_austria",
+        "fourth_quarter_of",
+        "gaston_duke_of_orleans",
+        "gong",
+        "louis_xiv_of_france",
+        "miquette_giraudy",
+        "motivation_radio",
+        "stage_names",
+        "steve_hillage",
+        "straight_man",
+        "system",
+        "ulrich_walter",
+        "yankovic"
+      ],
+      "relation_schema": {
+        "PERFORMS_WITH_OR_MEMBER_OF": "",
+        "FORMS_CORE_OF_BAND_WITH": "",
+        "PARTNERED_WITH_IN_CAREER": "",
+        "CREATED_MUSICAL_WORK": ""
+      },
+      "topics": [
+        {
+          "topic_id": "miquette_giraudy_profile",
+          "label": "Miquette Giraudy profile",
+          "description": "Biographical snapshot emphasizing affiliations, roles, and stage names.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Miquette Giraudy",
+            "Gong",
+            "System 7",
+            "aliases"
+          ]
+        },
+        {
+          "topic_id": "steve_hillage_profile",
+          "label": "Steve Hillage profile",
+          "description": "Biographical snapshot focusing on works, collaborations, and band roles.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Steve Hillage",
+            "Gong",
+            "System 7",
+            "albums"
+          ]
+        },
+        {
+          "topic_id": "system_7_core_membership",
+          "label": "System 7 core membership",
+          "description": "Core configuration highlighting Giraudy and Hillage as principal members.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "System 7",
+            "ambient",
+            "core_members"
+          ]
+        },
+        {
+          "topic_id": "gong_affiliations_and_collabs",
+          "label": "Gong affiliations and collaborations",
+          "description": "Affiliations of creative persons with Gong and related collaborations.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Gong",
+            "membership",
+            "collaboration"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Creative person profiles Expert",
+        "governance_scope": "Profiles of creative individuals, their roles, aliases, and affiliations with music groups and collaborators.",
+        "seed_entity_types": [
+          "CREATIVE_PERSON",
+          "MUSIC_GROUP",
+          "ROLE_ALIAS",
+          "AMBIENT_BAND_CORE",
+          "MUSICAL_WORK"
+        ],
+        "seed_relation_types": [
+          "PERFORMS_WITH_OR_MEMBER_OF",
+          "FORMS_CORE_OF_BAND_WITH",
+          "PARTNERED_WITH_IN_CAREER",
+          "CREATED_MUSICAL_WORK"
+        ],
+        "bootstrap_source": "schema",
+        "memory_card": {
+          "domain_id": "creative_person_profiles",
+          "label": "Creative person profiles",
+          "scope": "Profiles of creative individuals, their roles, aliases, and affiliations with music groups and collaborators.",
+          "entity_count": 14,
+          "triple_count": 35,
+          "key_entities": [
+            "fourth quarter of 2012",
+            "Yankovic",
+            "Ulrich Walter",
+            "Louis XIV of France",
+            "Motivation Radio",
+            "Steve Hillage",
+            "straight man",
+            "ambient band",
+            "Gaston, Duke of Orl\u00e9ans",
+            "System 7",
+            "Anne of Austria",
+            "Gong"
+          ],
+          "aliases": {
+            "louis_xiv_of_france": [
+              "Sun King",
+              "Louis XIV"
+            ],
+            "gaston_duke_of_orleans": [
+              "Gaston"
+            ]
+          },
+          "core_facts": [
+            "(miquette_giraudy) -[BORN_ON_DATE_AT_PLACE]-> (9_february)",
+            "(miquette_giraudy) -[BORN_ON_DATE_AT_PLACE]-> (nice_france)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (keyboard_player)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (vocalist)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (actress)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (film_editor)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (writer)",
+            "(miquette_giraudy) -[BEST_KNOWN_FOR_WORK_WITH]-> (gong)",
+            "(miquette_giraudy) -[BEST_KNOWN_FOR_WORK_WITH]-> (steve_hillage)",
+            "(miquette_giraudy) -[PARTNERS_IN_CAREER_AND_LIFE]-> (steve_hillage)",
+            "(miquette_giraudy) -[FORMS_CORE_OF_BAND_WITH]-> (system)",
+            "(system) -[BAND_GENRE_IS]-> (ambient_band)"
+          ],
+          "cross_domain_facts": [
+            "(miquette_giraudy) -[BORN_ON_DATE_AT_PLACE]-> (9_february)",
+            "(miquette_giraudy) -[BORN_ON_DATE_AT_PLACE]-> (nice_france)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (keyboard_player)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (vocalist)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (actress)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (film_editor)",
+            "(miquette_giraudy) -[HAS_PROFESSIONAL_ROLES]-> (writer)"
+          ],
+          "evidence_sources": [
+            "musique_combined_b000"
+          ],
+          "evidence_snippets": [
+            "=== Source: Learjet 60 === The Learjet 60 is a mid-size cabin, medium-range business jet aircraft manufactured by Bombardier Aerospace in Wichita, Kansas. Powered by two Pratt & Whitney Canada PW305A engines, it has a...",
+            "=== Source: Miquette Giraudy === Miquette Giraudy (born 9 February 1953, Nice, France) is a keyboard player and vocalist, best known for her work in Gong and with her partner Steve Hillage. She and Hillage currently f...",
+            "It is home to the Tecolotes de Nuevo Laredo Mexican Baseball League team and the Toros de Nuevo Laredo Mexican professional basketball team from the Liga Nacional de Baloncesto Profesional. The Ciudad Deportiva's Esta...",
+            "=== Source: Fletcher Webster === Daniel Fletcher Webster, commonly known as Fletcher Webster (July 25, 1813 in Portsmouth, New Hampshire \u2013 August 30, 1862) was the son of renowned politician Daniel Webster and Grace F...",
+            "His older brother was the famous \"Sun King\", Louis XIV. Styled Duke of Anjou from birth, Philippe became Duke of Orl\u00e9ans upon the death of his uncle Gaston in 1660. In 1661, Philippe also received the dukedoms of Valo...",
+            "=== Source: UHF (film) === Yankovic and Levey wrote the film after Yankovic's second studio album, looking to apply the musician's parody and comedy to film, and chose the approach of George being a straight man with...",
+            "Miquette Giraudy (born 9 February 1953, Nice, France)",
+            "is a keyboard player and vocalist ... she has also worked as an actress, film editor and writer.",
+            "is a keyboard player and vocalist",
+            "she has also worked as an actress, film editor and writer.",
+            "best known for her work in Gong and with her partner Steve Hillage.",
+            "with her partner Steve Hillage."
+          ],
+          "known_gaps": []
+        }
+      }
+    },
+    {
+      "domain_id": "audiovisual_work_production_contexts",
+      "label": "Audiovisual work production contexts",
+      "description": "Creation, writing, financing, recording, filming, and executive leadership related to albums and films.",
+      "entity_ids": [
+        "bombardier_inc",
+        "chairman_and_ceo",
+        "executive",
+        "from_1988_to",
+        "green",
+        "jay_levey",
+        "late",
+        "mike_medavoy",
+        "motivation_radio",
+        "orion_pictures",
+        "phoenix_pictures",
+        "spring",
+        "the_green_album",
+        "tristar_pictures",
+        "uhf",
+        "uhf_film",
+        "united_artists"
+      ],
+      "relation_schema": {
+        "WROTE_FILM": "",
+        "FILM_FINANCED_BY": "",
+        "PRINCIPAL_FILMING_TOOK_PLACE_AT": "",
+        "HELD_POSITION_AT_OR_FOUNDED": "",
+        "RECORDED_AT_LOCATION": "",
+        "ALBUM_TITLE_CHANGE_FROM_TO": "",
+        "CREATED_MUSICAL_WORK": ""
+      },
+      "topics": [
+        {
+          "topic_id": "uhf_writing_financing_and_filming",
+          "label": "UHF writing, financing, and filming",
+          "description": "Context for authorship, studio backing, budgeting, and filming locations for UHF.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "UHF",
+            "writing",
+            "Orion Pictures",
+            "Tulsa",
+            "Dallas"
+          ]
+        },
+        {
+          "topic_id": "mike_medavoy_executive_roles",
+          "label": "Mike Medavoy executive roles",
+          "description": "Leadership and founding roles across Orion Pictures, TriStar Pictures, and Phoenix Pictures.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Morris Mike Medavoy",
+            "Orion",
+            "TriStar",
+            "Phoenix Pictures",
+            "chairman",
+            "co-founder"
+          ]
+        },
+        {
+          "topic_id": "steve_hillage_green_album_context",
+          "label": "Steve Hillage 'Green' album context",
+          "description": "Writing period, recording locales, and production notes for the album Green.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Green",
+            "1977",
+            "Dorking",
+            "London",
+            "recording"
+          ]
+        },
+        {
+          "topic_id": "motivation_radio_title_linkage",
+          "label": "Motivation Radio title linkage",
+          "description": "Title relationship between 'Green' and the originally intended 'The Red Album' for Motivation Radio.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Motivation Radio",
+            "title change",
+            "The Red Album",
+            "The Green Album"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Audiovisual work production contexts Expert",
+        "governance_scope": "Creation, writing, financing, recording, filming, and executive leadership related to albums and films.",
+        "seed_entity_types": [
+          "MUSICAL_WORK",
+          "FILM_WORK",
+          "PRODUCTION_COMPANY",
+          "FILM_EXECUTIVE_PRODUCER"
+        ],
+        "seed_relation_types": [
+          "WROTE_FILM",
+          "FILM_FINANCED_BY",
+          "PRINCIPAL_FILMING_TOOK_PLACE_AT",
+          "HELD_POSITION_AT_OR_FOUNDED",
+          "RECORDED_AT_LOCATION",
+          "ALBUM_TITLE_CHANGE_FROM_TO",
+          "CREATED_MUSICAL_WORK"
+        ],
+        "bootstrap_source": "schema",
+        "memory_card": {
+          "domain_id": "audiovisual_work_production_contexts",
+          "label": "Audiovisual work production contexts",
+          "scope": "Creation, writing, financing, recording, filming, and executive leadership related to albums and films.",
+          "entity_count": 17,
+          "triple_count": 40,
+          "key_entities": [
+            "Green",
+            "Morris Mike Medavoy",
+            "Orion Pictures",
+            "Phoenix Pictures",
+            "Motivation Radio",
+            "TriStar Pictures",
+            "executive",
+            "UHF (film)",
+            "Bombardier Inc.",
+            "late 1977",
+            "chairman and CEO",
+            "UHF"
+          ],
+          "aliases": {},
+          "core_facts": [
+            "(green) -[ALBUM_IS_NTH_STUDIO_ALBUM_OF_ARTIST]-> (steve_hillage)",
+            "(green) -[ALBUM_WRITTEN_AT_TIME_OF_OTHER_ALBUM]-> (motivation_radio)",
+            "(green) -[ALBUM_ORIGINALLY_INTENDED_TITLE]-> (the_green_album)",
+            "(green) -[ALBUM_PLANNED_AS_COMPANION_TO_ALBUM]-> (the_red_album)",
+            "(green) -[PLAN_WAS_DROPPED_AFTER_EVENT]-> (us_tour)",
+            "(green) -[ALBUM_RECORDED_AT_LOCATIONS]-> (dorking_surrey)",
+            "(green) -[ALBUM_RECORDED_AT_LOCATIONS]-> (london)",
+            "(mike_medavoy) -[HELD_EXECUTIVE_POSITIONS_AT_OR_FOUNDED]-> (orion_pictures)",
+            "(mike_medavoy) -[HELD_EXECUTIVE_POSITIONS_AT_OR_FOUNDED]-> (tristar_pictures)",
+            "(mike_medavoy) -[HELD_EXECUTIVE_POSITIONS_AT_OR_FOUNDED]-> (united_artists)",
+            "(mike_medavoy) -[HELD_EXECUTIVE_POSITIONS_AT_OR_FOUNDED]-> (phoenix_pictures)",
+            "(yankovic) -[WROTE_FILM]-> (uhf_film)"
+          ],
+          "cross_domain_facts": [
+            "(green) -[ALBUM_IS_NTH_STUDIO_ALBUM_OF_ARTIST]-> (steve_hillage)",
+            "(green) -[ALBUM_PLANNED_AS_COMPANION_TO_ALBUM]-> (the_red_album)",
+            "(green) -[PLAN_WAS_DROPPED_AFTER_EVENT]-> (us_tour)",
+            "(green) -[ALBUM_RECORDED_AT_LOCATIONS]-> (dorking_surrey)",
+            "(green) -[ALBUM_RECORDED_AT_LOCATIONS]-> (london)",
+            "(yankovic) -[WROTE_FILM]-> (uhf_film)"
+          ],
+          "evidence_sources": [
+            "musique_combined_b000"
+          ],
+          "evidence_snippets": [
+            "=== Source: Miquette Giraudy === Miquette Giraudy (born 9 February 1953, Nice, France) is a keyboard player and vocalist, best known for her work in Gong and with her partner Steve Hillage. She and Hillage currently f...",
+            "=== Source: UHF (film) === Yankovic and Levey wrote the film after Yankovic's second studio album, looking to apply the musician's parody and comedy to film, and chose the approach of George being a straight man with...",
+            "It is home to the Tecolotes de Nuevo Laredo Mexican Baseball League team and the Toros de Nuevo Laredo Mexican professional basketball team from the Liga Nacional de Baloncesto Profesional. The Ciudad Deportiva's Esta...",
+            "Green is the fourth studio album by British progressive rock musician Steve Hillage.",
+            "Written in spring 1977 at the same time as his previous album, the funk-inflected \"Motivation Radio\" (1977)",
+            "\"Green\" was originally going to be released as \"The Green Album\"",
+            "as a companion to \"The Red Album\"",
+            "However, this plan was dropped and after a US tour in late 1977, \"Green\" was recorded alone",
+            "\"Green\" was recorded alone, primarily in Dorking, Surrey, and in London.",
+            "co-founder of Orion Pictures (1978)",
+            "former chairman of TriStar Pictures",
+            "former head of production for United Artists (1974\u20131978)"
+          ],
+          "known_gaps": []
+        }
+      }
+    },
+    {
+      "domain_id": "municipal_geography_and_sports_infrastructure",
+      "label": "Municipal geography and sports infrastructure",
+      "description": "Geopolitical structure and sports venue ecosystem for Nuevo Laredo, including teams and leagues.",
+      "entity_ids": [
+        "alvarez",
+        "american_regional_sports_network",
+        "baseball_park",
+        "chicago_illinois",
+        "ciudad_deportiva_nuevo_laredo",
+        "cologne",
+        "dorking_surrey",
+        "el_campanario_y_oradel",
+        "estadio_nuevo_laredo",
+        "fourth_quarter_of",
+        "german_astronaut_team",
+        "germany",
+        "liga_nacional_de_baloncesto_profesional",
+        "london",
+        "matamoros",
+        "mexican_baseball_league",
+        "nice_france",
+        "nuevo_laredo",
+        "nuevo_laredo_multidisciplinary_gymnasium",
+        "reynosa",
+        "rio_grande",
+        "tamaulipas",
+        "tecolotes_de_nuevo_laredo",
+        "toros_de_nuevo_laredo",
+        "tulsa_oklahoma",
+        "wichita_kansas"
+      ],
+      "relation_schema": {
+        "HAS_MUNICIPAL_SEAT": "",
+        "CONTAINS_LOCALITY": "",
+        "POPULATION_SHARE_OF_MUNICIPALITY": "",
+        "GEOGRAPHIC_POSITION_DESCRIPTION": "",
+        "VENUE_HOSTS_TEAM": ""
+      },
+      "topics": [
+        {
+          "topic_id": "nuevo_laredo_municipality_profile",
+          "label": "Nuevo Laredo municipality profile",
+          "description": "Seat, position within Tamaulipas, and population concentration.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Nuevo Laredo",
+            "municipal seat",
+            "northernmost",
+            "population share"
+          ]
+        },
+        {
+          "topic_id": "urban_localities_and_suburbs",
+          "label": "Urban localities and suburbs",
+          "description": "Contained localities such as El Campanario y Oradel and \u00c1lvarez.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "localities",
+            "suburbs",
+            "El Campanario y Oradel",
+            "\u00c1lvarez"
+          ]
+        },
+        {
+          "topic_id": "sports_venues_and_tenants",
+          "label": "Sports venues and tenants",
+          "description": "Venue capacities and tenant teams in Nuevo Laredo.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Estadio Nuevo Laredo",
+            "Multidisciplinary Gymnasium",
+            "capacity",
+            "tenants"
+          ]
+        },
+        {
+          "topic_id": "league_affiliations_of_teams",
+          "label": "League affiliations of teams",
+          "description": "Team-league mappings for Tecolotes and Toros.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Tecolotes de Nuevo Laredo",
+            "Toros de Nuevo Laredo",
+            "Mexican Baseball League",
+            "Liga Nacional de Baloncesto Profesional"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Municipal geography and sports infrastructure Expert",
+        "governance_scope": "Geopolitical structure and sports venue ecosystem for Nuevo Laredo, including teams and leagues.",
+        "seed_entity_types": [
+          "GEOPOLITICAL_ENTITY",
+          "SPORTS_VENUE",
+          "SPORTS_TEAM",
+          "SPORTS_LEAGUE"
+        ],
+        "seed_relation_types": [
+          "HAS_MUNICIPAL_SEAT",
+          "CONTAINS_LOCALITY",
+          "POPULATION_SHARE_OF_MUNICIPALITY",
+          "GEOGRAPHIC_POSITION_DESCRIPTION",
+          "VENUE_HOSTS_TEAM"
+        ],
+        "bootstrap_source": "schema",
+        "memory_card": {
+          "domain_id": "municipal_geography_and_sports_infrastructure",
+          "label": "Municipal geography and sports infrastructure",
+          "scope": "Geopolitical structure and sports venue ecosystem for Nuevo Laredo, including teams and leagues.",
+          "entity_count": 26,
+          "triple_count": 36,
+          "key_entities": [
+            "German astronaut team",
+            "Tecolotes de Nuevo Laredo",
+            "London",
+            "Dorking, Surrey",
+            "Matamoros",
+            "American regional sports network",
+            "fourth quarter of 2012",
+            "Nuevo Laredo",
+            "Nice, France",
+            "Ciudad Deportiva",
+            "Mexican Baseball League",
+            "Toros de Nuevo Laredo"
+          ],
+          "aliases": {
+            "american_regional_sports_network": [
+              "regional sports network"
+            ],
+            "nuevo_laredo": [
+              "Nuevo Laredo, Mexico"
+            ]
+          },
+          "core_facts": [
+            "(miquette_giraudy) -[BORN_ON_DATE_AT_PLACE]-> (nice_france)",
+            "(green) -[ALBUM_RECORDED_AT_LOCATIONS]-> (dorking_surrey)",
+            "(green) -[ALBUM_RECORDED_AT_LOCATIONS]-> (london)",
+            "(uhf_film) -[PRINCIPAL_FILMING_TOOK_PLACE_AT]-> (tulsa_oklahoma)",
+            "(uhf_film) -[EXTRAS_RECRUITED_FROM_REGIONS]-> (tulsa_oklahoma)",
+            "(nuevo_laredo_municipality) -[MUNICIPALITY_LOCATED_IN_STATE]-> (tamaulipas)",
+            "(nuevo_laredo_municipality) -[HAS_MUNICIPAL_SEAT]-> (nuevo_laredo)",
+            "(nuevo_laredo_municipality) -[MUNICIPALITY_CONTAINS_LOCALITIES]-> (nuevo_laredo)",
+            "(nuevo_laredo_municipality) -[MUNICIPALITY_CONTAINS_LOCALITIES]-> (el_campanario_y_oradel)",
+            "(nuevo_laredo_municipality) -[MUNICIPALITY_CONTAINS_LOCALITIES]-> (alvarez)",
+            "(el_campanario_y_oradel) -[LOCALITY_IS_SUBURB_OF_CITY]-> (nuevo_laredo)",
+            "(alvarez) -[LOCALITY_IS_SUBURB_OF_CITY]-> (nuevo_laredo)"
+          ],
+          "cross_domain_facts": [
+            "(miquette_giraudy) -[BORN_ON_DATE_AT_PLACE]-> (nice_france)",
+            "(green) -[ALBUM_RECORDED_AT_LOCATIONS]-> (dorking_surrey)",
+            "(green) -[ALBUM_RECORDED_AT_LOCATIONS]-> (london)",
+            "(uhf_film) -[PRINCIPAL_FILMING_TOOK_PLACE_AT]-> (tulsa_oklahoma)",
+            "(uhf_film) -[EXTRAS_RECRUITED_FROM_REGIONS]-> (tulsa_oklahoma)",
+            "(nuevo_laredo_municipality) -[MUNICIPALITY_LOCATED_IN_STATE]-> (tamaulipas)",
+            "(nuevo_laredo_municipality) -[HAS_MUNICIPAL_SEAT]-> (nuevo_laredo)",
+            "(nuevo_laredo_municipality) -[MUNICIPALITY_CONTAINS_LOCALITIES]-> (nuevo_laredo)",
+            "(nuevo_laredo_municipality) -[MUNICIPALITY_CONTAINS_LOCALITIES]-> (el_campanario_y_oradel)",
+            "(nuevo_laredo_municipality) -[MUNICIPALITY_CONTAINS_LOCALITIES]-> (alvarez)"
+          ],
+          "evidence_sources": [
+            "musique_combined_b000"
+          ],
+          "evidence_snippets": [
+            "It is home to the Tecolotes de Nuevo Laredo Mexican Baseball League team and the Toros de Nuevo Laredo Mexican professional basketball team from the Liga Nacional de Baloncesto Profesional. The Ciudad Deportiva's Esta...",
+            "=== Source: UHF (film) === Yankovic and Levey wrote the film after Yankovic's second studio album, looking to apply the musician's parody and comedy to film, and chose the approach of George being a straight man with...",
+            "=== Source: Miquette Giraudy === Miquette Giraudy (born 9 February 1953, Nice, France) is a keyboard player and vocalist, best known for her work in Gong and with her partner Steve Hillage. She and Hillage currently f...",
+            "His older brother was the famous \"Sun King\", Louis XIV. Styled Duke of Anjou from birth, Philippe became Duke of Orl\u00e9ans upon the death of his uncle Gaston in 1660. In 1661, Philippe also received the dukedoms of Valo...",
+            "=== Source: Empire Sports Network === Empire Sports Network was an American regional sports network that was owned by the Adelphia Communications Corporation. The network was available on cable providers in much of up...",
+            "=== Source: Learjet 60 === The Learjet 60 is a mid-size cabin, medium-range business jet aircraft manufactured by Bombardier Aerospace in Wichita, Kansas. Powered by two Pratt & Whitney Canada PW305A engines, it has a...",
+            "Miquette Giraudy (born 9 February 1953, Nice, France)",
+            "\"Green\" was recorded alone, primarily in Dorking, Surrey, and in London.",
+            "Principal filming took place around Tulsa, Oklahoma",
+            "with many of the extras for the film from the Tulsa and Dallas, Texas areas",
+            "The Municipality of Nuevo Laredo is located in the Mexican state of Tamaulipas.",
+            "Its municipal seat is Nuevo Laredo."
+          ],
+          "known_gaps": []
+        }
+      }
+    },
+    {
+      "domain_id": "spacecraft_naming_and_operations",
+      "label": "Spacecraft naming and operations",
+      "description": "Naming origins and operational control context for the Philae lander.",
+      "entity_ids": [
+        "dlr_lander_control_center",
+        "philae_obelisk",
+        "philae_spacecraft",
+        "rosetta_stone"
+      ],
+      "relation_schema": {},
+      "topics": [
+        {
+          "topic_id": "philae_lander_naming_referents",
+          "label": "Philae lander naming referents",
+          "description": "Artifacts associated with Philae\u2019s naming such as the Philae obelisk and Rosetta Stone.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Philae",
+            "Philae obelisk",
+            "Rosetta Stone",
+            "naming"
+          ]
+        },
+        {
+          "topic_id": "mission_operations_center_and_location",
+          "label": "Mission operations center and location",
+          "description": "DLR\u2019s Lander Control Center in Cologne, Germany as the operations hub.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "DLR",
+            "Lander Control Center",
+            "Cologne",
+            "operations"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Spacecraft naming and operations Expert",
+        "governance_scope": "Naming origins and operational control context for the Philae lander.",
+        "seed_entity_types": [
+          "SPACECRAFT_LANDER",
+          "NAMING_REFERENT_ARTIFACT",
+          "OPERATIONS_CENTER"
+        ],
+        "seed_relation_types": [],
+        "bootstrap_source": "schema",
+        "memory_card": {
+          "domain_id": "spacecraft_naming_and_operations",
+          "label": "Spacecraft naming and operations",
+          "scope": "Naming origins and operational control context for the Philae lander.",
+          "entity_count": 4,
+          "triple_count": 5,
+          "key_entities": [
+            "Philae (spacecraft)",
+            "Philae obelisk",
+            "Rosetta Stone",
+            "DLR's Lander Control Center"
+          ],
+          "aliases": {
+            "philae_spacecraft": [
+              "Philae"
+            ]
+          },
+          "core_facts": [
+            "(philae_spacecraft) -[LANDER_NAMED_AFTER_ARTIFACT]-> (philae_obelisk)",
+            "(philae_obelisk) -[ARTIFACT_USED_TO_DECIPHER_SCRIPT_WITH]-> (rosetta_stone)",
+            "(philae_spacecraft) -[SPACECRAFT_MONITORED_FROM_CONTROL_CENTER]-> (dlr_lander_control_center)",
+            "(dlr_lander_control_center) -[FACILITY_LOCATED_IN_CITY_COUNTRY]-> (cologne,_germany)",
+            "(cologne) -[SPACECRAFT_MONITORED_FROM_CONTROL_CENTER]-> (philae_spacecraft)"
+          ],
+          "cross_domain_facts": [
+            "(dlr_lander_control_center) -[FACILITY_LOCATED_IN_CITY_COUNTRY]-> (cologne,_germany)",
+            "(cologne) -[SPACECRAFT_MONITORED_FROM_CONTROL_CENTER]-> (philae_spacecraft)"
+          ],
+          "evidence_sources": [
+            "musique_combined_b000"
+          ],
+          "evidence_snippets": [
+            "It is home to the Tecolotes de Nuevo Laredo Mexican Baseball League team and the Toros de Nuevo Laredo Mexican professional basketball team from the Liga Nacional de Baloncesto Profesional. The Ciudad Deportiva's Esta...",
+            "The lander is named after the Philae obelisk",
+            "was used along with the Rosetta Stone to decipher Egyptian hieroglyphs.",
+            "\"Philae\" was monitored and operated from DLR's Lander Control Center in Cologne, Germany."
+          ],
+          "known_gaps": []
+        }
+      }
+    },
+    {
+      "domain_id": "biographical_and_institutional_lineages_across_politics_nobility_and_media",
+      "label": "Biographical and Institutional Lineages across Politics, Nobility, and Media",
+      "description": "Umbrella domain governing cross-cutting temporal and geographic context, court styles, and protected locales that contextualize biographies, noble lineages, organizational roles, and media corporate events.",
+      "entity_ids": [
+        "19_may",
+        "21_september",
+        "8_july",
+        "9_june",
+        "albany",
+        "august",
+        "boston",
+        "buffalo",
+        "cabo_delgado_province",
+        "coucy",
+        "court_of_france",
+        "december",
+        "dourdan",
+        "eastern_ohio",
+        "february",
+        "folembray",
+        "france",
+        "july_25",
+        "jupiter_florida",
+        "lago_district",
+        "lake_niassa_reserve",
+        "lake_nyasa",
+        "largest_protected_area_in_the_country",
+        "lichinga",
+        "lukuika_lumesule_game_reserve",
+        "march",
+        "metangula",
+        "monsieur",
+        "mozambique",
+        "nemours",
+        "new_york_city",
+        "niassa_province",
+        "niassa_reserve",
+        "north_western_mozambique",
+        "northern_pennsylvania",
+        "paderborn",
+        "portsmouth_new_hampshire",
+        "romorantin",
+        "rural_areas",
+        "sanga_district",
+        "september",
+        "state_of_north_carolina",
+        "tanzania",
+        "transfrontier_conservation_area",
+        "united_states",
+        "upstate_new_york",
+        "year"
+      ],
+      "relation_schema": {
+        "BORN_IN_LOCATION": "",
+        "BORN_ON_DATE": "",
+        "DIED_ON_DATE": "",
+        "ORG_SERVICE_COVERAGE_AREA": ""
+      },
+      "topics": [
+        {
+          "topic_id": "temporal_context_and_lifespans",
+          "label": "Temporal Context and Lifespans",
+          "description": "Standardizes dates for births, deaths, grants, formations, and cessations.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "lifespan",
+            "chronology",
+            "1660",
+            "March 7, 2005"
+          ]
+        },
+        {
+          "topic_id": "geographies_and_coverage_areas",
+          "label": "Geographies and Coverage Areas",
+          "description": "Normalizes places for birthplaces, territorial designations, and service footprints.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Portsmouth, New Hampshire",
+            "upstate New York",
+            "northern Pennsylvania",
+            "eastern Ohio"
+          ]
+        },
+        {
+          "topic_id": "court_styles_and_appellations",
+          "label": "Court Styles and Appellations",
+          "description": "Controls the vocabulary of royal styles distinct from formal noble titles.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Monsieur",
+            "styled Duke of Anjou"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Biographical and Institutional Lineages across Politics, Nobility, and Media Expert",
+        "governance_scope": "Umbrella domain governing cross-cutting temporal and geographic context, court styles, and protected locales that contextualize biographies, noble lineages, organizational roles, and media corporate events.",
+        "seed_entity_types": [
+          "GEOGRAPHIC_LOCALE",
+          "TEMPORAL_MARKER",
+          "ROYAL_STYLE_OR_COURT_APPELLATION",
+          "NATURE_PROTECTED_AREA"
+        ],
+        "seed_relation_types": [
+          "BORN_IN_LOCATION",
+          "BORN_ON_DATE",
+          "DIED_ON_DATE",
+          "ORG_SERVICE_COVERAGE_AREA"
+        ],
+        "bootstrap_source": "schema",
+        "memory_card": {
+          "domain_id": "biographical_and_institutional_lineages_across_politics_nobility_and_media",
+          "label": "Biographical and Institutional Lineages across Politics, Nobility, and Media",
+          "scope": "Umbrella domain governing cross-cutting temporal and geographic context, court styles, and protected locales that contextualize biographies, noble lineages, organizational roles, and media corporate events.",
+          "entity_count": 47,
+          "triple_count": 45,
+          "key_entities": [
+            "December 8, 1970",
+            "Mozambique",
+            "Portsmouth, New Hampshire",
+            "Dourdan",
+            "Lake Nyasa",
+            "Lake Niassa Reserve",
+            "Lago District",
+            "upstate New York",
+            "September 28, 1797",
+            "8 July 1617",
+            "northern Pennsylvania",
+            "rural areas"
+          ],
+          "aliases": {},
+          "core_facts": [
+            "(daniel_fletcher_webster) -[BORN_ON_DATE]-> (july_25)",
+            "(daniel_fletcher_webster) -[BORN_IN_LOCATION]-> (portsmouth_new_hampshire)",
+            "(caroline_leroy_webster) -[BORN_IN_LOCATION]-> (new_york_city)",
+            "(caroline_leroy_webster) -[PARENT_IS_CONSUL_TO_COUNTRY]-> (united_states)",
+            "(philippe_duke_of_orleans) -[BORN_ON_DATE]-> (21_september)",
+            "(philippe_duke_of_orleans) -[DIED_ON_DATE]-> (9_june)",
+            "(philippe_duke_of_orleans) -[HELD_COURT_STYLE_DUE_TO_FAMILY_POSITION]-> (monsieur)",
+            "(leonora_dori_galigai) -[BORN_ON_DATE]-> (19_may)",
+            "(leonora_dori_galigai) -[DIED_ON_DATE]-> (8_july)",
+            "(dukedom_of_nemours) -[TITLE_ASSOCIATED_WITH_TERRITORIAL_ENTITY]-> (nemours)",
+            "(marquisates_of_coucy_and_folembray) -[TITLE_ASSOCIATED_WITH_TERRITORIAL_ENTITY]-> (coucy)",
+            "(marquisates_of_coucy_and_folembray) -[TITLE_ASSOCIATED_WITH_TERRITORIAL_ENTITY]-> (folembray)"
+          ],
+          "cross_domain_facts": [
+            "(daniel_fletcher_webster) -[BORN_ON_DATE]-> (july_25)",
+            "(daniel_fletcher_webster) -[BORN_IN_LOCATION]-> (portsmouth_new_hampshire)",
+            "(caroline_leroy_webster) -[BORN_IN_LOCATION]-> (new_york_city)",
+            "(caroline_leroy_webster) -[PARENT_IS_CONSUL_TO_COUNTRY]-> (united_states)",
+            "(philippe_duke_of_orleans) -[BORN_ON_DATE]-> (21_september)",
+            "(philippe_duke_of_orleans) -[DIED_ON_DATE]-> (9_june)",
+            "(philippe_duke_of_orleans) -[HELD_COURT_STYLE_DUE_TO_FAMILY_POSITION]-> (monsieur)",
+            "(leonora_dori_galigai) -[BORN_ON_DATE]-> (19_may)",
+            "(leonora_dori_galigai) -[DIED_ON_DATE]-> (8_july)",
+            "(dukedom_of_nemours) -[TITLE_ASSOCIATED_WITH_TERRITORIAL_ENTITY]-> (nemours)",
+            "(marquisates_of_coucy_and_folembray) -[TITLE_ASSOCIATED_WITH_TERRITORIAL_ENTITY]-> (coucy)",
+            "(marquisates_of_coucy_and_folembray) -[TITLE_ASSOCIATED_WITH_TERRITORIAL_ENTITY]-> (folembray)"
+          ],
+          "evidence_sources": [
+            "musique_combined_b001"
+          ],
+          "evidence_snippets": [
+            "His older brother was the famous \"Sun King\", Louis XIV. Styled Duke of Anjou from birth, Philippe became Duke of Orl\u00e9ans upon the death of his uncle Gaston in 1660. In 1661, Philippe also received the dukedoms of Valo...",
+            "=== Source: Empire Sports Network === Empire Sports Network was an American regional sports network that was owned by the Adelphia Communications Corporation. The network was available on cable providers in much of up...",
+            "=== Source: Fletcher Webster === Daniel Fletcher Webster, commonly known as Fletcher Webster (July 25, 1813 in Portsmouth, New Hampshire \u2013 August 30, 1862) was the son of renowned politician Daniel Webster and Grace F...",
+            "(July 25, 1813 in Portsmouth, New Hampshire \u2013 August 30, 1862)",
+            "(July 25, 1813 in Portsmouth, New Hampshire \u2013 ...)",
+            "Caroline LeRoy Webster (September 28, 1797 in New York City \u2013 ...)",
+            "Her father was also the first Holland Consul to the United States.",
+            "Philippe, Duke of Orl\u00e9ans (21 September 1640 \u2013 9 June 1701)",
+            "During the reign of his brother he was known simply as \"Monsieur\", the traditional style at the court of France for the younger brother of the king.",
+            "Leonora Dori Galiga\u00ef (19 May 1568 \u2013 8 July 1617)",
+            "the dukedom of Nemours",
+            "the marquisates of Coucy and Folembray"
+          ],
+          "known_gaps": []
+        }
+      }
+    },
+    {
+      "domain_id": "personal_biographies_and_genealogies",
+      "label": "Personal Biographies and Genealogies",
+      "description": "Profiles individuals, their kinship networks, life events, education, and interpersonal announcements.",
+      "entity_ids": [
+        "19_may",
+        "21_september",
+        "8_july",
+        "9_june",
+        "albany",
+        "anne_of_austria",
+        "august",
+        "bernd_huttemann",
+        "boston",
+        "buffalo",
+        "cabo_delgado_province",
+        "caroline_leroy_webster",
+        "concino_concini",
+        "coucy",
+        "court_of_france",
+        "daniel_fletcher_webster",
+        "daniel_webster",
+        "december",
+        "dourdan",
+        "eastern_ohio",
+        "february",
+        "folembray",
+        "france",
+        "gaston_duke_of_orleans",
+        "grace_fletcher_webster",
+        "hannah_cornell",
+        "harvard_college",
+        "herman_leroy",
+        "john_tyler",
+        "july_25",
+        "jupiter_florida",
+        "kin_relations_in_context",
+        "lago_district",
+        "lake_nyasa",
+        "lichinga",
+        "louis_xiv_of_france",
+        "march",
+        "marie_de_medici",
+        "metangula",
+        "mozambique",
+        "nemours",
+        "new_york_city",
+        "niassa_province",
+        "north_western_mozambique",
+        "northern_pennsylvania",
+        "older_brother",
+        "paderborn",
+        "portsmouth_new_hampshire",
+        "romorantin",
+        "rural_areas",
+        "sanga_district",
+        "september",
+        "state_of_north_carolina",
+        "tanzania",
+        "thomas_cornell",
+        "united_states",
+        "upstate_new_york",
+        "william_henry_harrison",
+        "year",
+        "younger_son"
+      ],
+      "relation_schema": {
+        "IS_CHILD_OF": "",
+        "IS_SPOUSE_OF": "",
+        "IS_SIBLING_OF": "",
+        "IS_DESCENDED_FROM": "",
+        "BORN_IN_LOCATION": "",
+        "BORN_ON_DATE": "",
+        "DIED_ON_DATE": "",
+        "EDUCATED_AT": "",
+        "ANNOUNCED_EVENT_TO": "",
+        "MARRIED_TO": ""
+      },
+      "topics": [
+        {
+          "topic_id": "early_life_and_education",
+          "label": "Early Life and Education",
+          "description": "Birth details, upbringing, and schooling of subjects.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Harvard College",
+            "July 25, 1813",
+            "birthplace"
+          ]
+        },
+        {
+          "topic_id": "family_lineage_and_marriage",
+          "label": "Family Lineage and Marriage",
+          "description": "Parentage, ancestry, and marital connections among notable families.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Daniel Webster",
+            "Grace Fletcher Webster",
+            "Thomas Cornell",
+            "Caroline LeRoy Webster"
+          ]
+        },
+        {
+          "topic_id": "notable_personal_events",
+          "label": "Notable Personal Events",
+          "description": "Significant interpersonal announcements or moments tied to public office.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "John Tyler",
+            "William Henry Harrison",
+            "announcement"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Personal Biographies and Genealogies Expert",
+        "governance_scope": "Profiles individuals, their kinship networks, life events, education, and interpersonal announcements.",
+        "seed_entity_types": [
+          "PERSON_BIOGRAPHICAL_SUBJECT",
+          "KIN_RELATION_PERSON",
+          "EDUCATIONAL_INSTITUTION",
+          "GEOGRAPHIC_LOCALE",
+          "TEMPORAL_MARKER"
+        ],
+        "seed_relation_types": [
+          "IS_CHILD_OF",
+          "IS_SPOUSE_OF",
+          "IS_SIBLING_OF",
+          "IS_DESCENDED_FROM",
+          "BORN_IN_LOCATION",
+          "BORN_ON_DATE",
+          "DIED_ON_DATE",
+          "EDUCATED_AT",
+          "ANNOUNCED_EVENT_TO",
+          "MARRIED_TO"
+        ],
+        "bootstrap_source": "schema",
+        "memory_card": {
+          "domain_id": "personal_biographies_and_genealogies",
+          "label": "Personal Biographies and Genealogies",
+          "scope": "Profiles individuals, their kinship networks, life events, education, and interpersonal announcements.",
+          "entity_count": 60,
+          "triple_count": 84,
+          "key_entities": [
+            "older brother",
+            "December 8, 1970",
+            "Mozambique",
+            "Harvard College",
+            "Portsmouth, New Hampshire",
+            "Dourdan",
+            "Lake Nyasa",
+            "Hannah Cornell",
+            "Lago District",
+            "upstate New York",
+            "September 28, 1797",
+            "8 July 1617"
+          ],
+          "aliases": {},
+          "core_facts": [
+            "(daniel_fletcher_webster) -[IS_CHILD_OF]-> (daniel_webster)",
+            "(daniel_fletcher_webster) -[IS_CHILD_OF]-> (grace_fletcher_webster)",
+            "(daniel_fletcher_webster) -[BORN_ON_DATE]-> (july_25)",
+            "(daniel_fletcher_webster) -[DIED_ON_DATE]-> (august_30)",
+            "(daniel_fletcher_webster) -[BORN_IN_LOCATION]-> (portsmouth_new_hampshire)",
+            "(daniel_fletcher_webster) -[EDUCATED_AT]-> (harvard_college)",
+            "(daniel_fletcher_webster) -[HELD_ORGANIZATIONAL_ROLE]-> (chief_clerk_of_the_united_states_department_of_state)",
+            "(daniel_fletcher_webster) -[DELIVERED_OFFICIAL_MESSAGE_TO]-> (john_tyler)",
+            "(daniel_fletcher_webster) -[ANNOUNCED_DEATH_OF]-> (william_henry_harrison)",
+            "(caroline_leroy_webster) -[IS_SPOUSE_OF]-> (daniel_webster)",
+            "(caroline_leroy_webster) -[BORN_ON_DATE]-> (september_28)",
+            "(caroline_leroy_webster) -[DIED_ON_DATE]-> (february_26)"
+          ],
+          "cross_domain_facts": [
+            "(daniel_fletcher_webster) -[DIED_ON_DATE]-> (august_30)",
+            "(daniel_fletcher_webster) -[HELD_ORGANIZATIONAL_ROLE]-> (chief_clerk_of_the_united_states_department_of_state)",
+            "(caroline_leroy_webster) -[BORN_ON_DATE]-> (september_28)",
+            "(caroline_leroy_webster) -[DIED_ON_DATE]-> (february_26)"
+          ],
+          "evidence_sources": [
+            "musique_combined_b001"
+          ],
+          "evidence_snippets": [
+            "=== Source: Fletcher Webster === Daniel Fletcher Webster, commonly known as Fletcher Webster (July 25, 1813 in Portsmouth, New Hampshire \u2013 August 30, 1862) was the son of renowned politician Daniel Webster and Grace F...",
+            "His older brother was the famous \"Sun King\", Louis XIV. Styled Duke of Anjou from birth, Philippe became Duke of Orl\u00e9ans upon the death of his uncle Gaston in 1660. In 1661, Philippe also received the dukedoms of Valo...",
+            "=== Source: Empire Sports Network === Empire Sports Network was an American regional sports network that was owned by the Adelphia Communications Corporation. The network was available on cable providers in much of up...",
+            "Daniel Fletcher Webster ... was the son of renowned politician Daniel Webster and Grace Fletcher Webster.",
+            "(July 25, 1813 in Portsmouth, New Hampshire \u2013 August 30, 1862)",
+            "(July 25, 1813 in Portsmouth, New Hampshire \u2013 ...)",
+            "He was educated at Harvard College.",
+            "Fletcher served as Chief Clerk of the United States State Department",
+            "he delivered the news of President William Henry Harrison's death to the new President, John Tyler.",
+            "he delivered the news of President William Henry Harrison's death",
+            "Caroline LeRoy Webster ... was the second wife of 19th Century statesman Daniel Webster.",
+            "Caroline LeRoy Webster (September 28, 1797 in New York City \u2013 February 26, 1882)"
+          ],
+          "known_gaps": []
+        }
+      }
+    },
+    {
+      "domain_id": "office_holdings_titles_and_organizational_roles",
+      "label": "Office Holdings, Titles, and Organizational Roles",
+      "description": "Captures formal offices, noble titles with territorial dignities, court styles, and roles within organizations.",
+      "entity_ids": [
+        "associations_and_national_councils",
+        "chief_clerk_of_the_united_states_department_of_state",
+        "countships_of_dourdan_and_romorantin",
+        "dukedom_of_nemours",
+        "empire_sports_network",
+        "european_movement_germany",
+        "european_movement_international",
+        "french_regent",
+        "marquis",
+        "marquisates_of_coucy_and_folembray",
+        "marshal_d_ancre",
+        "mast_capital_management",
+        "president_of_the_united_states",
+        "queen_mother",
+        "regent_of_france",
+        "secretary_general",
+        "secretary_of_state_of_the_united_states",
+        "the_king_generic",
+        "time_warner_cable",
+        "united_states_department_of_state",
+        "vice_president",
+        "windjammer_communications"
+      ],
+      "relation_schema": {
+        "HELD_OFFICIAL_POSITION": "",
+        "CONFERRED_NOBLE_TITLE": "",
+        "HELD_ORG_ROLE_IN": ""
+      },
+      "topics": [
+        {
+          "topic_id": "nobility_and_territorial_dignities",
+          "label": "Nobility and Territorial Dignities",
+          "description": "Grants and inheritances of dukedoms, marquisates, and countships.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Duke of Orl\u00e9ans",
+            "dukedom of Nemours",
+            "marquisates of Coucy and Folembray",
+            "countships of Dourdan and Romorantin"
+          ]
+        },
+        {
+          "topic_id": "civil_and_diplomatic_offices",
+          "label": "Civil and Diplomatic Offices",
+          "description": "Government and diplomatic roles held by individuals.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Chief Clerk of the United States State Department",
+            "Secretary of State",
+            "Holland Consul to the United States"
+          ]
+        },
+        {
+          "topic_id": "organizational_affiliations_and_roles",
+          "label": "Organizational Affiliations and Roles",
+          "description": "Positions held within associations and networks.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "European Movement International",
+            "European Movement Germany",
+            "Vice President",
+            "Secretary General",
+            "Bernd H\u00fctttemann"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Office Holdings, Titles, and Organizational Roles Expert",
+        "governance_scope": "Captures formal offices, noble titles with territorial dignities, court styles, and roles within organizations.",
+        "seed_entity_types": [
+          "OFFICIAL_POSITION",
+          "NOBLE_TITLE_OR_TERRITORIAL_DIGNITY",
+          "ROYAL_STYLE_OR_COURT_APPELLATION",
+          "ORGANIZATION_ENTITY"
+        ],
+        "seed_relation_types": [
+          "HELD_OFFICIAL_POSITION",
+          "CONFERRED_NOBLE_TITLE",
+          "HELD_ORG_ROLE_IN"
+        ],
+        "bootstrap_source": "schema",
+        "memory_card": {
+          "domain_id": "office_holdings_titles_and_organizational_roles",
+          "label": "Office Holdings, Titles, and Organizational Roles",
+          "scope": "Captures formal offices, noble titles with territorial dignities, court styles, and roles within organizations.",
+          "entity_count": 22,
+          "triple_count": 53,
+          "key_entities": [
+            "Secretary General",
+            "MAST Capital Management",
+            "Windjammer Communications",
+            "Queen Mother",
+            "marquisates of Coucy and Folembray",
+            "countships of Dourdan and Romorantin",
+            "the king (generic mention)",
+            "President of the United States",
+            "French regent",
+            "European Movement Germany",
+            "marquis",
+            "United States Department of State"
+          ],
+          "aliases": {
+            "the_king_generic": [
+              "the king"
+            ],
+            "president_of_the_united_states": [
+              "President"
+            ],
+            "united_states_department_of_state": [
+              "State Department"
+            ]
+          },
+          "core_facts": [
+            "(daniel_fletcher_webster) -[HELD_ORGANIZATIONAL_ROLE]-> (chief_clerk_of_the_united_states_department_of_state)",
+            "(philippe_duke_of_orleans) -[CONFERRED_NOBLE_TITLE]-> (dukedom_of_nemours)",
+            "(philippe_duke_of_orleans) -[CONFERRED_NOBLE_TITLE]-> (marquisates_of_coucy_and_folembray)",
+            "(philippe_duke_of_orleans) -[CONFERRED_NOBLE_TITLE]-> (countships_of_dourdan_and_romorantin)",
+            "(louis_xiv_of_france) -[CONFERRED_TITLES_BY_MONARCH]-> (dukedom_of_nemours)",
+            "(philippe_duke_of_orleans) -[RECEIVED_TITLE_AFTER_MILITARY_VICTORY]-> (dukedom_of_nemours)",
+            "(bernd_huttemann) -[HELD_ORG_ROLE_IN]-> (european_movement_international)",
+            "(bernd_huttemann) -[HELD_ORG_ROLE_IN]-> (european_movement_germany)",
+            "(european_movement_international) -[ORG_COORDINATES_ORGS]-> (associations_and_national_councils)",
+            "(european_movement_international) -[ORG_HAS_MISSION_TO_PROMOTE_CONCEPT]-> (european_integration)",
+            "(european_movement_international) -[ORG_DISSEMINATES_INFORMATION_ABOUT]-> (european_integration)",
+            "(empire_sports_network) -[ORG_OWNED_BY_COMPANY]-> (adelphia_communications_corporation)"
+          ],
+          "cross_domain_facts": [
+            "(daniel_fletcher_webster) -[HELD_ORGANIZATIONAL_ROLE]-> (chief_clerk_of_the_united_states_department_of_state)",
+            "(philippe_duke_of_orleans) -[CONFERRED_NOBLE_TITLE]-> (dukedom_of_nemours)",
+            "(philippe_duke_of_orleans) -[CONFERRED_NOBLE_TITLE]-> (marquisates_of_coucy_and_folembray)",
+            "(philippe_duke_of_orleans) -[CONFERRED_NOBLE_TITLE]-> (countships_of_dourdan_and_romorantin)",
+            "(louis_xiv_of_france) -[CONFERRED_TITLES_BY_MONARCH]-> (dukedom_of_nemours)",
+            "(philippe_duke_of_orleans) -[RECEIVED_TITLE_AFTER_MILITARY_VICTORY]-> (dukedom_of_nemours)",
+            "(bernd_huttemann) -[HELD_ORG_ROLE_IN]-> (european_movement_international)",
+            "(bernd_huttemann) -[HELD_ORG_ROLE_IN]-> (european_movement_germany)",
+            "(european_movement_international) -[ORG_HAS_MISSION_TO_PROMOTE_CONCEPT]-> (european_integration)",
+            "(european_movement_international) -[ORG_DISSEMINATES_INFORMATION_ABOUT]-> (european_integration)",
+            "(empire_sports_network) -[ORG_OWNED_BY_COMPANY]-> (adelphia_communications_corporation)"
+          ],
+          "evidence_sources": [
+            "musique_combined_b001"
+          ],
+          "evidence_snippets": [
+            "His older brother was the famous \"Sun King\", Louis XIV. Styled Duke of Anjou from birth, Philippe became Duke of Orl\u00e9ans upon the death of his uncle Gaston in 1660. In 1661, Philippe also received the dukedoms of Valo...",
+            "=== Source: Empire Sports Network === Empire Sports Network was an American regional sports network that was owned by the Adelphia Communications Corporation. The network was available on cable providers in much of up...",
+            "=== Source: Fletcher Webster === Daniel Fletcher Webster, commonly known as Fletcher Webster (July 25, 1813 in Portsmouth, New Hampshire \u2013 August 30, 1862) was the son of renowned politician Daniel Webster and Grace F...",
+            "Fletcher served as Chief Clerk of the United States State Department",
+            "Following Philippe's victory in battle in 1671, Louis XIV added the dukedom of Nemours, the marquisates of Coucy and Folembray, and the countships of Dourdan and Romorantin.",
+            "Louis XIV added the dukedom of Nemours, the marquisates of Coucy and Folembray, and the countships of Dourdan and Romorantin.",
+            "Bernd H\u00fcttemann (born December 8, 1970 in Paderborn) is Vice President of the European Movement International",
+            "and Secretary General of the European Movement Germany.",
+            "The European Movement International is a lobbying association that coordinates the efforts of associations and national councils",
+            "with the goal of promoting European integration",
+            "The European Movement International is a lobbying association that coordinates the efforts of associations and national councils with the goal of promoting European integration, and disseminating information about it.",
+            "Empire Sports Network was an American regional sports network that was owned by the Adelphia Communications Corporation."
+          ],
+          "known_gaps": []
+        }
+      }
+    },
+    {
+      "domain_id": "media_and_telecom_corporate_events",
+      "label": "Media and Telecom Corporate Events",
+      "description": "Structures organizations and their lifecycle events, ownership, coverage areas, and related commercial entities in media and telecom.",
+      "entity_ids": [
+        "19_may",
+        "21_september",
+        "8_july",
+        "9_june",
+        "adelphia_communications_corporation",
+        "albany",
+        "associations_and_national_councils",
+        "august",
+        "bankruptcy",
+        "boston",
+        "buffalo",
+        "cabo_delgado_province",
+        "communications_construction_services",
+        "coucy",
+        "court_of_france",
+        "december",
+        "dourdan",
+        "eastern_ohio",
+        "empire_sports_network",
+        "european_movement_germany",
+        "european_movement_international",
+        "february",
+        "financial_collapse",
+        "folembray",
+        "france",
+        "july_25",
+        "jupiter_florida",
+        "lago_district",
+        "lake_nyasa",
+        "leroy_bayard_mckiven_and_co",
+        "lichinga",
+        "march",
+        "mast_capital_management",
+        "metangula",
+        "mozambique",
+        "nemours",
+        "new_york_city",
+        "niassa_province",
+        "north_western_mozambique",
+        "northern_pennsylvania",
+        "paderborn",
+        "portsmouth_new_hampshire",
+        "romorantin",
+        "rural_areas",
+        "sanga_district",
+        "september",
+        "state_of_north_carolina",
+        "tanzania",
+        "time_warner_cable",
+        "united_states",
+        "united_states_department_of_state",
+        "upstate_new_york",
+        "windjammer_communications",
+        "year"
+      ],
+      "relation_schema": {
+        "ORG_OWNS_OR_OPERATES": "",
+        "ORG_SERVICE_COVERAGE_AREA": ""
+      },
+      "topics": [
+        {
+          "topic_id": "regional_sports_networks",
+          "label": "Regional Sports Networks",
+          "description": "Ownership, availability, and cessation of RSNs.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Empire Sports Network",
+            "Adelphia Communications Corporation",
+            "ceased operations",
+            "March 7, 2005"
+          ]
+        },
+        {
+          "topic_id": "cable_system_spinoffs_and_reorganizations",
+          "label": "Cable System Spinoffs and Reorganizations",
+          "description": "Formation via asset sales and structural reorganizations.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "formed by the sale of 25 systems",
+            "Windjammer Cable",
+            "MAST Capital Management",
+            "CCS"
+          ]
+        },
+        {
+          "topic_id": "bankruptcy_and_financial_collapse_linkages",
+          "label": "Bankruptcy and Financial Collapse Linkages",
+          "description": "Operational impacts of corporate bankruptcy events.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "Adelphia",
+            "financial collapse",
+            "bankruptcy",
+            "network cessation"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Media and Telecom Corporate Events Expert",
+        "governance_scope": "Structures organizations and their lifecycle events, ownership, coverage areas, and related commercial entities in media and telecom.",
+        "seed_entity_types": [
+          "ORGANIZATION_ENTITY",
+          "CORPORATE_EVENT",
+          "GEOGRAPHIC_LOCALE",
+          "TEMPORAL_MARKER",
+          "COMMERCIAL_HOUSE"
+        ],
+        "seed_relation_types": [
+          "ORG_OWNS_OR_OPERATES",
+          "ORG_SERVICE_COVERAGE_AREA"
+        ],
+        "bootstrap_source": "schema",
+        "memory_card": {
+          "domain_id": "media_and_telecom_corporate_events",
+          "label": "Media and Telecom Corporate Events",
+          "scope": "Structures organizations and their lifecycle events, ownership, coverage areas, and related commercial entities in media and telecom.",
+          "entity_count": 54,
+          "triple_count": 62,
+          "key_entities": [
+            "December 8, 1970",
+            "Mozambique",
+            "Portsmouth, New Hampshire",
+            "Dourdan",
+            "MAST Capital Management",
+            "Lake Nyasa",
+            "Windjammer Communications",
+            "Communications Construction Services",
+            "Lago District",
+            "upstate New York",
+            "financial collapse",
+            "September 28, 1797"
+          ],
+          "aliases": {
+            "communications_construction_services": [
+              "CCS"
+            ]
+          },
+          "core_facts": [
+            "(daniel_fletcher_webster) -[BORN_ON_DATE]-> (july_25)",
+            "(daniel_fletcher_webster) -[BORN_IN_LOCATION]-> (portsmouth_new_hampshire)",
+            "(caroline_leroy_webster) -[BORN_IN_LOCATION]-> (new_york_city)",
+            "(caroline_leroy_webster) -[PARENT_IS_CONSUL_TO_COUNTRY]-> (united_states)",
+            "(leroy_bayard_mckiven_and_co) -[ORG_OPERATED_IN_REGIONS]-> (different_parts_of_the_world)",
+            "(philippe_duke_of_orleans) -[BORN_ON_DATE]-> (21_september)",
+            "(philippe_duke_of_orleans) -[DIED_ON_DATE]-> (9_june)",
+            "(herman_leroy) -[HELD_ORG_ROLE_IN]-> (leroy_bayard_mckiven_and_co)",
+            "(leonora_dori_galigai) -[BORN_ON_DATE]-> (19_may)",
+            "(leonora_dori_galigai) -[DIED_ON_DATE]-> (8_july)",
+            "(bernd_huttemann) -[HELD_ORG_ROLE_IN]-> (european_movement_international)",
+            "(bernd_huttemann) -[HELD_ORG_ROLE_IN]-> (european_movement_germany)"
+          ],
+          "cross_domain_facts": [
+            "(daniel_fletcher_webster) -[BORN_ON_DATE]-> (july_25)",
+            "(daniel_fletcher_webster) -[BORN_IN_LOCATION]-> (portsmouth_new_hampshire)",
+            "(caroline_leroy_webster) -[BORN_IN_LOCATION]-> (new_york_city)",
+            "(caroline_leroy_webster) -[PARENT_IS_CONSUL_TO_COUNTRY]-> (united_states)",
+            "(leroy_bayard_mckiven_and_co) -[ORG_OPERATED_IN_REGIONS]-> (different_parts_of_the_world)",
+            "(philippe_duke_of_orleans) -[BORN_ON_DATE]-> (21_september)",
+            "(philippe_duke_of_orleans) -[DIED_ON_DATE]-> (9_june)",
+            "(herman_leroy) -[HELD_ORG_ROLE_IN]-> (leroy_bayard_mckiven_and_co)",
+            "(leonora_dori_galigai) -[BORN_ON_DATE]-> (19_may)",
+            "(leonora_dori_galigai) -[DIED_ON_DATE]-> (8_july)",
+            "(bernd_huttemann) -[HELD_ORG_ROLE_IN]-> (european_movement_international)",
+            "(bernd_huttemann) -[HELD_ORG_ROLE_IN]-> (european_movement_germany)"
+          ],
+          "evidence_sources": [
+            "musique_combined_b001"
+          ],
+          "evidence_snippets": [
+            "His older brother was the famous \"Sun King\", Louis XIV. Styled Duke of Anjou from birth, Philippe became Duke of Orl\u00e9ans upon the death of his uncle Gaston in 1660. In 1661, Philippe also received the dukedoms of Valo...",
+            "=== Source: Empire Sports Network === Empire Sports Network was an American regional sports network that was owned by the Adelphia Communications Corporation. The network was available on cable providers in much of up...",
+            "=== Source: Fletcher Webster === Daniel Fletcher Webster, commonly known as Fletcher Webster (July 25, 1813 in Portsmouth, New Hampshire \u2013 August 30, 1862) was the son of renowned politician Daniel Webster and Grace F...",
+            "(July 25, 1813 in Portsmouth, New Hampshire \u2013 August 30, 1862)",
+            "(July 25, 1813 in Portsmouth, New Hampshire \u2013 ...)",
+            "Caroline LeRoy Webster (September 28, 1797 in New York City \u2013 ...)",
+            "Her father was also the first Holland Consul to the United States.",
+            "the commercial house of Leroy, Bayard, McKiven & Co., a large trading company that operated in different parts of the world.",
+            "Philippe, Duke of Orl\u00e9ans (21 September 1640 \u2013 9 June 1701)",
+            "Herman LeRoy, who was once head of the commercial house of Leroy, Bayard, McKiven & Co.",
+            "Leonora Dori Galiga\u00ef (19 May 1568 \u2013 8 July 1617)",
+            "Bernd H\u00fcttemann (born December 8, 1970 in Paderborn) is Vice President of the European Movement International"
+          ],
+          "known_gaps": []
+        }
+      }
+    }
+  ],
+  "cross_domain_relation_count": 87
+}

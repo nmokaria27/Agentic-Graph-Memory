@@ -1,0 +1,396 @@
+{
+  "dataset": "MuSiQue 2-hop pilot",
+  "system": "official_graphrag_basic",
+  "model": "gemma4:31b",
+  "graphrag_root": "evaluation/results/musique_graphrag_20_supporting",
+  "examples_json": "evaluation/results/musique_pilot_20_supporting.json",
+  "aggregate_metrics": {
+    "num_questions": 20,
+    "exact_match": 0.6,
+    "substring_em": 0.75,
+    "token_f1": 0.7,
+    "answer_rate": 1.0
+  },
+  "results": [
+    {
+      "question_id": "2hop__460946_294723",
+      "question": "Who is the spouse of the Green performer?",
+      "gold_answer": "Miquette Giraudy",
+      "answer": "Miquette Giraudy",
+      "scored_answer": "Miquette Giraudy",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Miquette Giraudy",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Miquette Giraudy\n",
+        "duration_seconds": 34.889
+      }
+    },
+    {
+      "question_id": "2hop__252311_366220",
+      "question": "Who founded the company that distributed the film UHF?",
+      "gold_answer": "Mike Medavoy",
+      "answer": "Mike Medavoy",
+      "scored_answer": "Mike Medavoy",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Mike Medavoy",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Mike Medavoy\n",
+        "duration_seconds": 89.208
+      }
+    },
+    {
+      "question_id": "2hop__701895_752697",
+      "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+      "gold_answer": "Tamaulipas",
+      "answer": "Tamaulipas",
+      "scored_answer": "Tamaulipas",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Tamaulipas",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Tamaulipas\n",
+        "duration_seconds": 37.922
+      }
+    },
+    {
+      "question_id": "2hop__259228_793698",
+      "question": "Where is Ulrich Walter's employer headquartered?",
+      "gold_answer": "Cologne",
+      "answer": "I don't know",
+      "scored_answer": "I don't know",
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0,
+        "substring_em": 0.0
+      },
+      "retrieval_metadata": {
+        "answer": "I don't know",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "I don't know\n",
+        "duration_seconds": 38.032
+      }
+    },
+    {
+      "question_id": "2hop__481349_302087",
+      "question": "Which company owns the manufacturer of Learjet 60?",
+      "gold_answer": "Bombardier Inc.",
+      "answer": "Bombardier Inc.",
+      "scored_answer": "Bombardier Inc",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Bombardier Inc.",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Bombardier Inc.\n",
+        "duration_seconds": 28.497
+      }
+    },
+    {
+      "question_id": "2hop__697790_864352",
+      "question": "Who is the child of Caroline LeRoy's spouse?",
+      "gold_answer": "Fletcher Webster",
+      "answer": "Daniel Fletcher Webster",
+      "scored_answer": "Daniel Fletcher Webster",
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.8,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Daniel Fletcher Webster",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Daniel Fletcher Webster\n",
+        "duration_seconds": 53.932
+      }
+    },
+    {
+      "question_id": "2hop__207476_625987",
+      "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+      "gold_answer": "Marie de' Medici",
+      "answer": "Marie de' Medici",
+      "scored_answer": "Marie de' Medici",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Marie de' Medici",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Marie de' Medici\n",
+        "duration_seconds": 24.083
+      }
+    },
+    {
+      "question_id": "2hop__390947_232243",
+      "question": "What is the goal of the group that European Movement Germany is a member of?",
+      "gold_answer": "European integration",
+      "answer": "promoting European integration",
+      "scored_answer": "promoting European integration",
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.8,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "promoting European integration",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "promoting European integration\n",
+        "duration_seconds": 38.546
+      }
+    },
+    {
+      "question_id": "2hop__354635_174222",
+      "question": "What company succeeded the owner of Empire Sports Network?",
+      "gold_answer": "Time Warner Cable",
+      "answer": "Time Warner Cable",
+      "scored_answer": "Time Warner Cable",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Time Warner Cable",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Time Warner Cable\n",
+        "duration_seconds": 84.039
+      }
+    },
+    {
+      "question_id": "2hop__635187_861533",
+      "question": "What province shares a border with the province where Lago District is located?",
+      "gold_answer": "Cabo Delgado Province",
+      "answer": "Cabo Delgado Province",
+      "scored_answer": "Cabo Delgado Province",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Cabo Delgado Province",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Cabo Delgado Province\n",
+        "duration_seconds": 34.923
+      }
+    },
+    {
+      "question_id": "2hop__166824_185403",
+      "question": "What league does the team that plays in Stadio Ciro Vigorito play for?",
+      "gold_answer": "Lega Pro Prima Divisione",
+      "answer": "Lega Pro Prima Divisione",
+      "scored_answer": "Lega Pro Prima Divisione",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Lega Pro Prima Divisione",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Lega Pro Prima Divisione\n",
+        "duration_seconds": 32.543
+      }
+    },
+    {
+      "question_id": "2hop__698577_851686",
+      "question": "What is a notable work written by the author of The Timothy files?",
+      "gold_answer": "Anderson Tapes",
+      "answer": "The Anderson Tapes",
+      "scored_answer": "The Anderson Tapes",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "The Anderson Tapes",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "The Anderson Tapes\n",
+        "duration_seconds": 16.532
+      }
+    },
+    {
+      "question_id": "2hop__362107_652514",
+      "question": "In which borough was Callum McManaman born?",
+      "gold_answer": "Knowsley",
+      "answer": "Metropolitan Borough of Knowsley",
+      "scored_answer": "Metropolitan Borough of Knowsley",
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.4,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Metropolitan Borough of Knowsley",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Metropolitan Borough of Knowsley\n",
+        "duration_seconds": 31.191
+      }
+    },
+    {
+      "question_id": "2hop__402530_774333",
+      "question": "What other county does the county where Imperial is located share a border with?",
+      "gold_answer": "Crockett County",
+      "answer": "Crockett County",
+      "scored_answer": "Crockett County",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Crockett County",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Crockett County\n",
+        "duration_seconds": 18.291
+      }
+    },
+    {
+      "question_id": "2hop__195917_575657",
+      "question": "In what county is William W. Blair's birthplace located?",
+      "gold_answer": "Orleans County",
+      "answer": "Orleans County",
+      "scored_answer": "Orleans County",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Orleans County",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Orleans County\n",
+        "duration_seconds": 22.201
+      }
+    },
+    {
+      "question_id": "2hop__683835_709167",
+      "question": "What award did the author of The Red Tree receive?",
+      "gold_answer": "Academy Award for Best Animated Short Film",
+      "answer": "I don't know",
+      "scored_answer": "I don't know",
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0,
+        "substring_em": 0.0
+      },
+      "retrieval_metadata": {
+        "answer": "I don't know",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "I don't know\n",
+        "duration_seconds": 15.912
+      }
+    },
+    {
+      "question_id": "2hop__197470_271394",
+      "question": "Where was Tyler MacDuff's child educated?",
+      "gold_answer": "Blair High School",
+      "answer": "I don't know",
+      "scored_answer": "I don't know",
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0,
+        "substring_em": 0.0
+      },
+      "retrieval_metadata": {
+        "answer": "I don't know",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "I don't know\n",
+        "duration_seconds": 28.934
+      }
+    },
+    {
+      "question_id": "2hop__458131_174974",
+      "question": "Who is the spouse of the Rabbit Hole's producer?",
+      "gold_answer": "Keith Urban",
+      "answer": "I don't know",
+      "scored_answer": "I don't know",
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0,
+        "substring_em": 0.0
+      },
+      "retrieval_metadata": {
+        "answer": "I don't know",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "I don't know\n",
+        "duration_seconds": 23.988
+      }
+    },
+    {
+      "question_id": "2hop__299142_347613",
+      "question": "Who is the child of Sigrid Eskilsdotter's child?",
+      "gold_answer": "Svante Stensson Sture",
+      "answer": "King Gustav Vasa of Sweden",
+      "scored_answer": "King Gustav Vasa of Sweden",
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0,
+        "substring_em": 0.0
+      },
+      "retrieval_metadata": {
+        "answer": "King Gustav Vasa of Sweden",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "King Gustav Vasa of Sweden\n",
+        "duration_seconds": 18.076
+      }
+    },
+    {
+      "question_id": "2hop__528263_865831",
+      "question": "In which county is Kimbrough Memorial Stadium located?",
+      "gold_answer": "Randall County",
+      "answer": "Randall County",
+      "scored_answer": "Randall County",
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "retrieval_metadata": {
+        "answer": "Randall County",
+        "returncode": 0,
+        "stderr": "",
+        "raw_stdout": "Randall County\n",
+        "duration_seconds": 17.187
+      }
+    }
+  ]
+}

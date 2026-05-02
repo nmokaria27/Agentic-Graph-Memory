@@ -1,0 +1,301 @@
+{
+  "documents_total": 10,
+  "documents_evaluated": 9,
+  "documents_missing_predictions": 1,
+  "entity_strict": {
+    "precision": 0.6129032258064516,
+    "recall": 0.3931034482758621,
+    "f1": 0.4789915966386555,
+    "tp": 57,
+    "fp": 36,
+    "fn": 88
+  },
+  "entity_strict_mapped": {
+    "precision": 0.6129032258064516,
+    "recall": 0.42857142857142855,
+    "f1": 0.504424778761062,
+    "tp": 57,
+    "fp": 36,
+    "fn": 76
+  },
+  "entity_partial": {
+    "precision": 0.7702702702702703,
+    "recall": 0.3584905660377358,
+    "f1": 0.48927038626609437,
+    "tp": 57,
+    "fp": 17,
+    "fn": 102
+  },
+  "entity_per_type": {
+    "OtherScientificTerm": {
+      "precision": 0.5869565217391305,
+      "recall": 0.39705882352941174,
+      "f1": 0.47368421052631576,
+      "tp": 27,
+      "fp": 19,
+      "fn": 41
+    },
+    "Method": {
+      "precision": 0.6521739130434783,
+      "recall": 0.4166666666666667,
+      "f1": 0.5084745762711865,
+      "tp": 15,
+      "fp": 8,
+      "fn": 21
+    },
+    "Task": {
+      "precision": 0.6363636363636364,
+      "recall": 0.3181818181818182,
+      "f1": 0.4242424242424242,
+      "tp": 7,
+      "fp": 4,
+      "fn": 15
+    },
+    "Material": {
+      "precision": 0.6,
+      "recall": 0.46153846153846156,
+      "f1": 0.5217391304347826,
+      "tp": 6,
+      "fp": 4,
+      "fn": 7
+    },
+    "Metric": {
+      "precision": 1.0,
+      "recall": 0.3333333333333333,
+      "f1": 0.5,
+      "tp": 2,
+      "fp": 0,
+      "fn": 4
+    },
+    "ORGANIZATION": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    }
+  },
+  "entity_type_accuracy": 0.8421052631578947,
+  "entity_type_accuracy_mapped": 0.8421052631578947,
+  "entity_hallucination_rate": 0.4864864864864865,
+  "triple_strict": {
+    "precision": 0.1282051282051282,
+    "recall": 0.056818181818181816,
+    "f1": 0.07874015748031495,
+    "tp": 5,
+    "fp": 34,
+    "fn": 83
+  },
+  "triple_fuzzy": {
+    "precision": 0.1282051282051282,
+    "recall": 0.056818181818181816,
+    "f1": 0.07874015748031495,
+    "tp": 5,
+    "fp": 34,
+    "fn": 83
+  },
+  "triple_mapped": {
+    "precision": 0.20512820512820512,
+    "recall": 0.1,
+    "f1": 0.13445378151260504,
+    "tp": 8,
+    "fp": 31,
+    "fn": 72
+  },
+  "triple_per_relation": {
+    "used-for": {
+      "precision": 0.3,
+      "recall": 0.07317073170731707,
+      "f1": 0.11764705882352941,
+      "tp": 3,
+      "fp": 7,
+      "fn": 38
+    },
+    "part-of": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 7
+    },
+    "hyponym-of": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 7
+    },
+    "conjunction": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 4,
+      "fn": 18
+    },
+    "feature-of": {
+      "precision": 0.5,
+      "recall": 0.16666666666666666,
+      "f1": 0.25,
+      "tp": 1,
+      "fp": 1,
+      "fn": 5
+    },
+    "compare": {
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1": 0.6666666666666666,
+      "tp": 1,
+      "fp": 0,
+      "fn": 1
+    },
+    "evaluate-for": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 7
+    },
+    "builds_on_work_at": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "performs": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "based_on": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "provides_efficiency_on": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "provides_robustness_on": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "adapted_to": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "handles": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "consists_of": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 2,
+      "fn": 0
+    },
+    "affects": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 2,
+      "fn": 0
+    },
+    "associated_with": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "for_language": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "employs": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 2,
+      "fn": 0
+    },
+    "achieves": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "evaluated_on": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "has_metric": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "interacts_with": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    },
+    "produces": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 1,
+      "fn": 0
+    }
+  },
+  "triple_hallucination_rate": 0.8717948717948718
+}

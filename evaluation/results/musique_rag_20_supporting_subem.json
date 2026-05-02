@@ -1,0 +1,376 @@
+{
+  "dataset": "MuSiQue pilot",
+  "system": "rag_basic",
+  "model": "gemma4:31b",
+  "top_k": 6,
+  "examples_json": "evaluation/results/musique_pilot_20_supporting.json",
+  "aggregate_metrics": {
+    "num_questions": 20,
+    "exact_match": 0.6,
+    "substring_em": 0.75,
+    "token_f1": 0.6631,
+    "answer_rate": 0.85
+  },
+  "results": [
+    {
+      "question_id": "2hop__460946_294723",
+      "question": "Who is the spouse of the Green performer?",
+      "gold_answer": "Miquette Giraudy",
+      "answer": "Miquette Giraudy",
+      "scored_answer": "Miquette Giraudy",
+      "raw_answer": "Miquette Giraudy",
+      "retrieved_titles": [
+        "Green (Steve Hillage album)",
+        "Miquette Giraudy"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 7.56
+    },
+    {
+      "question_id": "2hop__252311_366220",
+      "question": "Who founded the company that distributed the film UHF?",
+      "gold_answer": "Mike Medavoy",
+      "answer": "Mike Medavoy",
+      "scored_answer": "Mike Medavoy",
+      "raw_answer": "Mike Medavoy",
+      "retrieved_titles": [
+        "UHF (film)",
+        "Mike Medavoy"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 6.732
+    },
+    {
+      "question_id": "2hop__701895_752697",
+      "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+      "gold_answer": "Tamaulipas",
+      "answer": "Municipality of Nuevo Laredo",
+      "scored_answer": "Municipality of Nuevo Laredo",
+      "raw_answer": "Municipality of Nuevo Laredo",
+      "retrieved_titles": [
+        "Ciudad Deportiva (Nuevo Laredo)",
+        "Nuevo Laredo Municipality"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0,
+        "substring_em": 0.0
+      },
+      "duration_seconds": 21.389
+    },
+    {
+      "question_id": "2hop__259228_793698",
+      "question": "Where is Ulrich Walter's employer headquartered?",
+      "gold_answer": "Cologne",
+      "answer": "",
+      "scored_answer": "",
+      "raw_answer": "",
+      "retrieved_titles": [
+        "Ulrich Walter",
+        "Philae (spacecraft)"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0,
+        "substring_em": 0.0
+      },
+      "duration_seconds": 30.981
+    },
+    {
+      "question_id": "2hop__481349_302087",
+      "question": "Which company owns the manufacturer of Learjet 60?",
+      "gold_answer": "Bombardier Inc.",
+      "answer": "Bombardier Inc.",
+      "scored_answer": "Bombardier Inc",
+      "raw_answer": "Bombardier Inc.",
+      "retrieved_titles": [
+        "Learjet 60",
+        "List of Bombardier CRJ operators"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 6.861
+    },
+    {
+      "question_id": "2hop__697790_864352",
+      "question": "Who is the child of Caroline LeRoy's spouse?",
+      "gold_answer": "Fletcher Webster",
+      "answer": "Fletcher Webster",
+      "scored_answer": "Fletcher Webster",
+      "raw_answer": "Fletcher Webster",
+      "retrieved_titles": [
+        "Caroline LeRoy",
+        "Fletcher Webster"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 20.981
+    },
+    {
+      "question_id": "2hop__207476_625987",
+      "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+      "gold_answer": "Marie de' Medici",
+      "answer": "Marie de' Medici",
+      "scored_answer": "Marie de' Medici",
+      "raw_answer": "Marie de' Medici",
+      "retrieved_titles": [
+        "Philippe I, Duke of Orl\u00e9ans",
+        "Leonora Dori"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 7.687
+    },
+    {
+      "question_id": "2hop__390947_232243",
+      "question": "What is the goal of the group that European Movement Germany is a member of?",
+      "gold_answer": "European integration",
+      "answer": "promoting European integration, and disseminating information about it",
+      "scored_answer": "promoting European integration, and disseminating information about it",
+      "raw_answer": "promoting European integration, and disseminating information about it",
+      "retrieved_titles": [
+        "European Movement International",
+        "Bernd H\u00fcttemann"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.4,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 56.464
+    },
+    {
+      "question_id": "2hop__354635_174222",
+      "question": "What company succeeded the owner of Empire Sports Network?",
+      "gold_answer": "Time Warner Cable",
+      "answer": "",
+      "scored_answer": "",
+      "raw_answer": "",
+      "retrieved_titles": [
+        "Empire Sports Network",
+        "Windjammer Communications"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0,
+        "substring_em": 0.0
+      },
+      "duration_seconds": 44.312
+    },
+    {
+      "question_id": "2hop__635187_861533",
+      "question": "What province shares a border with the province where Lago District is located?",
+      "gold_answer": "Cabo Delgado Province",
+      "answer": "Cabo Delgado Province",
+      "scored_answer": "Cabo Delgado Province",
+      "raw_answer": "Cabo Delgado Province",
+      "retrieved_titles": [
+        "Lago District",
+        "Niassa Reserve"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 23.691
+    },
+    {
+      "question_id": "2hop__166824_185403",
+      "question": "What league does the team that plays in Stadio Ciro Vigorito play for?",
+      "gold_answer": "Lega Pro Prima Divisione",
+      "answer": "Lega Pro Prima Divisione",
+      "scored_answer": "Lega Pro Prima Divisione",
+      "raw_answer": "Lega Pro Prima Divisione",
+      "retrieved_titles": [
+        "Stadio Ciro Vigorito",
+        "Carmelo Imbriani"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 11.655
+    },
+    {
+      "question_id": "2hop__698577_851686",
+      "question": "What is a notable work written by the author of The Timothy files?",
+      "gold_answer": "Anderson Tapes",
+      "answer": "The Anderson Tapes",
+      "scored_answer": "The Anderson Tapes",
+      "raw_answer": "The Anderson Tapes",
+      "retrieved_titles": [
+        "The Timothy Files",
+        "The Anderson Tapes (novel)"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 13.137
+    },
+    {
+      "question_id": "2hop__362107_652514",
+      "question": "In which borough was Callum McManaman born?",
+      "gold_answer": "Knowsley",
+      "answer": "Metropolitan Borough of Knowsley",
+      "scored_answer": "Metropolitan Borough of Knowsley",
+      "raw_answer": "Metropolitan Borough of Knowsley",
+      "retrieved_titles": [
+        "Callum McManaman",
+        "Whiston, Merseyside"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.4,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 9.553
+    },
+    {
+      "question_id": "2hop__402530_774333",
+      "question": "What other county does the county where Imperial is located share a border with?",
+      "gold_answer": "Crockett County",
+      "answer": "Crockett County",
+      "scored_answer": "Crockett County",
+      "raw_answer": "Crockett County",
+      "retrieved_titles": [
+        "Imperial, Texas",
+        "Lancaster Crossing"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 5.85
+    },
+    {
+      "question_id": "2hop__195917_575657",
+      "question": "In what county is William W. Blair's birthplace located?",
+      "gold_answer": "Orleans County",
+      "answer": "Orleans County",
+      "scored_answer": "Orleans County",
+      "raw_answer": "Orleans County",
+      "retrieved_titles": [
+        "William W. Blair",
+        "Holley, New York"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 19.496
+    },
+    {
+      "question_id": "2hop__683835_709167",
+      "question": "What award did the author of The Red Tree receive?",
+      "gold_answer": "Academy Award for Best Animated Short Film",
+      "answer": "Academy Award for Best Animated Short Film",
+      "scored_answer": "Academy Award for Best Animated Short Film",
+      "raw_answer": "Academy Award for Best Animated Short Film",
+      "retrieved_titles": [
+        "The Red Tree (Shaun Tan)",
+        "Passion Pictures"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 7.656
+    },
+    {
+      "question_id": "2hop__197470_271394",
+      "question": "Where was Tyler MacDuff's child educated?",
+      "gold_answer": "Blair High School",
+      "answer": "Blair International Baccalaureate School and Blair High School in Pasadena",
+      "scored_answer": "Blair International Baccalaureate School and Blair High School in Pasadena",
+      "raw_answer": "Blair International Baccalaureate School and Blair High School in Pasadena",
+      "retrieved_titles": [
+        "Dana MacDuff",
+        "Dana MacDuff"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.4615384615384615,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 21.356
+    },
+    {
+      "question_id": "2hop__458131_174974",
+      "question": "Who is the spouse of the Rabbit Hole's producer?",
+      "gold_answer": "Keith Urban",
+      "answer": "",
+      "scored_answer": "",
+      "raw_answer": "",
+      "retrieved_titles": [
+        "Rabbit Hole (film)",
+        "Planet Cake"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0,
+        "substring_em": 0.0
+      },
+      "duration_seconds": 33.031
+    },
+    {
+      "question_id": "2hop__299142_347613",
+      "question": "Who is the child of Sigrid Eskilsdotter's child?",
+      "gold_answer": "Svante Stensson Sture",
+      "answer": "King Gustav Vasa",
+      "scored_answer": "King Gustav Vasa",
+      "raw_answer": "King Gustav Vasa",
+      "retrieved_titles": [
+        "Sigrid Eskilsdotter (Ban\u00e9r)",
+        "Sigrid Sture"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0,
+        "substring_em": 0.0
+      },
+      "duration_seconds": 24.363
+    },
+    {
+      "question_id": "2hop__528263_865831",
+      "question": "In which county is Kimbrough Memorial Stadium located?",
+      "gold_answer": "Randall County",
+      "answer": "Randall County",
+      "scored_answer": "Randall County",
+      "raw_answer": "Randall County",
+      "retrieved_titles": [
+        "Kimbrough Memorial Stadium",
+        "Canyon, Texas"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0,
+        "substring_em": 1.0
+      },
+      "duration_seconds": 5.805
+    }
+  ]
+}

@@ -1,0 +1,3314 @@
+{
+  "dataset": "MuSiQue pilot",
+  "kg_path": "evaluation/results/musique_governed_kg_ollama_first10.json",
+  "org_chart": "evaluation/results/musique_governed_kg_ollama_first10_org.json",
+  "model": "gemma3:27b",
+  "examples_json": "evaluation/results/musique_pilot_first10.json",
+  "runs": {
+    "flat_path_basic": {
+      "config": {
+        "name": "flat_path_basic",
+        "description": "Single global expert with path-focused retrieval",
+        "orchestrator": "basic",
+        "num_domains": 1,
+        "enable_debate": true,
+        "enable_critic": true,
+        "max_exploration_rounds": 3
+      },
+      "aggregate_metrics": {
+        "num_questions": 10,
+        "exact_match": 0.0,
+        "token_f1": 0.09,
+        "answer_rate": 0.4
+      },
+      "results": [
+        {
+          "question_id": "2hop__460946_294723",
+          "question": "Who is the spouse of the Green performer?",
+          "gold_answer": "Miquette Giraudy",
+          "answer": "",
+          "short_answer": "",
+          "scored_answer": "",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 30.535,
+          "evidence_supported": false,
+          "system_metadata": {
+            "question": "Who is the spouse of the Green performer?",
+            "final_answer": "",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "Who is the spouse of the performer in the band Green?",
+                "target_domains": [
+                  "global_path_expert"
+                ],
+                "context": "Find the spouse of a band member."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "There is no spouse information available in the graph.",
+                "coverage": 0.0,
+                "evidence": [],
+                "confidence": 0.0,
+                "out_of_scope_aspects": [
+                  "spouse"
+                ],
+                "domain_id": "global_path_expert",
+                "topics_used": [],
+                "multi_hop_paths": "focused",
+                "sub_question": "Who is the spouse of the performer in the band Green?"
+              }
+            ],
+            "overall_coverage": 0.85,
+            "overall_confidence": 0.8,
+            "gaps": [],
+            "answer": "",
+            "abstained": true,
+            "abstention_reason": "No retrieved graph/domain evidence."
+          }
+        },
+        {
+          "question_id": "2hop__252311_366220",
+          "question": "Who founded the company that distributed the film UHF?",
+          "gold_answer": "Mike Medavoy",
+          "answer": "Orion Pictures distributed the film UHF.",
+          "short_answer": "Orion Pictures",
+          "scored_answer": "Orion Pictures",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 8.265,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who founded the company that distributed the film UHF?",
+            "final_answer": "Orion Pictures distributed the film UHF.",
+            "final_answer_short": "Orion Pictures",
+            "sub_questions": [
+              {
+                "question": "Which company distributed the film UHF?",
+                "target_domains": [
+                  "global_path_expert"
+                ],
+                "context": "Find the distributor of the film UHF."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "orion_pictures",
+                "coverage": 1.0,
+                "evidence": [
+                  "(uhf_film) -[FILM_FUNDED_BY]-> (orion_pictures)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "global_path_expert",
+                "topics_used": [],
+                "multi_hop_paths": "focused",
+                "sub_question": "Which company distributed the film UHF?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__701895_752697",
+          "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+          "gold_answer": "Tamaulipas",
+          "answer": "",
+          "short_answer": "",
+          "scored_answer": "",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 7.97,
+          "evidence_supported": false,
+          "system_metadata": {
+            "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+            "final_answer": "",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "What administrative territorial entity owns Ciudad Deportiva?",
+                "target_domains": [
+                  "global_path_expert"
+                ],
+                "context": "Find the owner/governing entity of a location."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "No information found.",
+                "coverage": 0.0,
+                "evidence": [],
+                "confidence": 0.0,
+                "out_of_scope_aspects": [
+                  "owner"
+                ],
+                "domain_id": "global_path_expert",
+                "topics_used": [],
+                "multi_hop_paths": "focused",
+                "sub_question": "What administrative territorial entity owns Ciudad Deportiva?"
+              }
+            ],
+            "overall_coverage": 0.0,
+            "overall_confidence": 0.0,
+            "gaps": [
+              "ownership information"
+            ],
+            "answer": "",
+            "abstained": true,
+            "abstention_reason": "No retrieved graph/domain evidence."
+          }
+        },
+        {
+          "question_id": "2hop__259228_793698",
+          "question": "Where is Ulrich Walter's employer headquartered?",
+          "gold_answer": "Cologne",
+          "answer": "",
+          "short_answer": "",
+          "scored_answer": "",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 7.748,
+          "evidence_supported": false,
+          "system_metadata": {
+            "question": "Where is Ulrich Walter's employer headquartered?",
+            "final_answer": "",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "Where is Ulrich Walter's employer headquartered?",
+                "target_domains": [
+                  "global_path_expert"
+                ],
+                "context": "Find the headquarters of the organization Ulrich Walter works for."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "No information found.",
+                "coverage": 0.0,
+                "evidence": [],
+                "confidence": 0.0,
+                "out_of_scope_aspects": [
+                  "headquarters"
+                ],
+                "domain_id": "global_path_expert",
+                "topics_used": [],
+                "multi_hop_paths": "focused",
+                "sub_question": "Where is Ulrich Walter's employer headquartered?"
+              }
+            ],
+            "overall_coverage": 0.0,
+            "overall_confidence": 0.0,
+            "gaps": [
+              "headquarters"
+            ],
+            "answer": "",
+            "abstained": true,
+            "abstention_reason": "No retrieved graph/domain evidence."
+          }
+        },
+        {
+          "question_id": "2hop__481349_302087",
+          "question": "Which company owns the manufacturer of Learjet 60?",
+          "gold_answer": "Bombardier Inc.",
+          "answer": "Bombardier Aerospace manufactures the Learjet 60.",
+          "short_answer": "Bombardier Aerospace",
+          "scored_answer": "Bombardier Aerospace",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.5
+          },
+          "duration_seconds": 9.059,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Which company owns the manufacturer of Learjet 60?",
+            "final_answer": "Bombardier Aerospace manufactures the Learjet 60.",
+            "final_answer_short": "Bombardier Aerospace",
+            "sub_questions": [
+              {
+                "question": "Which company owns the manufacturer of Learjet 60?",
+                "target_domains": [
+                  "global_path_expert"
+                ],
+                "context": "Find the ownership of the Learjet 60 manufacturer."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "bombardier_aerospace",
+                "coverage": 1.0,
+                "evidence": [
+                  "(learjet_60) -[AIRCRAFT_MANUFACTURED_BY]-> (bombardier_aerospace)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "global_path_expert",
+                "topics_used": [],
+                "multi_hop_paths": "focused",
+                "sub_question": "Which company owns the manufacturer of Learjet 60?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__697790_864352",
+          "question": "Who is the child of Caroline LeRoy's spouse?",
+          "gold_answer": "Fletcher Webster",
+          "answer": "",
+          "short_answer": "",
+          "scored_answer": "",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 7.912,
+          "evidence_supported": false,
+          "system_metadata": {
+            "question": "Who is the child of Caroline LeRoy's spouse?",
+            "final_answer": "",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "Who is the spouse of Caroline LeRoy?",
+                "target_domains": [
+                  "global_path_expert"
+                ],
+                "context": "Need to identify the spouse before finding their child."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "No information found.",
+                "coverage": 0.0,
+                "evidence": [],
+                "confidence": 0.0,
+                "out_of_scope_aspects": [
+                  "spouse"
+                ],
+                "domain_id": "global_path_expert",
+                "topics_used": [],
+                "multi_hop_paths": "focused",
+                "sub_question": "Who is the spouse of Caroline LeRoy?"
+              }
+            ],
+            "overall_coverage": 0.0,
+            "overall_confidence": 0.0,
+            "gaps": [
+              "child of spouse"
+            ],
+            "answer": "",
+            "abstained": true,
+            "abstention_reason": "No retrieved graph/domain evidence."
+          }
+        },
+        {
+          "question_id": "2hop__207476_625987",
+          "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+          "gold_answer": "Marie de' Medici",
+          "answer": "",
+          "short_answer": "",
+          "scored_answer": "",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 8.307,
+          "evidence_supported": false,
+          "system_metadata": {
+            "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+            "final_answer": "",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+                "target_domains": [
+                  "global_path_expert"
+                ],
+                "context": "Genealogical query requiring path finding."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Not answerable from the graph.",
+                "coverage": 0.0,
+                "evidence": [],
+                "confidence": 0.0,
+                "out_of_scope_aspects": [
+                  "grandmother"
+                ],
+                "domain_id": "global_path_expert",
+                "topics_used": [],
+                "multi_hop_paths": "focused",
+                "sub_question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?"
+              }
+            ],
+            "overall_coverage": 0.0,
+            "overall_confidence": 0.0,
+            "gaps": [
+              "grandmother"
+            ],
+            "answer": "",
+            "abstained": true,
+            "abstention_reason": "No retrieved graph/domain evidence."
+          }
+        },
+        {
+          "question_id": "2hop__390947_232243",
+          "question": "What is the goal of the group that European Movement Germany is a member of?",
+          "gold_answer": "European integration",
+          "answer": "",
+          "short_answer": "",
+          "scored_answer": "",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 8.694,
+          "evidence_supported": false,
+          "system_metadata": {
+            "question": "What is the goal of the group that European Movement Germany is a member of?",
+            "final_answer": "",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "What is the goal of the organization that European Movement Germany is a core member of?",
+                "target_domains": [
+                  "global_path_expert"
+                ],
+                "context": "Looking for the purpose of the parent organization."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "There is no information about European Movement Germany in the provided graph.",
+                "coverage": 0.0,
+                "evidence": [],
+                "confidence": 0.0,
+                "out_of_scope_aspects": [
+                  "goal of the organization"
+                ],
+                "domain_id": "global_path_expert",
+                "topics_used": [],
+                "multi_hop_paths": "focused",
+                "sub_question": "What is the goal of the organization that European Movement Germany is a core member of?"
+              }
+            ],
+            "overall_coverage": 0.0,
+            "overall_confidence": 0.0,
+            "gaps": [
+              "goal of the organization"
+            ],
+            "answer": "",
+            "abstained": true,
+            "abstention_reason": "No retrieved graph/domain evidence."
+          }
+        },
+        {
+          "question_id": "2hop__354635_174222",
+          "question": "What company succeeded the owner of Empire Sports Network?",
+          "gold_answer": "Time Warner Cable",
+          "answer": "Windjammer Communications succeeded the owner of Empire Sports Network, Adela Communications Corporation. Empire Sports Network was owned by Adela Communications Corporation, and Windjammer Communications was formed from the sale of Adela Communications Corporation.",
+          "short_answer": "Windjammer Communications",
+          "scored_answer": "Windjammer Communications",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 10.326,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What company succeeded the owner of Empire Sports Network?",
+            "final_answer": "Windjammer Communications succeeded the owner of Empire Sports Network, Adela Communications Corporation. Empire Sports Network was owned by Adela Communications Corporation, and Windjammer Communications was formed from the sale of Adela Communications Corporation.",
+            "final_answer_short": "Windjammer Communications",
+            "sub_questions": [
+              {
+                "question": "What company succeeded the owner of Empire Sports Network?",
+                "target_domains": [
+                  "global_path_expert"
+                ],
+                "context": "Looking for successor company via ownership path."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "windjammer_communications",
+                "coverage": 1.0,
+                "evidence": [
+                  "(windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)",
+                  "(empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "global_path_expert",
+                "topics_used": [],
+                "multi_hop_paths": "focused",
+                "sub_question": "What company succeeded the owner of Empire Sports Network?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__635187_861533",
+          "question": "What province shares a border with the province where Lago District is located?",
+          "gold_answer": "Cabo Delgado Province",
+          "answer": "Niassa Province shares a border with the province where Lago District is located.",
+          "short_answer": "Niassa Province",
+          "scored_answer": "Niassa Province",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.4
+          },
+          "duration_seconds": 8.818,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What province shares a border with the province where Lago District is located?",
+            "final_answer": "Niassa Province shares a border with the province where Lago District is located.",
+            "final_answer_short": "Niassa Province",
+            "sub_questions": [
+              {
+                "question": "What province is Lago District located in?",
+                "target_domains": [
+                  "global_path_expert"
+                ],
+                "context": "Find the province containing Lago District."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "niassa_province",
+                "coverage": 1.0,
+                "evidence": [
+                  "(lago_district) -[LOCATED_IN]-> (niassa_province)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "global_path_expert",
+                "topics_used": [],
+                "multi_hop_paths": "focused",
+                "sub_question": "What province is Lago District located in?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        }
+      ]
+    },
+    "graphrag_basic": {
+      "config": {
+        "name": "graphrag_basic",
+        "description": "Graph-aware retrieval baseline using community summaries",
+        "orchestrator": "basic",
+        "num_domains": 1,
+        "enable_debate": true,
+        "enable_critic": true,
+        "max_exploration_rounds": 3
+      },
+      "aggregate_metrics": {
+        "num_questions": 10,
+        "exact_match": 0.0,
+        "token_f1": 0.1082,
+        "answer_rate": 1.0
+      },
+      "results": [
+        {
+          "question_id": "2hop__460946_294723",
+          "question": "Who is the spouse of the Green performer?",
+          "gold_answer": "Miquette Giraudy",
+          "answer": "There is no spouse information for the Green performer in the provided evidence.",
+          "short_answer": "There is no spouse information for the Green performer in the provided evidence.",
+          "scored_answer": "There is no spouse information for the Green performer in the provided evidence",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 3.529,
+          "evidence_supported": true,
+          "system_metadata": {
+            "answer": "There is no spouse information for the Green performer in the provided evidence.",
+            "coverage": 0.0,
+            "evidence": [],
+            "confidence": 0.0,
+            "out_of_scope_aspects": [
+              "spouse"
+            ],
+            "final_answer": "There is no spouse information for the Green performer in the provided evidence.",
+            "community_ids": [
+              "community_6",
+              "community_4",
+              "community_1"
+            ],
+            "retrieval_mode": "community_summary"
+          }
+        },
+        {
+          "question_id": "2hop__252311_366220",
+          "question": "Who founded the company that distributed the film UHF?",
+          "gold_answer": "Mike Medavoy",
+          "answer": "orion_pictures",
+          "short_answer": "orion_pictures",
+          "scored_answer": "orion_pictures",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 4.333,
+          "evidence_supported": true,
+          "system_metadata": {
+            "answer": "orion_pictures",
+            "coverage": 1.0,
+            "evidence": [
+              "(mike_medavoy) -[FILM_PRODUCED_BY]-> (orion_pictures)",
+              "(uhf_film) -[FILM_FUNDED_BY]-> (orion_pictures)"
+            ],
+            "confidence": 1.0,
+            "out_of_scope_aspects": [],
+            "final_answer": "orion_pictures",
+            "community_ids": [
+              "community_2",
+              "community_4",
+              "community_6"
+            ],
+            "retrieval_mode": "community_summary"
+          }
+        },
+        {
+          "question_id": "2hop__701895_752697",
+          "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+          "gold_answer": "Tamaulipas",
+          "answer": "nuevo_laredo",
+          "short_answer": "nuevo_laredo",
+          "scored_answer": "nuevo_laredo",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 4.007,
+          "evidence_supported": true,
+          "system_metadata": {
+            "answer": "nuevo_laredo",
+            "coverage": 1.0,
+            "evidence": [
+              "(ciudad_deportiva) -[COMPLEX_LOCATED_IN]-> (nuevo_laredo)"
+            ],
+            "confidence": 1.0,
+            "out_of_scope_aspects": [],
+            "final_answer": "nuevo_laredo",
+            "community_ids": [
+              "community_7",
+              "community_14",
+              "community_0"
+            ],
+            "retrieval_mode": "community_summary"
+          }
+        },
+        {
+          "question_id": "2hop__259228_793698",
+          "question": "Where is Ulrich Walter's employer headquartered?",
+          "gold_answer": "Cologne",
+          "answer": "This question cannot be answered from the provided evidence.",
+          "short_answer": "This question cannot be answered from the provided evidence.",
+          "scored_answer": "This question cannot be answered from the provided evidence",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 3.598,
+          "evidence_supported": true,
+          "system_metadata": {
+            "answer": "This question cannot be answered from the provided evidence.",
+            "coverage": 0.0,
+            "evidence": [],
+            "confidence": 0.0,
+            "out_of_scope_aspects": [
+              "employer",
+              "headquarters",
+              "Ulrich Walter"
+            ],
+            "final_answer": "This question cannot be answered from the provided evidence.",
+            "community_ids": [
+              "community_0",
+              "community_1",
+              "community_2"
+            ],
+            "retrieval_mode": "community_summary"
+          }
+        },
+        {
+          "question_id": "2hop__481349_302087",
+          "question": "Which company owns the manufacturer of Learjet 60?",
+          "gold_answer": "Bombardier Inc.",
+          "answer": "bombardier_aerospace",
+          "short_answer": "bombardier_aerospace",
+          "scored_answer": "bombardier_aerospace",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 3.701,
+          "evidence_supported": true,
+          "system_metadata": {
+            "answer": "bombardier_aerospace",
+            "coverage": 1.0,
+            "evidence": [
+              "(learjet_60) -[AIRCRAFT_MANUFACTURED_BY]-> (bombardier_aerospace)"
+            ],
+            "confidence": 1.0,
+            "out_of_scope_aspects": [],
+            "final_answer": "bombardier_aerospace",
+            "community_ids": [
+              "community_11",
+              "community_4",
+              "community_6"
+            ],
+            "retrieval_mode": "community_summary"
+          }
+        },
+        {
+          "question_id": "2hop__697790_864352",
+          "question": "Who is the child of Caroline LeRoy's spouse?",
+          "gold_answer": "Fletcher Webster",
+          "answer": "Daniel Webster",
+          "short_answer": "Daniel Webster",
+          "scored_answer": "Daniel Webster",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.5
+          },
+          "duration_seconds": 4.263,
+          "evidence_supported": true,
+          "system_metadata": {
+            "answer": "Daniel Webster",
+            "coverage": 1.0,
+            "evidence": [
+              "(daniel_webster) -[SPOUSE_OF]-> (caroline_leroy_webster)"
+            ],
+            "confidence": 1.0,
+            "out_of_scope_aspects": [],
+            "final_answer": "Daniel Webster",
+            "community_ids": [
+              "community_4",
+              "community_5",
+              "community_1"
+            ],
+            "retrieval_mode": "community_summary"
+          }
+        },
+        {
+          "question_id": "2hop__207476_625987",
+          "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+          "gold_answer": "Marie de' Medici",
+          "answer": "The evidence does not contain information about the grandmother of Philippe, Duke of Orl\u00e9ans.",
+          "short_answer": "The evidence does not contain information about the grandmother of Philippe, Duke of Orl\u00e9ans.",
+          "scored_answer": "The evidence does not contain information about the grandmother of Philippe, Duke of Orl\u00e9ans",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 3.709,
+          "evidence_supported": true,
+          "system_metadata": {
+            "answer": "The evidence does not contain information about the grandmother of Philippe, Duke of Orl\u00e9ans.",
+            "coverage": 0.0,
+            "evidence": [],
+            "confidence": 0.0,
+            "out_of_scope_aspects": [
+              "grandmother"
+            ],
+            "final_answer": "The evidence does not contain information about the grandmother of Philippe, Duke of Orl\u00e9ans.",
+            "community_ids": [
+              "community_1",
+              "community_10",
+              "community_4"
+            ],
+            "retrieval_mode": "community_summary"
+          }
+        },
+        {
+          "question_id": "2hop__390947_232243",
+          "question": "What is the goal of the group that European Movement Germany is a member of?",
+          "gold_answer": "European integration",
+          "answer": "The evidence does not contain information about European Movement Germany.",
+          "short_answer": "The evidence does not contain information about European Movement Germany.",
+          "scored_answer": "The evidence does not contain information about European Movement Germany",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.1818181818181818
+          },
+          "duration_seconds": 3.341,
+          "evidence_supported": true,
+          "system_metadata": {
+            "answer": "The evidence does not contain information about European Movement Germany.",
+            "coverage": 0.0,
+            "evidence": [],
+            "confidence": 0.0,
+            "out_of_scope_aspects": [
+              "goal of the group European Movement Germany is a member of"
+            ],
+            "final_answer": "The evidence does not contain information about European Movement Germany.",
+            "community_ids": [
+              "community_8",
+              "community_6",
+              "community_13"
+            ],
+            "retrieval_mode": "community_summary"
+          }
+        },
+        {
+          "question_id": "2hop__354635_174222",
+          "question": "What company succeeded the owner of Empire Sports Network?",
+          "gold_answer": "Time Warner Cable",
+          "answer": "windjammer_communications",
+          "short_answer": "windjammer_communications",
+          "scored_answer": "windjammer_communications",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 3.602,
+          "evidence_supported": true,
+          "system_metadata": {
+            "answer": "windjammer_communications",
+            "coverage": 1.0,
+            "evidence": [
+              "(windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)"
+            ],
+            "confidence": 1.0,
+            "out_of_scope_aspects": [],
+            "final_answer": "windjammer_communications",
+            "community_ids": [
+              "community_3",
+              "community_4",
+              "community_6"
+            ],
+            "retrieval_mode": "community_summary"
+          }
+        },
+        {
+          "question_id": "2hop__635187_861533",
+          "question": "What province shares a border with the province where Lago District is located?",
+          "gold_answer": "Cabo Delgado Province",
+          "answer": "Niassa province.",
+          "short_answer": "Niassa province.",
+          "scored_answer": "Niassa province",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.4
+          },
+          "duration_seconds": 3.998,
+          "evidence_supported": true,
+          "system_metadata": {
+            "answer": "Niassa province.",
+            "coverage": 1.0,
+            "evidence": [
+              "(lago_district) -[LOCATED_IN]-> (niassa_province)"
+            ],
+            "confidence": 1.0,
+            "out_of_scope_aspects": [],
+            "final_answer": "Niassa province.",
+            "community_ids": [
+              "community_0",
+              "community_8",
+              "community_4"
+            ],
+            "retrieval_mode": "community_summary"
+          }
+        }
+      ]
+    },
+    "domain_basic": {
+      "config": {
+        "name": "domain_basic",
+        "description": "Clustered domain experts without active exploration/debate",
+        "orchestrator": "basic",
+        "num_domains": null,
+        "enable_debate": true,
+        "enable_critic": true,
+        "max_exploration_rounds": 3
+      },
+      "aggregate_metrics": {
+        "num_questions": 10,
+        "exact_match": 0.3,
+        "token_f1": 0.4367,
+        "answer_rate": 0.9
+      },
+      "results": [
+        {
+          "question_id": "2hop__460946_294723",
+          "question": "Who is the spouse of the Green performer?",
+          "gold_answer": "Miquette Giraudy",
+          "answer": "Steve Hillage performed on the album Green, and Miquette Giraudy is his partner. Therefore, Miquette Giraudy is the spouse of the performer associated with Green.",
+          "short_answer": "Miquette Giraudy",
+          "scored_answer": "Miquette Giraudy",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0
+          },
+          "duration_seconds": 12.762,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the spouse of the Green performer?",
+            "final_answer": "Steve Hillage performed on the album Green, and Miquette Giraudy is his partner. Therefore, Miquette Giraudy is the spouse of the performer associated with Green.",
+            "final_answer_short": "Miquette Giraudy",
+            "sub_questions": [
+              {
+                "question": "Who is the spouse of the performer associated with the Green?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Identify the performer and then find their spouse."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Steve Hillage is associated with the album Green, and Miquette Giraudy is his partner in a band. Therefore, Miquette Giraudy is the spouse of the performer associated with Green.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(steve_hillage) -[ALBUM_BY_ARTIST]-> (green)",
+                  "(steve_hillage) -[PARTNER_IN_BAND]-> (miquette_giraudy)"
+                ],
+                "confidence": 0.825,
+                "out_of_scope_aspects": [],
+                "domain_id": "cultural_production_and_geographic_context",
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'green':\n  (steve_hillage) -[ALBUM_BY_ARTIST]-> (green)\n  (green) -[ALBUM_SEQUEL_TO]-> (the_red_album)\n  (green) -[RECORDED_IN_LOCATION]-> (dorking)\n  (green) -[RECORDED_IN_LOCATION]-> (london)\n  (steve_hillage) -[PERFORMS_IN_BAND]-> (gong)\n  (steve_hillage) -[PARTNER_IN_BAND]-> (miquette_giraudy)\n  (steve_hillage) -[CORE_MEMBER_OF]-> (system)\n  (steve_hillage) -[ALBUM_BY_ARTIST]-> (motivation_radio)\n  (miquette_giraudy) -[PERFORMS_IN_BAND]-> (gong)\n  (miquette_giraudy) -[CORE_MEMBER_OF]-> (system)",
+                "sub_question": "Who is the spouse of the performer associated with the Green?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.9,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__252311_366220",
+          "question": "Who founded the company that distributed the film UHF?",
+          "gold_answer": "Mike Medavoy",
+          "answer": "Orion Pictures distributed the film UHF. Mike Medavoy produced a film with Orion Pictures.",
+          "short_answer": "Orion Pictures",
+          "scored_answer": "Orion Pictures",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 11.376,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who founded the company that distributed the film UHF?",
+            "final_answer": "Orion Pictures distributed the film UHF. Mike Medavoy produced a film with Orion Pictures.",
+            "final_answer_short": "Orion Pictures",
+            "sub_questions": [
+              {
+                "question": "Which company distributed the film UHF?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Focus on Production Companies and Creative Works"
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Orion Pictures distributed the film UHF. Mike Medavoy also produced a film with Orion Pictures.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(uhf_film) -[FILM_FUNDED_BY]-> (orion_pictures)",
+                  "(mike_medavoy) -[FILM_PRODUCED_BY]-> (orion_pictures)"
+                ],
+                "confidence": 0.833,
+                "out_of_scope_aspects": [],
+                "domain_id": "cultural_production_and_geographic_context",
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'uhf_film':\n  (uhf_film) -[FILM_ADAPTS_STYLE]-> (parody)\n  (uhf_film) -[FILM_ADAPTS_STYLE]-> (comedy)\n  (yankovic) -[WROTE_FILM]-> (uhf_film)\n  (levey) -[WROTE_FILM]-> (uhf_film)\n  (uhf_film) -[FILM_USES_APPROACH]-> (george)\n  (uhf_film) -[FILM_FUNDED_BY]-> (orion_pictures)\n  (uhf_film) -[FILM_SHOT_IN]-> (tulsa_oklahoma)\n  (uhf_film) -[EXTRAS_FROM]-> (dallas_texas)\n  (uhf_film) -[FILM_COST]-> (5_million_dollars)\n  (yankovic) -[FILM_WRITTEN_BY]-> (levey)\n  (george) -[FILM_CHARACTER]-> (straight_man)\n  (mike_medavoy) -[FILM_PRODUCED_BY]-> (orion_pictures)",
+                "sub_question": "Which company distributed the film UHF?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.83,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__701895_752697",
+          "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+          "gold_answer": "Tamaulipas",
+          "answer": "Ciudad Deportiva is located in Nuevo Laredo, which is contained within and has its seat in Tamaulipas.",
+          "short_answer": "Tamaulipas",
+          "scored_answer": "Tamaulipas",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0
+          },
+          "duration_seconds": 12.686,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+            "final_answer": "Ciudad Deportiva is located in Nuevo Laredo, which is contained within and has its seat in Tamaulipas.",
+            "final_answer_short": "Tamaulipas",
+            "sub_questions": [
+              {
+                "question": "What administrative territorial entity owns Ciudad Deportiva?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Focus on identifying the owner/governing entity of a specific location (Ciudad Deportiva)."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Ciudad Deportiva is located in Nuevo Laredo. Nuevo Laredo is contained within and has its seat in Tamaulipas.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(ciudad_deportiva) -[COMPLEX_LOCATED_IN]-> (nuevo_laredo)",
+                  "(tamaulipas) -[MUNICIPALITY_CONTAINS]-> (nuevo_laredo)",
+                  "(tamaulipas) -[MUNICIPALITY_HAS_SEAT]-> (nuevo_laredo)"
+                ],
+                "confidence": 0.426,
+                "out_of_scope_aspects": [],
+                "domain_id": "cultural_production_and_geographic_context",
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "none",
+                "sub_question": "What administrative territorial entity owns Ciudad Deportiva?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__259228_793698",
+          "question": "Where is Ulrich Walter's employer headquartered?",
+          "gold_answer": "Cologne",
+          "answer": "",
+          "short_answer": "",
+          "scored_answer": "",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 11.985,
+          "evidence_supported": false,
+          "system_metadata": {
+            "question": "Where is Ulrich Walter's employer headquartered?",
+            "final_answer": "",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "What is Ulrich Walter's employer?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Identify the production company or organization Ulrich Walter is associated with."
+              },
+              {
+                "question": "Where is the headquarters of [employer] located?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Find the geographic location of the headquarters of the identified employer."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "The provided data does not contain information about Ulrich Walter's employer. It does state that Mike Medavoy produced films with Orion Pictures.",
+                "coverage": 0.5,
+                "evidence": [],
+                "confidence": 0.426,
+                "out_of_scope_aspects": [
+                  "Ulrich Walter's employer"
+                ],
+                "domain_id": "cultural_production_and_geographic_context",
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "none",
+                "sub_question": "What is Ulrich Walter's employer?"
+              }
+            ],
+            "overall_coverage": 0.75,
+            "overall_confidence": 0.9,
+            "gaps": [],
+            "answer": "",
+            "abstained": true,
+            "abstention_reason": "No retrieved graph/domain evidence."
+          }
+        },
+        {
+          "question_id": "2hop__481349_302087",
+          "question": "Which company owns the manufacturer of Learjet 60?",
+          "gold_answer": "Bombardier Inc.",
+          "answer": "Bombardier Aerospace manufactures the Learjet 60.",
+          "short_answer": "Bombardier Aerospace",
+          "scored_answer": "Bombardier Aerospace",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.5
+          },
+          "duration_seconds": 15.044,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Which company owns the manufacturer of Learjet 60?",
+            "final_answer": "Bombardier Aerospace manufactures the Learjet 60.",
+            "final_answer_short": "Bombardier Aerospace",
+            "sub_questions": [
+              {
+                "question": "Which company owns the manufacturer of Learjet 60?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Identify the production company associated with the Learjet 60."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "The knowledge graph does not contain information about the ownership of the Learjet 60's manufacturer, Bombardier Aerospace. However, it states that Mike Medavoy produced films for Orion Pictures.",
+                "coverage": 0.1,
+                "evidence": [
+                  "(mike_medavoy) -[FILM_PRODUCED_BY]-> (orion_pictures)"
+                ],
+                "confidence": 0.9,
+                "out_of_scope_aspects": [
+                  "ownership of Bombardier Aerospace"
+                ],
+                "domain_id": "cultural_production_and_geographic_context",
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'learjet_60':\n  (learjet_60) -[AIRCRAFT_MANUFACTURED_BY]-> (bombardier_aerospace)\n  (learjet_60) -[MANUFACTURED_IN]-> (wichita,_kansas)\n  (learjet_60) -[AIRCRAFT_POWERED_BY]-> (pratt_&_whitney_canada_pw305a_engines)\n  (learjet_60) -[AIRCRAFT_HAS_RANGE]-> (nbaa_reserves,_isa)\n  (learjet_60xr) -[AIRCRAFT_VARIANT_OF]-> (learjet_60)\n  (bombardier_aerospace) -[PRODUCTION_PAUSE_ANNOUNCED]-> (learjet_60xr)",
+                "sub_question": "Which company owns the manufacturer of Learjet 60?"
+              },
+              {
+                "answer": "Bombardier Aerospace manufactures Learjet 60.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(learjet_60) -[AIRCRAFT_MANUFACTURED_BY]-> (bombardier_aerospace)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [
+                  "ownership of Bombardier Aerospace"
+                ],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "Which company owns the manufacturer of Learjet 60?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__697790_864352",
+          "question": "Who is the child of Caroline LeRoy's spouse?",
+          "gold_answer": "Fletcher Webster",
+          "answer": "Daniel Webster is the spouse of Caroline LeRoy Webster, and he is the child of Grace Fletcher Webster.",
+          "short_answer": "Grace Fletcher Webster",
+          "scored_answer": "Grace Fletcher Webster",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.8
+          },
+          "duration_seconds": 13.196,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the child of Caroline LeRoy's spouse?",
+            "final_answer": "Daniel Webster is the spouse of Caroline LeRoy Webster, and he is the child of Grace Fletcher Webster.",
+            "final_answer_short": "Grace Fletcher Webster",
+            "sub_questions": [
+              {
+                "question": "Who is the spouse of Caroline LeRoy?",
+                "target_domains": [
+                  "tasks_and_concepts"
+                ],
+                "context": "Identify the spouse to then determine their child."
+              },
+              {
+                "question": "Who is the child of [SPOUSE_NAME]?",
+                "target_domains": [
+                  "tasks_and_concepts"
+                ],
+                "context": "Replace [SPOUSE_NAME] with the result from the previous question."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Daniel Webster is the spouse of Caroline LeRoy Webster. The knowledge graph indicates that Daniel Webster is the spouse of Caroline LeRoy Webster.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(daniel_webster) -[SPOUSE_OF]-> (caroline_leroy_webster)"
+                ],
+                "confidence": 0.432,
+                "out_of_scope_aspects": [],
+                "domain_id": "tasks_and_concepts",
+                "topics_used": [
+                  "Tasks",
+                  "Concepts",
+                  "Structures"
+                ],
+                "multi_hop_paths": "none",
+                "sub_question": "Who is the spouse of Caroline LeRoy?"
+              }
+            ],
+            "overall_coverage": 0.95,
+            "overall_confidence": 0.9,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__207476_625987",
+          "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+          "gold_answer": "Marie de' Medici",
+          "answer": "Marie de Medici is the mother of Louis XIII of France, who is the father of Philippe, Duke of Orl\u00e9ans. Therefore, Marie de Medici is the grandmother of Philippe, Duke of Orl\u00e9ans.",
+          "short_answer": "Marie de Medici",
+          "scored_answer": "Marie de Medici",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0
+          },
+          "duration_seconds": 14.966,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+            "final_answer": "Marie de Medici is the mother of Louis XIII of France, who is the father of Philippe, Duke of Orl\u00e9ans. Therefore, Marie de Medici is the grandmother of Philippe, Duke of Orl\u00e9ans.",
+            "final_answer_short": "Marie de Medici",
+            "sub_questions": [
+              {
+                "question": "Who is the mother of Philippe, Duke of Orl\u00e9ans's parent?",
+                "target_domains": [
+                  "tasks_and_concepts"
+                ],
+                "context": "Identify familial relationships to determine the grandmother."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Louis XIII of France is the father of Philippe, Duke of Orl\u00e9ans. Marie de Medici is the mother of Louis XIII of France.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(philippe_duke_of_orleans) -[IS_PARENT_OF]-> (louis_xiii_of_france)",
+                  "(louis_xiii_of_france) -[FATHER_OF]-> (philippe_duke_of_orleans)",
+                  "(marie_de_medici) -[MOTHER_OF]-> (louis_xiii_of_france)"
+                ],
+                "confidence": 0.9,
+                "out_of_scope_aspects": [],
+                "domain_id": "tasks_and_concepts",
+                "topics_used": [
+                  "Tasks",
+                  "Concepts",
+                  "Structures"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'philippe_duke_of_orleans':\n  (philippe_duke_of_orleans) -[IS_SIBLING_OF]-> (louis_xiv)\n  (philippe_duke_of_orleans) -[IS_PARENT_OF]-> (louis_xiii_of_france)\n  (philippe_duke_of_orleans) -[IS_PARENT_OF]-> (anne_of_austria)\n  (louis_xiv) -[BROTHER_OF]-> (philippe_duke_of_orleans)\n  (philippe_duke_of_orleans) -[STYLED_AS]-> (duke_of_anjou)\n  (philippe_duke_of_orleans) -[SUCCESSOR_TO_DUKEDOM]-> (gaston)\n  (philippe_duke_of_orleans) -[RECEIVED_DUKEDOM]-> (valois)\n  (philippe_duke_of_orleans) -[RECEIVED_DUKEDOM]-> (chartres)\n  (philippe_duke_of_orleans) -[KNOWN_AS]-> (monsieur)\n  (louis_xiii_of_france) -[FATHER_OF]-> (philippe_duke_of_orleans)\n  (louis_xiii_of_france) -[IS_PARENT_OF]-> (philippe_duke_of_orleans)\n  (louis_xiv) -[GRANTED_TITLES]-> (nemours)\n  (louis_xiv) -[GRANTED_TITLES]-> (coucy)\n  (louis_xiv) -[GRANTED_TITLES]-> (folembray)\n  (louis_xiv) -[GRANTED_TITLES]-> (dourdan)\n  (louis_xiv) -[GRANTED_TITLES]-> (romorantin)\n  (marie_de_medici) -[MOTHER_OF]-> (louis_xiii_of_france)\n  (leonora_dori_galigai) -[FAVOURITE_OF]-> (marie_de_medici)",
+                "sub_question": "Who is the mother of Philippe, Duke of Orl\u00e9ans's parent?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.9,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__390947_232243",
+          "question": "What is the goal of the group that European Movement Germany is a member of?",
+          "gold_answer": "European integration",
+          "answer": "The available information does not specify the goals of the group that European Movement Germany is a member of. However, Bernd H\u00fcttemann held positions as vice president and secretary general within the organization.",
+          "short_answer": "The available information does not specify the goals of the group that European Movement Germany is a member of. However, Bernd H\u00fcttemann held positions as vice president and secretary general within the organization.",
+          "scored_answer": "The available information does not specify the goals of the group that European Movement Germany is a member of. However, Bernd H\u00fcttemann held positions as vice president and secretary general within the organization",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.06666666666666667
+          },
+          "duration_seconds": 11.651,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What is the goal of the group that European Movement Germany is a member of?",
+            "final_answer": "The available information does not specify the goals of the group that European Movement Germany is a member of. However, Bernd H\u00fcttemann held positions as vice president and secretary general within the organization.",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "What is the goal of the group that European Movement Germany is a member of?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Identify the parent organization of European Movement Germany and its stated goals."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "The knowledge graph does not contain information about the European Movement Germany or its goals. It does, however, state that Bernd H\u00fcttemann held positions related to the organization, but does not specify its goals.",
+                "coverage": 1.0,
+                "evidence": [],
+                "confidence": 0.9,
+                "out_of_scope_aspects": [
+                  "goals of European Movement Germany"
+                ],
+                "domain_id": "cultural_production_and_geographic_context",
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'germany':\n  (cologne) -[LOCATED_IN]-> (germany)\n  (philae_spacecraft) -[CONTROLLED_FROM]-> (cologne)\n  (philae_spacecraft) -[NAMED_AFTER]-> (philae_obelisk)\n  (philae_spacecraft) -[CONTROLLED_FROM]-> (dlr_lander_control_center)\n  (philae_spacecraft) -[NAMED_AFTER]-> (egyptian_hieroglyphs)",
+                "sub_question": "What is the goal of the group that European Movement Germany is a member of?"
+              }
+            ],
+            "overall_coverage": 0.5,
+            "overall_confidence": 0.9,
+            "gaps": [
+              "goals of European Movement Germany"
+            ]
+          }
+        },
+        {
+          "question_id": "2hop__354635_174222",
+          "question": "What company succeeded the owner of Empire Sports Network?",
+          "gold_answer": "Time Warner Cable",
+          "answer": "Windjammer Communications was formed from the sale of Adelphia Communications Corporation, which previously owned Empire Sports Network.",
+          "short_answer": "Windjammer Communications",
+          "scored_answer": "Windjammer Communications",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 18.239,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What company succeeded the owner of Empire Sports Network?",
+            "final_answer": "Windjammer Communications was formed from the sale of Adelphia Communications Corporation, which previously owned Empire Sports Network.",
+            "final_answer_short": "Windjammer Communications",
+            "sub_questions": [
+              {
+                "question": "What company succeeded the owner of Empire Sports Network?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context",
+                  "tasks_and_concepts"
+                ],
+                "context": "Identify the owner of Empire Sports Network and then determine which company took over their position or assets."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Empire Sports Network was owned by Adelphia Communications Corporation. Windjammer Communications was formed from the sale of Adelphia Communications Corporation.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)",
+                  "(windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)"
+                ],
+                "confidence": 0.4,
+                "out_of_scope_aspects": [],
+                "domain_id": "cultural_production_and_geographic_context",
+                "topics_used": [
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'empire_sports_network':\n  (empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)\n  (empire_sports_network) -[AVAILABLE_ON]-> (upstate_new_york)\n  (empire_sports_network) -[AVAILABLE_ON]-> (buffalo)\n  (empire_sports_network) -[AVAILABLE_ON]-> (albany)\n  (empire_sports_network) -[AVAILABLE_ON]-> (northern_pennsylvania)\n  (empire_sports_network) -[AVAILABLE_ON]-> (eastern_ohio)\n  (empire_sports_network) -[CEASED_DUE_TO]-> (adelphia_financial_collapse_bankruptcy)\n  (march) -[DATE_OF_CESSATION]-> (empire_sports_network)\n  (adelphia_communications_corporation) -[OWNED_BY]-> (empire_sports_network)\n  (american_regional_sports_network) -[CEASED_DUE_TO]-> (adelphia_communications_corporation)\n  (windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)",
+                "sub_question": "What company succeeded the owner of Empire Sports Network?"
+              },
+              {
+                "answer": "Adelphia Communications Corporation owned Empire Sports Network. Windjammer Communications was formed from the sale of Adelphia Communications Corporation.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)",
+                  "(windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)"
+                ],
+                "confidence": 0.811,
+                "out_of_scope_aspects": [],
+                "domain_id": "tasks_and_concepts",
+                "topics_used": [
+                  "Tasks",
+                  "Concepts",
+                  "Structures"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'empire_sports_network':\n  (empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)\n  (empire_sports_network) -[AVAILABLE_ON]-> (upstate_new_york)\n  (empire_sports_network) -[AVAILABLE_ON]-> (buffalo)\n  (empire_sports_network) -[AVAILABLE_ON]-> (albany)\n  (empire_sports_network) -[AVAILABLE_ON]-> (northern_pennsylvania)\n  (empire_sports_network) -[AVAILABLE_ON]-> (eastern_ohio)\n  (empire_sports_network) -[CEASED_DUE_TO]-> (adelphia_financial_collapse_bankruptcy)\n  (march) -[DATE_OF_CESSATION]-> (empire_sports_network)\n  (adelphia_communications_corporation) -[OWNED_BY]-> (empire_sports_network)\n  (american_regional_sports_network) -[CEASED_DUE_TO]-> (adelphia_communications_corporation)\n  (windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)",
+                "sub_question": "What company succeeded the owner of Empire Sports Network?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.81,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__635187_861533",
+          "question": "What province shares a border with the province where Lago District is located?",
+          "gold_answer": "Cabo Delgado Province",
+          "answer": "Lago District is located in Niassa Province, which shares a border with Tanzania.",
+          "short_answer": "Tanzania",
+          "scored_answer": "Tanzania",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 15.489,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What province shares a border with the province where Lago District is located?",
+            "final_answer": "Lago District is located in Niassa Province, which shares a border with Tanzania.",
+            "final_answer_short": "Tanzania",
+            "sub_questions": [
+              {
+                "question": "What province is Lago District located in?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Identify the province containing Lago District."
+              },
+              {
+                "question": "What provinces border the province identified in the previous step?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Find provinces sharing a border with the province from the previous answer."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Lago District is located in Niassa Province.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(lago_district) -[LOCATED_IN]-> (niassa_province)"
+                ],
+                "confidence": 0.9,
+                "out_of_scope_aspects": [],
+                "domain_id": "cultural_production_and_geographic_context",
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'lago_district':\n  (lago_district) -[LOCATED_IN]-> (niassa_province)\n  (lago_district) -[BORDERED_BY]-> (lake_nyasa)\n  (lago_district) -[BORDERED_BY]-> (lichinga)\n  (lago_district) -[BORDERED_BY]-> (sanga_district)\n  (lago_district) -[SHARES_BOUNDARY]-> (tanzania)\n  (metangula) -[PRINCIPAL_TOWN_OF]-> (lago_district)\n  (niassa_reserve) -[LOCATED_IN]-> (niassa_province)\n  (niassa_reserve) -[LOCATED_IN]-> (cabo_delgado_province)\n  (niassa_reserve) -[LOCATED_IN]-> (mozambique)\n  (niassa_reserve) -[PART_OF]-> (trans_frontier_conservation_area)\n  (niassa_reserve) -[LINKS_TO]-> (tanzanian_lukwika_lumesule_game_reserve)\n  (niassa_reserve) -[LINKS_TO]-> (lukwika-lumesule_game_reserve)\n  (niassa_reserve) -[WILL_CONNECT_TO]-> (lake_niassa_reserve)",
+                "sub_question": "What province is Lago District located in?"
+              },
+              {
+                "answer": "Niassa province shares a border with Tanzania.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(lago_district) -[LOCATED_IN]-> (niassa_province)",
+                  "(lago_district) -[SHARES_BOUNDARY]-> (tanzania)"
+                ],
+                "confidence": 0.833,
+                "out_of_scope_aspects": [],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "What province shares a border with the province where Lago District is located?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.9,
+            "gaps": []
+          }
+        }
+      ]
+    },
+    "domain_advanced": {
+      "config": {
+        "name": "domain_advanced",
+        "description": "Clustered experts with exploration, debate, and critic",
+        "orchestrator": "advanced",
+        "num_domains": null,
+        "enable_debate": true,
+        "enable_critic": true,
+        "max_exploration_rounds": 3
+      },
+      "aggregate_metrics": {
+        "num_questions": 10,
+        "exact_match": 0.2,
+        "token_f1": 0.3091,
+        "answer_rate": 1.0
+      },
+      "results": [
+        {
+          "question_id": "2hop__460946_294723",
+          "question": "Who is the spouse of the Green performer?",
+          "gold_answer": "Miquette Giraudy",
+          "answer": "The knowledge graph indicates Steve Hillage and Miquette Giraudy are band partners and core members of System and Gong. However, the knowledge graph does not contain information confirming whether Miquette Giraudy is the spouse of Steve Hillage.",
+          "short_answer": "Miquette Giraudy",
+          "scored_answer": "Miquette Giraudy",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0
+          },
+          "duration_seconds": 53.427,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the spouse of the Green performer?",
+            "final_answer": "The knowledge graph indicates Steve Hillage and Miquette Giraudy are band partners and core members of System and Gong. However, the knowledge graph does not contain information confirming whether Miquette Giraudy is the spouse of Steve Hillage.",
+            "final_answer_short": "Miquette Giraudy",
+            "sub_questions": [
+              {
+                "question": "Who is the spouse of the performer associated with the Green?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Identify the performer associated with 'the Green' and then find their spouse."
+              }
+            ],
+            "domain_responses": [
+              {
+                "domain_id": "cultural_production_and_geographic_context",
+                "answer": "Steve Hillage is associated with the album 'Green', and Miquette Giraudy is his partner in a band. Therefore, Miquette Giraudy is the spouse of the performer associated with 'Green'.",
+                "coverage": 1.0,
+                "confidence": 0.9,
+                "evidence": [
+                  "(steve_hillage) -[ALBUM_BY_ARTIST]-> (green)",
+                  "(steve_hillage) -[PARTNER_IN_BAND]-> (miquette_giraudy)"
+                ],
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'green':\n  (steve_hillage) -[ALBUM_BY_ARTIST]-> (green)\n  (green) -[ALBUM_SEQUEL_TO]-> (the_red_album)\n  (green) -[RECORDED_IN_LOCATION]-> (dorking)\n  (green) -[RECORDED_IN_LOCATION]-> (london)\n  (steve_hillage) -[PERFORMS_IN_BAND]-> (gong)\n  (steve_hillage) -[PARTNER_IN_BAND]-> (miquette_giraudy)\n  (steve_hillage) -[CORE_MEMBER_OF]-> (system)\n  (steve_hillage) -[ALBUM_BY_ARTIST]-> (motivation_radio)\n  (miquette_giraudy) -[PERFORMS_IN_BAND]-> (gong)\n  (miquette_giraudy) -[CORE_MEMBER_OF]-> (system)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "Steve Hillage is associated with the album 'Green', and Miquette Giraudy is his partner in a band. Therefore, Miquette Giraudy is the spouse of the performer associated with 'Green'.",
+                    "confidence": 0.9,
+                    "entities_explored": 1
+                  }
+                ],
+                "entities_explored": [
+                  "green"
+                ],
+                "exploration_rounds": 1,
+                "sub_question": "Who is the spouse of the performer associated with the Green?"
+              }
+            ],
+            "overall_coverage": 0.85,
+            "overall_confidence": 0.9,
+            "gaps": [],
+            "debate_results": [],
+            "critic_result": {
+              "approved": false,
+              "overall_severity": "major",
+              "issues": [
+                {
+                  "type": "logical_error",
+                  "description": "The answer infers spousal relationship from being 'band partners'. While they may be partners professionally, the question asks for a spouse, and the provided evidence only establishes a professional relationship. This is a significant leap in logic.",
+                  "severity": "major",
+                  "evidence": "[cultural_production_and_geographic_context] (conf=0.90): Steve Hillage is associated with the album 'Green', and Miquette Giraudy is his partner in a band."
+                },
+                {
+                  "type": "missing_info",
+                  "description": "The answer does not explicitly state whether Miquette Giraudy *is* the spouse of Steve Hillage. It only states they are band partners. The question asks 'Who is the spouse...', and the answer fails to directly address this.",
+                  "severity": "major",
+                  "evidence": "The entire synthesized answer."
+                }
+              ],
+              "suggestions": [
+                "Explicitly state if Miquette Giraudy is the spouse of Steve Hillage, if that information is available in the KG or expert responses. If not, state that the relationship is not confirmed.",
+                "Avoid making assumptions about marital status based solely on professional partnerships."
+              ],
+              "reasoning": "The answer commits a logical fallacy by assuming spousal relationship from professional partnership. It also fails to directly answer the question, instead providing information about a professional relationship without confirming a marital one. This constitutes a major flaw, making the answer misleading.",
+              "revised_answer": "The knowledge graph indicates Steve Hillage and Miquette Giraudy are band partners and core members of System and Gong. However, the knowledge graph does not contain information confirming whether Miquette Giraudy is the spouse of Steve Hillage."
+            },
+            "provenance": {
+              "total_claims": 6,
+              "grounded_claims": 6,
+              "ungrounded_claims": 0,
+              "groundedness_ratio": 1.0,
+              "records": [
+                {
+                  "claim": "Steve Hillage and Miquette Giraudy are band partners.",
+                  "supporting_triples": [
+                    "(steve_hillage) -[PARTNER_IN_BAND]-> (miquette_giraudy)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Steve Hillage is a core member of System.",
+                  "supporting_triples": [
+                    "(steve_hillage) -[CORE_MEMBER_OF]-> (system)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Miquette Giraudy is a core member of System.",
+                  "supporting_triples": [
+                    "(miquette_giraudy) -[CORE_MEMBER_OF]-> (system)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Steve Hillage is a core member of Gong.",
+                  "supporting_triples": [
+                    "(steve_hillage) -[PERFORMS_IN_BAND]-> (gong)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Miquette Giraudy is a core member of Gong.",
+                  "supporting_triples": [
+                    "(miquette_giraudy) -[PERFORMS_IN_BAND]-> (gong)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "The knowledge graph does not contain information confirming whether Miquette Giraudy is the spouse of Steve Hillage.",
+                  "supporting_triples": [
+                    "(steve_hillage) -[PARTNER_IN_BAND]-> (miquette_giraudy)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                }
+              ]
+            },
+            "session_context": {
+              "turn_number": 1,
+              "entities_accumulated": 1
+            },
+            "exploration_summary": {
+              "total_rounds": 1,
+              "domains_explored": [
+                "cultural_production_and_geographic_context"
+              ]
+            },
+            "duration_seconds": 53.43
+          }
+        },
+        {
+          "question_id": "2hop__252311_366220",
+          "question": "Who founded the company that distributed the film UHF?",
+          "gold_answer": "Mike Medavoy",
+          "answer": "The knowledge graph does not contain information about the founder of Orion Pictures. It indicates that Mike Medavoy produced a film through Orion Pictures and that Orion Pictures funded the film UHF. Production and founding are distinct concepts, and the knowledge graph does not provide information regarding the founding of Orion Pictures.",
+          "short_answer": "Orion Pictures",
+          "scored_answer": "Orion Pictures",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 55.302,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who founded the company that distributed the film UHF?",
+            "final_answer": "The knowledge graph does not contain information about the founder of Orion Pictures. It indicates that Mike Medavoy produced a film through Orion Pictures and that Orion Pictures funded the film UHF. Production and founding are distinct concepts, and the knowledge graph does not provide information regarding the founding of Orion Pictures.",
+            "final_answer_short": "Orion Pictures",
+            "sub_questions": [
+              {
+                "question": "What company distributed the film UHF?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Focus on identifying the production/distribution company associated with the film 'UHF'."
+              }
+            ],
+            "domain_responses": [
+              {
+                "domain_id": "cultural_production_and_geographic_context",
+                "answer": "Orion Pictures funded and produced the film UHF. Mike Medavoy also produced a film through Orion Pictures.",
+                "coverage": 1.0,
+                "confidence": 0.9,
+                "evidence": [
+                  "(uhf_film) -[FILM_FUNDED_BY]-> (orion_pictures)",
+                  "(mike_medavoy) -[FILM_PRODUCED_BY]-> (orion_pictures)"
+                ],
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'uhf_film':\n  (uhf_film) -[FILM_ADAPTS_STYLE]-> (parody)\n  (uhf_film) -[FILM_ADAPTS_STYLE]-> (comedy)\n  (yankovic) -[WROTE_FILM]-> (uhf_film)\n  (levey) -[WROTE_FILM]-> (uhf_film)\n  (uhf_film) -[FILM_USES_APPROACH]-> (george)\n  (uhf_film) -[FILM_FUNDED_BY]-> (orion_pictures)\n  (uhf_film) -[FILM_SHOT_IN]-> (tulsa_oklahoma)\n  (uhf_film) -[EXTRAS_FROM]-> (dallas_texas)\n  (uhf_film) -[FILM_COST]-> (5_million_dollars)\n  (yankovic) -[FILM_WRITTEN_BY]-> (levey)\n  (george) -[FILM_CHARACTER]-> (straight_man)\n  (mike_medavoy) -[FILM_PRODUCED_BY]-> (orion_pictures)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "Orion Pictures funded and produced the film UHF. Mike Medavoy also produced a film through Orion Pictures.",
+                    "confidence": 0.9,
+                    "entities_explored": 1
+                  }
+                ],
+                "entities_explored": [
+                  "uhf_film"
+                ],
+                "exploration_rounds": 1,
+                "sub_question": "What company distributed the film UHF?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.9,
+            "gaps": [],
+            "debate_results": [],
+            "critic_result": {
+              "approved": false,
+              "overall_severity": "major",
+              "issues": [
+                {
+                  "type": "misattribution",
+                  "description": "The answer states the knowledge graph doesn't contain information about who *founded* Orion Pictures, but the question asks about the founder. The KG and expert responses only state who *produced* or *funded* films through Orion Pictures, not who founded it. This is a misdirection of the question's intent and a failure to answer the question.",
+                  "severity": "major",
+                  "evidence": "N/A - the KG doesn't contain founding information, but the answer implies it searched for it and failed, rather than stating it doesn't have the information."
+                },
+                {
+                  "type": "logical_error",
+                  "description": "The answer implies that because the KG states Mike Medavoy produced films *through* Orion Pictures, this somehow answers the question of who founded the company. Production and founding are distinct concepts.",
+                  "severity": "major",
+                  "evidence": "N/A - logical fallacy in reasoning."
+                },
+                {
+                  "type": "missing_info",
+                  "description": "The answer doesn't state that the KG lacks information about the founder of Orion Pictures. It only states it lacks information about *who founded* Orion Pictures, which is a subtle but important distinction. It should explicitly state the KG does not contain founding information.",
+                  "severity": "minor",
+                  "evidence": "N/A"
+                },
+                {
+                  "type": "hallucination",
+                  "description": "The answer states 'It indicates that Mike Medavoy produced films through Orion Pictures'. While true, the KG evidence only shows Mike Medavoy *produced a film* through Orion Pictures, not films in general. This is a generalization not supported by the evidence.",
+                  "severity": "minor",
+                  "evidence": "(mike_medavoy) -[FILM_PRODUCED_BY]-> (orion_pictures)"
+                }
+              ],
+              "suggestions": [
+                "Rewrite the answer to explicitly state the KG does not contain information about the founder of Orion Pictures.",
+                "Remove the generalization about Mike Medavoy producing 'films' through Orion Pictures and specify 'a film'.",
+                "Clearly differentiate between production and founding in the response."
+              ],
+              "reasoning": "The answer fundamentally fails to address the question, misinterprets the available information, and makes unsupported generalizations. While it correctly identifies that the KG doesn't have the founding information, it frames this as a search failure rather than a lack of data, and incorrectly links production to founding. The overall severity is 'major' due to the significant misattribution and logical errors.",
+              "revised_answer": "The knowledge graph does not contain information about the founder of Orion Pictures. It indicates that Mike Medavoy produced a film through Orion Pictures and that Orion Pictures funded the film UHF. Production and founding are distinct concepts, and the knowledge graph does not provide information regarding the founding of Orion Pictures."
+            },
+            "provenance": {
+              "total_claims": 4,
+              "grounded_claims": 3,
+              "ungrounded_claims": 1,
+              "groundedness_ratio": 0.75,
+              "records": [
+                {
+                  "claim": "The knowledge graph does not contain information about the founder of Orion Pictures.",
+                  "supporting_triples": [
+                    "(mike_medavoy) -[FILM_PRODUCED_BY]-> (orion_pictures)",
+                    "(uhf_film) -[FILM_FUNDED_BY]-> (orion_pictures)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Mike Medavoy produced a film through Orion Pictures.",
+                  "supporting_triples": [
+                    "(mike_medavoy) -[FILM_PRODUCED_BY]-> (orion_pictures)",
+                    "(uhf_film) -[FILM_FUNDED_BY]-> (orion_pictures)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Orion Pictures funded the film UHF.",
+                  "supporting_triples": [
+                    "(uhf_film) -[FILM_FUNDED_BY]-> (orion_pictures)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Production and founding are distinct concepts.",
+                  "supporting_triples": [],
+                  "hop_path": [],
+                  "source_domain": "",
+                  "confidence": 0.3,
+                  "evidence_type": "ungrounded"
+                }
+              ]
+            },
+            "session_context": {
+              "turn_number": 2,
+              "entities_accumulated": 2
+            },
+            "exploration_summary": {
+              "total_rounds": 1,
+              "domains_explored": [
+                "cultural_production_and_geographic_context"
+              ]
+            },
+            "duration_seconds": 55.3
+          }
+        },
+        {
+          "question_id": "2hop__701895_752697",
+          "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+          "gold_answer": "Tamaulipas",
+          "answer": "Ciudad Deportiva is located in Nuevo Laredo, which is contained within the state of Tamaulipas. The complex serves as the home venue for the Tecolotes de Nuevo Laredo and Toros de Nuevo Laredo teams.",
+          "short_answer": "Nuevo Laredo",
+          "scored_answer": "Nuevo Laredo",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 33.07,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+            "final_answer": "Ciudad Deportiva is located in Nuevo Laredo, which is contained within the state of Tamaulipas. The complex serves as the home venue for the Tecolotes de Nuevo Laredo and Toros de Nuevo Laredo teams. ",
+            "final_answer_short": "Nuevo Laredo",
+            "sub_questions": [
+              {
+                "question": "What administrative territorial entity owns Ciudad Deportiva?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "The question asks about the ownership of a location (Ciudad Deportiva). This falls under geographic context and potentially entities associated with venues."
+              }
+            ],
+            "domain_responses": [
+              {
+                "domain_id": "cultural_production_and_geographic_context",
+                "answer": "The evidence indicates that Ciudad Deportiva is located in Nuevo Laredo and is home to the Tecolotes de Nuevo Laredo and Toros de Nuevo Laredo teams. Tamaulipas contains Nuevo Laredo.",
+                "coverage": 0.5,
+                "confidence": 0.9,
+                "evidence": [
+                  "(ciudad_deportiva) -[COMPLEX_LOCATED_IN]-> (nuevo_laredo)",
+                  "(ciudad_deportiva) -[COMPLEX_HOME_TO]-> (nuevo_laredo)",
+                  "(tamaulipas) -[MUNICIPALITY_CONTAINS]-> (nuevo_laredo)"
+                ],
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "none",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "The evidence indicates that Ciudad Deportiva is located in Nuevo Laredo and is home to the Tecolotes de Nuevo Laredo and Toros de Nuevo Laredo teams. Tamaulipas contains Nuevo Laredo.",
+                    "confidence": 0.9,
+                    "entities_explored": 0
+                  }
+                ],
+                "entities_explored": [],
+                "exploration_rounds": 1,
+                "sub_question": "What administrative territorial entity owns Ciudad Deportiva?"
+              }
+            ],
+            "overall_coverage": 0.85,
+            "overall_confidence": 0.9,
+            "gaps": [],
+            "debate_results": [],
+            "critic_result": {
+              "approved": false,
+              "overall_severity": "minor",
+              "issues": [
+                {
+                  "type": "missing_info",
+                  "description": "The question asks for the *administrative territorial entity* which is the state of Tamaulipas. While the answer states Nuevo Laredo is *within* Tamaulipas, it doesn't explicitly state Tamaulipas as the owner/entity. It implies it but doesn't directly answer the question.",
+                  "severity": "minor",
+                  "evidence": "(tamaulipas) -[MUNICIPALITY_CONTAINS]-> (nuevo_laredo)"
+                }
+              ],
+              "suggestions": [
+                "Explicitly state 'Tamaulipas' as the administrative territorial entity owning Ciudad Deportiva."
+              ],
+              "reasoning": "The answer is mostly correct in identifying the location, but fails to directly address the question's request for the administrative territorial entity. It's a minor omission as the information is present, but the answer requires a slight rephrasing for complete accuracy.",
+              "revised_answer": null
+            },
+            "provenance": {
+              "total_claims": 4,
+              "grounded_claims": 4,
+              "ungrounded_claims": 0,
+              "groundedness_ratio": 1.0,
+              "records": [
+                {
+                  "claim": "Ciudad Deportiva is located in Nuevo Laredo",
+                  "supporting_triples": [
+                    "(tamaulipas) -[MUNICIPALITY_HAS_SEAT]-> (nuevo_laredo)",
+                    "(tamaulipas) -[MUNICIPALITY_CONTAINS]-> (nuevo_laredo)",
+                    "(alvarez) -[LOCALITY_IS_SUBURB_OF]-> (nuevo_laredo)",
+                    "(ciudad_deportiva) -[COMPLEX_LOCATED_IN]-> (nuevo_laredo)",
+                    "(ciudad_deportiva) -[COMPLEX_HOME_TO]-> (nuevo_laredo)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Nuevo Laredo is contained within the state of Tamaulipas",
+                  "supporting_triples": [
+                    "(tamaulipas) -[MUNICIPALITY_HAS_SEAT]-> (nuevo_laredo)",
+                    "(tamaulipas) -[MUNICIPALITY_CONTAINS]-> (nuevo_laredo)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Ciudad Deportiva serves as the home venue for the Tecolotes de Nuevo Laredo",
+                  "supporting_triples": [
+                    "(tamaulipas) -[MUNICIPALITY_HAS_SEAT]-> (nuevo_laredo)",
+                    "(tamaulipas) -[MUNICIPALITY_CONTAINS]-> (nuevo_laredo)",
+                    "(alvarez) -[LOCALITY_IS_SUBURB_OF]-> (nuevo_laredo)",
+                    "(ciudad_deportiva) -[COMPLEX_LOCATED_IN]-> (nuevo_laredo)",
+                    "(ciudad_deportiva) -[COMPLEX_HOME_TO]-> (nuevo_laredo)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Ciudad Deportiva serves as the home venue for the Toros de Nuevo Laredo",
+                  "supporting_triples": [
+                    "(tamaulipas) -[MUNICIPALITY_HAS_SEAT]-> (nuevo_laredo)",
+                    "(tamaulipas) -[MUNICIPALITY_CONTAINS]-> (nuevo_laredo)",
+                    "(alvarez) -[LOCALITY_IS_SUBURB_OF]-> (nuevo_laredo)",
+                    "(ciudad_deportiva) -[COMPLEX_LOCATED_IN]-> (nuevo_laredo)",
+                    "(ciudad_deportiva) -[COMPLEX_HOME_TO]-> (nuevo_laredo)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                }
+              ]
+            },
+            "session_context": {
+              "turn_number": 3,
+              "entities_accumulated": 2
+            },
+            "exploration_summary": {
+              "total_rounds": 1,
+              "domains_explored": [
+                "cultural_production_and_geographic_context"
+              ]
+            },
+            "duration_seconds": 33.07
+          }
+        },
+        {
+          "question_id": "2hop__259228_793698",
+          "question": "Where is Ulrich Walter's employer headquartered?",
+          "gold_answer": "Cologne",
+          "answer": "The provided knowledge graph does not contain any information about Ulrich Walter or his employer. Therefore, it is impossible to determine the location of his employer's headquarters based on the given data.",
+          "short_answer": "The provided knowledge graph does not contain any information about Ulrich Walter or his employer. Therefore, it is impossible to determine the location of his employer's headquarters based on the given data.",
+          "scored_answer": "The provided knowledge graph does not contain any information about Ulrich Walter or his employer. Therefore, it is impossible to determine the location of his employer's headquarters based on the given data",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 76.286,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Where is Ulrich Walter's employer headquartered?",
+            "final_answer": "The provided knowledge graph does not contain any information about Ulrich Walter or his employer. Therefore, it is impossible to determine the location of his employer's headquarters based on the given data.",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "What company does Ulrich Walter work for and where is that company headquartered?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Ulrich Walter is a performer. Need to identify his employer (production company) and then find the headquarters location."
+              }
+            ],
+            "domain_responses": [
+              {
+                "domain_id": "cultural_production_and_geographic_context",
+                "answer": "The provided evidence does not contain information about Ulrich Walter or his employer. It details Mike Medavoy producing films through Orion Pictures, but does not specify where Orion Pictures is headquartered.",
+                "coverage": 0.5,
+                "confidence": 0.426,
+                "evidence": [],
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "none",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "The evidence does not contain information about Ulrich Walter's employer or headquarters location. It does state that Mike Medavoy produced a film through Orion Pictures.",
+                    "confidence": 0.1,
+                    "entities_explored": 0
+                  },
+                  {
+                    "round": 2,
+                    "answer_preview": "The provided evidence does not contain information about Ulrich Walter or his employer. It details Mike Medavoy producing films through Orion Pictures, but does not specify where Orion Pictures is hea",
+                    "confidence": 0.0,
+                    "entities_explored": 4
+                  }
+                ],
+                "entities_explored": [
+                  "Ulrich Walter",
+                  "Orion Pictures",
+                  "Mike Medavoy",
+                  "films produced by Mike Medavoy"
+                ],
+                "exploration_rounds": 2,
+                "sub_question": "What company does Ulrich Walter work for and where is that company headquartered?"
+              }
+            ],
+            "overall_coverage": 0.5,
+            "overall_confidence": 0.43,
+            "gaps": [
+              "Ulrich Walter's employer",
+              "Employer headquarters location"
+            ],
+            "debate_results": [],
+            "critic_result": {
+              "approved": false,
+              "overall_severity": "critical",
+              "issues": [
+                {
+                  "type": "hallucination",
+                  "description": "The answer claims a potential link between Ulrich Walter and Orion Pictures based on Mike Medavoy's association. The knowledge graph and expert responses contain *no* information about Ulrich Walter at all. This is a complete fabrication.",
+                  "severity": "critical",
+                  "evidence": "All expert responses and KG evidence. The question asks about Ulrich Walter, and he is entirely absent from the provided data."
+                },
+                {
+                  "type": "logical_error",
+                  "description": "The reasoning attempts to connect Walter to Orion Pictures through a chain of associations (Medavoy -> Orion Pictures -> potentially Walter). This is a non sequitur; there's no established link between Walter and anyone in the KG.",
+                  "severity": "major",
+                  "evidence": "The entire reasoning chain is built on a nonexistent premise."
+                },
+                {
+                  "type": "missing_info",
+                  "description": "The expert response explicitly states the provided evidence does not contain information about Ulrich Walter or his employer. The synthesized answer ignores this crucial point.",
+                  "severity": "major",
+                  "evidence": "[cultural_production_and_geographic_context] (conf=0.43): The provided evidence does not contain information about Ulrich Walter or his employer."
+                },
+                {
+                  "type": "hallucination",
+                  "description": "The answer states 'Orion Pictures' headquarters could be the location of Ulrich Walter's employer'. This is entirely unsupported by the provided information and is a fabricated claim.",
+                  "severity": "critical",
+                  "evidence": "No evidence supports this claim."
+                }
+              ],
+              "suggestions": [
+                "Acknowledge the complete lack of information about Ulrich Walter in the provided data.",
+                "State that the question cannot be answered based on the given knowledge graph.",
+                "Avoid making any claims about Ulrich Walter's employment or potential employer."
+              ],
+              "reasoning": "The answer is fundamentally flawed because it fabricates information about Ulrich Walter and attempts to answer a question with no supporting evidence. It ignores a direct statement from the expert response that the data lacks information about the target individual. The logical leaps and unsupported claims render the answer completely unreliable.",
+              "revised_answer": "The provided knowledge graph does not contain any information about Ulrich Walter or his employer. Therefore, it is impossible to determine the location of his employer's headquarters based on the given data."
+            },
+            "provenance": {
+              "total_claims": 3,
+              "grounded_claims": 0,
+              "ungrounded_claims": 3,
+              "groundedness_ratio": 0.0,
+              "records": [
+                {
+                  "claim": "The knowledge graph does not contain any information about Ulrich Walter.",
+                  "supporting_triples": [],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.3,
+                  "evidence_type": "ungrounded"
+                },
+                {
+                  "claim": "The knowledge graph does not contain any information about Ulrich Walter's employer.",
+                  "supporting_triples": [],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.3,
+                  "evidence_type": "ungrounded"
+                },
+                {
+                  "claim": "It is impossible to determine the location of Ulrich Walter's employer's headquarters based on the given data.",
+                  "supporting_triples": [],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.3,
+                  "evidence_type": "ungrounded"
+                }
+              ]
+            },
+            "session_context": {
+              "turn_number": 4,
+              "entities_accumulated": 6
+            },
+            "exploration_summary": {
+              "total_rounds": 2,
+              "domains_explored": [
+                "cultural_production_and_geographic_context"
+              ]
+            },
+            "duration_seconds": 76.29
+          }
+        },
+        {
+          "question_id": "2hop__481349_302087",
+          "question": "Which company owns the manufacturer of Learjet 60?",
+          "gold_answer": "Bombardier Inc.",
+          "answer": "Bombardier Aerospace manufactures the Learjet 60, but the knowledge graph does not contain information about which company owns Bombardier Aerospace.",
+          "short_answer": "Bombardier Aerospace",
+          "scored_answer": "Bombardier Aerospace",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.5
+          },
+          "duration_seconds": 52.334,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Which company owns the manufacturer of Learjet 60?",
+            "final_answer": "Bombardier Aerospace manufactures the Learjet 60, but the knowledge graph does not contain information about which company owns Bombardier Aerospace.",
+            "final_answer_short": "Bombardier Aerospace",
+            "sub_questions": [
+              {
+                "question": "Which company owns the manufacturer of Learjet 60?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Identify the manufacturer of Learjet 60 and then determine the owning company."
+              }
+            ],
+            "domain_responses": [
+              {
+                "domain_id": "cultural_production_and_geographic_context",
+                "answer": "The manufacturer of Learjet 60 is Bombardier Aerospace. The evidence does not state which company owns Bombardier Aerospace.",
+                "coverage": 0.0,
+                "confidence": 0.5,
+                "evidence": [
+                  "(learjet_60) -[AIRCRAFT_MANUFACTURED_BY]-> (bombardier_aerospace)"
+                ],
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'learjet_60':\n  (learjet_60) -[AIRCRAFT_MANUFACTURED_BY]-> (bombardier_aerospace)\n  (learjet_60) -[MANUFACTURED_IN]-> (wichita,_kansas)\n  (learjet_60) -[AIRCRAFT_POWERED_BY]-> (pratt_&_whitney_canada_pw305a_engines)\n  (learjet_60) -[AIRCRAFT_HAS_RANGE]-> (nbaa_reserves,_isa)\n  (learjet_60xr) -[AIRCRAFT_VARIANT_OF]-> (learjet_60)\n  (bombardier_aerospace) -[PRODUCTION_PAUSE_ANNOUNCED]-> (learjet_60xr)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "The manufacturer of Learjet 60 is Bombardier Aerospace. The evidence does not state which company owns Bombardier Aerospace.",
+                    "confidence": 0.5,
+                    "entities_explored": 1
+                  }
+                ],
+                "entities_explored": [
+                  "learjet_60"
+                ],
+                "exploration_rounds": 1,
+                "sub_question": "Which company owns the manufacturer of Learjet 60?"
+              },
+              {
+                "answer": "Bombardier Aerospace manufactures Learjet 60.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(learjet_60) -[AIRCRAFT_MANUFACTURED_BY]-> (bombardier_aerospace)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [
+                  "ownership of Bombardier Aerospace"
+                ],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "Which company owns the manufacturer of Learjet 60?"
+              }
+            ],
+            "overall_coverage": 0.85,
+            "overall_confidence": 0.8,
+            "gaps": [
+              "ownership of Bombardier Aerospace"
+            ],
+            "debate_results": [],
+            "critic_result": {
+              "approved": false,
+              "overall_severity": "major",
+              "issues": [
+                {
+                  "type": "missing_info",
+                  "description": "The question asks *which company owns* the manufacturer, but the answer only states *which company manufactures* the Learjet 60. This is a critical omission.",
+                  "severity": "major",
+                  "evidence": "[cultural_production_and_geographic_context] (conf=0.50): The evidence does not state which company owns Bombardier Aerospace."
+                }
+              ],
+              "suggestions": [
+                "The answer needs to identify the owner of Bombardier Aerospace to correctly address the question."
+              ],
+              "reasoning": "The answer provides information about the manufacturer, but fails to answer the core question about ownership. This is a significant flaw, making the response misleading despite being factually correct about manufacturing.",
+              "revised_answer": "Bombardier Aerospace manufactures the Learjet 60, but the knowledge graph does not contain information about which company owns Bombardier Aerospace."
+            },
+            "provenance": {
+              "total_claims": 2,
+              "grounded_claims": 2,
+              "ungrounded_claims": 0,
+              "groundedness_ratio": 1.0,
+              "records": [
+                {
+                  "claim": "Bombardier Aerospace manufactures the Learjet 60",
+                  "supporting_triples": [
+                    "(learjet_60) -[AIRCRAFT_MANUFACTURED_BY]-> (bombardier_aerospace)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "The knowledge graph does not contain information about which company owns Bombardier Aerospace",
+                  "supporting_triples": [
+                    "(learjet_60) -[AIRCRAFT_MANUFACTURED_BY]-> (bombardier_aerospace)",
+                    "(bombardier_aerospace) -[PRODUCTION_PAUSE_ANNOUNCED]-> (learjet_60xr)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                }
+              ]
+            },
+            "session_context": {
+              "turn_number": 5,
+              "entities_accumulated": 7
+            },
+            "exploration_summary": {
+              "total_rounds": 2,
+              "domains_explored": [
+                "cultural_production_and_geographic_context"
+              ]
+            },
+            "duration_seconds": 52.33
+          }
+        },
+        {
+          "question_id": "2hop__697790_864352",
+          "question": "Who is the child of Caroline LeRoy's spouse?",
+          "gold_answer": "Fletcher Webster",
+          "answer": "The knowledge graph does not contain information about the children of Daniel Webster, the spouse of Caroline LeRoy Webster. Therefore, the answer is unknown.",
+          "short_answer": "Daniel Webster",
+          "scored_answer": "Daniel Webster",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.5
+          },
+          "duration_seconds": 84.08,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the child of Caroline LeRoy's spouse?",
+            "final_answer": "The knowledge graph does not contain information about the children of Daniel Webster, the spouse of Caroline LeRoy Webster. Therefore, the answer is unknown.",
+            "final_answer_short": "Daniel Webster",
+            "sub_questions": [
+              {
+                "question": "Who is the spouse of Caroline LeRoy?",
+                "target_domains": [
+                  "tasks_and_concepts",
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Find the spouse of Caroline LeRoy."
+              },
+              {
+                "question": "Who is the child of the spouse identified in the previous step?",
+                "target_domains": [
+                  "tasks_and_concepts",
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Determine the child of the spouse found in the previous step."
+              }
+            ],
+            "domain_responses": [
+              {
+                "domain_id": "tasks_and_concepts",
+                "answer": "Daniel Webster is the spouse of Caroline LeRoy Webster. The evidence also indicates Leroy Bayard McKiven and Co. is the father of Caroline LeRoy Webster.",
+                "coverage": 0.5,
+                "confidence": 0.9,
+                "evidence": [
+                  "(daniel_webster) -[SPOUSE_OF]-> (caroline_leroy_webster)",
+                  "(leroy_bayard_mckiven_and_co) -[FATHER_OF]-> (caroline_leroy_webster)"
+                ],
+                "topics_used": [
+                  "Tasks",
+                  "Concepts",
+                  "Structures"
+                ],
+                "multi_hop_paths": "none",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "Daniel Webster is the spouse of Caroline LeRoy Webster. The evidence also indicates Leroy Bayard McKiven and Co. is the father of Caroline LeRoy Webster.",
+                    "confidence": 0.9,
+                    "entities_explored": 0
+                  }
+                ],
+                "entities_explored": [],
+                "exploration_rounds": 1,
+                "sub_question": "Who is the spouse of Caroline LeRoy?"
+              },
+              {
+                "domain_id": "cultural_production_and_geographic_context",
+                "answer": "Daniel Webster is the spouse of Caroline LeRoy Webster. He was the chief clerk of the United States State Department and delivered news of John Tyler.",
+                "coverage": 0.5,
+                "confidence": 0.95,
+                "evidence": [
+                  "(daniel_webster) -[SPOUSE_OF]-> (caroline_leroy_webster)",
+                  "(daniel_webster) -[HOLDS_POSITION]-> (chief_clerk_of_the_united_states_state_department)",
+                  "(daniel_webster) -[DELIVERED_NEWS_OF]-> (john_tyler)"
+                ],
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "none",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "The provided evidence does not contain information about the spouse of Caroline LeRoy.",
+                    "confidence": 0.0,
+                    "entities_explored": 0
+                  },
+                  {
+                    "round": 2,
+                    "answer_preview": "Daniel Webster is the spouse of Caroline LeRoy Webster. He was the chief clerk of the United States State Department and delivered news of John Tyler.",
+                    "confidence": 0.95,
+                    "entities_explored": 4
+                  }
+                ],
+                "entities_explored": [
+                  "Family members of Caroline LeRoy",
+                  "Caroline LeRoy",
+                  "Organizations Caroline LeRoy is/was affiliated with (may reveal connections)",
+                  "Individuals associated with Caroline LeRoy (colleagues, friends, etc.)"
+                ],
+                "exploration_rounds": 2,
+                "sub_question": "Who is the spouse of Caroline LeRoy?"
+              }
+            ],
+            "overall_coverage": 0.85,
+            "overall_confidence": 0.925,
+            "gaps": [],
+            "debate_results": [],
+            "critic_result": {
+              "approved": false,
+              "overall_severity": "major",
+              "issues": [
+                {
+                  "type": "logical_error",
+                  "description": "The answer states Daniel Webster and Grace Fletcher Webster are children of Daniel Webster, which is a circular and illogical statement. The question asks for the child of Caroline LeRoy's spouse (Daniel Webster). The KG evidence shows Daniel Webster *is* a child of Daniel Webster and Grace Fletcher Webster, but this is irrelevant to the question and presented as an answer instead of identifying *his* children.",
+                  "severity": "critical",
+                  "evidence": "(daniel_webster) -[IS_CHILD_OF]-> (daniel_webster), (daniel_webster) -[IS_CHILD_OF]-> (grace_fletcher_webster)"
+                },
+                {
+                  "type": "misattribution",
+                  "description": "The answer incorrectly identifies Daniel Webster and Grace Fletcher Webster as the children *of* Daniel Webster, when they are his parents according to the KG evidence. This is a complete reversal of the parent-child relationship.",
+                  "severity": "major",
+                  "evidence": "(daniel_webster) -[IS_CHILD_OF]-> (daniel_webster), (daniel_webster) -[IS_CHILD_OF]-> (grace_fletcher_webster)"
+                },
+                {
+                  "type": "missing_info",
+                  "description": "The answer fails to identify any of Daniel Webster's actual children, which is what the question asks for. The KG does not explicitly list his children, but the answer doesn't acknowledge this lack of information and instead provides a nonsensical response.",
+                  "severity": "major",
+                  "evidence": "Absence of Daniel Webster's children in the KG evidence."
+                }
+              ],
+              "suggestions": [
+                "Rewrite the answer to identify Daniel Webster's children. If the KG does not contain this information, state that the answer is unknown.",
+                "Correct the parent-child relationship to accurately reflect the KG evidence.",
+                "Avoid circular reasoning and illogical statements."
+              ],
+              "reasoning": "The answer is fundamentally flawed due to a critical logical error and misattribution of parent-child relationships. It fails to answer the question and instead presents a nonsensical statement based on a misinterpretation of the KG evidence. The omission of the actual children of Daniel Webster further exacerbates the issue.",
+              "revised_answer": "The knowledge graph does not contain information about the children of Daniel Webster, the spouse of Caroline LeRoy Webster. Therefore, the answer is unknown."
+            },
+            "provenance": {
+              "total_claims": 3,
+              "grounded_claims": 3,
+              "ungrounded_claims": 0,
+              "groundedness_ratio": 1.0,
+              "records": [
+                {
+                  "claim": "Daniel Webster is a person.",
+                  "supporting_triples": [
+                    "(daniel_webster) -[IS_CHILD_OF]-> (daniel_webster)",
+                    "(daniel_webster) -[IS_CHILD_OF]-> (grace_fletcher_webster)",
+                    "(daniel_webster) -[EDUCATION_AT]-> (harvard_college)",
+                    "(daniel_webster) -[HOLDS_POSITION]-> (chief_clerk_of_the_united_states_state_department)",
+                    "(daniel_webster) -[DELIVERED_NEWS_OF]-> (john_tyler)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "tasks_and_concepts",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Caroline LeRoy Webster is the spouse of Daniel Webster.",
+                  "supporting_triples": [
+                    "(daniel_webster) -[IS_CHILD_OF]-> (daniel_webster)",
+                    "(daniel_webster) -[SPOUSE_OF]-> (caroline_leroy_webster)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "tasks_and_concepts",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "The knowledge graph does not contain information about the children of Daniel Webster.",
+                  "supporting_triples": [
+                    "(daniel_webster) -[IS_CHILD_OF]-> (daniel_webster)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "tasks_and_concepts",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                }
+              ]
+            },
+            "session_context": {
+              "turn_number": 6,
+              "entities_accumulated": 11
+            },
+            "exploration_summary": {
+              "total_rounds": 3,
+              "domains_explored": [
+                "tasks_and_concepts",
+                "cultural_production_and_geographic_context"
+              ]
+            },
+            "duration_seconds": 84.08
+          }
+        },
+        {
+          "question_id": "2hop__207476_625987",
+          "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+          "gold_answer": "Marie de' Medici",
+          "answer": "Louis XIII of France is the father of Philippe, Duke of Orl\u00e9ans, and Marie de Medici is the mother of Louis XIII of France. Therefore, Marie de Medici is the grandmother of Philippe, Duke of Orl\u00e9ans. The knowledge graph does not contain information about Philippe, Duke of Orl\u00e9ans' other grandparents.",
+          "short_answer": "Marie de Medici",
+          "scored_answer": "Marie de Medici",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0
+          },
+          "duration_seconds": 75.446,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+            "final_answer": "Louis XIII of France is the father of Philippe, Duke of Orl\u00e9ans, and Marie de Medici is the mother of Louis XIII of France. Therefore, Marie de Medici is the grandmother of Philippe, Duke of Orl\u00e9ans. The knowledge graph does not contain information about Philippe, Duke of Orl\u00e9ans' other grandparents.",
+            "final_answer_short": "Marie de Medici",
+            "sub_questions": [
+              {
+                "question": "Who is the mother of Philippe, Duke of Orl\u00e9ans's parent?",
+                "target_domains": [
+                  "tasks_and_concepts",
+                  "cultural_production_and_geographic_context"
+                ],
+                "context": "Identify the parent of Philippe, Duke of Orl\u00e9ans, then identify that person's mother."
+              }
+            ],
+            "domain_responses": [
+              {
+                "domain_id": "tasks_and_concepts",
+                "answer": "Louis XIII of France is the father of Philippe, Duke of Orl\u00e9ans. Marie de Medici is the mother of Louis XIII of France.",
+                "coverage": 1.0,
+                "confidence": 1.0,
+                "evidence": [
+                  "(philippe_duke_of_orleans) -[IS_PARENT_OF]-> (louis_xiii_of_france)",
+                  "(louis_xiii_of_france) -[FATHER_OF]-> (philippe_duke_of_orleans)",
+                  "(marie_de_medici) -[MOTHER_OF]-> (louis_xiii_of_france)"
+                ],
+                "topics_used": [
+                  "Tasks",
+                  "Concepts",
+                  "Structures"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'philippe_duke_of_orleans':\n  (philippe_duke_of_orleans) -[IS_SIBLING_OF]-> (louis_xiv)\n  (philippe_duke_of_orleans) -[IS_PARENT_OF]-> (louis_xiii_of_france)\n  (philippe_duke_of_orleans) -[IS_PARENT_OF]-> (anne_of_austria)\n  (louis_xiv) -[BROTHER_OF]-> (philippe_duke_of_orleans)\n  (philippe_duke_of_orleans) -[STYLED_AS]-> (duke_of_anjou)\n  (philippe_duke_of_orleans) -[SUCCESSOR_TO_DUKEDOM]-> (gaston)\n  (philippe_duke_of_orleans) -[RECEIVED_DUKEDOM]-> (valois)\n  (philippe_duke_of_orleans) -[RECEIVED_DUKEDOM]-> (chartres)\n  (philippe_duke_of_orleans) -[KNOWN_AS]-> (monsieur)\n  (louis_xiii_of_france) -[FATHER_OF]-> (philippe_duke_of_orleans)\n  (louis_xiii_of_france) -[IS_PARENT_OF]-> (philippe_duke_of_orleans)\n  (louis_xiv) -[GRANTED_TITLES]-> (nemours)\n  (louis_xiv) -[GRANTED_TITLES]-> (coucy)\n  (louis_xiv) -[GRANTED_TITLES]-> (folembray)\n  (louis_xiv) -[GRANTED_TITLES]-> (dourdan)\n  (louis_xiv) -[GRANTED_TITLES]-> (romorantin)\n  (marie_de_medici) -[MOTHER_OF]-> (louis_xiii_of_france)\n  (leonora_dori_galigai) -[FAVOURITE_OF]-> (marie_de_medici)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "Louis XIII of France is the father of Philippe, Duke of Orl\u00e9ans. Marie de Medici is the mother of Louis XIII of France.",
+                    "confidence": 1.0,
+                    "entities_explored": 1
+                  }
+                ],
+                "entities_explored": [
+                  "philippe_duke_of_orleans"
+                ],
+                "exploration_rounds": 1,
+                "sub_question": "Who is the mother of Philippe, Duke of Orl\u00e9ans's parent?"
+              },
+              {
+                "domain_id": "cultural_production_and_geographic_context",
+                "answer": "Louis XIII of France is the father of Philippe, Duke of Orl\u00e9ans. Marie de Medici is the mother of Louis XIII of France.",
+                "coverage": 0.0,
+                "confidence": 1.0,
+                "evidence": [
+                  "(louis_xiii_of_france) -[IS_PARENT_OF]-> (philippe_duke_of_orleans)",
+                  "(louis_xiii_of_france) -[IS_PARENT_OF]-> (philippe_duke_of_orleans)",
+                  "(marie_de_medici) -[MOTHER_OF]-> (louis_xiii_of_france)"
+                ],
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'philippe_duke_of_orleans':\n  (philippe_duke_of_orleans) -[IS_SIBLING_OF]-> (louis_xiv)\n  (philippe_duke_of_orleans) -[IS_PARENT_OF]-> (louis_xiii_of_france)\n  (philippe_duke_of_orleans) -[IS_PARENT_OF]-> (anne_of_austria)\n  (louis_xiv) -[BROTHER_OF]-> (philippe_duke_of_orleans)\n  (philippe_duke_of_orleans) -[STYLED_AS]-> (duke_of_anjou)\n  (philippe_duke_of_orleans) -[SUCCESSOR_TO_DUKEDOM]-> (gaston)\n  (philippe_duke_of_orleans) -[RECEIVED_DUKEDOM]-> (valois)\n  (philippe_duke_of_orleans) -[RECEIVED_DUKEDOM]-> (chartres)\n  (philippe_duke_of_orleans) -[KNOWN_AS]-> (monsieur)\n  (louis_xiii_of_france) -[FATHER_OF]-> (philippe_duke_of_orleans)\n  (louis_xiii_of_france) -[IS_PARENT_OF]-> (philippe_duke_of_orleans)\n  (louis_xiv) -[GRANTED_TITLES]-> (nemours)\n  (louis_xiv) -[GRANTED_TITLES]-> (coucy)\n  (louis_xiv) -[GRANTED_TITLES]-> (folembray)\n  (louis_xiv) -[GRANTED_TITLES]-> (dourdan)\n  (louis_xiv) -[GRANTED_TITLES]-> (romorantin)\n  (marie_de_medici) -[MOTHER_OF]-> (louis_xiii_of_france)\n  (leonora_dori_galigai) -[FAVOURITE_OF]-> (marie_de_medici)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "Louis XIII of France is the father of Philippe, Duke of Orl\u00e9ans. Marie de Medici is the mother of Louis XIII of France.",
+                    "confidence": 1.0,
+                    "entities_explored": 1
+                  }
+                ],
+                "entities_explored": [
+                  "philippe_duke_of_orleans"
+                ],
+                "exploration_rounds": 1,
+                "sub_question": "Who is the mother of Philippe, Duke of Orl\u00e9ans's parent?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": [],
+            "debate_results": [],
+            "critic_result": {
+              "approved": false,
+              "overall_severity": "major",
+              "issues": [
+                {
+                  "type": "contradiction",
+                  "description": "The answer states Anne of Austria is the grandmother of Philippe, Duke of Orl\u00e9ans. However, the knowledge graph evidence shows Philippe, Duke of Orl\u00e9ans is the *parent* of Anne of Austria, not the other way around. This is a complete reversal of the familial relationship.",
+                  "severity": "critical",
+                  "evidence": "(philippe_duke_of_orleans) -[IS_PARENT_OF]-> (anne_of_austria)"
+                },
+                {
+                  "type": "logical_error",
+                  "description": "The reasoning chain is flawed. While it correctly identifies Louis XIII as the father of Philippe, it incorrectly concludes Anne of Austria is Philippe's grandmother based on this. The KG evidence demonstrates the reverse relationship.",
+                  "severity": "major",
+                  "evidence": "The provided reasoning does not align with the KG evidence."
+                },
+                {
+                  "type": "misattribution",
+                  "description": "The answer incorrectly attributes the grandmother role to Anne of Austria. Marie de Medici is correctly identified as Louis XIII's mother, but the answer doesn't correctly link this to Philippe's lineage, and then incorrectly claims Anne of Austria is the grandmother.",
+                  "severity": "major",
+                  "evidence": "KG evidence shows the parent-child relationship is reversed."
+                }
+              ],
+              "suggestions": [
+                "Rewrite the answer to reflect the correct parent-child relationship between Philippe, Duke of Orl\u00e9ans and Anne of Austria.",
+                "Verify the familial relationships using the knowledge graph evidence before making claims.",
+                "Carefully review the direction of parent-child relationships to avoid misattributing roles."
+              ],
+              "reasoning": "The answer contains a critical error in identifying the grandmother of Philippe, Duke of Orl\u00e9ans. It completely reverses the parent-child relationship with Anne of Austria, making the answer fundamentally incorrect. The logical reasoning is also flawed, leading to this misattribution. The answer requires a complete rewrite to accurately reflect the familial connections.",
+              "revised_answer": "Louis XIII of France is the father of Philippe, Duke of Orl\u00e9ans, and Marie de Medici is the mother of Louis XIII of France. Therefore, Marie de Medici is the grandmother of Philippe, Duke of Orl\u00e9ans. The knowledge graph does not contain information about Philippe, Duke of Orl\u00e9ans' other grandparents."
+            },
+            "provenance": {
+              "total_claims": 4,
+              "grounded_claims": 4,
+              "ungrounded_claims": 0,
+              "groundedness_ratio": 1.0,
+              "records": [
+                {
+                  "claim": "Louis XIII of France is the father of Philippe, Duke of Orl\u00e9ans",
+                  "supporting_triples": [
+                    "(philippe_duke_of_orleans) -[IS_PARENT_OF]-> (louis_xiii_of_france)",
+                    "(louis_xiii_of_france) -[FATHER_OF]-> (philippe_duke_of_orleans)",
+                    "(louis_xiii_of_france) -[IS_PARENT_OF]-> (philippe_duke_of_orleans)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "tasks_and_concepts",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Marie de Medici is the mother of Louis XIII of France",
+                  "supporting_triples": [
+                    "(marie_de_medici) -[MOTHER_OF]-> (louis_xiii_of_france)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "tasks_and_concepts",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Marie de Medici is the grandmother of Philippe, Duke of Orl\u00e9ans",
+                  "supporting_triples": [
+                    "(philippe_duke_of_orleans) -[IS_SIBLING_OF]-> (louis_xiv)",
+                    "(philippe_duke_of_orleans) -[IS_PARENT_OF]-> (louis_xiii_of_france)",
+                    "(philippe_duke_of_orleans) -[IS_PARENT_OF]-> (anne_of_austria)",
+                    "(louis_xiv) -[BROTHER_OF]-> (philippe_duke_of_orleans)",
+                    "(philippe_duke_of_orleans) -[STYLED_AS]-> (duke_of_anjou)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "tasks_and_concepts",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "The knowledge graph does not contain information about Philippe, Duke of Orl\u00e9ans' other grandparents",
+                  "supporting_triples": [
+                    "(philippe_duke_of_orleans) -[IS_SIBLING_OF]-> (louis_xiv)",
+                    "(philippe_duke_of_orleans) -[IS_PARENT_OF]-> (louis_xiii_of_france)",
+                    "(philippe_duke_of_orleans) -[IS_PARENT_OF]-> (anne_of_austria)",
+                    "(louis_xiv) -[BROTHER_OF]-> (philippe_duke_of_orleans)",
+                    "(philippe_duke_of_orleans) -[STYLED_AS]-> (duke_of_anjou)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "tasks_and_concepts",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                }
+              ]
+            },
+            "session_context": {
+              "turn_number": 7,
+              "entities_accumulated": 12
+            },
+            "exploration_summary": {
+              "total_rounds": 2,
+              "domains_explored": [
+                "tasks_and_concepts",
+                "cultural_production_and_geographic_context"
+              ]
+            },
+            "duration_seconds": 75.44
+          }
+        },
+        {
+          "question_id": "2hop__390947_232243",
+          "question": "What is the goal of the group that European Movement Germany is a member of?",
+          "gold_answer": "European integration",
+          "answer": "European Movement International is a movement that coordinates efforts with and is affiliated with various associations. While its specific goal is not explicitly stated in the provided evidence, its nature as a movement and coordination with associations suggests an advocacy focus likely related to European integration.",
+          "short_answer": "European Movement International is a movement that coordinates efforts with and is affiliated with various associations. While its specific goal is not explicitly stated in the provided evidence, its nature as a movement and coordination with associations suggests an advocacy focus likely related to European integration.",
+          "scored_answer": "European Movement International is a movement that coordinates efforts with and is affiliated with various associations. While its specific goal is not explicitly stated in the provided evidence, its nature as a movement and coordination with associations suggests an advocacy focus likely related to European integration",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0909090909090909
+          },
+          "duration_seconds": 94.923,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What is the goal of the group that European Movement Germany is a member of?",
+            "final_answer": "European Movement International is a movement that coordinates efforts with and is affiliated with various associations. While its specific goal is not explicitly stated in the provided evidence, its nature as a movement and coordination with associations suggests an advocacy focus likely related to European integration.",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "What is the goal of the group that European Movement Germany is a member of?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context",
+                  "tasks_and_concepts"
+                ],
+                "context": "The question asks about the goal of an organization that European Movement Germany belongs to. This requires identifying the parent organization and its purpose."
+              }
+            ],
+            "domain_responses": [
+              {
+                "domain_id": "cultural_production_and_geographic_context",
+                "answer": "The evidence only indicates that European Movement International affiliates with and coordinates efforts with associations. The goal of the group is not explicitly stated.",
+                "coverage": 1.0,
+                "confidence": 0.9,
+                "evidence": [
+                  "(european_movement_international) -[AFFILIATED_WITH]-> (associations)",
+                  "(european_movement_international) -[COORDINATES_EFFORTS]-> (associations)"
+                ],
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'germany':\n  (cologne) -[LOCATED_IN]-> (germany)\n  (philae_spacecraft) -[CONTROLLED_FROM]-> (cologne)\n  (philae_spacecraft) -[NAMED_AFTER]-> (philae_obelisk)\n  (philae_spacecraft) -[CONTROLLED_FROM]-> (dlr_lander_control_center)\n  (philae_spacecraft) -[NAMED_AFTER]-> (egyptian_hieroglyphs)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "The evidence does not contain information about the goal of the group that European Movement Germany is a member of. It only provides information about locations within Germany, such as Cologne being ",
+                    "confidence": 0.0,
+                    "entities_explored": 1
+                  },
+                  {
+                    "round": 2,
+                    "answer_preview": "The evidence does not contain information about the goal of the group that European Movement Germany is a member of. It only shows that European Movement International coordinates efforts with associa",
+                    "confidence": 0.3,
+                    "entities_explored": 5
+                  },
+                  {
+                    "round": 3,
+                    "answer_preview": "The evidence only indicates that European Movement International affiliates with and coordinates efforts with associations. The goal of the group is not explicitly stated.",
+                    "confidence": 0.3,
+                    "entities_explored": 8
+                  }
+                ],
+                "entities_explored": [
+                  "European Movement Germany",
+                  "The founding documents or mission statements of European Movement International",
+                  "Union of European Federalists",
+                  "Key people within European Movement International (to understand their stated goals)",
+                  "germany",
+                  "European Movement International",
+                  "MemberOf (relationship target)",
+                  "Organizations affiliated with European Movement International (to identify potential parent organizations)"
+                ],
+                "exploration_rounds": 3,
+                "sub_question": "What is the goal of the group that European Movement Germany is a member of?"
+              },
+              {
+                "domain_id": "tasks_and_concepts",
+                "answer": "European Movement International coordinates efforts with associations and is affiliated with associations. The evidence does not state the overall goal of this group.",
+                "coverage": 0.0,
+                "confidence": 0.7,
+                "evidence": [
+                  "(european_movement_international) -[COORDINATES_EFFORTS]-> (associations)",
+                  "(european_movement_international) -[AFFILIATED_WITH]-> (associations)"
+                ],
+                "topics_used": [
+                  "Tasks",
+                  "Concepts",
+                  "Structures"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'germany':\n  (cologne) -[LOCATED_IN]-> (germany)\n  (philae_spacecraft) -[CONTROLLED_FROM]-> (cologne)\n  (philae_spacecraft) -[NAMED_AFTER]-> (philae_obelisk)\n  (philae_spacecraft) -[CONTROLLED_FROM]-> (dlr_lander_control_center)\n  (philae_spacecraft) -[NAMED_AFTER]-> (egyptian_hieroglyphs)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "European Movement International coordinates efforts with associations and is affiliated with associations. The evidence does not state the overall goal of this group.",
+                    "confidence": 0.7,
+                    "entities_explored": 1
+                  }
+                ],
+                "entities_explored": [
+                  "germany"
+                ],
+                "exploration_rounds": 1,
+                "sub_question": "What is the goal of the group that European Movement Germany is a member of?"
+              }
+            ],
+            "overall_coverage": 0.85,
+            "overall_confidence": 0.8,
+            "gaps": [
+              "the overall goal of the group"
+            ],
+            "debate_results": [],
+            "critic_result": {
+              "approved": false,
+              "overall_severity": "major",
+              "issues": [
+                {
+                  "type": "missing_info",
+                  "description": "The answer states the goal is not explicitly stated, which is true, but fails to mention the *type* of organization European Movement International is. The KG evidence, while limited, establishes it as an organization coordinating with 'associations', implying a pro-European integration focus which is a crucial piece of information dropped. This omission leads to a severely incomplete answer.",
+                  "severity": "major",
+                  "evidence": "(european_movement_international) -[AFFILIATED_WITH]-> (associations)"
+                },
+                {
+                  "type": "logical_error",
+                  "description": "Inferring a 'focus on collaboration and shared interests' is a weak and unhelpful interpretation. While true, it's a description of *how* they operate, not *what* they aim to achieve. The answer doesn't attempt to deduce the goal from the coordination, which is a missed opportunity.",
+                  "severity": "minor",
+                  "evidence": "Both expert responses state the goal is not explicitly stated."
+                },
+                {
+                  "type": "missing_info",
+                  "description": "The answer doesn't acknowledge the inherent purpose of a 'movement' \u2013 to advocate for something. Failing to recognize this basic characteristic of the organization type contributes to the lack of a substantive answer.",
+                  "severity": "major",
+                  "evidence": "N/A - general knowledge about organizational types"
+                }
+              ],
+              "suggestions": [
+                "State the organization type (movement) and infer a likely purpose (advocacy).",
+                "Attempt to deduce the goal based on the coordination with 'associations' \u2013 likely related to European integration.",
+                "Avoid stating the obvious ('collaboration and shared interests') as if it's a goal in itself."
+              ],
+              "reasoning": "The answer is fundamentally weak because it states the obvious (lack of explicit goal) without attempting to infer anything meaningful from the available evidence. It's a non-answer that relies on stating what isn't known rather than leveraging the limited information provided. The omission of the organization's likely purpose as a 'movement' is a significant flaw.",
+              "revised_answer": "European Movement International is a movement that coordinates efforts with and is affiliated with various associations. While its specific goal is not explicitly stated in the provided evidence, its nature as a movement and coordination with associations suggests an advocacy focus likely related to European integration."
+            },
+            "provenance": {
+              "total_claims": 3,
+              "grounded_claims": 3,
+              "ungrounded_claims": 0,
+              "groundedness_ratio": 1.0,
+              "records": [
+                {
+                  "claim": "European Movement International is a movement.",
+                  "supporting_triples": [
+                    "(european_movement_international) -[AFFILIATED_WITH]-> (associations)",
+                    "(european_movement_international) -[COORDINATES_EFFORTS]-> (associations)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "European Movement International coordinates efforts with associations.",
+                  "supporting_triples": [
+                    "(european_movement_international) -[AFFILIATED_WITH]-> (associations)",
+                    "(european_movement_international) -[COORDINATES_EFFORTS]-> (associations)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "European Movement International is affiliated with associations.",
+                  "supporting_triples": [
+                    "(european_movement_international) -[AFFILIATED_WITH]-> (associations)",
+                    "(european_movement_international) -[COORDINATES_EFFORTS]-> (associations)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                }
+              ]
+            },
+            "session_context": {
+              "turn_number": 8,
+              "entities_accumulated": 20
+            },
+            "exploration_summary": {
+              "total_rounds": 4,
+              "domains_explored": [
+                "tasks_and_concepts",
+                "cultural_production_and_geographic_context"
+              ]
+            },
+            "duration_seconds": 94.92
+          }
+        },
+        {
+          "question_id": "2hop__354635_174222",
+          "question": "What company succeeded the owner of Empire Sports Network?",
+          "gold_answer": "Time Warner Cable",
+          "answer": "Empire Sports Network was owned by Adelphia Communications Corporation, which ceased operations due to financial collapse and bankruptcy. Windjammer Communications was formed from the sale of Adelphia Communications Corporation's assets. While the knowledge graph does not explicitly state what company succeeded Empire Sports Network, it indicates the network ceased operations due to the bankruptcy of its owner, Adelphia.",
+          "short_answer": "Windjammer Communications",
+          "scored_answer": "Windjammer Communications",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 70.062,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What company succeeded the owner of Empire Sports Network?",
+            "final_answer": "Empire Sports Network was owned by Adelphia Communications Corporation, which ceased operations due to financial collapse and bankruptcy. Windjammer Communications was formed from the sale of Adelphia Communications Corporation's assets. While the knowledge graph does not explicitly state what company succeeded Empire Sports Network, it indicates the network ceased operations due to the bankruptcy of its owner, Adelphia.",
+            "final_answer_short": "Windjammer Communications",
+            "sub_questions": [
+              {
+                "question": "Who owned Empire Sports Network?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context",
+                  "tasks_and_concepts"
+                ],
+                "context": "Identify the owner/production company of Empire Sports Network."
+              },
+              {
+                "question": "What company succeeded that owner?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context",
+                  "tasks_and_concepts"
+                ],
+                "context": "Determine the successor company to the owner identified in the previous step."
+              }
+            ],
+            "domain_responses": [
+              {
+                "domain_id": "cultural_production_and_geographic_context",
+                "answer": "Adelphia Communications Corporation owned Empire Sports Network. The network ceased due to the Adelphia financial collapse bankruptcy.",
+                "coverage": 0.5,
+                "confidence": 0.9,
+                "evidence": [
+                  "(empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)",
+                  "(empire_sports_network) -[CEASED_DUE_TO]-> (adelphia_financial_collapse_bankruptcy)"
+                ],
+                "topics_used": [
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'empire_sports_network':\n  (empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)\n  (empire_sports_network) -[AVAILABLE_ON]-> (upstate_new_york)\n  (empire_sports_network) -[AVAILABLE_ON]-> (buffalo)\n  (empire_sports_network) -[AVAILABLE_ON]-> (albany)\n  (empire_sports_network) -[AVAILABLE_ON]-> (northern_pennsylvania)\n  (empire_sports_network) -[AVAILABLE_ON]-> (eastern_ohio)\n  (empire_sports_network) -[CEASED_DUE_TO]-> (adelphia_financial_collapse_bankruptcy)\n  (march) -[DATE_OF_CESSATION]-> (empire_sports_network)\n  (adelphia_communications_corporation) -[OWNED_BY]-> (empire_sports_network)\n  (american_regional_sports_network) -[CEASED_DUE_TO]-> (adelphia_communications_corporation)\n  (windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "Adelphia Communications Corporation owned Empire Sports Network. The network ceased due to the Adelphia financial collapse bankruptcy.",
+                    "confidence": 0.9,
+                    "entities_explored": 1
+                  }
+                ],
+                "entities_explored": [
+                  "empire_sports_network"
+                ],
+                "exploration_rounds": 1,
+                "sub_question": "Who owned Empire Sports Network?"
+              },
+              {
+                "domain_id": "tasks_and_concepts",
+                "answer": "Adelphia Communications Corporation owned Empire Sports Network. Windjammer Communications was formed from the sale of Adelphia Communications Corporation.",
+                "coverage": 1.0,
+                "confidence": 0.9,
+                "evidence": [
+                  "(empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)",
+                  "(windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)"
+                ],
+                "topics_used": [
+                  "Tasks",
+                  "Concepts",
+                  "Structures"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'empire_sports_network':\n  (empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)\n  (empire_sports_network) -[AVAILABLE_ON]-> (upstate_new_york)\n  (empire_sports_network) -[AVAILABLE_ON]-> (buffalo)\n  (empire_sports_network) -[AVAILABLE_ON]-> (albany)\n  (empire_sports_network) -[AVAILABLE_ON]-> (northern_pennsylvania)\n  (empire_sports_network) -[AVAILABLE_ON]-> (eastern_ohio)\n  (empire_sports_network) -[CEASED_DUE_TO]-> (adelphia_financial_collapse_bankruptcy)\n  (march) -[DATE_OF_CESSATION]-> (empire_sports_network)\n  (adelphia_communications_corporation) -[OWNED_BY]-> (empire_sports_network)\n  (american_regional_sports_network) -[CEASED_DUE_TO]-> (adelphia_communications_corporation)\n  (windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "Adelphia Communications Corporation owned Empire Sports Network. Windjammer Communications was formed from the sale of Adelphia Communications Corporation.",
+                    "confidence": 0.9,
+                    "entities_explored": 1
+                  }
+                ],
+                "entities_explored": [
+                  "empire_sports_network"
+                ],
+                "exploration_rounds": 1,
+                "sub_question": "Who owned Empire Sports Network?"
+              }
+            ],
+            "overall_coverage": 0.85,
+            "overall_confidence": 0.9,
+            "gaps": [],
+            "debate_results": [],
+            "critic_result": {
+              "approved": false,
+              "overall_severity": "major",
+              "issues": [
+                {
+                  "type": "contradiction",
+                  "description": "The answer states Windjammer Communications did *not* continue ownership of Empire Sports Network. However, the question asks what *succeeded* the owner, implying a continuation of some form. The KG and expert responses only state Windjammer was formed from the sale of assets, not that it didn't take over any responsibilities related to the network.",
+                  "severity": "major",
+                  "evidence": "Knowledge Graph evidence and both expert responses only state Windjammer was formed from the sale of assets, not that it didn't take over any responsibilities related to the network."
+                },
+                {
+                  "type": "logical_error",
+                  "description": "The answer implies that because Adelphia went bankrupt, Empire Sports Network simply ceased to exist without any successor taking over its function. This is a logical leap. The question asks for the *successor* company, and the answer fails to identify one, instead focusing on what didn't happen.",
+                  "severity": "major",
+                  "evidence": "The question explicitly asks for a successor, and the answer focuses on the bankruptcy and what Windjammer *didn't* do."
+                },
+                {
+                  "type": "missing_info",
+                  "description": "The answer doesn't identify *who* succeeded the owner. It only states what Windjammer did *not* do. This directly fails to answer the question.",
+                  "severity": "major",
+                  "evidence": "The question asks 'What company succeeded the owner of Empire Sports Network?' and the answer does not provide a company name."
+                }
+              ],
+              "suggestions": [
+                "Investigate what happened to the Empire Sports Network after the Adelphia bankruptcy. Was it sold to another company? Was its programming absorbed by another network? The answer needs to identify the successor, if one exists.",
+                "Avoid negative phrasing ('did not continue ownership'). Focus on identifying the entity that took over the network's functions.",
+                "Directly answer the question. The current response is a description of events, not an answer to the question."
+              ],
+              "reasoning": "The answer is fundamentally flawed because it fails to answer the question. It focuses on what didn't happen instead of identifying the successor company. The logical leap and contradiction regarding Windjammer Communications further exacerbate the issue, making this a major error.",
+              "revised_answer": "Empire Sports Network was owned by Adelphia Communications Corporation, which ceased operations due to financial collapse and bankruptcy. Windjammer Communications was formed from the sale of Adelphia Communications Corporation's assets. While the knowledge graph does not explicitly state what company succeeded Empire Sports Network, it indicates the network ceased operations due to the bankruptcy of its owner, Adelphia."
+            },
+            "provenance": {
+              "total_claims": 4,
+              "grounded_claims": 4,
+              "ungrounded_claims": 0,
+              "groundedness_ratio": 1.0,
+              "records": [
+                {
+                  "claim": "Empire Sports Network was owned by Adelphia Communications Corporation.",
+                  "supporting_triples": [
+                    "(empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)",
+                    "(adelphia_communications_corporation) -[OWNED_BY]-> (empire_sports_network)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Adelphia Communications Corporation ceased operations due to financial collapse and bankruptcy.",
+                  "supporting_triples": [
+                    "(empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)",
+                    "(empire_sports_network) -[CEASED_DUE_TO]-> (adelphia_financial_collapse_bankruptcy)",
+                    "(american_regional_sports_network) -[CEASED_DUE_TO]-> (adelphia_communications_corporation)",
+                    "(adelphia_communications_corporation) -[OWNED_BY]-> (empire_sports_network)",
+                    "(windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Windjammer Communications was formed from the sale of Adelphia Communications Corporation's assets.",
+                  "supporting_triples": [
+                    "(windjammer_communications) -[FORMED_FROM_SALE]-> (adelphia_communications_corporation)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Empire Sports Network ceased operations due to the bankruptcy of its owner, Adelphia.",
+                  "supporting_triples": [
+                    "(empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)",
+                    "(empire_sports_network) -[CEASED_DUE_TO]-> (adelphia_financial_collapse_bankruptcy)",
+                    "(adelphia_communications_corporation) -[OWNED_BY]-> (empire_sports_network)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                }
+              ]
+            },
+            "session_context": {
+              "turn_number": 9,
+              "entities_accumulated": 21
+            },
+            "exploration_summary": {
+              "total_rounds": 2,
+              "domains_explored": [
+                "tasks_and_concepts",
+                "cultural_production_and_geographic_context"
+              ]
+            },
+            "duration_seconds": 70.06
+          }
+        },
+        {
+          "question_id": "2hop__635187_861533",
+          "question": "What province shares a border with the province where Lago District is located?",
+          "gold_answer": "Cabo Delgado Province",
+          "answer": "Lago District is located in Niassa Province. Niassa Province shares a boundary with Tanzania. Lago District is also bordered by Lake Nyasa, Lichinga, and Sanga District. Niassa Reserve is located in Cabo Delgado Province, but the knowledge graph does not indicate that Niassa and Cabo Delgado Provinces share a boundary.",
+          "short_answer": "Tanzania",
+          "scored_answer": "Tanzania",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0
+          },
+          "duration_seconds": 106.068,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What province shares a border with the province where Lago District is located?",
+            "final_answer": "Lago District is located in Niassa Province. Niassa Province shares a boundary with Tanzania. Lago District is also bordered by Lake Nyasa, Lichinga, and Sanga District. Niassa Reserve is located in Cabo Delgado Province, but the knowledge graph does not indicate that Niassa and Cabo Delgado Provinces share a boundary.",
+            "final_answer_short": "Tanzania",
+            "sub_questions": [
+              {
+                "question": "In what province is Lago District located?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context",
+                  "tasks_and_concepts"
+                ],
+                "context": "Identify the province containing Lago District."
+              },
+              {
+                "question": "What provinces border the province identified in the previous step?",
+                "target_domains": [
+                  "cultural_production_and_geographic_context",
+                  "tasks_and_concepts"
+                ],
+                "context": "Given the province from the previous step, find its neighboring provinces."
+              }
+            ],
+            "domain_responses": [
+              {
+                "domain_id": "cultural_production_and_geographic_context",
+                "answer": "Lago District is located in Niassa Province. It also borders Lake Nyasa, Lichinga, and Sanga District.",
+                "coverage": 0.0,
+                "confidence": 0.9,
+                "evidence": [
+                  "(lago_district) -[LOCATED_IN]-> (niassa_province)",
+                  "(lago_district) -[BORDERED_BY]-> (lake_nyasa)",
+                  "(lago_district) -[BORDERED_BY]-> (lichinga)",
+                  "(lago_district) -[BORDERED_BY]-> (sanga_district)"
+                ],
+                "topics_used": [
+                  "Creative Works",
+                  "Artists and Performers",
+                  "Production Companies",
+                  "Geographic Context",
+                  "Sports and Venues"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'lago_district':\n  (lago_district) -[LOCATED_IN]-> (niassa_province)\n  (lago_district) -[BORDERED_BY]-> (lake_nyasa)\n  (lago_district) -[BORDERED_BY]-> (lichinga)\n  (lago_district) -[BORDERED_BY]-> (sanga_district)\n  (lago_district) -[SHARES_BOUNDARY]-> (tanzania)\n  (metangula) -[PRINCIPAL_TOWN_OF]-> (lago_district)\n  (niassa_reserve) -[LOCATED_IN]-> (niassa_province)\n  (niassa_reserve) -[LOCATED_IN]-> (cabo_delgado_province)\n  (niassa_reserve) -[LOCATED_IN]-> (mozambique)\n  (niassa_reserve) -[PART_OF]-> (trans_frontier_conservation_area)\n  (niassa_reserve) -[LINKS_TO]-> (tanzanian_lukwika_lumesule_game_reserve)\n  (niassa_reserve) -[LINKS_TO]-> (lukwika-lumesule_game_reserve)\n  (niassa_reserve) -[WILL_CONNECT_TO]-> (lake_niassa_reserve)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "Lago District is located in Niassa Province. It also borders Lake Nyasa, Lichinga, and Sanga District.",
+                    "confidence": 0.9,
+                    "entities_explored": 1
+                  }
+                ],
+                "entities_explored": [
+                  "lago_district"
+                ],
+                "exploration_rounds": 1,
+                "sub_question": "In what province is Lago District located?"
+              },
+              {
+                "domain_id": "tasks_and_concepts",
+                "answer": "Lago District is located in Niassa Province. It also borders Lake Nyasa, Lichinga, and Sanga District, and shares a boundary with Tanzania.",
+                "coverage": 1.0,
+                "confidence": 1.0,
+                "evidence": [
+                  "(lago_district) -[LOCATED_IN]-> (niassa_province)",
+                  "(lago_district) -[BORDERED_BY]-> (lake_nyasa)",
+                  "(lago_district) -[BORDERED_BY]-> (lichinga)",
+                  "(lago_district) -[BORDERED_BY]-> (sanga_district)",
+                  "(lago_district) -[SHARES_BOUNDARY]-> (tanzania)"
+                ],
+                "topics_used": [
+                  "Tasks",
+                  "Concepts",
+                  "Structures"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD of 'lago_district':\n  (lago_district) -[LOCATED_IN]-> (niassa_province)\n  (lago_district) -[BORDERED_BY]-> (lake_nyasa)\n  (lago_district) -[BORDERED_BY]-> (lichinga)\n  (lago_district) -[BORDERED_BY]-> (sanga_district)\n  (lago_district) -[SHARES_BOUNDARY]-> (tanzania)\n  (metangula) -[PRINCIPAL_TOWN_OF]-> (lago_district)\n  (niassa_reserve) -[LOCATED_IN]-> (niassa_province)\n  (niassa_reserve) -[LOCATED_IN]-> (cabo_delgado_province)\n  (niassa_reserve) -[LOCATED_IN]-> (mozambique)\n  (niassa_reserve) -[PART_OF]-> (trans_frontier_conservation_area)\n  (niassa_reserve) -[LINKS_TO]-> (tanzanian_lukwika_lumesule_game_reserve)\n  (niassa_reserve) -[LINKS_TO]-> (lukwika-lumesule_game_reserve)\n  (niassa_reserve) -[WILL_CONNECT_TO]-> (lake_niassa_reserve)",
+                "exploration_trace": [
+                  {
+                    "round": 1,
+                    "answer_preview": "Lago District is located in Niassa Province. It also borders Lake Nyasa, Lichinga, and Sanga District, and shares a boundary with Tanzania.",
+                    "confidence": 1.0,
+                    "entities_explored": 1
+                  }
+                ],
+                "entities_explored": [
+                  "lago_district"
+                ],
+                "exploration_rounds": 1,
+                "sub_question": "In what province is Lago District located?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.95,
+            "gaps": [],
+            "debate_results": [
+              {
+                "conflict": {
+                  "description": "Bordering countries/regions",
+                  "domain_a": "cultural_production_and_geographic_context",
+                  "claim_a": "Lago District borders Lake Nyasa, Lichinga, and Sanga District.",
+                  "domain_b": "tasks_and_concepts",
+                  "claim_b": "Lago District borders Lake Nyasa, Lichinga, Sanga District, and Tanzania."
+                },
+                "resolution": {
+                  "resolution": "Lago District borders Lake Nyasa, Lichinga, Sanga District, and Tanzania.",
+                  "winning_domain": "tasks_and_concepts",
+                  "reasoning": "Both experts present valid evidence. However, the 'SHARES_BOUNDARY' relationship is a valid indicator of a border, even if it's not a direct, immediate border like those with Lichinga or Sanga District. The argument that Tanzania containing Niassa Province negates a border is a misinterpretation; shared boundaries can exist even with containment. Therefore, the claim that Lago District borders Tanzania is supported by the evidence.",
+                  "confidence": 0.9,
+                  "both_partially_correct": true,
+                  "debate_transcript": [
+                    {
+                      "speaker": "cultural_production_and_geographic_context",
+                      "argument": "I claim: Lago District borders Lake Nyasa, Lichinga, and Sanga District.. Evidence: ['(lago_district) -[LOCATED_IN]-> (niassa_province)', '(lago_district) -[BORDERED_BY]-> (lake_nyasa)', '(lago_district) -[BORDERED_BY]-> (lichinga)', '(lago_district) -[BORDERED_BY]-> (sanga_district)']"
+                    },
+                    {
+                      "speaker": "tasks_and_concepts",
+                      "argument": "I claim: Lago District borders Lake Nyasa, Lichinga, Sanga District, and Tanzania.. Evidence: ['(lago_district) -[LOCATED_IN]-> (niassa_province)', '(lago_district) -[BORDERED_BY]-> (lake_nyasa)', '(lago_district) -[BORDERED_BY]-> (lichinga)', '(lago_district) -[BORDERED_BY]-> (sanga_district)', '(lago_district) -[SHARES_BOUNDARY]-> (tanzania)']"
+                    },
+                    {
+                      "speaker": "cultural_production_and_geographic_context",
+                      "argument": "The claim that Lago District borders Tanzania is a misinterpretation of geographic relationships; Tanzania is a nation *containing* Niassa Province, where Lago District is located. While Lago District is within proximity of Tanzania, it directly borders Lake Nyasa, Lichinga, and Sanga District as evidenced by the direct 'BORDERED_BY' relationships: '(lago_district) -[BORDERED_BY]-> (lake_nyasa)', '(lago_district) -[BORDERED_BY]-> (lichinga)', and '(lago_district) -[BORDERED_BY]-> (sanga_district)'."
+                    },
+                    {
+                      "speaker": "tasks_and_concepts",
+                      "argument": "The opposing argument incorrectly focuses on Tanzania as a containing nation, conflating political boundaries with direct geographic borders. My evidence clearly demonstrates a 'SHARES_BOUNDARY' relationship \u2013 '(lago_district) -[SHARES_BOUNDARY]-> (tanzania)' \u2013 indicating Lago District *does* share a border with Tanzania, regardless of Niassa Province's location within Tanzania. The 'BORDERED_BY' relationships with Lake Nyasa, Lichinga, and Sanga District are not mutually exclusive with a border shared with Tanzania."
+                    },
+                    {
+                      "speaker": "cultural_production_and_geographic_context",
+                      "argument": "The claim that Lago District borders Tanzania is a misinterpretation of geographic relationships; Tanzania is a nation *containing* Niassa Province, where Lago District is located, not a direct border. My evidence clearly demonstrates Lago District's immediate borders are limited to Lake Nyasa, Lichinga, and Sanga District, all within Mozambique, as shown by the `BORDERED_BY` relationships in the provided data: `'(lago_district) -[BORDERED_BY]-> (lake_nyasa)'`, `'(lago_district) -[BORDERED_BY]-> (lichinga)'`, and `'(lago_district) -[BORDERED_BY]-> (sanga_district)'`."
+                    },
+                    {
+                      "speaker": "tasks_and_concepts",
+                      "argument": "The opposing argument incorrectly focuses solely on immediate, direct borders while ignoring broader shared boundaries. While Tanzania *contains* Niassa Province, Lago District demonstrably *shares a boundary* with Tanzania, as evidenced by `'(lago_district) -[SHARES_BOUNDARY]-> (tanzania)'`. This indicates a geographic adjacency that constitutes a border, even if not a direct, immediate one like those with Lichinga or Sanga District."
+                    }
+                  ]
+                }
+              }
+            ],
+            "critic_result": {
+              "approved": false,
+              "overall_severity": "major",
+              "issues": [
+                {
+                  "type": "misattribution",
+                  "description": "The answer states Niassa Province shares a boundary with Cabo Delgado Province. The KG evidence only shows Niassa Reserve is located in Cabo Delgado Province, not that the province itself shares a boundary with Niassa Province.",
+                  "severity": "major",
+                  "evidence": "(niassa_reserve) -[LOCATED_IN]-> (cabo_delgado_province)"
+                },
+                {
+                  "type": "logical_error",
+                  "description": "The question asks for a province bordering the province where Lago District is located. The answer lists Tanzania and Cabo Delgado Province as bordering Niassa Province. While Tanzania *does* border Niassa Province, the answer doesn't explicitly state that Cabo Delgado Province borders Niassa Province, only that a reserve within Niassa Province is *located in* Cabo Delgado Province. This is a misinterpretation of the relationship.",
+                  "severity": "major",
+                  "evidence": "The question asks for a province bordering Niassa Province, not a province where a reserve within Niassa is located."
+                },
+                {
+                  "type": "missing_info",
+                  "description": "The answer omits the fact that Lake Nyasa, Lichinga, and Sanga District border Lago District, which is relevant as the question asks about what borders the location of Lago District. While the question asks for a province, listing these bordering entities provides more complete context.",
+                  "severity": "minor",
+                  "evidence": "[cultural_production_and_geographic_context] (conf=0.90): Lago District is located in Niassa Province. It also borders Lake Nyasa, Lichinga, and Sanga District."
+                }
+              ],
+              "suggestions": [
+                "Correct the claim about Cabo Delgado Province. State that Tanzania borders Niassa Province.",
+                "Clarify the relationship between Niassa and Cabo Delgado provinces. The KG shows a reserve is located in Cabo Delgado, not that the provinces share a border.",
+                "Include Lake Nyasa, Lichinga, and Sanga District as entities bordering Lago District for a more complete answer."
+              ],
+              "reasoning": "The answer contains a significant misattribution regarding the border between Niassa and Cabo Delgado provinces, leading to a major flaw. The logical error in interpreting the KG evidence further exacerbates the issue. While the missing information is a minor issue, the combination of these flaws makes the answer unreliable.",
+              "revised_answer": "Lago District is located in Niassa Province. Niassa Province shares a boundary with Tanzania. Lago District is also bordered by Lake Nyasa, Lichinga, and Sanga District. Niassa Reserve is located in Cabo Delgado Province, but the knowledge graph does not indicate that Niassa and Cabo Delgado Provinces share a boundary."
+            },
+            "provenance": {
+              "total_claims": 7,
+              "grounded_claims": 7,
+              "ungrounded_claims": 0,
+              "groundedness_ratio": 1.0,
+              "records": [
+                {
+                  "claim": "Lago District is located in Niassa Province.",
+                  "supporting_triples": [
+                    "(lago_district) -[LOCATED_IN]-> (niassa_province)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Niassa Province shares a boundary with Tanzania.",
+                  "supporting_triples": [
+                    "(niassa_reserve) -[LOCATED_IN]-> (niassa_province)",
+                    "(niassa_reserve) -[LINKS_TO]-> (tanzanian_lukwika_lumesule_game_reserve)",
+                    "(lago_district) -[LOCATED_IN]-> (niassa_province)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Lago District is bordered by Lake Nyasa.",
+                  "supporting_triples": [
+                    "(lago_district) -[BORDERED_BY]-> (lake_nyasa)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Lago District is bordered by Lichinga.",
+                  "supporting_triples": [
+                    "(lago_district) -[BORDERED_BY]-> (lichinga)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Lago District is bordered by Sanga District.",
+                  "supporting_triples": [
+                    "(lago_district) -[BORDERED_BY]-> (sanga_district)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Niassa Reserve is located in Cabo Delgado Province.",
+                  "supporting_triples": [
+                    "(niassa_reserve) -[LOCATED_IN]-> (cabo_delgado_province)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                },
+                {
+                  "claim": "Niassa and Cabo Delgado Provinces do not share a boundary.",
+                  "supporting_triples": [
+                    "(niassa_reserve) -[LOCATED_IN]-> (cabo_delgado_province)",
+                    "(niassa_reserve) -[LOCATED_IN]-> (niassa_province)",
+                    "(lago_district) -[LOCATED_IN]-> (niassa_province)"
+                  ],
+                  "hop_path": [],
+                  "source_domain": "cultural_production_and_geographic_context",
+                  "confidence": 0.8,
+                  "evidence_type": "direct"
+                }
+              ]
+            },
+            "session_context": {
+              "turn_number": 10,
+              "entities_accumulated": 22
+            },
+            "exploration_summary": {
+              "total_rounds": 2,
+              "domains_explored": [
+                "tasks_and_concepts",
+                "cultural_production_and_geographic_context"
+              ]
+            },
+            "duration_seconds": 106.07
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,582 @@
+[
+  {
+    "question_id": "2hop__460946_294723",
+    "question": "Who is the spouse of the Green performer?",
+    "answer": "Miquette Giraudy",
+    "contexts": [
+      {
+        "title": "Miquette Giraudy",
+        "sentences": [
+          "Miquette Giraudy (born 9 February 1953, Nice, France) is a keyboard player and vocalist, best known for her work in Gong and with her partner Steve Hillage. She and Hillage currently form the core of the ambient band System 7. In addition to her performances in music, she has also worked as an actress, film editor and writer. In each role, she has used different stage names."
+        ]
+      },
+      {
+        "title": "Green (Steve Hillage album)",
+        "sentences": [
+          "Green is the fourth studio album by British progressive rock musician Steve Hillage. Written in spring 1977 at the same time as his previous album, the funk-inflected \"Motivation Radio\" (1977), \"Green\" was originally going to be released as \"The Green Album\" as a companion to \"The Red Album\" (the originally intended name for \"Motivation Radio\"). However, this plan was dropped and after a US tour in late 1977, \"Green\" was recorded alone, primarily in Dorking, Surrey, and in London."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Miquette Giraudy",
+        0
+      ],
+      [
+        "Green (Steve Hillage album)",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__252311_366220",
+    "question": "Who founded the company that distributed the film UHF?",
+    "answer": "Mike Medavoy",
+    "contexts": [
+      {
+        "title": "Mike Medavoy",
+        "sentences": [
+          "Morris Mike Medavoy (born January 21, 1941) is an American film producer and executive, co-founder of Orion Pictures (1978), former chairman of TriStar Pictures, former head of production for United Artists (1974\u20131978) and current chairman and CEO of Phoenix Pictures."
+        ]
+      },
+      {
+        "title": "UHF (film)",
+        "sentences": [
+          "Yankovic and Levey wrote the film after Yankovic's second studio album, looking to apply the musician's parody and comedy to film, and chose the approach of George being a straight man with a vivid imagination to support the inclusion of parodies within the film. They struggled with finding a film production company for financing the film, but were eventually able to get Orion Pictures' support after stating they could keep the film costs under $5 million. Principal filming took place around Tulsa, Oklahoma, with many of the extras for the film from the Tulsa and Dallas, Texas areas."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Mike Medavoy",
+        0
+      ],
+      [
+        "UHF (film)",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__701895_752697",
+    "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+    "answer": "Tamaulipas",
+    "contexts": [
+      {
+        "title": "Nuevo Laredo Municipality",
+        "sentences": [
+          "The Municipality of Nuevo Laredo is located in the Mexican state of Tamaulipas. Its municipal seat is Nuevo Laredo. The municipality contains more than 60 localities which the most important ones are Nuevo Laredo, El Campanario y Oradel, and \u00c1lvarez, the last two being suburbs of the city of Nuevo Laredo. By population, the municipality is the third largest in the state of Tamaulipas (behind Reynosa and Matamoros respectively). The Nuevo Laredo municipality is the northernmost in Tamaulipas, lying at the extreme northwestern tip of its narrow strip of land along the R\u00edo Grande. The city of Nuevo Laredo contains approximately 97.5% of the total population of the municipality."
+        ]
+      },
+      {
+        "title": "Ciudad Deportiva (Nuevo Laredo)",
+        "sentences": [
+          "The Ciudad Deportiva (\"Sports City\") is a sports complex in Nuevo Laredo, Mexico. It is home to the Tecolotes de Nuevo Laredo Mexican Baseball League team and the Toros de Nuevo Laredo Mexican professional basketball team from the Liga Nacional de Baloncesto Profesional. The Ciudad Deportiva's Estadio Nuevo Laredo (baseball park) can seat up to 12,000 fans at a baseball game and the Nuevo Laredo Multidisciplinary Gymnasium can seat 4,000 fans at a basketball game."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Nuevo Laredo Municipality",
+        0
+      ],
+      [
+        "Ciudad Deportiva (Nuevo Laredo)",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__259228_793698",
+    "question": "Where is Ulrich Walter's employer headquartered?",
+    "answer": "Cologne",
+    "contexts": [
+      {
+        "title": "Philae (spacecraft)",
+        "sentences": [
+          "The lander is named after the Philae obelisk, which bears a bilingual inscription and was used along with the Rosetta Stone to decipher Egyptian hieroglyphs. \"Philae\" was monitored and operated from DLR's Lander Control Center in Cologne, Germany."
+        ]
+      },
+      {
+        "title": "Ulrich Walter",
+        "sentences": [
+          "After two post-doc positions at the Argonne National Laboratory, Chicago, Illinois, and the University of California at Berkeley, California, he was selected in 1987 to join the German astronaut team. From 1988 to 1990, he completed basic training at the German Aerospace Center, and was then nominated to be in the prime crew for the second German Spacelab mission."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Philae (spacecraft)",
+        0
+      ],
+      [
+        "Ulrich Walter",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__481349_302087",
+    "question": "Which company owns the manufacturer of Learjet 60?",
+    "answer": "Bombardier Inc.",
+    "contexts": [
+      {
+        "title": "List of Bombardier CRJ operators",
+        "sentences": [
+          "Produced by Bombardier Aerospace, aerospace division of the Canadian aerospace and defence company Bombardier Inc. the former CRJ100 and CRJ200 series are no longer in production but still in active airline service, while the more recent CRJ700, CRJ900 and CRJ1000 series are in production and in service."
+        ]
+      },
+      {
+        "title": "Learjet 60",
+        "sentences": [
+          "The Learjet 60 is a mid-size cabin, medium-range business jet aircraft manufactured by Bombardier Aerospace in Wichita, Kansas. Powered by two Pratt & Whitney Canada PW305A engines, it has a range (with 4 passengers and 2 crew) of with NBAA reserves, ISA. In July 2012 Bombardier Aerospace announced a temporary \"production pause\" of the latest variant Learjet 60XR to begin in the fourth quarter of 2012."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "List of Bombardier CRJ operators",
+        0
+      ],
+      [
+        "Learjet 60",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__697790_864352",
+    "question": "Who is the child of Caroline LeRoy's spouse?",
+    "answer": "Fletcher Webster",
+    "contexts": [
+      {
+        "title": "Fletcher Webster",
+        "sentences": [
+          "Daniel Fletcher Webster, commonly known as Fletcher Webster (July 25, 1813 in Portsmouth, New Hampshire \u2013 August 30, 1862) was the son of renowned politician Daniel Webster and Grace Fletcher Webster. He was educated at Harvard College. During his father's first term as Secretary of State, Fletcher served as Chief Clerk of the United States State Department which, at the time, was the second most powerful office in the State Department. As Chief Clerk, he delivered the news of President William Henry Harrison's death to the new President, John Tyler."
+        ]
+      },
+      {
+        "title": "Caroline LeRoy",
+        "sentences": [
+          "Caroline LeRoy Webster (September 28, 1797 in New York City \u2013 February 26, 1882) was the second wife of 19th Century statesman Daniel Webster. Her father was Herman LeRoy, who was once head of the commercial house of Leroy, Bayard, McKiven & Co., a large trading company that operated in different parts of the world. Her father was also the first Holland Consul to the United States. Caroline's mother was Hannah Cornell, daughter of the last Royal Attorney General of the State of North Carolina. Caroline was a descendant of Thomas Cornell."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Fletcher Webster",
+        0
+      ],
+      [
+        "Caroline LeRoy",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__207476_625987",
+    "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+    "answer": "Marie de' Medici",
+    "contexts": [
+      {
+        "title": "Philippe I, Duke of Orl\u00e9ans",
+        "sentences": [
+          "Philippe, Duke of Orl\u00e9ans (21 September 1640\u00a0\u2013 9 June 1701) was the younger son of Louis XIII of France and his wife, Anne of Austria. His older brother was the famous \"Sun King\", Louis XIV. Styled Duke of Anjou from birth, Philippe became Duke of Orl\u00e9ans upon the death of his uncle Gaston in 1660. In 1661, Philippe also received the dukedoms of Valois and Chartres. Following Philippe's victory in battle in 1671, Louis XIV added the dukedom of Nemours, the marquisates of Coucy and Folembray, and the countships of Dourdan and Romorantin. During the reign of his brother he was known simply as \"Monsieur\", the traditional style at the court of France for the younger brother of the king."
+        ]
+      },
+      {
+        "title": "Leonora Dori",
+        "sentences": [
+          "Leonora Dori Galiga\u00ef (19 May 1568 \u2013 8 July 1617) was a French courtier of Italian origin, an influential favourite of the French regent Marie de' Medici, mother of King Louis XIII of France. Galiga\u00ef was married to Concino Concini, the later marquis and then marshal d'Ancre, during Marie's reign as Queen Mother and Regent of France."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Philippe I, Duke of Orl\u00e9ans",
+        0
+      ],
+      [
+        "Leonora Dori",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__390947_232243",
+    "question": "What is the goal of the group that European Movement Germany is a member of?",
+    "answer": "European integration",
+    "contexts": [
+      {
+        "title": "Bernd H\u00fcttemann",
+        "sentences": [
+          "Bernd H\u00fcttemann (born December 8, 1970 in Paderborn) is Vice President of the European Movement International and Secretary General of the European Movement Germany."
+        ]
+      },
+      {
+        "title": "European Movement International",
+        "sentences": [
+          "The European Movement International is a lobbying association that coordinates the efforts of associations and national councils with the goal of promoting European integration, and disseminating information about it."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Bernd H\u00fcttemann",
+        0
+      ],
+      [
+        "European Movement International",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__354635_174222",
+    "question": "What company succeeded the owner of Empire Sports Network?",
+    "answer": "Time Warner Cable",
+    "contexts": [
+      {
+        "title": "Empire Sports Network",
+        "sentences": [
+          "Empire Sports Network was an American regional sports network that was owned by the Adelphia Communications Corporation. The network was available on cable providers in much of upstate New York (stretching from Buffalo to Albany), as well as parts of northern Pennsylvania and eastern Ohio. The network ceased operations on March 7, 2005, in the midst of Adelphia's financial collapse and bankruptcy."
+        ]
+      },
+      {
+        "title": "Windjammer Communications",
+        "sentences": [
+          "Windjammer Cable is a small cable company formed by the sale of 25 systems that served 80,000 customers in rural areas that Time Warner Cable acquired from the bankrupt Adelphia. Windjammer was created specifically for this deal and consisted of Boston private-equity concern MAST Capital Management and Jupiter, Fla.-based small cable operator Communications Construction Services (CCS)."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Empire Sports Network",
+        0
+      ],
+      [
+        "Windjammer Communications",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__635187_861533",
+    "question": "What province shares a border with the province where Lago District is located?",
+    "answer": "Cabo Delgado Province",
+    "contexts": [
+      {
+        "title": "Niassa Reserve",
+        "sentences": [
+          "Niassa Reserve is a nature reserve in Cabo Delgado Province and Niassa Province, Mozambique. Covering over , it is the largest protected area in the country. The reserve is part of the Trans-Frontier Conservation Area and links to the Tanzanian Lukwika-Lumesule Game Reserve. It will connect to the Lake Niassa Reserve when it is completed."
+        ]
+      },
+      {
+        "title": "Lago District",
+        "sentences": [
+          "Lago District is a district of Niassa Province in north-western Mozambique. The principal town is Metangula. Lago District is bordered to the west by Lake Nyasa, on the south by Lichinga, on the east by Sanga District. Lago shares its northern boundary with Tanzania."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Niassa Reserve",
+        0
+      ],
+      [
+        "Lago District",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__166824_185403",
+    "question": "What league does the team that plays in Stadio Ciro Vigorito play for?",
+    "answer": "Lega Pro Prima Divisione",
+    "contexts": [
+      {
+        "title": "Stadio Ciro Vigorito",
+        "sentences": [
+          "Stadio Ciro Vigorito (formerly Stadio Santa Colomba) is a multi-use stadium in Benevento, Italy. It is currently used mostly for football matches and is the home stadium of Benevento Calcio. The stadium is able to hold 25,000 people and was opened in 1979."
+        ]
+      },
+      {
+        "title": "Carmelo Imbriani",
+        "sentences": [
+          "Carmelo Imbriani (10 February 1976 \u2013 15 February 2013) was an Italian footballer and former coach of Benevento in Lega Pro Prima Divisione."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Stadio Ciro Vigorito",
+        0
+      ],
+      [
+        "Carmelo Imbriani",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__698577_851686",
+    "question": "What is a notable work written by the author of The Timothy files?",
+    "answer": "Anderson Tapes",
+    "contexts": [
+      {
+        "title": "The Timothy Files",
+        "sentences": [
+          "The Timothy Files is a 1987 best selling work of fiction by Lawrence Sanders. It consists of linked stories featuring Timothy Cone, who works as a hard-boiled type investigator. He is a scruffy character, rough of mouth and demeanor but pure of heart. Cone has trouble with relationships, surviving on a rough-edged on-going affair with his supervisor, and an only slightly softer relationship with his cat Cleo. The stories in the book deal with his successful attempts to find out the truth and put villains behind bars."
+        ]
+      },
+      {
+        "title": "The Anderson Tapes (novel)",
+        "sentences": [
+          "The Anderson Tapes is the debut crime fiction novel by Lawrence Sanders, published in 1970. The story revolves around the complicated burglary of an entire upscale New York apartment building by a gang of ex-convicts, who are unaware that the entire operation is under wiretap and camera surveillance by various agencies. The story also introduces the character of NYPD police detective Edward X. Delaney who became Sander's enduring protagonist in his \"Deadly Sin\" series of novels. The book earned Sanders the Mystery Writers of America Edgar Award for best first mystery novel. The same year, it was adapted into a film, directed by Sidney Lumet, with Sean Connery in the title role."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "The Timothy Files",
+        0
+      ],
+      [
+        "The Anderson Tapes (novel)",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__362107_652514",
+    "question": "In which borough was Callum McManaman born?",
+    "answer": "Knowsley",
+    "contexts": [
+      {
+        "title": "Callum McManaman",
+        "sentences": [
+          "Born in Whiston, Merseyside, lived and brought up in Rainhill, Merseyside, McManaman began his youth career at Everton before being released in 2007 and joining Wigan Athletic. He made his first team debut in 2009, and was the man of the match as they won the FA Cup in 2013. In January 2015, he joined West Bromwich Albion for \u00a34.75 million."
+        ]
+      },
+      {
+        "title": "Whiston, Merseyside",
+        "sentences": [
+          "Whiston is a large village and civil parish within the Metropolitan Borough of Knowsley in Merseyside, England. At the 2001 Census the population was recorded as 13,629, (6,560 males and 7,069 females), increasing to 14,263 at the 2011 Census."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Callum McManaman",
+        0
+      ],
+      [
+        "Whiston, Merseyside",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__402530_774333",
+    "question": "What other county does the county where Imperial is located share a border with?",
+    "answer": "Crockett County",
+    "contexts": [
+      {
+        "title": "Lancaster Crossing",
+        "sentences": [
+          "Lancaster Crossing, also known as Indian Ford, Pecos Crossing, Solomon's Ford, Crossing of the Pecos, Crossing Rio Pecos, Ferry of the Pecos, and Ford Canyon Crossing, is an historic ford and ferry on the Pecos River, between Crockett County and Pecos County just southeast of Sheffield, Texas. Named after nearby Fort Lancaster, it is one of the few natural fords on the Pecos River, otherwise known for its steep banks that made crossing difficult."
+        ]
+      },
+      {
+        "title": "Imperial, Texas",
+        "sentences": [
+          "Imperial is a census-designated place (CDP) in Pecos County, Texas, United States. The population was 278 at the 2010 census."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Lancaster Crossing",
+        0
+      ],
+      [
+        "Imperial, Texas",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__195917_575657",
+    "question": "In what county is William W. Blair's birthplace located?",
+    "answer": "Orleans County",
+    "contexts": [
+      {
+        "title": "William W. Blair",
+        "sentences": [
+          "Blair was born in Holley, New York. In 1839, his family moved to LaSalle County, Illinois. In 1851, Blair encountered missionaries from the Latter Day Saint movement. On October 8, 1851, Blair was baptized by William Smith, the younger brother of Joseph Smith, the founder of the Latter Day Saint movement."
+        ]
+      },
+      {
+        "title": "Holley, New York",
+        "sentences": [
+          "Holley is a village in the town of Murray in Orleans County, New York, United States. The population was 1,811 at the 2010 census. It is part of the Rochester Metropolitan Statistical Area."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "William W. Blair",
+        0
+      ],
+      [
+        "Holley, New York",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__683835_709167",
+    "question": "What award did the author of The Red Tree receive?",
+    "answer": "Academy Award for Best Animated Short Film",
+    "contexts": [
+      {
+        "title": "Passion Pictures",
+        "sentences": [
+          "The company's core business is in commercial and animation output, which includes work for Cartoon Network, music videos for Gorillaz, and the Compare the Market.com commercial campaign featuring Aleksandr Orlov (meerkat). Passion Australia produced \"The Lost Thing\", directed by Andrew Ruhemann and Shaun Tan, which won an Academy Award for Best Animated Short Film in 2011."
+        ]
+      },
+      {
+        "title": "The Red Tree (Shaun Tan)",
+        "sentences": [
+          "The Red Tree (2001), written and illustrated by Shaun Tan, is a picture book that presents a fragmented journey through a dark world. The illustrations are surreal. The text is sparse and matches the dark illustrations."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Passion Pictures",
+        0
+      ],
+      [
+        "The Red Tree (Shaun Tan)",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__197470_271394",
+    "question": "Where was Tyler MacDuff's child educated?",
+    "answer": "Blair High School",
+    "contexts": [
+      {
+        "title": "Dana MacDuff",
+        "sentences": [
+          "He and his older brother, Brandon R. MacDuff (born 1954), a 1972 graduate of Blair High School, have formed Oakdale Pictures, a production company in Reno."
+        ]
+      },
+      {
+        "title": "Dana MacDuff",
+        "sentences": [
+          "He was born in Pasadena, California, to the actor Tyler MacDuff and the former Beverlie May Anderson (born 1930), who divorced in 1961. He is named for his father's close friend, the actor Dana Andrews. He graduated in 1974 from Blair International Baccalaureate School in Pasadena. Like his father, Dana MacDuff served in the United States Navy, having been on active duty from 1974\u20131977. He then worked as a page at the American Broadcasting Company. After working in features for a time, he accepted a position as a floor and stage manager with the BBC in Belfast, Northern Ireland. He returned to Hollywood in 1995 to produce films."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Dana MacDuff",
+        0
+      ],
+      [
+        "Dana MacDuff",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__458131_174974",
+    "question": "Who is the spouse of the Rabbit Hole's producer?",
+    "answer": "Keith Urban",
+    "contexts": [
+      {
+        "title": "Planet Cake",
+        "sentences": [
+          "Planet Cake has created over 12000 couture cakes, including cakes for A-list celebrities such as Nicole Kidman, Celine Dion, Rihanna, Katy Perry, Keith Urban, John Travolta and Lady Gaga to name a few, as well as for television and many magazines. They have also created a host of \u2018stunt\u2019 cakes, the most famous being a realistic replica of the Sydney Opera House for Australia Day 2011, which weighed over 1.3 tons and required 32 cake decorators to make."
+        ]
+      },
+      {
+        "title": "Rabbit Hole (film)",
+        "sentences": [
+          "Rabbit Hole is a 2010 American tragedy film starring Nicole Kidman, Aaron Eckhart, and Dianne Wiest, and directed by John Cameron Mitchell; the screenplay is an adaptation by David Lindsay-Abaire of his 2006 play of the same name. Kidman produced the project via her company, Blossom Films. The film premiered at the 2010 Toronto International Film Festival in September 2010. Lionsgate distributed the film. The plot deals with a couple struggling to heal after the death of their young son. It received a limited release in the United States on December 17, 2010 and expanded nationwide on January 14, 2011. Kidman was critically acclaimed for her performance as Becca Corbett and received Academy Award, Golden Globe Award, and Screen Actors Guild Award nominations for Best Actress. However, the film was a box office flop, grossing only $5.1 million against its $3 million budget."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Planet Cake",
+        0
+      ],
+      [
+        "Rabbit Hole (film)",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__299142_347613",
+    "question": "Who is the child of Sigrid Eskilsdotter's child?",
+    "answer": "Svante Stensson Sture",
+    "contexts": [
+      {
+        "title": "Sigrid Sture",
+        "sentences": [
+          "She was the daughter of Svante Stensson Sture and M\u00e4rta (\"king Martha\") Erikdotter Leijonhufvud, thereby the niece of queen Margaret Leijonhufvud and the granddaughter of regent Christina Gyllenstierna. She married to Ture Pedersson Bielke and became the mother of Svante Turesson Bielke. After the death of her husband in 1577, she succeeded him as royal governor of Stranda hundred. This was an unusual position for a person of her gender in 16th century Sweden, and one she kept until her death over 30 years later. She was, however, not allowed to rule formally, but was forced to appoint male proxies to officially rule in her place."
+        ]
+      },
+      {
+        "title": "Sigrid Eskilsdotter (Ban\u00e9r)",
+        "sentences": [
+          "Sigrid Eskilsdotter (Ban\u00e9r) (died 1527), was a Swedish noble, the mother of the Swedish regent Christina Gyllenstierna and the maternal grandmother of King Gustav Vasa of Sweden."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Sigrid Sture",
+        0
+      ],
+      [
+        "Sigrid Eskilsdotter (Ban\u00e9r)",
+        0
+      ]
+    ]
+  },
+  {
+    "question_id": "2hop__528263_865831",
+    "question": "In which county is Kimbrough Memorial Stadium located?",
+    "answer": "Randall County",
+    "contexts": [
+      {
+        "title": "Kimbrough Memorial Stadium",
+        "sentences": [
+          "Kimbrough Memorial Stadium is a stadium in Canyon, Texas. It is owned by Canyon Independent School District, and is primarily primarily used for American football. It is the home stadium for Canyon High School and Randall High School of Canyon Independent School District, and is the former home of West Texas A&M University. The stadium holds 20,000 people and was built in 1959. It was originally called Buffalo Bowl on Canyon Hill but was renamed Kimbrough Memorial Stadium in 1971 in honor of the late West Texas State University football coach and athletic director Frank Kimbrough."
+        ]
+      },
+      {
+        "title": "Canyon, Texas",
+        "sentences": [
+          "Canyon is a city in, and the county seat of, Randall County, Texas, United States. The population was 13,303 at the 2010 census. It is part of the Amarillo, Texas, metropolitan statistical area. Canyon is the home of West Texas A&M University and Panhandle\u2013Plains Historical Museum, and the world-famous outdoor musical drama \"Texas\"."
+        ]
+      }
+    ],
+    "supporting_facts": [
+      [
+        "Kimbrough Memorial Stadium",
+        0
+      ],
+      [
+        "Canyon, Texas",
+        0
+      ]
+    ]
+  }
+]

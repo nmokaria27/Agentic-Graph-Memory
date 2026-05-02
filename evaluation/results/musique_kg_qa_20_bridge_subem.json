@@ -1,0 +1,1408 @@
+{
+  "dataset": "MuSiQue pilot",
+  "kg_path": "evaluation/results/musique_governed_kg_20_clean_general.json",
+  "org_chart": "evaluation/results/musique_governed_kg_20_clean_general_org.json",
+  "model": "gemma4:31b",
+  "examples_json": "evaluation/results/musique_pilot_20.json",
+  "runs": {
+    "domain_basic": {
+      "config": {
+        "name": "domain_basic",
+        "description": "Clustered domain experts without active exploration/debate",
+        "orchestrator": "basic",
+        "num_domains": null,
+        "enable_debate": true,
+        "enable_critic": true,
+        "max_exploration_rounds": 3
+      },
+      "aggregate_metrics": {
+        "num_questions": 20,
+        "exact_match": 0.5,
+        "substring_em": 0.6,
+        "token_f1": 0.5596,
+        "answer_rate": 0.95
+      },
+      "results": [
+        {
+          "question_id": "2hop__460946_294723",
+          "question": "Who is the spouse of the Green performer?",
+          "gold_answer": "Miquette Giraudy",
+          "answer": "The performer of Green is Steve Hillage, but there is no information provided regarding his spouse.",
+          "short_answer": "The performer of Green is Steve Hillage, but there is no information provided regarding his spouse.",
+          "scored_answer": "The performer of Green is Steve Hillage, but there is no information provided regarding his spouse",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0,
+            "substring_em": 0.0
+          },
+          "duration_seconds": 140.028,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the spouse of the Green performer?",
+            "final_answer": "The performer of Green is Steve Hillage, but there is no information provided regarding his spouse.",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "Who is the spouse of the Green performer?",
+                "target_domains": [
+                  "multimedia_versatility"
+                ],
+                "context": "Looking for spouse information, which is mapped to the MARRIED_TO relation in the multimedia_versatility domain."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "The performer of Green is Steve Hillage, but there is no information provided regarding his spouse.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(green) -[AUTHORED_BY]-> (steve_hillage)"
+                ],
+                "confidence": 0.45,
+                "out_of_scope_aspects": [
+                  "spouse of Steve Hillage"
+                ],
+                "domain_id": "multimedia_versatility",
+                "topics_used": [
+                  "Cross-Media Work"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'green':\n  (green) -[AUTHORED_BY]-> (steve_hillage)\n  (green) -[WRITTEN_IN_TIMEPERIOD]-> (spring)\n  (green) -[WRITTEN_CONCURRENTLY_WITH]-> (motivation_radio)\n  (green) -[INTENDED_AS_COMPANION_TO]-> (motivation_radio)\n  (green) -[RECORDED_AT_LOCATION]-> (dorking)\n  (green) -[RECORDED_AT_LOCATION]-> (surrey)\n  (green) -[RECORDED_AT_LOCATION]-> (london)\n  (green) -[RECORDED_AFTER_EVENT]-> (us_tour)\n  (green) -[RECORDED_AFTER_EVENT]-> (late)\n  (miquette_giraudy) -[PROFESSIONAL_PARTNER]-> (steve_hillage)\n  (steve_hillage) -[CORE_MEMBER_OF_BAND]-> (system)\n  (steve_hillage) -[HAS_GENRE]-> (progressive_rock)\n  (steve_hillage) -[HAS_NATIONALITY]-> (british)\n  (motivation_radio) -[HAS_MUSICAL_STYLE]-> (funk_inflected)\n  (motivation_radio) -[WRITTEN_IN_TIMEPERIOD]-> (1977)\n  (dorking) -[PART_OF_LOCATION]-> (surrey)\n  (miquette_giraudy) -[BORN_ON]-> (date_1953_02)\n  (miquette_giraudy) -[BORN_IN_LOCATION]-> (nice)\n  (miquette_giraudy) -[HAS_PROFESSION]-> (keyboard_player)\n  (miquette_giraudy) -[HAS_PROFESSION]-> (vocalist)\n  (miquette_giraudy) -[MEMBER_OF_ENSEMBLE]-> (gong)\n  (miquette_giraudy) -[CORE_MEMBER_OF_BAND]-> (system)\n  (miquette_giraudy) -[HAS_PROFESSION]-> (actress)\n  (miquette_giraudy) -[HAS_PROFESSION]-> (film_editor)\n  (miquette_giraudy) -[HAS_PROFESSION]-> (writer)\n  (miquette_giraudy) -[BORN_IN]-> (france)\n  (system) -[ENSEMBLE_GENRE]-> (ambient_band)",
+                "sub_question": "Who is the spouse of the Green performer?"
+              },
+              {
+                "answer": "I do not have information about the spouse of the Green performer.",
+                "coverage": 1.0,
+                "evidence": [],
+                "confidence": 0.9,
+                "out_of_scope_aspects": [
+                  "spouse of the Green performer"
+                ],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "Who is the spouse of the Green performer?"
+              }
+            ],
+            "overall_coverage": 0.5,
+            "overall_confidence": 0.45,
+            "gaps": [
+              "spouse of Steve Hillage"
+            ]
+          }
+        },
+        {
+          "question_id": "2hop__252311_366220",
+          "question": "Who founded the company that distributed the film UHF?",
+          "gold_answer": "Mike Medavoy",
+          "answer": "The film UHF was financed by Orion Pictures, which was co-founded by Mike Medavoy.",
+          "short_answer": "Mike Medavoy",
+          "scored_answer": "Mike Medavoy",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 488.235,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who founded the company that distributed the film UHF?",
+            "final_answer": "The film UHF was financed by Orion Pictures, which was co-founded by Mike Medavoy.",
+            "final_answer_short": "Mike Medavoy",
+            "sub_questions": [
+              {
+                "question": "Which company distributed the film UHF?",
+                "target_domains": [
+                  "professional_collaborations"
+                ],
+                "context": "Looking for the distribution company associated with the film UHF."
+              },
+              {
+                "question": "Who founded the company that distributed the film UHF?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "Identifying the founder of the distribution company found in the first step."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "I am unable to determine which company distributed the film UHF as there is no information regarding this film in the provided data.",
+                "coverage": 0.0,
+                "evidence": [],
+                "confidence": 0.0,
+                "out_of_scope_aspects": [
+                  "distribution company of the film UHF"
+                ],
+                "domain_id": "professional_collaborations",
+                "topics_used": [
+                  "Creative Partnerships"
+                ],
+                "multi_hop_paths": "none",
+                "sub_question": "Which company distributed the film UHF?"
+              },
+              {
+                "answer": "The film UHF was financed by Orion Pictures, which was co-founded by Mike Medavoy.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(uhf) -[FINANCED_BY]-> (orion_pictures)",
+                  "(mike_medavoy) -[CO_FOUNDED_COMPANY]-> (orion_pictures)"
+                ],
+                "confidence": 0.99,
+                "out_of_scope_aspects": [],
+                "domain_id": "biographical_identity",
+                "topics_used": [
+                  "Personal Origins"
+                ],
+                "multi_hop_paths": "none",
+                "sub_question": "Who founded the company that distributed the film UHF?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.99,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__701895_752697",
+          "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+          "gold_answer": "Tamaulipas",
+          "answer": "Ciudad Deportiva is located in Nuevo Laredo, which is the municipal seat of the Nuevo Laredo municipality in the administrative region of Tamaulipas.",
+          "short_answer": "Tamaulipas",
+          "scored_answer": "Tamaulipas",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 136.911,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+            "final_answer": "Ciudad Deportiva is located in Nuevo Laredo, which is the municipal seat of the Nuevo Laredo municipality in the administrative region of Tamaulipas.",
+            "final_answer_short": "Tamaulipas",
+            "sub_questions": [
+              {
+                "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "The query asks for the location of an entity (Ciudad Deportiva) within an administrative region, which maps to the LOCATED_WITHIN_ADMINISTRATIVE_REGION relation in the biographical_identity domain."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Ciudad Deportiva is located in Nuevo Laredo, which serves as the municipal seat of the Nuevo Laredo municipality. The Nuevo Laredo municipality is located within the administrative region of Tamaulipas.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(ciudad_deportiva) -[LOCATED_IN]-> (nuevo_laredo)",
+                  "(nuevo_laredo) -[SERVES_AS_MUNICIPAL_SEAT]-> (nuevo_laredo_municipality)",
+                  "(nuevo_laredo_municipality) -[LOCATED_WITHIN_ADMINISTRATIVE_REGION]-> (tamaulipas)"
+                ],
+                "confidence": 0.5,
+                "out_of_scope_aspects": [],
+                "domain_id": "biographical_identity",
+                "topics_used": [
+                  "Personal Origins"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'ciudad_deportiva':\n  (ciudad_deportiva) -[LOCATED_IN]-> (nuevo_laredo)\n  (ciudad_deportiva) -[LOCATED_IN]-> (mexico)\n  (ciudad_deportiva) -[HOME_TO]-> (tecolotes_de_nuevo_laredo)\n  (ciudad_deportiva) -[CONTAINS_VENUE]-> (estadio_nuevo_laredo)\n  (ciudad_deportiva) -[CONTAINS_VENUE]-> (nuevo_laredo_multidisciplinary_gymnasium)\n  (ciudad_deportiva) -[HOME_TO]-> (toros_de_nuevo_laredo)\n  (nuevo_laredo) -[SERVES_AS_MUNICIPAL_SEAT]-> (nuevo_laredo_municipality)\n  (nuevo_laredo_municipality) -[CONTAINS_LOCALITIES]-> (nuevo_laredo)\n  (el_campanario_y_oradel) -[IS_SUBURB_OF]-> (nuevo_laredo)\n  (alvarez) -[IS_SUBURB_OF]-> (nuevo_laredo)\n  (nuevo_laredo) -[POPULATION_PERCENTAGE_OF_TOTAL]-> (nuevo_laredo_municipality)\n  (tecolotes_de_nuevo_laredo) -[MEMBER_OF_LEAGUE]-> (mexican_baseball_league)\n  (estadio_nuevo_laredo) -[HAS_SEATING_CAPACITY]-> (fan_capacity)\n  (nuevo_laredo_multidisciplinary_gymnasium) -[HAS_SEATING_CAPACITY]-> (fan_capacity)\n  (toros_de_nuevo_laredo) -[MEMBER_OF_LEAGUE]-> (liga_nacional_de_baloncesto_profesional)\n  (nuevo_laredo_municipality) -[LOCATED_WITHIN_ADMINISTRATIVE_REGION]-> (tamaulipas)\n  (nuevo_laredo_municipality) -[CONTAINS_LOCALITIES]-> (el_campanario_y_oradel)\n  (nuevo_laredo_municipality) -[CONTAINS_LOCALITIES]-> (alvarez)\n  (nuevo_laredo_municipality) -[POPULATION_RANK_IN_REGION]-> (tamaulipas)\n  (nuevo_laredo_municipality) -[GEOGRAPHIC_POSITION_IN_REGION]-> (tamaulipas)\n  (nuevo_laredo_municipality) -[LOCATED_AT_GEOGRAPHIC_FEATURE]-> (rio_grande)\n  (nuevo_laredo_municipality) -[CONTAINS_LOCALITIES]-> (60_localities)",
+                "sub_question": "What administrative territorial entity is the owner of Ciudad Deportiva located?"
+              },
+              {
+                "answer": "Ciudad Deportiva is located in Nuevo Laredo, which is the municipal seat of the Nuevo Laredo municipality.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(ciudad_deportiva) -[LOCATED_IN]-> (nuevo_laredo)",
+                  "(nuevo_laredo) -[SERVES_AS_MUNICIPAL_SEAT]-> (nuevo_laredo_municipality)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "What administrative territorial entity is the owner of Ciudad Deportiva located?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__259228_793698",
+          "question": "Where is Ulrich Walter's employer headquartered?",
+          "gold_answer": "Cologne",
+          "answer": "Ulrich Walter held positions at the Argonne National Laboratory, located in Chicago, Illinois, and the University of California at Berkeley, located in California.",
+          "short_answer": "Chicago, Illinois and California",
+          "scored_answer": "Chicago, Illinois and California",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0,
+            "substring_em": 0.0
+          },
+          "duration_seconds": 183.59,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Where is Ulrich Walter's employer headquartered?",
+            "final_answer": "Ulrich Walter held positions at the Argonne National Laboratory, located in Chicago, Illinois, and the University of California at Berkeley, located in California.",
+            "final_answer_short": "Chicago, Illinois and California",
+            "sub_questions": [
+              {
+                "question": "Who is Ulrich Walter's employer?",
+                "target_domains": [
+                  "artistic_capabilities"
+                ],
+                "context": "Identify the company or organization Ulrich Walter is affiliated with using relations like POSITION_HELD_AT_COMPANY or HELD_POSITION_AT."
+              },
+              {
+                "question": "Where is the headquarters of Ulrich Walter's employer?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "Determine the location of the employer identified in the first step using relations like LOCATED_IN."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Ulrich Walter held positions at the Argonne National Laboratory and the University of California at Berkeley, and he joined the German Astronaut Team.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(ulrich_walter) -[HELD_POSITION_AT]-> (argonne_national_laboratory)",
+                  "(ulrich_walter) -[HELD_POSITION_AT]-> (university_of_california_at_berkeley)",
+                  "(ulrich_walter) -[JOINED_ORGANIZATION]-> (german_astronaut_team)"
+                ],
+                "confidence": 0.9,
+                "out_of_scope_aspects": [],
+                "domain_id": "artistic_capabilities",
+                "topics_used": [
+                  "Skill Set"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'ulrich_walter':\n  (ulrich_walter) -[HELD_POSITION_AT]-> (argonne_national_laboratory)\n  (ulrich_walter) -[HELD_POSITION_AT]-> (university_of_california_at_berkeley)\n  (ulrich_walter) -[JOINED_ORGANIZATION]-> (german_astronaut_team)\n  (ulrich_walter) -[OCCURRED_AT_TIME]-> (1987)\n  (ulrich_walter) -[COMPLETED_TRAINING_AT]-> (german_aerospace_center)\n  (ulrich_walter) -[OCCURRED_AT_TIME]-> (1988_to)\n  (ulrich_walter) -[NOMINATED_FOR_ROLE]-> (prime_crew)\n  (argonne_national_laboratory) -[LOCATED_IN]-> (chicago)\n  (argonne_national_laboratory) -[LOCATED_IN]-> (illinois)\n  (university_of_california_at_berkeley) -[LOCATED_IN]-> (california)\n  (the_timothy_files) -[PUBLISHED_IN_YEAR]-> (1987)\n  (lasalle_county) -[MIGRATED_TO]-> (illinois)\n  (william_w_blair) -[MIGRATED_TO]-> (illinois)\n  (the_timothy_files) -[AUTHORED_BY]-> (lawrence_sanders)\n  (the_timothy_files) -[FEATURES_CHARACTER]-> (timothy_cone)",
+                "sub_question": "Who is Ulrich Walter's employer?"
+              },
+              {
+                "answer": "Ulrich Walter held positions at the Argonne National Laboratory, which is located in Chicago and Illinois, and the University of California at Berkeley, which is located in California. Information regarding a specific headquarters for these employers is not provided.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(ulrich_walter) -[HELD_POSITION_AT]-> (argonne_national_laboratory)",
+                  "(ulrich_walter) -[HELD_POSITION_AT]-> (university_of_california_at_berkeley)",
+                  "(argonne_national_laboratory) -[LOCATED_IN]-> (chicago)",
+                  "(argonne_national_laboratory) -[LOCATED_IN]-> (illinois)",
+                  "(university_of_california_at_berkeley) -[LOCATED_IN]-> (california)"
+                ],
+                "confidence": 0.9,
+                "out_of_scope_aspects": [
+                  "specific headquarters location"
+                ],
+                "domain_id": "biographical_identity",
+                "topics_used": [
+                  "Personal Origins"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'ulrich_walter':\n  (ulrich_walter) -[HELD_POSITION_AT]-> (argonne_national_laboratory)\n  (ulrich_walter) -[HELD_POSITION_AT]-> (university_of_california_at_berkeley)\n  (ulrich_walter) -[JOINED_ORGANIZATION]-> (german_astronaut_team)\n  (ulrich_walter) -[OCCURRED_AT_TIME]-> (1987)\n  (ulrich_walter) -[COMPLETED_TRAINING_AT]-> (german_aerospace_center)\n  (ulrich_walter) -[OCCURRED_AT_TIME]-> (1988_to)\n  (ulrich_walter) -[NOMINATED_FOR_ROLE]-> (prime_crew)\n  (argonne_national_laboratory) -[LOCATED_IN]-> (chicago)\n  (argonne_national_laboratory) -[LOCATED_IN]-> (illinois)\n  (university_of_california_at_berkeley) -[LOCATED_IN]-> (california)\n  (the_timothy_files) -[PUBLISHED_IN_YEAR]-> (1987)\n  (lasalle_county) -[MIGRATED_TO]-> (illinois)\n  (william_w_blair) -[MIGRATED_TO]-> (illinois)\n  (the_timothy_files) -[AUTHORED_BY]-> (lawrence_sanders)\n  (the_timothy_files) -[FEATURES_CHARACTER]-> (timothy_cone)",
+                "sub_question": "Where is the headquarters of Ulrich Walter's employer?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.9,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__481349_302087",
+          "question": "Which company owns the manufacturer of Learjet 60?",
+          "gold_answer": "Bombardier Inc.",
+          "answer": "The manufacturer of the Learjet 60XR is Bombardier Inc.",
+          "short_answer": "Bombardier Inc.",
+          "scored_answer": "Bombardier Inc",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 167.674,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Which company owns the manufacturer of Learjet 60?",
+            "final_answer": "The manufacturer of the Learjet 60XR is Bombardier Inc.",
+            "final_answer_short": "Bombardier Inc.",
+            "sub_questions": [
+              {
+                "question": "Who is the manufacturer of Learjet 60?",
+                "target_domains": [
+                  "professional_collaborations"
+                ],
+                "context": "Looking for the manufacturer of a specific product (Learjet 60) using the MANUFACTURED_BY relation."
+              },
+              {
+                "question": "Which company owns the manufacturer of Learjet 60?",
+                "target_domains": [
+                  "musical_stylistics"
+                ],
+                "context": "Looking for the ownership of a company using the OWNED_BY relation."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "The manufacturer of the Learjet 60XR is Bombardier Inc.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(learjet_60xr) -[MANUFACTURED_BY]-> (bombardier_inc)"
+                ],
+                "confidence": 0.483,
+                "out_of_scope_aspects": [
+                  "The query asks for 'Learjet 60', but the data specifically identifies the 'Learjet 60XR'."
+                ],
+                "domain_id": "professional_collaborations",
+                "topics_used": [
+                  "Creative Partnerships"
+                ],
+                "multi_hop_paths": "none",
+                "sub_question": "Who is the manufacturer of Learjet 60?"
+              },
+              {
+                "answer": "The manufacturer of the Learjet 60XR is Bombardier Inc.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(learjet_60xr) -[MANUFACTURED_BY]-> (bombardier_inc)"
+                ],
+                "confidence": 0.489,
+                "out_of_scope_aspects": [
+                  "ownership of Bombardier Inc."
+                ],
+                "domain_id": "musical_stylistics",
+                "topics_used": [],
+                "multi_hop_paths": "none",
+                "sub_question": "Which company owns the manufacturer of Learjet 60?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.9,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__697790_864352",
+          "question": "Who is the child of Caroline LeRoy's spouse?",
+          "gold_answer": "Fletcher Webster",
+          "answer": "Caroline LeRoy's spouse is Daniel Fletcher Webster, but the provided evidence does not list any children for him.",
+          "short_answer": "Caroline LeRoy's spouse is Daniel Fletcher Webster, but the provided evidence does not list any children for him.",
+          "scored_answer": "Caroline LeRoy's spouse is Daniel Fletcher Webster, but the provided evidence does not list any children for him",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.21052631578947367,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 63.574,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the child of Caroline LeRoy's spouse?",
+            "final_answer": "Caroline LeRoy's spouse is Daniel Fletcher Webster, but the provided evidence does not list any children for him.",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "Who is the spouse of Caroline LeRoy?",
+                "target_domains": [
+                  "multimedia_versatility"
+                ],
+                "context": "Identify the spouse using family lineage relations like MARRIED_TO."
+              },
+              {
+                "question": "Who is the child of Caroline LeRoy's spouse?",
+                "target_domains": [
+                  "multimedia_versatility"
+                ],
+                "context": "Identify the child using family lineage relations like PARENT_OF or DESCENDANT_OF."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "The spouse of Caroline LeRoy Webster is Daniel Fletcher Webster.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(caroline_leroy_webster) -[SPOUSE_OF]-> (daniel_fletcher_webster)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "multimedia_versatility",
+                "topics_used": [
+                  "Cross-Media Work"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'caroline_leroy_webster':\n  (caroline_leroy_webster) -[BORN_ON]-> (september_28)\n  (caroline_leroy_webster) -[BORN_IN]-> (new_york_city)\n  (caroline_leroy_webster) -[DIED_ON]-> (february_26)\n  (caroline_leroy_webster) -[SPOUSE_OF]-> (daniel_fletcher_webster)\n  (caroline_leroy_webster) -[CHILD_OF]-> (herman_leroy)\n  (caroline_leroy_webster) -[CHILD_OF]-> (hannah_cornell)\n  (caroline_leroy_webster) -[DESCENDANT_OF]-> (thomas_cornell)\n  (daniel_fletcher_webster) -[BORN_ON]-> (july_25)\n  (daniel_fletcher_webster) -[BORN_IN]-> (portsmouth)\n  (daniel_fletcher_webster) -[DIED_ON]-> (august_30)\n  (daniel_fletcher_webster) -[CHILD_OF]-> (grace_fletcher_webster)\n  (daniel_fletcher_webster) -[EDUCATED_AT]-> (harvard_college)\n  (daniel_fletcher_webster) -[HELD_OFFICE_ROLE]-> (chief_clerk)\n  (daniel_fletcher_webster) -[HELD_OFFICE_ROLE]-> (secretary_of_state)\n  (daniel_fletcher_webster) -[DELIVERED_NEWS_TO]-> (john_tyler)\n  (daniel_fletcher_webster) -[BORN_IN]-> (new_hampshire)\n  (daniel_fletcher_webster) -[HAS_STATUS]-> (renowned_politician)\n  (daniel_fletcher_webster) -[HELD_PROFESSIONAL_ROLE]-> (statesman)\n  (daniel_fletcher_webster) -[ENTITY_TYPE]-> (19th_century)\n  (herman_leroy) -[MANAGED_COMMERCIAL_HOUSE]-> (leroy_bayard_mckiven_and_co)\n  (herman_leroy) -[HELD_OFFICIAL_ROLE]-> (holland_consul)\n  (herman_leroy) -[OFFICIAL_OF_GEOGRAPHIC_REGION]-> (united_states)\n  (hannah_cornell) -[CHILD_OF]-> (royal_attorney_general)\n  (chief_clerk) -[ROLE_BELONGS_TO_DEPARTMENT]-> (united_states_state_department)\n  (john_tyler) -[HELD_OFFICE_ROLE]-> (president)\n  (texas) -[LOCATED_WITHIN_JURISDICTION]-> (united_states)\n  (new_york) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (united_states)\n  (rabbit_hole) -[RELEASED_IN_REGION]-> (united_states)\n  (canyon) -[LOCATED_WITHIN_COUNTRY]-> (united_states)\n  (randall_county) -[LOCATED_WITHIN_COUNTRY]-> (united_states)",
+                "sub_question": "Who is the spouse of Caroline LeRoy?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": [
+              "children of Daniel Fletcher Webster"
+            ]
+          }
+        },
+        {
+          "question_id": "2hop__207476_625987",
+          "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+          "gold_answer": "Marie de' Medici",
+          "answer": "Philippe, Duke of Orl\u00e9ans, is the child of Louis XIII and Anne of Austria, but the provided information does not identify his grandmother.",
+          "short_answer": "Philippe, Duke of Orl\u00e9ans, is the child of Louis XIII and Anne of Austria, but the provided information does not identify his grandmother.",
+          "scored_answer": "Philippe, Duke of Orl\u00e9ans, is the child of Louis XIII and Anne of Austria, but the provided information does not identify his grandmother",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0,
+            "substring_em": 0.0
+          },
+          "duration_seconds": 180.709,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+            "final_answer": "Philippe, Duke of Orl\u00e9ans, is the child of Louis XIII and Anne of Austria, but the provided information does not identify his grandmother.",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+                "target_domains": [
+                  "multimedia_versatility"
+                ],
+                "context": "Looking for family lineage and descendants/parents of the individual."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Philippe, Duke of Orl\u00e9ans is the child of Louis XIII and Anne of Austria; however, the provided data does not mention the parents of Louis XIII or Anne of Austria, so his grandmother cannot be identified.",
+                "coverage": 0.75,
+                "evidence": [
+                  "(philippe_i_duke_of_orleans) -[CHILD_OF]-> (louis_xiii)",
+                  "(philippe_i_duke_of_orleans) -[CHILD_OF]-> (anne_of_austria)"
+                ],
+                "confidence": 0.75,
+                "out_of_scope_aspects": [
+                  "grandmother of Philippe, Duke of Orl\u00e9ans"
+                ],
+                "domain_id": "multimedia_versatility",
+                "topics_used": [
+                  "Cross-Media Work"
+                ],
+                "multi_hop_paths": "\n\nMULTI-HOP REASONING PATHS (connections between query entities):\nFound 2 path(s):\n  Path 1 (1 hop): (philippe_i_duke_of_orleans) -[HELD_TITLE]-> (duke_of_orleans)\n  Path 2 (1 hop): (philippe_i_duke_of_orleans) -[HELD_TITLE]-> (duke_of_orleans)",
+                "sub_question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?"
+              },
+              {
+                "answer": "I do not have information about the grandmother of Philippe, Duke of Orl\u00e9ans.",
+                "coverage": 1.0,
+                "evidence": [],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [
+                  "grandmother of Philippe, Duke of Orl\u00e9ans"
+                ],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?"
+              }
+            ],
+            "overall_coverage": 0.75,
+            "overall_confidence": 0.75,
+            "gaps": [
+              "the parents of Louis XIII and Anne of Austria"
+            ]
+          }
+        },
+        {
+          "question_id": "2hop__390947_232243",
+          "question": "What is the goal of the group that European Movement Germany is a member of?",
+          "gold_answer": "European integration",
+          "answer": "I am sorry, but there is no information available regarding the goal of the group that European Movement Germany is a member of.",
+          "short_answer": "I am sorry, but there is no information available regarding the goal of the group that European Movement Germany is a member of.",
+          "scored_answer": "I am sorry, but there is no information available regarding the goal of the group that European Movement Germany is a member of",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.09090909090909091,
+            "substring_em": 0.0
+          },
+          "duration_seconds": 262.766,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What is the goal of the group that European Movement Germany is a member of?",
+            "final_answer": "I am sorry, but there is no information available regarding the goal of the group that European Movement Germany is a member of.",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "What group is European Movement Germany a member of?",
+                "target_domains": [
+                  "musical_affiliations"
+                ],
+                "context": "Identify the group membership of European Movement Germany using the relations MEMBER_OF_ENSEMBLE or similar membership relations."
+              },
+              {
+                "question": "What is the goal of that group?",
+                "target_domains": [
+                  "musical_affiliations"
+                ],
+                "context": "Retrieve the goal or purpose of the group identified in the first step."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "I do not have information regarding the group membership of European Movement Germany.",
+                "coverage": 0.75,
+                "evidence": [],
+                "confidence": 0.75,
+                "out_of_scope_aspects": [
+                  "group membership of European Movement Germany"
+                ],
+                "domain_id": "musical_affiliations",
+                "topics_used": [
+                  "Band Membership"
+                ],
+                "multi_hop_paths": "none",
+                "sub_question": "What group is European Movement Germany a member of?"
+              },
+              {
+                "answer": "I am sorry, but the provided evidence does not contain information regarding the goal of the group that European Movement Germany is a member of.",
+                "coverage": 1.0,
+                "evidence": [],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [
+                  "goal of the group European Movement Germany is a member of"
+                ],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "What is the goal of the group that European Movement Germany is a member of?"
+              }
+            ],
+            "overall_coverage": 0.0,
+            "overall_confidence": 1.0,
+            "gaps": [
+              "The goal of the group that European Movement Germany is a member of"
+            ]
+          }
+        },
+        {
+          "question_id": "2hop__354635_174222",
+          "question": "What company succeeded the owner of Empire Sports Network?",
+          "gold_answer": "Time Warner Cable",
+          "answer": "Time Warner Cable succeeded the owner of Empire Sports Network, as it acquired assets from the Adelphia Communications Corporation, which owned the network.",
+          "short_answer": "Time Warner Cable",
+          "scored_answer": "Time Warner Cable",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 109.896,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What company succeeded the owner of Empire Sports Network?",
+            "final_answer": "Time Warner Cable succeeded the owner of Empire Sports Network, as it acquired assets from the Adelphia Communications Corporation, which owned the network.",
+            "final_answer_short": "Time Warner Cable",
+            "sub_questions": [
+              {
+                "question": "Who is the owner of Empire Sports Network?",
+                "target_domains": [
+                  "professional_collaborations"
+                ],
+                "context": "Identify the owner of the network using relations like OWNED_BY or professional partnerships."
+              },
+              {
+                "question": "What company succeeded the owner of Empire Sports Network?",
+                "target_domains": [
+                  "professional_collaborations"
+                ],
+                "context": "Identify the successor company using relations related to professional operations or ceased operations."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Empire Sports Network was owned by the Adelphia Communications Corporation.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)"
+                ],
+                "confidence": 0.5,
+                "out_of_scope_aspects": [],
+                "domain_id": "professional_collaborations",
+                "topics_used": [
+                  "Creative Partnerships"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'empire_sports_network':\n  (empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)\n  (empire_sports_network) -[AVAILABLE_VIA]-> (cable_providers)\n  (empire_sports_network) -[AVAILABLE_IN_REGION]-> (upstate_new_york)\n  (empire_sports_network) -[CEASED_OPERATIONS_ON]-> (march_7)\n  (empire_sports_network) -[TRIGGERED_BY_EVENT]-> (financial_collapse)\n  (empire_sports_network) -[ASSOCIATED_WITH_NATIONALITY]-> (american)\n  (empire_sports_network) -[AVAILABLE_IN_REGION]-> (northern_pennsylvania)\n  (empire_sports_network) -[AVAILABLE_IN_REGION]-> (eastern_ohio)\n  (time_warner_cable) -[ACQUIRED_FROM]-> (adelphia_communications_corporation)\n  (upstate_new_york) -[SPANS_BETWEEN_CITIES]-> (buffalo)\n  (upstate_new_york) -[SPANS_BETWEEN_CITIES]-> (albany)\n  (mike_medavoy) -[HAS_NATIONALITY]-> (american)\n  (rabbit_hole) -[FILM_NATIONALITY]-> (american)\n  (time_warner_cable) -[ACQUIRED_ASSET]-> (cable_system_portfolio)\n  (mike_medavoy) -[BORN_ON]-> (january_21)\n  (mike_medavoy) -[HAS_PROFESSION]-> (film_producer)\n  (mike_medavoy) -[HAS_PROFESSION]-> (executive)\n  (mike_medavoy) -[CO_FOUNDED_COMPANY]-> (orion_pictures)\n  (mike_medavoy) -[FORMERLY_HELD_POSITION]-> (chairman)\n  (mike_medavoy) -[FORMERLY_HELD_POSITION]-> (head_of_production)\n  (mike_medavoy) -[CURRENTLY_HOLDS_POSITION]-> (chairman)\n  (mike_medavoy) -[CURRENTLY_HOLDS_POSITION]-> (ceo)\n  (mike_medavoy) -[POSITION_HELD_AT_COMPANY]-> (tristar_pictures)\n  (mike_medavoy) -[POSITION_HELD_AT_COMPANY]-> (united_artists)\n  (mike_medavoy) -[POSITION_HELD_AT_COMPANY]-> (phoenix_pictures)\n  (nicole_kidman) -[STARS_IN]-> (rabbit_hole)\n  (aaron_eckhart) -[STARS_IN]-> (rabbit_hole)\n  (dianne_wiest) -[STARS_IN]-> (rabbit_hole)\n  (rabbit_hole) -[DIRECTED_BY]-> (john_cameron_mitchell)\n  (rabbit_hole) -[SCREENPLAY_ADAPTED_FROM]-> (rabbit_hole_play)",
+                "sub_question": "Who is the owner of Empire Sports Network?"
+              },
+              {
+                "answer": "Time Warner Cable succeeded the owner of Empire Sports Network, as it acquired assets from Adelphia Communications Corporation, which owned Empire Sports Network.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(empire_sports_network) -[OWNED_BY]-> (adelphia_communications_corporation)",
+                  "(time_warner_cable) -[ACQUIRED_FROM]-> (adelphia_communications_corporation)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "What company succeeded the owner of Empire Sports Network?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__635187_861533",
+          "question": "What province shares a border with the province where Lago District is located?",
+          "gold_answer": "Cabo Delgado Province",
+          "answer": "Lago District is located in Niassa Province, but the provided evidence does not specify which provinces share a border with it.",
+          "short_answer": "Lago District is located in Niassa Province, but the provided evidence does not specify which provinces share a border with it.",
+          "scored_answer": "Lago District is located in Niassa Province, but the provided evidence does not specify which provinces share a border with it",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.09090909090909091,
+            "substring_em": 0.0
+          },
+          "duration_seconds": 407.032,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What province shares a border with the province where Lago District is located?",
+            "final_answer": "Lago District is located in Niassa Province, but the provided evidence does not specify which provinces share a border with it.",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "Which province is Lago District located in?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "Identify the province containing Lago District using LOCATED_IN or LOCATED_WITHIN_ADMINISTRATIVE_REGION."
+              },
+              {
+                "question": "What province shares a border with the province where Lago District is located?",
+                "target_domains": [
+                  "professional_collaborations"
+                ],
+                "context": "Identify bordering provinces using the BORDERS_GEOGRAPHICALLY relation."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Lago District is part of the Niassa Province.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(lago_district) -[PART_OF_PROVINCE]-> (niassa_province)"
+                ],
+                "confidence": 0.5,
+                "out_of_scope_aspects": [],
+                "domain_id": "biographical_identity",
+                "topics_used": [
+                  "Personal Origins"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'lago_district':\n  (lago_district) -[PART_OF_PROVINCE]-> (niassa_province)\n  (lago_district) -[LOCATED_IN_COUNTRY]-> (mozambique)\n  (lago_district) -[HAS_PRINCIPAL_TOWN]-> (metangula)\n  (lago_district) -[BORDERS_GEOGRAPHICALLY]-> (lake_nyasa)\n  (lago_district) -[BORDERS_GEOGRAPHICALLY]-> (lichinga)\n  (lago_district) -[BORDERS_GEOGRAPHICALLY]-> (sanga_district)\n  (lago_district) -[BORDERS_GEOGRAPHICALLY]-> (tanzania)\n  (niassa_reserve) -[LOCATED_WITHIN_PROVINCE]-> (niassa_province)\n  (niassa_province) -[LOCATED_IN_COUNTRY]-> (mozambique)\n  (niassa_reserve) -[SITUATED_IN_COUNTRY]-> (mozambique)\n  (niassa_reserve) -[LOCATED_WITHIN_PROVINCE]-> (cabo_delgado_province)\n  (niassa_reserve) -[PART_OF_CONSERVATION_NETWORK]-> (trans_frontier_conservation_area)\n  (niassa_reserve) -[GEOGRAPHICALLY_LINKS_TO]-> (tanzanian_lukwika_lumesule_game_reserve)",
+                "sub_question": "Which province is Lago District located in?"
+              },
+              {
+                "answer": "Lago District is located in Niassa Province, but the provided data does not specify which provinces share a border with Niassa Province.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(lago_district) -[PART_OF_PROVINCE]-> (niassa_province)"
+                ],
+                "confidence": 0.5,
+                "out_of_scope_aspects": [
+                  "provinces that border Niassa Province"
+                ],
+                "domain_id": "professional_collaborations",
+                "topics_used": [
+                  "Creative Partnerships"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'lago_district':\n  (lago_district) -[PART_OF_PROVINCE]-> (niassa_province)\n  (lago_district) -[LOCATED_IN_COUNTRY]-> (mozambique)\n  (lago_district) -[HAS_PRINCIPAL_TOWN]-> (metangula)\n  (lago_district) -[BORDERS_GEOGRAPHICALLY]-> (lake_nyasa)\n  (lago_district) -[BORDERS_GEOGRAPHICALLY]-> (lichinga)\n  (lago_district) -[BORDERS_GEOGRAPHICALLY]-> (sanga_district)\n  (lago_district) -[BORDERS_GEOGRAPHICALLY]-> (tanzania)\n  (niassa_reserve) -[LOCATED_WITHIN_PROVINCE]-> (niassa_province)\n  (niassa_province) -[LOCATED_IN_COUNTRY]-> (mozambique)\n  (niassa_reserve) -[SITUATED_IN_COUNTRY]-> (mozambique)\n  (niassa_reserve) -[LOCATED_WITHIN_PROVINCE]-> (cabo_delgado_province)\n  (niassa_reserve) -[PART_OF_CONSERVATION_NETWORK]-> (trans_frontier_conservation_area)\n  (niassa_reserve) -[GEOGRAPHICALLY_LINKS_TO]-> (tanzanian_lukwika_lumesule_game_reserve)",
+                "sub_question": "What province shares a border with the province where Lago District is located?"
+              },
+              {
+                "answer": "Lago District is located in Niassa Province, but the provided evidence does not state which provinces share a border with Niassa Province.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(lago_district) -[PART_OF_PROVINCE]-> (niassa_province)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [
+                  "provinces bordering Niassa Province"
+                ],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "What province shares a border with the province where Lago District is located?"
+              }
+            ],
+            "overall_coverage": 0.5,
+            "overall_confidence": 1.0,
+            "gaps": [
+              "provinces bordering Niassa Province"
+            ]
+          }
+        },
+        {
+          "question_id": "2hop__166824_185403",
+          "question": "What league does the team that plays in Stadio Ciro Vigorito play for?",
+          "gold_answer": "Lega Pro Prima Divisione",
+          "answer": "The team that plays in Stadio Ciro Vigorito is Benevento Calcio, and the organization in Benevento operates in the Lega Pro Prima Divisione.",
+          "short_answer": "Lega Pro Prima Divisione",
+          "scored_answer": "Lega Pro Prima Divisione",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 74.987,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What league does the team that plays in Stadio Ciro Vigorito play for?",
+            "final_answer": "The team that plays in Stadio Ciro Vigorito is Benevento Calcio, and the organization in Benevento operates in the Lega Pro Prima Divisione.",
+            "final_answer_short": "Lega Pro Prima Divisione",
+            "sub_questions": [
+              {
+                "question": "Which team plays in Stadio Ciro Vigorito?",
+                "target_domains": [
+                  "musical_affiliations"
+                ],
+                "context": "Looking for the team associated with the venue 'Stadio Ciro Vigorito' using the CONTAINS_VENUE relation."
+              },
+              {
+                "question": "What league does that team play for?",
+                "target_domains": [
+                  "musical_affiliations"
+                ],
+                "context": "Looking for the MEMBER_OF_LEAGUE relation for the team identified in the first sub-question."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "The team that plays in Stadio Ciro Vigorito is Benevento Calcio, as the stadium serves as its home.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(stadio_ciro_vigorito) -[SERVES_AS_HOME_FOR]-> (benevento_calcio)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "musical_affiliations",
+                "topics_used": [
+                  "Band Membership"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'stadio_ciro_vigorito':\n  (stadio_ciro_vigorito) -[LOCATED_IN]-> (benevento)\n  (stadio_ciro_vigorito) -[LOCATED_IN]-> (italy)\n  (stadio_ciro_vigorito) -[USED_FOR]-> (football_matches)\n  (stadio_ciro_vigorito) -[SERVES_AS_HOME_FOR]-> (benevento_calcio)\n  (stadio_ciro_vigorito) -[HAS_CAPACITY_OF]-> (25_000_people)\n  (stadio_ciro_vigorito) -[OPENED_IN_YEAR]-> (1979)\n  (carmelo_imbriani) -[COACHED_AT_ORGANIZATION]-> (benevento)\n  (benevento) -[ORGANIZATION_OPERATES_IN_DIVISION]-> (lega_pro_prima_divisione)\n  (carmelo_imbriani) -[HAS_BIRTH_DATE]-> (10_february)\n  (carmelo_imbriani) -[HAS_DEATH_DATE]-> (15_february)\n  (carmelo_imbriani) -[HAS_NATIONALITY]-> (italian)\n  (carmelo_imbriani) -[HELD_PROFESSIONAL_ROLE]-> (footballer)\n  (carmelo_imbriani) -[HELD_PROFESSIONAL_ROLE]-> (coach)",
+                "sub_question": "Which team plays in Stadio Ciro Vigorito?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 0.9,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__698577_851686",
+          "question": "What is a notable work written by the author of The Timothy files?",
+          "gold_answer": "Anderson Tapes",
+          "answer": "A notable work written by Lawrence Sanders, the author of The Timothy Files, is The Anderson Tapes.",
+          "short_answer": "The Anderson Tapes",
+          "scored_answer": "The Anderson Tapes",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 74.151,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What is a notable work written by the author of The Timothy files?",
+            "final_answer": "A notable work written by Lawrence Sanders, the author of The Timothy Files, is The Anderson Tapes.",
+            "final_answer_short": "The Anderson Tapes",
+            "sub_questions": [
+              {
+                "question": "Who is the author of The Timothy files?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "Identify the author using the AUTHORED_BY relation"
+              },
+              {
+                "question": "What are the notable works written by this author?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "Find other works associated with the author via the AUTHORED_BY relation"
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "The author of The Timothy files is Lawrence Sanders.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(the_timothy_files) -[AUTHORED_BY]-> (lawrence_sanders)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "biographical_identity",
+                "topics_used": [
+                  "Personal Origins"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'the_timothy_files':\n  (the_timothy_files) -[AUTHORED_BY]-> (lawrence_sanders)\n  (the_timothy_files) -[PUBLISHED_IN_YEAR]-> (1987)\n  (the_timothy_files) -[FEATURES_CHARACTER]-> (timothy_cone)\n  (the_anderson_tapes) -[AUTHORED_BY]-> (lawrence_sanders)\n  (lawrence_sanders) -[AUTHORED_SERIES]-> (deadly_sin)\n  (ulrich_walter) -[OCCURRED_AT_TIME]-> (1987)\n  (timothy_cone) -[HAS_PROFESSION]-> (hard_boiled_type_investigator)\n  (timothy_cone) -[HAS_PERSONALITY_TRAIT]-> (scruffy)\n  (timothy_cone) -[HAS_PERSONALITY_TRAIT]-> (rough_of_mouth_and_demeanor)\n  (timothy_cone) -[HAS_PERSONALITY_TRAIT]-> (pure_of_heart)\n  (timothy_cone) -[MAINTAINS_ROMANTIC_RELATIONSHIP]-> (supervisor)\n  (timothy_cone) -[MAINTAINS_PROFESSIONAL_RELATIONSHIP]-> (supervisor)\n  (timothy_cone) -[HAS_PET]-> (cleo)\n  (the_anderson_tapes) -[PUBLISHED_IN_YEAR]-> (date)\n  (crime_fiction_novel) -[GENRE_OF_WORK]-> (the_anderson_tapes)\n  (the_anderson_tapes) -[CENTRAL_PLOT_EVENT]-> (burglary)\n  (the_anderson_tapes) -[FEATURES_CHARACTER]-> (edward_x_delaney)\n  (the_anderson_tapes) -[RECOGNIZED_BY_AWARD]-> (mystery_writers_of_america_edgar_award)\n  (the_anderson_tapes) -[ADAPTED_INTO]-> (film_adaptation)\n  (edward_x_delaney) -[CHARACTER_APPEARS_IN_SERIES]-> (deadly_sin)\n  (ulrich_walter) -[HELD_POSITION_AT]-> (argonne_national_laboratory)\n  (ulrich_walter) -[HELD_POSITION_AT]-> (university_of_california_at_berkeley)\n  (ulrich_walter) -[JOINED_ORGANIZATION]-> (german_astronaut_team)\n  (ulrich_walter) -[COMPLETED_TRAINING_AT]-> (german_aerospace_center)\n  (ulrich_walter) -[OCCURRED_AT_TIME]-> (1988_to)\n  (ulrich_walter) -[NOMINATED_FOR_ROLE]-> (prime_crew)",
+                "sub_question": "Who is the author of The Timothy files?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__362107_652514",
+          "question": "In which borough was Callum McManaman born?",
+          "gold_answer": "Knowsley",
+          "answer": "Callum McManaman was born in Whiston, which is located within the Metropolitan Borough of Knowsley.",
+          "short_answer": "Metropolitan Borough of Knowsley",
+          "scored_answer": "Metropolitan Borough of Knowsley",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.4,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 64.986,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "In which borough was Callum McManaman born?",
+            "final_answer": "Callum McManaman was born in Whiston, which is located within the Metropolitan Borough of Knowsley.",
+            "final_answer_short": "Metropolitan Borough of Knowsley",
+            "sub_questions": [
+              {
+                "question": "In which borough was Callum McManaman born?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "Looking for the birth location (BORN_IN) of Callum McManaman."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Callum McManaman was born in Whiston, which is located within the Metropolitan Borough of Knowsley.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(callum_mcmanaman) -[BORN_IN]-> (whiston)",
+                  "(whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (metropolitan_borough_of_knowsley)"
+                ],
+                "confidence": 0.5,
+                "out_of_scope_aspects": [],
+                "domain_id": "biographical_identity",
+                "topics_used": [
+                  "Personal Origins"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'callum_mcmanaman':\n  (callum_mcmanaman) -[BORN_IN]-> (whiston)\n  (callum_mcmanaman) -[RAISED_IN]-> (rainhill)\n  (callum_mcmanaman) -[STARTED_YOUTH_CAREER_AT]-> (everton)\n  (callum_mcmanaman) -[RELEASED_BY_IN]-> (year)\n  (callum_mcmanaman) -[JOINED_CLUB_IN]-> (wigan_athletic)\n  (callum_mcmanaman) -[DEBUTED_IN]-> (year)\n  (callum_mcmanaman) -[AWARDED_MATCH_HONOR]-> (man_of_the_match)\n  (callum_mcmanaman) -[WON_COMPETITION_IN]-> (fa_cup)\n  (callum_mcmanaman) -[JOINED_CLUB_IN]-> (west_bromwich_albion)\n  (callum_mcmanaman) -[TRANSFER_FEE_PAID]-> (transfer_value_4_75_million)\n  (whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (metropolitan_borough_of_knowsley)\n  (whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (merseyside)\n  (whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (england)\n  (population) -[POPULATION_COUNT_FOR_LOCATION]-> (whiston)\n  (kimbrough_memorial_stadium) -[BUILT_IN_YEAR]-> (year)\n  (kimbrough_memorial_stadium) -[RENAMED_IN_YEAR]-> (year)\n  (metropolitan_borough_of_knowsley) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (merseyside)\n  (metropolitan_borough_of_knowsley) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (england)\n  (merseyside) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (england)\n  (population) -[RECORDED_IN_CENSUS]-> (2001_census)\n  (population) -[RECORDED_IN_CENSUS]-> (2011_census)\n  (imperial_texas) -[RECORDED_POPULATION_AT_TIME]-> (population)\n  (canyon) -[HAS_POPULATION_AT_CENSUS]-> (population)\n  (kimbrough_memorial_stadium) -[LOCATED_IN]-> (canyon_texas)\n  (kimbrough_memorial_stadium) -[OWNED_BY]-> (canyon_independent_school_district)\n  (kimbrough_memorial_stadium) -[USED_FOR_SPORT]-> (american_football)\n  (kimbrough_memorial_stadium) -[CURRENT_HOME_STADIUM_FOR]-> (canyon_high_school)\n  (kimbrough_memorial_stadium) -[CURRENT_HOME_STADIUM_FOR]-> (randall_high_school)\n  (kimbrough_memorial_stadium) -[FORMER_HOME_STADIUM_FOR]-> (west_texas_am_university)\n  (kimbrough_memorial_stadium) -[HAS_CAPACITY]-> (capacity)",
+                "sub_question": "In which borough was Callum McManaman born?"
+              },
+              {
+                "answer": "Callum McManaman was born in Whiston, which is located within the Metropolitan Borough of Knowsley.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(callum_mcmanaman) -[BORN_IN]-> (whiston)",
+                  "(whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (metropolitan_borough_of_knowsley)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "In which borough was Callum McManaman born?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__402530_774333",
+          "question": "What other county does the county where Imperial is located share a border with?",
+          "gold_answer": "Crockett County",
+          "answer": "Imperial is located in Pecos County, which shares a border with Crockett County, as indicated by Lancaster Crossing being situated between the two regions.",
+          "short_answer": "Crockett County",
+          "scored_answer": "Crockett County",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 268.021,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What other county does the county where Imperial is located share a border with?",
+            "final_answer": "Imperial is located in Pecos County, which shares a border with Crockett County, as indicated by Lancaster Crossing being situated between the two regions.",
+            "final_answer_short": "Crockett County",
+            "sub_questions": [
+              {
+                "question": "Which county is Imperial located in?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "Find the administrative region or location of Imperial."
+              },
+              {
+                "question": "Which other counties share a border with the county where Imperial is located?",
+                "target_domains": [
+                  "professional_collaborations"
+                ],
+                "context": "Use the BORDERS_GEOGRAPHICALLY relation to find neighboring counties."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Imperial is located within the jurisdiction of Pecos County.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(imperial_texas) -[LOCATED_WITHIN_JURISDICTION]-> (pecos_county)"
+                ],
+                "confidence": 0.5,
+                "out_of_scope_aspects": [],
+                "domain_id": "biographical_identity",
+                "topics_used": [
+                  "Personal Origins"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'imperial_texas':\n  (imperial_texas) -[HAS_ADMINISTRATIVE_STATUS]-> (census_designated_place)\n  (imperial_texas) -[LOCATED_WITHIN_JURISDICTION]-> (pecos_county)\n  (imperial_texas) -[RECORDED_POPULATION_AT_TIME]-> (population)\n  (imperial_texas) -[RECORDED_POPULATION_AT_TIME]-> (census)\n  (lancaster_crossing) -[SITUATED_BETWEEN_REGIONS]-> (pecos_county)\n  (pecos_county) -[LOCATED_WITHIN_JURISDICTION]-> (texas)\n  (population) -[RECORDED_IN_CENSUS]-> (2001_census)\n  (population) -[RECORDED_IN_CENSUS]-> (2011_census)\n  (population) -[POPULATION_COUNT_FOR_LOCATION]-> (whiston)\n  (canyon) -[HAS_POPULATION_AT_CENSUS]-> (population)\n  (1_811) -[RECORDED_AT_TIME]-> (census)\n  (rabbit_hole) -[RELEASED_ON_DATE]-> (census)\n  (lancaster_crossing) -[LOCATED_ON_WATER_BODY]-> (pecos_river)\n  (lancaster_crossing) -[SITUATED_BETWEEN_REGIONS]-> (crockett_county)\n  (lancaster_crossing) -[PROXIMITY_TO_SETTLEMENT]-> (sheffield)\n  (lancaster_crossing) -[LOCATED_IN_STATE]-> (texas)\n  (lancaster_crossing) -[NAMED_AFTER_LANDMARK]-> (fort_lancaster)\n  (lancaster_crossing) -[PROXIMITY_TO_LANDMARK]-> (fort_lancaster)\n  (texas) -[LOCATED_WITHIN_JURISDICTION]-> (united_states)\n  (canyon) -[LOCATED_WITHIN_STATE]-> (texas)\n  (randall_county) -[LOCATED_WITHIN_STATE]-> (texas)\n  (texas) -[LOCATED_WITHIN_COUNTRY]-> (united_states)\n  (canyon) -[HOSTS_INSTITUTION]-> (texas)\n  (callum_mcmanaman) -[BORN_IN]-> (whiston)\n  (whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (metropolitan_borough_of_knowsley)\n  (whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (merseyside)\n  (whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (england)\n  (canyon) -[IS_CITY_IN_COUNTY]-> (randall_county)\n  (canyon) -[IS_COUNTY_SEAT_OF]-> (randall_county)\n  (canyon) -[LOCATED_WITHIN_COUNTRY]-> (united_states)",
+                "sub_question": "Which county is Imperial located in?"
+              },
+              {
+                "answer": "Imperial is located within Pecos County. Lancaster Crossing is situated between Pecos County and Crockett County, indicating that Crockett County shares a border with Pecos County.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(imperial_texas) -[LOCATED_WITHIN_JURISDICTION]-> (pecos_county)",
+                  "(lancaster_crossing) -[SITUATED_BETWEEN_REGIONS]-> (pecos_county)",
+                  "(lancaster_crossing) -[SITUATED_BETWEEN_REGIONS]-> (crockett_county)"
+                ],
+                "confidence": 0.5,
+                "out_of_scope_aspects": [],
+                "domain_id": "professional_collaborations",
+                "topics_used": [
+                  "Creative Partnerships"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'imperial_texas':\n  (imperial_texas) -[HAS_ADMINISTRATIVE_STATUS]-> (census_designated_place)\n  (imperial_texas) -[LOCATED_WITHIN_JURISDICTION]-> (pecos_county)\n  (imperial_texas) -[RECORDED_POPULATION_AT_TIME]-> (population)\n  (imperial_texas) -[RECORDED_POPULATION_AT_TIME]-> (census)\n  (lancaster_crossing) -[SITUATED_BETWEEN_REGIONS]-> (pecos_county)\n  (pecos_county) -[LOCATED_WITHIN_JURISDICTION]-> (texas)\n  (population) -[RECORDED_IN_CENSUS]-> (2001_census)\n  (population) -[RECORDED_IN_CENSUS]-> (2011_census)\n  (population) -[POPULATION_COUNT_FOR_LOCATION]-> (whiston)\n  (canyon) -[HAS_POPULATION_AT_CENSUS]-> (population)\n  (1_811) -[RECORDED_AT_TIME]-> (census)\n  (rabbit_hole) -[RELEASED_ON_DATE]-> (census)\n  (lancaster_crossing) -[LOCATED_ON_WATER_BODY]-> (pecos_river)\n  (lancaster_crossing) -[SITUATED_BETWEEN_REGIONS]-> (crockett_county)\n  (lancaster_crossing) -[PROXIMITY_TO_SETTLEMENT]-> (sheffield)\n  (lancaster_crossing) -[LOCATED_IN_STATE]-> (texas)\n  (lancaster_crossing) -[NAMED_AFTER_LANDMARK]-> (fort_lancaster)\n  (lancaster_crossing) -[PROXIMITY_TO_LANDMARK]-> (fort_lancaster)\n  (texas) -[LOCATED_WITHIN_JURISDICTION]-> (united_states)\n  (canyon) -[LOCATED_WITHIN_STATE]-> (texas)\n  (randall_county) -[LOCATED_WITHIN_STATE]-> (texas)\n  (texas) -[LOCATED_WITHIN_COUNTRY]-> (united_states)\n  (canyon) -[HOSTS_INSTITUTION]-> (texas)\n  (callum_mcmanaman) -[BORN_IN]-> (whiston)\n  (whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (metropolitan_borough_of_knowsley)\n  (whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (merseyside)\n  (whiston) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (england)\n  (canyon) -[IS_CITY_IN_COUNTY]-> (randall_county)\n  (canyon) -[IS_COUNTY_SEAT_OF]-> (randall_county)\n  (canyon) -[LOCATED_WITHIN_COUNTRY]-> (united_states)",
+                "sub_question": "Which other counties share a border with the county where Imperial is located?"
+              },
+              {
+                "answer": "The county where Imperial is located (pecos_county) shares a border with crockett_county, as lancaster_crossing is situated between these two regions.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(imperial_texas) -[LOCATED_WITHIN_JURISDICTION]-> (pecos_county)",
+                  "(lancaster_crossing) -[SITUATED_BETWEEN_REGIONS]-> (pecos_county)",
+                  "(lancaster_crossing) -[SITUATED_BETWEEN_REGIONS]-> (crockett_county)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "What other county does the county where Imperial is located share a border with?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__195917_575657",
+          "question": "In what county is William W. Blair's birthplace located?",
+          "gold_answer": "Orleans County",
+          "answer": "William W. Blair was born in Holley, New York, which is located within the town of Murray, which in turn is located within Orleans County.",
+          "short_answer": "Orleans County",
+          "scored_answer": "Orleans County",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 50.958,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "In what county is William W. Blair's birthplace located?",
+            "final_answer": "William W. Blair was born in Holley, New York, which is located within the town of Murray, which in turn is located within Orleans County.",
+            "final_answer_short": "Orleans County",
+            "sub_questions": [
+              {
+                "question": "Where was William W. Blair born?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "Identify the birthplace of William W. Blair"
+              },
+              {
+                "question": "In what county is that birthplace located?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "Determine the administrative region or county of the birthplace"
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "William W. Blair was born in Holley, New York.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(william_w_blair) -[BORN_IN]-> (holley)",
+                  "(william_w_blair) -[BORN_IN]-> (new_york)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "biographical_identity",
+                "topics_used": [
+                  "Personal Origins"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'william_w_blair':\n  (william_w_blair) -[BORN_IN]-> (holley)\n  (william_w_blair) -[MIGRATED_TO]-> (lasalle_county)\n  (william_w_blair) -[ENCOUNTERED_MOVEMENT]-> (latter_day_saint_movement)\n  (william_w_blair) -[BAPTIZED_BY]-> (william_smith)\n  (william_w_blair) -[BORN_IN]-> (new_york)\n  (william_w_blair) -[MIGRATED_TO]-> (illinois)\n  (holley) -[BORN_IN]-> (new_york)\n  (holley) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (town_of_murray)\n  (holley) -[HAS_POPULATION_COUNT]-> (1_811)\n  (holley) -[PART_OF_METRO_AREA]-> (rochester_metropolitan_statistical_area)\n  (lasalle_county) -[MIGRATED_TO]-> (illinois)\n  (joseph_smith) -[FOUNDED_MOVEMENT]-> (latter_day_saint_movement)\n  (william_smith) -[FAMILY_RELATION]-> (joseph_smith)\n  (burglary) -[LOCATION_OF_EVENT]-> (new_york)\n  (orleans_county) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (new_york)\n  (new_york) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (united_states)\n  (argonne_national_laboratory) -[LOCATED_IN]-> (illinois)\n  (town_of_murray) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (orleans_county)\n  (1_811) -[RECORDED_AT_TIME]-> (census)\n  (the_anderson_tapes) -[CENTRAL_PLOT_EVENT]-> (burglary)\n  (burglary) -[TARGET_OF_EVENT]-> (apartment_building)\n  (burglary) -[PERPETRATOR_OF_EVENT]-> (gang_of_ex_convicts)\n  (herman_leroy) -[OFFICIAL_OF_GEOGRAPHIC_REGION]-> (united_states)\n  (texas) -[LOCATED_WITHIN_JURISDICTION]-> (united_states)\n  (rabbit_hole) -[RELEASED_IN_REGION]-> (united_states)\n  (canyon) -[LOCATED_WITHIN_COUNTRY]-> (united_states)\n  (randall_county) -[LOCATED_WITHIN_COUNTRY]-> (united_states)\n  (texas) -[LOCATED_WITHIN_COUNTRY]-> (united_states)\n  (ulrich_walter) -[HELD_POSITION_AT]-> (argonne_national_laboratory)\n  (argonne_national_laboratory) -[LOCATED_IN]-> (chicago)",
+                "sub_question": "Where was William W. Blair born?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__683835_709167",
+          "question": "What award did the author of The Red Tree receive?",
+          "gold_answer": "Academy Award for Best Animated Short Film",
+          "answer": "The author of The Red Tree, Shaun Tan, directed The Lost Thing, which won the Academy Award for Best Animated Short Film.",
+          "short_answer": "Academy Award for Best Animated Short Film",
+          "scored_answer": "Academy Award for Best Animated Short Film",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 203.073,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "What award did the author of The Red Tree receive?",
+            "final_answer": "The author of The Red Tree, Shaun Tan, directed The Lost Thing, which won the Academy Award for Best Animated Short Film.",
+            "final_answer_short": "Academy Award for Best Animated Short Film",
+            "sub_questions": [
+              {
+                "question": "Who is the author of The Red Tree?",
+                "target_domains": [
+                  "biographical_identity"
+                ],
+                "context": "Identify the author of the work 'The Red Tree' using the AUTHORED_BY relation."
+              },
+              {
+                "question": "What award did the author of The Red Tree receive?",
+                "target_domains": [
+                  "artistic_capabilities"
+                ],
+                "context": "Find awards or titles held by the author identified in the first step."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "The author and illustrator of The Red Tree is Shaun Tan.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(the_red_tree) -[AUTHORED_AND_ILLUSTRATED_BY]-> (shaun_tan)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "biographical_identity",
+                "topics_used": [
+                  "Personal Origins"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'the_red_tree':\n  (the_red_tree) -[AUTHORED_AND_ILLUSTRATED_BY]-> (shaun_tan)\n  (the_red_tree) -[PUBLISHED_IN_YEAR]-> (2001)\n  (the_red_tree) -[TYPE_OF_WORK]-> (picture_book)\n  (the_red_tree) -[PRESENTS_NARRATIVE]-> (fragmented_journey_through_a_dark_world)\n  (the_red_tree) -[HAS_ARTISTIC_CHARACTERISTIC]-> (surreal)\n  (the_lost_thing) -[DIRECTED_BY]-> (shaun_tan)\n  (passion_australia) -[PRODUCED_FILM]-> (the_lost_thing)\n  (the_lost_thing) -[DIRECTED_BY]-> (andrew_ruhemann)\n  (the_lost_thing) -[WON_ACCOLADE]-> (academy_award_for_best_animated_short_film)",
+                "sub_question": "Who is the author of The Red Tree?"
+              },
+              {
+                "answer": "The author of The Red Tree is Shaun Tan. Shaun Tan directed The Lost Thing, which won the Academy Award for Best Animated Short Film.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(the_red_tree) -[AUTHORED_AND_ILLUSTRATED_BY]-> (shaun_tan)",
+                  "(the_lost_thing) -[DIRECTED_BY]-> (shaun_tan)",
+                  "(the_lost_thing) -[WON_ACCOLADE]-> (academy_award_for_best_animated_short_film)"
+                ],
+                "confidence": 0.5,
+                "out_of_scope_aspects": [],
+                "domain_id": "artistic_capabilities",
+                "topics_used": [
+                  "Skill Set"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'the_red_tree':\n  (the_red_tree) -[AUTHORED_AND_ILLUSTRATED_BY]-> (shaun_tan)\n  (the_red_tree) -[PUBLISHED_IN_YEAR]-> (2001)\n  (the_red_tree) -[TYPE_OF_WORK]-> (picture_book)\n  (the_red_tree) -[PRESENTS_NARRATIVE]-> (fragmented_journey_through_a_dark_world)\n  (the_red_tree) -[HAS_ARTISTIC_CHARACTERISTIC]-> (surreal)\n  (the_lost_thing) -[DIRECTED_BY]-> (shaun_tan)\n  (passion_australia) -[PRODUCED_FILM]-> (the_lost_thing)\n  (the_lost_thing) -[DIRECTED_BY]-> (andrew_ruhemann)\n  (the_lost_thing) -[WON_ACCOLADE]-> (academy_award_for_best_animated_short_film)",
+                "sub_question": "What award did the author of The Red Tree receive?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__197470_271394",
+          "question": "Where was Tyler MacDuff's child educated?",
+          "gold_answer": "Blair High School",
+          "answer": "",
+          "short_answer": "",
+          "scored_answer": "",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0,
+            "substring_em": 0.0
+          },
+          "duration_seconds": 94.722,
+          "evidence_supported": false,
+          "system_metadata": {
+            "question": "Where was Tyler MacDuff's child educated?",
+            "final_answer": "",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "Who is the child of Tyler MacDuff?",
+                "target_domains": [
+                  "multimedia_versatility"
+                ],
+                "context": "Identify the child using the PARENT_OF or DESCENDANT_OF relations in the multimedia_versatility domain."
+              },
+              {
+                "question": "Where was Tyler MacDuff's child educated?",
+                "target_domains": [
+                  "artistic_capabilities"
+                ],
+                "context": "Find the education location using the EDUCATED_AT or COMPLETED_TRAINING_AT relations in the artistic_capabilities domain."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "I do not have information regarding a child of Tyler MacDuff.",
+                "coverage": 0.5,
+                "evidence": [],
+                "confidence": 0.488,
+                "out_of_scope_aspects": [
+                  "child of Tyler MacDuff"
+                ],
+                "domain_id": "multimedia_versatility",
+                "topics_used": [
+                  "Cross-Media Work"
+                ],
+                "multi_hop_paths": "none",
+                "sub_question": "Who is the child of Tyler MacDuff?"
+              },
+              {
+                "answer": "I do not have information regarding Tyler MacDuff or their child's education.",
+                "coverage": 0.5,
+                "evidence": [],
+                "confidence": 0.489,
+                "out_of_scope_aspects": [
+                  "Tyler MacDuff",
+                  "Tyler MacDuff's child",
+                  "education location of Tyler MacDuff's child"
+                ],
+                "domain_id": "artistic_capabilities",
+                "topics_used": [
+                  "Skill Set"
+                ],
+                "multi_hop_paths": "none",
+                "sub_question": "Where was Tyler MacDuff's child educated?"
+              }
+            ],
+            "overall_coverage": 0.0,
+            "overall_confidence": 0.0,
+            "gaps": [
+              "education location of Tyler MacDuff's child"
+            ],
+            "answer": "",
+            "abstained": true,
+            "abstention_reason": "No retrieved graph/domain evidence."
+          }
+        },
+        {
+          "question_id": "2hop__458131_174974",
+          "question": "Who is the spouse of the Rabbit Hole's producer?",
+          "gold_answer": "Keith Urban",
+          "answer": "The producer of Rabbit Hole is Nicole Kidman, but there is no information provided regarding her spouse.",
+          "short_answer": "The producer of Rabbit Hole is Nicole Kidman, but there is no information provided regarding her spouse.",
+          "scored_answer": "The producer of Rabbit Hole is Nicole Kidman, but there is no information provided regarding her spouse",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.0,
+            "substring_em": 0.0
+          },
+          "duration_seconds": 163.691,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the spouse of the Rabbit Hole's producer?",
+            "final_answer": "The producer of Rabbit Hole is Nicole Kidman, but there is no information provided regarding her spouse.",
+            "final_answer_short": "",
+            "sub_questions": [
+              {
+                "question": "Who is the producer of Rabbit Hole?",
+                "target_domains": [
+                  "musical_affiliations"
+                ],
+                "context": "Identify the producer of the work 'Rabbit Hole' using relations like CREATED_BY or PRODUCED_CONCURRENTLY_WITH."
+              },
+              {
+                "question": "Who is the spouse of the producer of Rabbit Hole?",
+                "target_domains": [
+                  "multimedia_versatility"
+                ],
+                "context": "Identify the spouse of the person found in the previous step using the MARRIED_TO relation."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "The producer of Rabbit Hole is Nicole Kidman and the company Blossom Films.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(rabbit_hole) -[PRODUCED_BY_PERSON]-> (nicole_kidman)",
+                  "(rabbit_hole) -[PRODUCED_BY_COMPANY]-> (blossom_films)"
+                ],
+                "confidence": 0.5,
+                "out_of_scope_aspects": [],
+                "domain_id": "musical_affiliations",
+                "topics_used": [
+                  "Band Membership"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'rabbit_hole':\n  (nicole_kidman) -[STARS_IN]-> (rabbit_hole)\n  (aaron_eckhart) -[STARS_IN]-> (rabbit_hole)\n  (dianne_wiest) -[STARS_IN]-> (rabbit_hole)\n  (rabbit_hole) -[DIRECTED_BY]-> (john_cameron_mitchell)\n  (rabbit_hole) -[SCREENPLAY_ADAPTED_FROM]-> (rabbit_hole_play)\n  (david_lindsay_abaire) -[WROTE_SCREENPLAY]-> (rabbit_hole)\n  (rabbit_hole) -[PRODUCED_BY_COMPANY]-> (blossom_films)\n  (rabbit_hole) -[PRODUCED_BY_PERSON]-> (nicole_kidman)\n  (rabbit_hole) -[PREMIERED_AT]-> (toronto_international_film_festival)\n  (rabbit_hole) -[DISTRIBUTED_BY]-> (lionsgate)\n  (rabbit_hole) -[RELEASED_IN_REGION]-> (united_states)\n  (rabbit_hole) -[RELEASED_ON_DATE]-> (release_date_december_17)\n  (rabbit_hole) -[RELEASED_ON_DATE]-> (release_date_january_14)\n  (rabbit_hole) -[HAS_BOX_OFFICE_GROSS]-> (5_1_million_dollars)\n  (rabbit_hole) -[HAS_PRODUCTION_BUDGET]-> (3_million_dollars)\n  (rabbit_hole) -[FILM_GENRE]-> (tragedy_film_genre)\n  (rabbit_hole) -[FILM_NATIONALITY]-> (american)\n  (rabbit_hole) -[RELEASED_ON_DATE]-> (census)\n  (planet_cake) -[CREATED_FOR_CLIENT]-> (nicole_kidman)\n  (blossom_films) -[OWNED_BY]-> (nicole_kidman)\n  (nicole_kidman) -[PORTRAYED_CHARACTER]-> (becca_corbett)\n  (nicole_kidman) -[NOMINATED_FOR_AWARD]-> (academy_award)\n  (nicole_kidman) -[NOMINATED_FOR_AWARD]-> (golden_globe_award)\n  (nicole_kidman) -[NOMINATED_FOR_AWARD]-> (screen_actors_guild_award)\n  (nicole_kidman) -[NOMINATED_FOR_CATEGORY]-> (best_actress)\n  (david_lindsay_abaire) -[CONTRIBUTED_TO_PRODUCTION]-> (rabbit_hole_play)\n  (herman_leroy) -[OFFICIAL_OF_GEOGRAPHIC_REGION]-> (united_states)\n  (texas) -[LOCATED_WITHIN_JURISDICTION]-> (united_states)\n  (new_york) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (united_states)\n  (canyon) -[LOCATED_WITHIN_COUNTRY]-> (united_states)",
+                "sub_question": "Who is the producer of Rabbit Hole?"
+              },
+              {
+                "answer": "The producer of Rabbit Hole is Nicole Kidman, but the provided data does not contain information regarding her spouse.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(rabbit_hole) -[PRODUCED_BY_PERSON]-> (nicole_kidman)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [
+                  "spouse of Nicole Kidman"
+                ],
+                "domain_id": "multimedia_versatility",
+                "topics_used": [
+                  "Cross-Media Work"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'rabbit_hole':\n  (nicole_kidman) -[STARS_IN]-> (rabbit_hole)\n  (aaron_eckhart) -[STARS_IN]-> (rabbit_hole)\n  (dianne_wiest) -[STARS_IN]-> (rabbit_hole)\n  (rabbit_hole) -[DIRECTED_BY]-> (john_cameron_mitchell)\n  (rabbit_hole) -[SCREENPLAY_ADAPTED_FROM]-> (rabbit_hole_play)\n  (david_lindsay_abaire) -[WROTE_SCREENPLAY]-> (rabbit_hole)\n  (rabbit_hole) -[PRODUCED_BY_COMPANY]-> (blossom_films)\n  (rabbit_hole) -[PRODUCED_BY_PERSON]-> (nicole_kidman)\n  (rabbit_hole) -[PREMIERED_AT]-> (toronto_international_film_festival)\n  (rabbit_hole) -[DISTRIBUTED_BY]-> (lionsgate)\n  (rabbit_hole) -[RELEASED_IN_REGION]-> (united_states)\n  (rabbit_hole) -[RELEASED_ON_DATE]-> (release_date_december_17)\n  (rabbit_hole) -[RELEASED_ON_DATE]-> (release_date_january_14)\n  (rabbit_hole) -[HAS_BOX_OFFICE_GROSS]-> (5_1_million_dollars)\n  (rabbit_hole) -[HAS_PRODUCTION_BUDGET]-> (3_million_dollars)\n  (rabbit_hole) -[FILM_GENRE]-> (tragedy_film_genre)\n  (rabbit_hole) -[FILM_NATIONALITY]-> (american)\n  (rabbit_hole) -[RELEASED_ON_DATE]-> (census)\n  (planet_cake) -[CREATED_FOR_CLIENT]-> (nicole_kidman)\n  (blossom_films) -[OWNED_BY]-> (nicole_kidman)\n  (nicole_kidman) -[PORTRAYED_CHARACTER]-> (becca_corbett)\n  (nicole_kidman) -[NOMINATED_FOR_AWARD]-> (academy_award)\n  (nicole_kidman) -[NOMINATED_FOR_AWARD]-> (golden_globe_award)\n  (nicole_kidman) -[NOMINATED_FOR_AWARD]-> (screen_actors_guild_award)\n  (nicole_kidman) -[NOMINATED_FOR_CATEGORY]-> (best_actress)\n  (david_lindsay_abaire) -[CONTRIBUTED_TO_PRODUCTION]-> (rabbit_hole_play)\n  (herman_leroy) -[OFFICIAL_OF_GEOGRAPHIC_REGION]-> (united_states)\n  (texas) -[LOCATED_WITHIN_JURISDICTION]-> (united_states)\n  (new_york) -[LOCATED_WITHIN_ADMINISTRATIVE_AREA]-> (united_states)\n  (canyon) -[LOCATED_WITHIN_COUNTRY]-> (united_states)",
+                "sub_question": "Who is the spouse of the producer of Rabbit Hole?"
+              },
+              {
+                "answer": "I do not have information about the spouse of the Rabbit Hole's producer.",
+                "coverage": 1.0,
+                "evidence": [],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [
+                  "spouse of the producer"
+                ],
+                "domain_id": "global_fallback",
+                "topics_used": [],
+                "multi_hop_paths": "fallback-focused",
+                "sub_question": "Who is the spouse of the Rabbit Hole's producer?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": [
+              "spouse of Nicole Kidman"
+            ]
+          }
+        },
+        {
+          "question_id": "2hop__299142_347613",
+          "question": "Who is the child of Sigrid Eskilsdotter's child?",
+          "gold_answer": "Svante Stensson Sture",
+          "answer": "The child of Sigrid Eskilsdotter's child, Christina Gyllenstierna, is Sigrid Sture.",
+          "short_answer": "Sigrid Sture",
+          "scored_answer": "Sigrid Sture",
+          "metrics": {
+            "exact_match": 0.0,
+            "token_f1": 0.4,
+            "substring_em": 0.0
+          },
+          "duration_seconds": 303.081,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "Who is the child of Sigrid Eskilsdotter's child?",
+            "final_answer": "The child of Sigrid Eskilsdotter's child, Christina Gyllenstierna, is Sigrid Sture.",
+            "final_answer_short": "Sigrid Sture",
+            "sub_questions": [
+              {
+                "question": "Who are the children of Sigrid Eskilsdotter?",
+                "target_domains": [
+                  "multimedia_versatility"
+                ],
+                "context": "Identify the children of Sigrid Eskilsdotter using the family lineage relations (PARENT_OF, DESCENDANT_OF)."
+              },
+              {
+                "question": "Who are the children of the children of Sigrid Eskilsdotter?",
+                "target_domains": [
+                  "multimedia_versatility"
+                ],
+                "context": "Find the grandchildren of Sigrid Eskilsdotter by querying the children of the individuals identified in the first step."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Sigrid Eskilsdotter (Ban\u00e9r) is the mother of the Swedish regent Christina Gyllenstierna.",
+                "coverage": 0.5,
+                "evidence": [
+                  "(sigrid_eskilsdotter_baner) -[PARENT_OF]-> (christina_gyllenstierna)"
+                ],
+                "confidence": 0.488,
+                "out_of_scope_aspects": [],
+                "domain_id": "multimedia_versatility",
+                "topics_used": [
+                  "Cross-Media Work"
+                ],
+                "multi_hop_paths": "none",
+                "sub_question": "Who are the children of Sigrid Eskilsdotter?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        },
+        {
+          "question_id": "2hop__528263_865831",
+          "question": "In which county is Kimbrough Memorial Stadium located?",
+          "gold_answer": "Randall County",
+          "answer": "Kimbrough Memorial Stadium is located in Canyon, Texas, which is in Randall County.",
+          "short_answer": "Randall County",
+          "scored_answer": "Randall County",
+          "metrics": {
+            "exact_match": 1.0,
+            "token_f1": 1.0,
+            "substring_em": 1.0
+          },
+          "duration_seconds": 71.792,
+          "evidence_supported": true,
+          "system_metadata": {
+            "question": "In which county is Kimbrough Memorial Stadium located?",
+            "final_answer": "Kimbrough Memorial Stadium is located in Canyon, Texas, which is in Randall County.",
+            "final_answer_short": "Randall County",
+            "sub_questions": [
+              {
+                "question": "In which county is Kimbrough Memorial Stadium located?",
+                "target_domains": [
+                  "musical_affiliations"
+                ],
+                "context": "The domain 'musical_affiliations' contains the relation 'CONTAINS_VENUE', which is likely to link a stadium (venue) to its location."
+              }
+            ],
+            "domain_responses": [
+              {
+                "answer": "Kimbrough Memorial Stadium is located in Canyon, Texas, which is the county seat of and is a city in Randall County.",
+                "coverage": 1.0,
+                "evidence": [
+                  "(kimbrough_memorial_stadium) -[LOCATED_IN]-> (canyon_texas)",
+                  "(canyon) -[IS_CITY_IN_COUNTY]-> (randall_county)",
+                  "(canyon) -[IS_COUNTY_SEAT_OF]-> (randall_county)"
+                ],
+                "confidence": 1.0,
+                "out_of_scope_aspects": [],
+                "domain_id": "musical_affiliations",
+                "topics_used": [
+                  "Band Membership"
+                ],
+                "multi_hop_paths": "\n\nNEIGHBOURHOOD (2-hop) of 'kimbrough_memorial_stadium':\n  (kimbrough_memorial_stadium) -[LOCATED_IN]-> (canyon_texas)\n  (kimbrough_memorial_stadium) -[OWNED_BY]-> (canyon_independent_school_district)\n  (kimbrough_memorial_stadium) -[USED_FOR_SPORT]-> (american_football)\n  (kimbrough_memorial_stadium) -[CURRENT_HOME_STADIUM_FOR]-> (canyon_high_school)\n  (kimbrough_memorial_stadium) -[CURRENT_HOME_STADIUM_FOR]-> (randall_high_school)\n  (kimbrough_memorial_stadium) -[FORMER_HOME_STADIUM_FOR]-> (west_texas_am_university)\n  (kimbrough_memorial_stadium) -[HAS_CAPACITY]-> (capacity)\n  (kimbrough_memorial_stadium) -[BUILT_IN_YEAR]-> (year)\n  (kimbrough_memorial_stadium) -[LOCATED_ON_LANDMARK]-> (canyon_hill)\n  (kimbrough_memorial_stadium) -[RENAMED_IN_YEAR]-> (year)\n  (kimbrough_memorial_stadium) -[NAMED_IN_HONOR_OF]-> (frank_kimbrough)\n  (canyon_high_school) -[AFFILIATED_WITH_DISTRICT]-> (canyon_independent_school_district)\n  (randall_high_school) -[AFFILIATED_WITH_DISTRICT]-> (canyon_independent_school_district)\n  (frank_kimbrough) -[HELD_POSITION_AT_INSTITUTION]-> (west_texas_am_university)\n  (canyon) -[HOSTS_INSTITUTION]-> (west_texas_am_university)\n  (callum_mcmanaman) -[RELEASED_BY_IN]-> (year)\n  (callum_mcmanaman) -[DEBUTED_IN]-> (year)\n  (canyon) -[IS_CITY_IN_COUNTY]-> (randall_county)\n  (canyon) -[IS_COUNTY_SEAT_OF]-> (randall_county)\n  (canyon) -[LOCATED_WITHIN_STATE]-> (texas)\n  (canyon) -[LOCATED_WITHIN_COUNTRY]-> (united_states)\n  (canyon) -[HAS_POPULATION_AT_CENSUS]-> (population)\n  (canyon) -[PART_OF_METRO_AREA]-> (amarillo_texas_metropolitan_statistical_area)\n  (canyon) -[HOSTS_INSTITUTION]-> (panhandle_plains_historical_museum)\n  (canyon) -[HOSTS_INSTITUTION]-> (texas)\n  (callum_mcmanaman) -[BORN_IN]-> (whiston)\n  (callum_mcmanaman) -[RAISED_IN]-> (rainhill)\n  (callum_mcmanaman) -[STARTED_YOUTH_CAREER_AT]-> (everton)\n  (callum_mcmanaman) -[JOINED_CLUB_IN]-> (wigan_athletic)\n  (callum_mcmanaman) -[AWARDED_MATCH_HONOR]-> (man_of_the_match)",
+                "sub_question": "In which county is Kimbrough Memorial Stadium located?"
+              }
+            ],
+            "overall_coverage": 1.0,
+            "overall_confidence": 1.0,
+            "gaps": []
+          }
+        }
+      ]
+    }
+  }
+}

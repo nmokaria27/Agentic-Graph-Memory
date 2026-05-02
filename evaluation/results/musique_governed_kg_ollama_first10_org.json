@@ -1,0 +1,454 @@
+{
+  "domains": [
+    {
+      "domain_id": "cultural_production_and_geographic_context",
+      "label": "Cultural Production and Geographic Context",
+      "description": "This domain encompasses creative works, the artists who create them, the companies that produce them, and the geographic locations associated with their production and existence.",
+      "entity_ids": [
+        "adelphia_financial_collapse_bankruptcy",
+        "alvarez",
+        "american_regional_sports_network",
+        "bernd_huttemann",
+        "cologne",
+        "dallas_texas",
+        "dorking",
+        "estadio_nuevo_laredo",
+        "george",
+        "germany",
+        "gong",
+        "green",
+        "levey",
+        "london",
+        "matamoros",
+        "mike_medavoy",
+        "miquette_giraudy",
+        "motivation_radio",
+        "nuevo_laredo",
+        "orion_pictures",
+        "philae_spacecraft",
+        "reynosa",
+        "rio_grande",
+        "steve_hillage",
+        "system",
+        "tamaulipas",
+        "the_red_album",
+        "tulsa_oklahoma",
+        "uhf_film",
+        "yankovic"
+      ],
+      "relation_schema": {
+        "PERFORMS_IN": "",
+        "PRODUCED_BY": "",
+        "LOCATED_IN": "",
+        "HOME_TO": ""
+      },
+      "topics": [
+        {
+          "topic_id": "creative_works",
+          "label": "Creative Works",
+          "description": "Focuses on audio-visual productions and their attributes.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "films",
+            "music",
+            "albums"
+          ]
+        },
+        {
+          "topic_id": "artists_and_performers",
+          "label": "Artists and Performers",
+          "description": "Details individuals involved in the creation and performance of creative works.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "performers",
+            "artists",
+            "biographies"
+          ]
+        },
+        {
+          "topic_id": "production_companies",
+          "label": "Production Companies",
+          "description": "Information about entities involved in the financing and production of media.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "production",
+            "financing",
+            "studios"
+          ]
+        },
+        {
+          "topic_id": "geographic_context",
+          "label": "Geographic Context",
+          "description": "Focuses on locations and their relationship to cultural production and sports.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "locations",
+            "municipalities",
+            "sports venues"
+          ]
+        },
+        {
+          "topic_id": "sports_and_venues",
+          "label": "Sports and Venues",
+          "description": "Details sports teams, venues, and their geographic locations.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "sports",
+            "teams",
+            "venues"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Cultural Production and Geographic Context Expert",
+        "governance_scope": "This domain encompasses creative works, the artists who create them, the companies that produce them, and the geographic locations associated with their production and existence.",
+        "seed_entity_types": [
+          "PERFORMING_ARTIST",
+          "AUDIO_VISUAL_WORK",
+          "PRODUCTION_COMPANY",
+          "GEOGRAPHIC_MUNICIPALITY",
+          "SPORTS_VENUE",
+          "SPORTS_TEAM"
+        ],
+        "seed_relation_types": [
+          "PERFORMS_IN",
+          "PRODUCED_BY",
+          "LOCATED_IN",
+          "HOME_TO"
+        ],
+        "bootstrap_source": "schema",
+        "memory_card": {
+          "domain_id": "cultural_production_and_geographic_context",
+          "label": "Cultural Production and Geographic Context",
+          "scope": "This domain encompasses creative works, the artists who create them, the companies that produce them, and the geographic locations associated with their production and existence.",
+          "entity_count": 30,
+          "triple_count": 44,
+          "key_entities": [
+            "Mexican state of Tamaulipas",
+            "Miquette Giraudy",
+            "Gong",
+            "Dorking",
+            "Green",
+            "Matamoros",
+            "Dallas, Texas",
+            "Estadio Nuevo Laredo",
+            "Orion Pictures",
+            "Cologne",
+            "System 7",
+            "American regional sports network"
+          ],
+          "aliases": {
+            "tamaulipas": [
+              "Tamaulipas"
+            ],
+            "green": [
+              "The Green Album"
+            ]
+          },
+          "core_facts": [
+            "(miquette_giraudy) -[PERFORMS_IN_BAND]-> (gong)",
+            "(steve_hillage) -[PERFORMS_IN_BAND]-> (gong)",
+            "(steve_hillage) -[PARTNER_IN_BAND]-> (miquette_giraudy)",
+            "(miquette_giraudy) -[CORE_MEMBER_OF]-> (system)",
+            "(steve_hillage) -[CORE_MEMBER_OF]-> (system)",
+            "(steve_hillage) -[ALBUM_BY_ARTIST]-> (green)",
+            "(steve_hillage) -[ALBUM_BY_ARTIST]-> (motivation_radio)",
+            "(green) -[ALBUM_SEQUEL_TO]-> (the_red_album)",
+            "(green) -[RECORDED_IN_LOCATION]-> (dorking)",
+            "(green) -[RECORDED_IN_LOCATION]-> (london)",
+            "(mike_medavoy) -[FILM_PRODUCED_BY]-> (orion_pictures)",
+            "(yankovic) -[FILM_WRITTEN_BY]-> (levey)"
+          ],
+          "cross_domain_facts": [],
+          "evidence_sources": [
+            "musique_combined_b000"
+          ],
+          "evidence_snippets": [
+            "=== Source: UHF (film) === Yankovic and Levey wrote the film after Yankovic's second studio album, looking to apply the musician's parody and comedy to film, and chose the approach of George being a straight man with...",
+            "=== Source: Miquette Giraudy === Miquette Giraudy (born 9 February 1953, Nice, France) is a keyboard player and vocalist, best known for her work in Gong and with her partner Steve Hillage. She and Hillage currently f...",
+            "It is home to the Tecolotes de Nuevo Laredo Mexican Baseball League team and the Toros de Nuevo Laredo Mexican professional basketball team from the Liga Nacional de Baloncesto Profesional. The Ciudad Deportiva's Esta...",
+            "=== Source: Empire Sports Network === Empire Sports Network was an American regional sports network that was owned by the Adelphia Communications Corporation. The network was available on cable providers in much of up...",
+            "Miquette Giraudy (born 9 February 1953, Nice, France) is a keyboard player and vocalist, best known for her work in Gong",
+            "Miquette Giraudy (born 9 February 1953, Nice, France) is a keyboard player and vocalist, best known for her work in Gong and with her partner Steve Hillage.",
+            "She and Hillage currently form the core of the ambient band System 7.",
+            "Green is the fourth studio album by British progressive rock musician Steve Hillage.",
+            "\"Motivation Radio\" (1977)",
+            "\"Green\" was originally going to be released as \"The Green Album\" as a companion to \"The Red Album\"",
+            "\"Green\" was recorded alone, primarily in Dorking, Surrey",
+            "\"Green\" was recorded alone, primarily in Dorking, Surrey, and in London."
+          ],
+          "known_gaps": []
+        }
+      }
+    },
+    {
+      "domain_id": "methods_and_systems",
+      "label": "Methods and Systems",
+      "description": "Preliminary governed domain for methods and systems inferred from schema.",
+      "entity_ids": [
+        "adelphia_financial_collapse_bankruptcy",
+        "monsieur"
+      ],
+      "relation_schema": {},
+      "topics": [
+        {
+          "topic_id": "methods_and_systems_models",
+          "label": "Models",
+          "description": "Bootstrap topic for models.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "models"
+          ]
+        },
+        {
+          "topic_id": "methods_and_systems_algorithms",
+          "label": "Algorithms",
+          "description": "Bootstrap topic for algorithms.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "algorithms"
+          ]
+        },
+        {
+          "topic_id": "methods_and_systems_systems",
+          "label": "Systems",
+          "description": "Bootstrap topic for systems.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "systems"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Methods and Systems Expert",
+        "governance_scope": "Preliminary bootstrap scope for methods and systems",
+        "seed_entity_types": [
+          "NOBLE_TITLE"
+        ],
+        "seed_relation_types": [],
+        "bootstrap_source": "heuristic_schema",
+        "memory_card": {
+          "domain_id": "methods_and_systems",
+          "label": "Methods and Systems",
+          "scope": "Preliminary bootstrap scope for methods and systems",
+          "entity_count": 2,
+          "triple_count": 2,
+          "key_entities": [
+            "Monsieur",
+            "Adelphia's financial collapse and bankruptcy"
+          ],
+          "aliases": {},
+          "core_facts": [
+            "(philippe_duke_of_orleans) -[KNOWN_AS]-> (monsieur)",
+            "(empire_sports_network) -[CEASED_DUE_TO]-> (adelphia_financial_collapse_bankruptcy)"
+          ],
+          "cross_domain_facts": [
+            "(philippe_duke_of_orleans) -[KNOWN_AS]-> (monsieur)",
+            "(empire_sports_network) -[CEASED_DUE_TO]-> (adelphia_financial_collapse_bankruptcy)"
+          ],
+          "evidence_sources": [
+            "musique_combined_b001"
+          ],
+          "evidence_snippets": [
+            "His older brother was the famous \"Sun King\", Louis XIV. Styled Duke of Anjou from birth, Philippe became Duke of Orl\u00e9ans upon the death of his uncle Gaston in 1660. In 1661, Philippe also received the dukedoms of Valo...",
+            "=== Source: Empire Sports Network === Empire Sports Network was an American regional sports network that was owned by the Adelphia Communications Corporation. The network was available on cable providers in much of up...",
+            "During the reign of his brother he was known simply as \"Monsieur\", the traditional style at the court of France for the younger brother of the king.",
+            "The network ceased operations on March 7, 2005, in the midst of Adelphia's financial collapse and bankruptcy."
+          ],
+          "known_gaps": []
+        }
+      }
+    },
+    {
+      "domain_id": "tasks_and_concepts",
+      "label": "Tasks and Concepts",
+      "description": "Preliminary governed domain for tasks and concepts inferred from schema.",
+      "entity_ids": [
+        "adelphia_communications_corporation",
+        "adelphia_financial_collapse_bankruptcy",
+        "albany",
+        "anne_of_austria",
+        "boston_massachusetts",
+        "buffalo",
+        "cabo_delgado_province",
+        "caroline_leroy_webster",
+        "chartres",
+        "chief_clerk_of_the_united_states_state_department",
+        "communications_construction_services",
+        "concino_concini",
+        "coucy",
+        "daniel_webster",
+        "dourdan",
+        "eastern_ohio",
+        "empire_sports_network",
+        "european_movement_international",
+        "folembray",
+        "france",
+        "grace_fletcher_webster",
+        "hannah_cornell",
+        "harvard_college",
+        "holland_consul",
+        "john_tyler",
+        "jupiter_florida",
+        "lago_district",
+        "lake_niassa_reserve",
+        "lake_nyasa",
+        "leonora_dori_galigai",
+        "leroy_bayard_mckiven_and_co",
+        "lichinga",
+        "louis_xiii_of_france",
+        "louis_xiv",
+        "marie_de_medici",
+        "mast_capital_management",
+        "metangula",
+        "mozambique",
+        "nemours",
+        "new_york_city",
+        "niassa_province",
+        "niassa_reserve",
+        "north_western_mozambique",
+        "northern_pennsylvania",
+        "philippe_duke_of_orleans",
+        "portsmouth_new_hampshire",
+        "romorantin",
+        "rural_areas",
+        "sanga_district",
+        "secretary_general",
+        "secretary_of_state",
+        "state_of_north_carolina",
+        "tanzania",
+        "tanzanian_lukwika_lumesule_game_reserve",
+        "thomas_cornell",
+        "time_warner_cable",
+        "united_states",
+        "united_states_state_department",
+        "upstate_new_york",
+        "valois",
+        "vice_president",
+        "william_henry_harrison",
+        "windjammer_cable"
+      ],
+      "relation_schema": {
+        "IS_CHILD_OF": "",
+        "HOLDS_POSITION": "",
+        "IS_SPOUSE_OF": "",
+        "BELONGS_TO": "",
+        "SUCCESSION": ""
+      },
+      "topics": [
+        {
+          "topic_id": "tasks_and_concepts_tasks",
+          "label": "Tasks",
+          "description": "Bootstrap topic for tasks.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "tasks"
+          ]
+        },
+        {
+          "topic_id": "tasks_and_concepts_concepts",
+          "label": "Concepts",
+          "description": "Bootstrap topic for concepts.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "concepts"
+          ]
+        },
+        {
+          "topic_id": "tasks_and_concepts_structures",
+          "label": "Structures",
+          "description": "Bootstrap topic for structures.",
+          "entity_ids": [],
+          "relation_types": [],
+          "keywords": [
+            "structures"
+          ]
+        }
+      ],
+      "metadata": {
+        "owner_label": "Tasks and Concepts Expert",
+        "governance_scope": "Preliminary bootstrap scope for tasks and concepts",
+        "seed_entity_types": [
+          "HISTORICAL_PERSON",
+          "POLITICAL_ROLE",
+          "ORGANIZATION",
+          "GEOGRAPHICAL_LOCATION"
+        ],
+        "seed_relation_types": [
+          "IS_CHILD_OF",
+          "HOLDS_POSITION",
+          "IS_SPOUSE_OF",
+          "BELONGS_TO",
+          "SUCCESSION"
+        ],
+        "bootstrap_source": "heuristic_schema",
+        "memory_card": {
+          "domain_id": "tasks_and_concepts",
+          "label": "Tasks and Concepts",
+          "scope": "Preliminary bootstrap scope for tasks and concepts",
+          "entity_count": 63,
+          "triple_count": 76,
+          "key_entities": [
+            "Boston",
+            "northern Pennsylvania",
+            "Daniel Webster",
+            "Lichinga",
+            "Communications Construction Services (CCS)",
+            "north-western Mozambique",
+            "State of North Carolina",
+            "Louis XIV",
+            "Albany",
+            "Leroy, Bayard, McKiven & Co.",
+            "Dourdan",
+            "France"
+          ],
+          "aliases": {},
+          "core_facts": [
+            "(daniel_webster) -[IS_CHILD_OF]-> (daniel_webster)",
+            "(daniel_webster) -[IS_CHILD_OF]-> (grace_fletcher_webster)",
+            "(daniel_webster) -[EDUCATION_AT]-> (harvard_college)",
+            "(daniel_webster) -[HOLDS_POSITION]-> (chief_clerk_of_the_united_states_state_department)",
+            "(daniel_webster) -[DELIVERED_NEWS_OF]-> (john_tyler)",
+            "(daniel_webster) -[SPOUSE_OF]-> (caroline_leroy_webster)",
+            "(leroy_bayard_mckiven_and_co) -[FATHER_OF]-> (caroline_leroy_webster)",
+            "(thomas_cornell) -[ANCESTOR_OF]-> (caroline_leroy_webster)",
+            "(philippe_duke_of_orleans) -[IS_SIBLING_OF]-> (louis_xiv)",
+            "(philippe_duke_of_orleans) -[IS_PARENT_OF]-> (louis_xiii_of_france)",
+            "(philippe_duke_of_orleans) -[IS_PARENT_OF]-> (anne_of_austria)",
+            "(leroy_bayard_mckiven_and_co) -[CONSUL_TO]-> (united_states)"
+          ],
+          "cross_domain_facts": [],
+          "evidence_sources": [
+            "musique_combined_b001"
+          ],
+          "evidence_snippets": [
+            "=== Source: Empire Sports Network === Empire Sports Network was an American regional sports network that was owned by the Adelphia Communications Corporation. The network was available on cable providers in much of up...",
+            "=== Source: Fletcher Webster === Daniel Fletcher Webster, commonly known as Fletcher Webster (July 25, 1813 in Portsmouth, New Hampshire \u2013 August 30, 1862) was the son of renowned politician Daniel Webster and Grace F...",
+            "His older brother was the famous \"Sun King\", Louis XIV. Styled Duke of Anjou from birth, Philippe became Duke of Orl\u00e9ans upon the death of his uncle Gaston in 1660. In 1661, Philippe also received the dukedoms of Valo...",
+            "Fletcher Webster was the son of renowned politician Daniel Webster and Grace Fletcher Webster.",
+            "He was educated at Harvard College.",
+            "Fletcher served as Chief Clerk of the United States State Department",
+            "he delivered the news of President William Henry Harrison's death to the new President, John Tyler.",
+            "Caroline LeRoy Webster was the second wife of 19th Century statesman Daniel Webster.",
+            "Her father was Herman LeRoy",
+            "Caroline was a descendant of Thomas Cornell.",
+            "His older brother was the famous \"Sun King\", Louis XIV.",
+            "Philippe, Duke of Orl\u00e9ans was the younger son of Louis XIII of France and his wife, Anne of Austria."
+          ],
+          "known_gaps": []
+        }
+      }
+    }
+  ],
+  "cross_domain_relation_count": 5
+}
