@@ -1,0 +1,865 @@
+{
+  "dataset": "MuSiQue pilot",
+  "system": "rag_basic",
+  "model": "gemma3:27b",
+  "top_k": 8,
+  "examples_json": "evaluation/results/musique_pilot_50_supporting.json",
+  "aggregate_metrics": {
+    "num_questions": 50,
+    "exact_match": 0.68,
+    "token_f1": 0.8028,
+    "answer_rate": 1.0
+  },
+  "results": [
+    {
+      "question_id": "2hop__460946_294723",
+      "question": "Who is the spouse of the Green performer?",
+      "gold_answer": "Miquette Giraudy",
+      "answer": "Miquette Giraudy",
+      "scored_answer": "Miquette Giraudy",
+      "raw_answer": "Miquette Giraudy",
+      "retrieved_titles": [
+        "Green (Steve Hillage album)",
+        "Miquette Giraudy"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 27.083
+    },
+    {
+      "question_id": "2hop__252311_366220",
+      "question": "Who founded the company that distributed the film UHF?",
+      "gold_answer": "Mike Medavoy",
+      "answer": "Mike Medavoy",
+      "scored_answer": "Mike Medavoy",
+      "raw_answer": "Mike Medavoy",
+      "retrieved_titles": [
+        "UHF (film)",
+        "Mike Medavoy"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.965
+    },
+    {
+      "question_id": "2hop__701895_752697",
+      "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
+      "gold_answer": "Tamaulipas",
+      "answer": "Nuevo Laredo Municipality",
+      "scored_answer": "Nuevo Laredo Municipality",
+      "raw_answer": "Nuevo Laredo Municipality",
+      "retrieved_titles": [
+        "Ciudad Deportiva (Nuevo Laredo)",
+        "Nuevo Laredo Municipality"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0
+      },
+      "duration_seconds": 0.895
+    },
+    {
+      "question_id": "2hop__259228_793698",
+      "question": "Where is Ulrich Walter's employer headquartered?",
+      "gold_answer": "Cologne",
+      "answer": "Cologne",
+      "scored_answer": "Cologne",
+      "raw_answer": "Cologne",
+      "retrieved_titles": [
+        "Ulrich Walter",
+        "Philae (spacecraft)"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.843
+    },
+    {
+      "question_id": "2hop__481349_302087",
+      "question": "Which company owns the manufacturer of Learjet 60?",
+      "gold_answer": "Bombardier Inc.",
+      "answer": "Bombardier Inc.",
+      "scored_answer": "Bombardier Inc",
+      "raw_answer": "Bombardier Inc.",
+      "retrieved_titles": [
+        "Learjet 60",
+        "List of Bombardier CRJ operators"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.92
+    },
+    {
+      "question_id": "2hop__697790_864352",
+      "question": "Who is the child of Caroline LeRoy's spouse?",
+      "gold_answer": "Fletcher Webster",
+      "answer": "Fletcher Webster",
+      "scored_answer": "Fletcher Webster",
+      "raw_answer": "Fletcher Webster",
+      "retrieved_titles": [
+        "Caroline LeRoy",
+        "Fletcher Webster"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 1.904
+    },
+    {
+      "question_id": "2hop__207476_625987",
+      "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
+      "gold_answer": "Marie de' Medici",
+      "answer": "Marie de' Medici",
+      "scored_answer": "Marie de' Medici",
+      "raw_answer": "Marie de' Medici",
+      "retrieved_titles": [
+        "Philippe I, Duke of Orl\u00e9ans",
+        "Leonora Dori"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.913
+    },
+    {
+      "question_id": "2hop__390947_232243",
+      "question": "What is the goal of the group that European Movement Germany is a member of?",
+      "gold_answer": "European integration",
+      "answer": "promoting European integration",
+      "scored_answer": "promoting European integration",
+      "raw_answer": "promoting European integration",
+      "retrieved_titles": [
+        "European Movement International",
+        "Bernd H\u00fcttemann"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.8
+      },
+      "duration_seconds": 0.862
+    },
+    {
+      "question_id": "2hop__354635_174222",
+      "question": "What company succeeded the owner of Empire Sports Network?",
+      "gold_answer": "Time Warner Cable",
+      "answer": "Windjammer Communications",
+      "scored_answer": "Windjammer Communications",
+      "raw_answer": "Windjammer Communications",
+      "retrieved_titles": [
+        "Empire Sports Network",
+        "Windjammer Communications"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0
+      },
+      "duration_seconds": 0.835
+    },
+    {
+      "question_id": "2hop__635187_861533",
+      "question": "What province shares a border with the province where Lago District is located?",
+      "gold_answer": "Cabo Delgado Province",
+      "answer": "Cabo Delgado Province",
+      "scored_answer": "Cabo Delgado Province",
+      "raw_answer": "Cabo Delgado Province",
+      "retrieved_titles": [
+        "Lago District",
+        "Niassa Reserve"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.887
+    },
+    {
+      "question_id": "2hop__166824_185403",
+      "question": "What league does the team that plays in Stadio Ciro Vigorito play for?",
+      "gold_answer": "Lega Pro Prima Divisione",
+      "answer": "Lega Pro Prima Divisione",
+      "scored_answer": "Lega Pro Prima Divisione",
+      "raw_answer": "Lega Pro Prima Divisione",
+      "retrieved_titles": [
+        "Stadio Ciro Vigorito",
+        "Carmelo Imbriani"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.901
+    },
+    {
+      "question_id": "2hop__698577_851686",
+      "question": "What is a notable work written by the author of The Timothy files?",
+      "gold_answer": "Anderson Tapes",
+      "answer": "The Anderson Tapes",
+      "scored_answer": "The Anderson Tapes",
+      "raw_answer": "The Anderson Tapes",
+      "retrieved_titles": [
+        "The Timothy Files",
+        "The Anderson Tapes (novel)"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 1.896
+    },
+    {
+      "question_id": "2hop__362107_652514",
+      "question": "In which borough was Callum McManaman born?",
+      "gold_answer": "Knowsley",
+      "answer": "Whiston, Merseyside",
+      "scored_answer": "Whiston, Merseyside",
+      "raw_answer": "Whiston, Merseyside",
+      "retrieved_titles": [
+        "Callum McManaman",
+        "Whiston, Merseyside"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0
+      },
+      "duration_seconds": 0.802
+    },
+    {
+      "question_id": "2hop__402530_774333",
+      "question": "What other county does the county where Imperial is located share a border with?",
+      "gold_answer": "Crockett County",
+      "answer": "Crockett County",
+      "scored_answer": "Crockett County",
+      "raw_answer": "Crockett County",
+      "retrieved_titles": [
+        "Imperial, Texas",
+        "Lancaster Crossing"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.836
+    },
+    {
+      "question_id": "2hop__195917_575657",
+      "question": "In what county is William W. Blair's birthplace located?",
+      "gold_answer": "Orleans County",
+      "answer": "Orleans County",
+      "scored_answer": "Orleans County",
+      "raw_answer": "Orleans County",
+      "retrieved_titles": [
+        "William W. Blair",
+        "Holley, New York"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.853
+    },
+    {
+      "question_id": "2hop__683835_709167",
+      "question": "What award did the author of The Red Tree receive?",
+      "gold_answer": "Academy Award for Best Animated Short Film",
+      "answer": "Academy Award",
+      "scored_answer": "Academy Award",
+      "raw_answer": "Academy Award",
+      "retrieved_titles": [
+        "The Red Tree (Shaun Tan)",
+        "Passion Pictures"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.4444444444444445
+      },
+      "duration_seconds": 0.794
+    },
+    {
+      "question_id": "2hop__197470_271394",
+      "question": "Where was Tyler MacDuff's child educated?",
+      "gold_answer": "Blair High School",
+      "answer": "Blair International Baccalaureate School",
+      "scored_answer": "Blair International Baccalaureate School",
+      "raw_answer": "Blair International Baccalaureate School",
+      "retrieved_titles": [
+        "Dana MacDuff",
+        "Dana MacDuff"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.5714285714285715
+      },
+      "duration_seconds": 1.055
+    },
+    {
+      "question_id": "2hop__458131_174974",
+      "question": "Who is the spouse of the Rabbit Hole's producer?",
+      "gold_answer": "Keith Urban",
+      "answer": "Keith Urban",
+      "scored_answer": "Keith Urban",
+      "raw_answer": "Keith Urban",
+      "retrieved_titles": [
+        "Rabbit Hole (film)",
+        "Planet Cake"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 1.678
+    },
+    {
+      "question_id": "2hop__299142_347613",
+      "question": "Who is the child of Sigrid Eskilsdotter's child?",
+      "gold_answer": "Svante Stensson Sture",
+      "answer": "Gustav Vasa",
+      "scored_answer": "Gustav Vasa",
+      "raw_answer": "Gustav Vasa",
+      "retrieved_titles": [
+        "Sigrid Eskilsdotter (Ban\u00e9r)",
+        "Sigrid Sture"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0
+      },
+      "duration_seconds": 0.811
+    },
+    {
+      "question_id": "2hop__528263_865831",
+      "question": "In which county is Kimbrough Memorial Stadium located?",
+      "gold_answer": "Randall County",
+      "answer": "Randall County",
+      "scored_answer": "Randall County",
+      "raw_answer": "Randall County",
+      "retrieved_titles": [
+        "Kimbrough Memorial Stadium",
+        "Canyon, Texas"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 1.031
+    },
+    {
+      "question_id": "2hop__569582_304416",
+      "question": "What record label is the performer of Almost Made Ya signed to?",
+      "gold_answer": "Derrty Entertainment",
+      "answer": "Universal Records",
+      "scored_answer": "Universal Records",
+      "raw_answer": "Universal Records",
+      "retrieved_titles": [
+        "Almost Made Ya",
+        "Kinfolk (album)"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.0
+      },
+      "duration_seconds": 0.921
+    },
+    {
+      "question_id": "2hop__505860_650613",
+      "question": "Where was the author of Hannibal and Scipio educated at?",
+      "gold_answer": "Exeter College",
+      "answer": "Exeter College, Oxford",
+      "scored_answer": "Exeter College, Oxford",
+      "raw_answer": "Exeter College, Oxford",
+      "retrieved_titles": [
+        "Hannibal and Scipio",
+        "Thomas Nabbes"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.8
+      },
+      "duration_seconds": 0.929
+    },
+    {
+      "question_id": "2hop__821197_368148",
+      "question": "In which county is Southern Maryland Electric Cooperative headquartered?",
+      "gold_answer": "Charles County",
+      "answer": "Charles County",
+      "scored_answer": "Charles County",
+      "raw_answer": "Charles County",
+      "retrieved_titles": [
+        "Southern Maryland Electric Cooperative",
+        "Hughesville, Maryland"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.912
+    },
+    {
+      "question_id": "2hop__554167_451128",
+      "question": "Who is the child of the Victim of Romance performer?",
+      "gold_answer": "Chynna Phillips",
+      "answer": "Chynna Phillips",
+      "scored_answer": "Chynna Phillips",
+      "raw_answer": "Chynna Phillips",
+      "retrieved_titles": [
+        "Victim of Romance",
+        "Wilson Phillips"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 1.458
+    },
+    {
+      "question_id": "2hop__702496_430061",
+      "question": "What county was Tim Dubois born in?",
+      "gold_answer": "McDonald County",
+      "answer": "McDonald County",
+      "scored_answer": "McDonald County",
+      "raw_answer": "McDonald County",
+      "retrieved_titles": [
+        "Tim DuBois",
+        "Southwest City, Missouri"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.904
+    },
+    {
+      "question_id": "2hop__549146_223121",
+      "question": "What record label did the person who is part of The Bruce Lee Band start?",
+      "gold_answer": "Asian Man Records",
+      "answer": "Asian Man Records",
+      "scored_answer": "Asian Man Records",
+      "raw_answer": "Asian Man Records",
+      "retrieved_titles": [
+        "The Bruce Lee Band",
+        "Asian Man Records"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.781
+    },
+    {
+      "question_id": "2hop__647996_551681",
+      "question": "What is another notable work made by the author of Miss Sara Sampson?",
+      "gold_answer": "Emilia Galotti",
+      "answer": "Emilia Galotti",
+      "scored_answer": "Emilia Galotti",
+      "raw_answer": "Emilia Galotti",
+      "retrieved_titles": [
+        "Miss Sara Sampson",
+        "Emilia Galotti"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.935
+    },
+    {
+      "question_id": "2hop__673655_316668",
+      "question": "What instrument is played by the person from The Blackout All-Stars?",
+      "gold_answer": "conga",
+      "answer": "conga",
+      "scored_answer": "conga",
+      "raw_answer": "conga",
+      "retrieved_titles": [
+        "The Blackout All-Stars",
+        "Midnight Blue (Kenny Burrell album)"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.765
+    },
+    {
+      "question_id": "2hop__574419_270105",
+      "question": "What is the seat of the county where Van Hook Township is located?",
+      "gold_answer": "Stanley",
+      "answer": "Stanley, North Dakota",
+      "scored_answer": "Stanley, North Dakota",
+      "raw_answer": "Stanley, North Dakota",
+      "retrieved_titles": [
+        "Van Hook Township, Mountrail County, North Dakota",
+        "Mountrail County Courthouse"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.5
+      },
+      "duration_seconds": 1.648
+    },
+    {
+      "question_id": "2hop__403712_793210",
+      "question": "Who is the father of Edward Baring, 1st Baron Revelstoke's father?",
+      "gold_answer": "Sir Francis Baring, 1st Baronet",
+      "answer": "Henry Baring",
+      "scored_answer": "Henry Baring",
+      "raw_answer": "Henry Baring",
+      "retrieved_titles": [
+        "Tom Baring",
+        "Godfrey Baring"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.28571428571428575
+      },
+      "duration_seconds": 0.909
+    },
+    {
+      "question_id": "2hop__832795_350510",
+      "question": "What group was the performer of Be the One a member of?",
+      "gold_answer": "Jackson 5",
+      "answer": "The Jackson 5",
+      "scored_answer": "The Jackson 5",
+      "raw_answer": "The Jackson 5",
+      "retrieved_titles": [
+        "Be the One (album)",
+        "Jackie Jackson (album)"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.887
+    },
+    {
+      "question_id": "2hop__744055_408817",
+      "question": "Who is the lead singer of the band performing Bang Bang Rock & Roll?",
+      "gold_answer": "Eddie Argos",
+      "answer": "Eddie Argos",
+      "scored_answer": "Eddie Argos",
+      "raw_answer": "Eddie Argos",
+      "retrieved_titles": [
+        "Bang Bang Rock & Roll",
+        "Eddie Argos"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 59.712
+    },
+    {
+      "question_id": "2hop__726717_610238",
+      "question": "What is the network which National Cycle Route 57 is part of an example of?",
+      "gold_answer": "national cycling route network",
+      "answer": "National Cycle Network",
+      "scored_answer": "National Cycle Network",
+      "raw_answer": "National Cycle Network",
+      "retrieved_titles": [
+        "National Cycle Route 57",
+        "National Cycle Network"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.5714285714285715
+      },
+      "duration_seconds": 1.216
+    },
+    {
+      "question_id": "2hop__499577_617190",
+      "question": "Who is the spouse of the child of Peter Andreas Heiberg?",
+      "gold_answer": "Johanne Luise Heiberg",
+      "answer": "Johanne Luise Heiberg",
+      "scored_answer": "Johanne Luise Heiberg",
+      "raw_answer": "Johanne Luise Heiberg",
+      "retrieved_titles": [
+        "Johan Ludvig Heiberg (poet)",
+        "The Crisis and a Crisis in the Life of an Actress"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.935
+    },
+    {
+      "question_id": "2hop__685280_510757",
+      "question": "The Unwinding author volunteered for which organisation?",
+      "gold_answer": "Peace Corps",
+      "answer": "Peace Corps",
+      "scored_answer": "Peace Corps",
+      "raw_answer": "Peace Corps",
+      "retrieved_titles": [
+        "The Unwinding",
+        "The Village of Waiting"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.841
+    },
+    {
+      "question_id": "2hop__341305_332933",
+      "question": "What is the capital of the county that Pine Springs is located in?",
+      "gold_answer": "Van Horn",
+      "answer": "Van Horn",
+      "scored_answer": "Van Horn",
+      "raw_answer": "Van Horn",
+      "retrieved_titles": [
+        "Pine Springs, Texas",
+        "Culberson County-Allamoore Independent School District"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.925
+    },
+    {
+      "question_id": "2hop__731228_609866",
+      "question": "What district is the headquarter of Julia's House located?",
+      "gold_answer": "East Dorset",
+      "answer": "East Dorset",
+      "scored_answer": "East Dorset",
+      "raw_answer": "East Dorset",
+      "retrieved_titles": [
+        "Julia's House",
+        "Corfe Mullen"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.772
+    },
+    {
+      "question_id": "2hop__693444_220151",
+      "question": "Who is the spouse of Young Man Luther's author?",
+      "gold_answer": "Joan Erikson",
+      "answer": "Joan Erikson",
+      "scored_answer": "Joan Erikson",
+      "raw_answer": "Joan Erikson",
+      "retrieved_titles": [
+        "Young Man Luther",
+        "Erikson's stages of psychosocial development"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.725
+    },
+    {
+      "question_id": "2hop__235471_565925",
+      "question": "What record label did the performer of The Place and the Time belong to?",
+      "gold_answer": "Columbia Records",
+      "answer": "Columbia Records",
+      "scored_answer": "Columbia Records",
+      "raw_answer": "Columbia Records",
+      "retrieved_titles": [
+        "The Place and the Time",
+        "Great Grape"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.678
+    },
+    {
+      "question_id": "2hop__310456_846599",
+      "question": "Who is the child of the person who followed Tihomir of Serbia?",
+      "gold_answer": "Saint Sava",
+      "answer": "Saint Sava",
+      "scored_answer": "Saint Sava",
+      "raw_answer": "Saint Sava",
+      "retrieved_titles": [
+        "Stracimir Zavidovi\u0107",
+        "Saint Sava"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 61.866
+    },
+    {
+      "question_id": "2hop__335418_279684",
+      "question": "What team was Anna Benson's husband on?",
+      "gold_answer": "Pittsburgh Pirates",
+      "answer": "Pittsburgh Pirates",
+      "scored_answer": "Pittsburgh Pirates",
+      "raw_answer": "Pittsburgh Pirates",
+      "retrieved_titles": [
+        "Anna Benson",
+        "Kris Benson"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 1.437
+    },
+    {
+      "question_id": "2hop__191125_781346",
+      "question": "What place does the administrative territorial entity that Juba is located in share a border with?",
+      "gold_answer": "Eastern Equatoria",
+      "answer": "Eastern Equatoria",
+      "scored_answer": "Eastern Equatoria",
+      "raw_answer": "Eastern Equatoria",
+      "retrieved_titles": [
+        "The Citizen (South Sudan)",
+        "Badigeru Swamp"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.83
+    },
+    {
+      "question_id": "2hop__475070_532404",
+      "question": "Where was the spouse of Frances Tupper born?",
+      "gold_answer": "Amherst",
+      "answer": "Amherst, Nova Scotia",
+      "scored_answer": "Amherst, Nova Scotia",
+      "raw_answer": "Amherst, Nova Scotia",
+      "retrieved_titles": [
+        "Frances Tupper",
+        "Arthur Rupert Dickey"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.5
+      },
+      "duration_seconds": 0.867
+    },
+    {
+      "question_id": "2hop__700093_455653",
+      "question": "Who founded the political party of Dimuthu Bandara Abayakoon?",
+      "gold_answer": "Rohana Wijeweera",
+      "answer": "Rohana Wijeweera",
+      "scored_answer": "Rohana Wijeweera",
+      "raw_answer": "Rohana Wijeweera",
+      "retrieved_titles": [
+        "Dimuthu Bandara Abayakoon",
+        "Rohana Wijeweera"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.871
+    },
+    {
+      "question_id": "2hop__512773_346751",
+      "question": "Bancroft's county borders what county?",
+      "gold_answer": "Haliburton County",
+      "answer": "Renfrew County",
+      "scored_answer": "Renfrew County",
+      "raw_answer": "Renfrew County",
+      "retrieved_titles": [
+        "North Hastings High School",
+        "York River (Ontario)"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.5
+      },
+      "duration_seconds": 0.863
+    },
+    {
+      "question_id": "2hop__411091_625230",
+      "question": "In which county is Mark Dismore's birthplace located?",
+      "gold_answer": "Hancock County",
+      "answer": "Hancock County",
+      "scored_answer": "Hancock County",
+      "raw_answer": "Hancock County",
+      "retrieved_titles": [
+        "Mark Dismore",
+        "Greenfield, Indiana"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.955
+    },
+    {
+      "question_id": "2hop__423972_540249",
+      "question": "Who was the sibling of Nannina de' Medici?",
+      "gold_answer": "Giuliano de' Medici",
+      "answer": "Lorenzo de' Medici",
+      "scored_answer": "Lorenzo de' Medici",
+      "raw_answer": "Lorenzo de' Medici",
+      "retrieved_titles": [
+        "Nannina de' Medici",
+        "Giuliano de' Medici"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.6666666666666666
+      },
+      "duration_seconds": 1.164
+    },
+    {
+      "question_id": "2hop__455158_247871",
+      "question": "What county is the NRHEG High School located in?",
+      "gold_answer": "Waseca County",
+      "answer": "Waseca County",
+      "scored_answer": "Waseca County",
+      "raw_answer": "Waseca County",
+      "retrieved_titles": [
+        "NRHEG High School",
+        "New Richland, Minnesota"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.859
+    },
+    {
+      "question_id": "2hop__189094_612080",
+      "question": "What league does the team that occupies the Rabat Ajax Football Ground belong to?",
+      "gold_answer": "Maltese Premier League",
+      "answer": "Maltese Premier League",
+      "scored_answer": "Maltese Premier League",
+      "raw_answer": "Maltese Premier League",
+      "retrieved_titles": [
+        "Rabat Ajax Football Ground",
+        "Malcolm Licari"
+      ],
+      "metrics": {
+        "exact_match": 1.0,
+        "token_f1": 1.0
+      },
+      "duration_seconds": 0.947
+    },
+    {
+      "question_id": "2hop__765678_310556",
+      "question": "Who was married to the star of No Escape?",
+      "gold_answer": "John Profumo",
+      "answer": "David Profumo",
+      "scored_answer": "David Profumo",
+      "raw_answer": "David Profumo",
+      "retrieved_titles": [
+        "No Escape (1936 film)",
+        "David Profumo"
+      ],
+      "metrics": {
+        "exact_match": 0.0,
+        "token_f1": 0.5
+      },
+      "duration_seconds": 79.289
+    }
+  ]
+}
