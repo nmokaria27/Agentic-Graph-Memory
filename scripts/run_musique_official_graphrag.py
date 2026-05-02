@@ -162,6 +162,13 @@ def _prepare_root(args: argparse.Namespace) -> None:
         shutil.rmtree(root)
         root.mkdir(parents=True, exist_ok=True)
 
+    if args.skip_prepare_root:
+        # Trust the existing settings.yaml + prompts; only ensure input docs are copied.
+        input_dir.mkdir(parents=True, exist_ok=True)
+        for path in Path(args.docs_dir).glob("*.txt"):
+            shutil.copy2(path, input_dir / path.name)
+        return
+
     if not (root / "settings.yaml").exists():
         init = _run(
             [
@@ -334,6 +341,8 @@ def main() -> None:
     parser.add_argument("--skip-index", action="store_true")
     parser.add_argument("--force-index", action="store_true")
     parser.add_argument("--rebuild-root", action="store_true")
+    parser.add_argument("--skip-prepare-root", action="store_true",
+                        help="Trust an existing settings.yaml and prompts/ instead of regenerating from template")
     parser.add_argument(
         "--skip-community-reports",
         action="store_true",
