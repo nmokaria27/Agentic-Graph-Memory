@@ -209,6 +209,18 @@ The main downstream comparison is now between four systems: a flat baseline, a G
 
 This is the third main claim of the paper: the governed data structure improves downstream QA quality, especially on groundedness and hallucination control.
 
+Table 4 — Multi-hop QA on MuSiQue (n=20, 2026-04-30)
+
+This table compares the governed multi-agent KG (with bridge-entity expansion at QA time) against two strong open-source baselines on MuSiQue, a multi-hop QA benchmark explicitly designed to require chaining facts across documents. All three systems answer the same 20 questions in the same order, score against the same SQuAD-normalized gold answers, and use uniform metrics (exact match, substring exact match, token F1, answer rate). KG and GraphRAG answers are post-processed with the same short-answer extractor; document RAG is prompted for short answers directly. The MuSiQue governed KG was built from supporting facts only under permissive governance, matching prior MuSiQue runs in this paper.
+
+| System | Exact Match | Substring EM | Token F1 | Answer Rate |
+|---|---|---|---|---|
+| Document RAG (gemma4:31b, top-k=6) | 0.05 | 0.15 | 0.112 | 0.25 |
+| Official Microsoft GraphRAG (fast index, basic search) | 0.35 | 0.45 | 0.410 | 1.00 |
+| MAG-KG domain_basic + bridge expansion (ours) | 0.60 | 0.70 | 0.636 | 0.90 |
+
+The governed multi-agent KG dominates both baselines on every retrieval-quality metric: a 1.7× lift on exact match over Microsoft's official GraphRAG implementation and a 12× lift over document-level RAG, with the largest gap on substring exact match where the gold span is a substring of the prediction. This is the cleanest evidence to date that the governed graph is not just structurally cleaner but operationally useful as a multi-hop reasoning substrate. The bridge-expansion mechanism — where domain experts surface entities that appear in their first-pass answers, and a second pass enriches the synthesizer prompt with the one-hop neighborhood of those entities — is what unlocks chained reasoning over the governed graph without any additional LLM calls beyond the standard QA pipeline. Document RAG fails because the gold answer typically requires combining facts from at least two paragraphs that retrieval cannot co-locate at top-k=6; GraphRAG recovers most entities but its community-summary representation does not preserve the fine-grained relational structure needed for spouse-of-performer-of-Green-style chains.
+
 Main Takeaway
 
-The ideal main-paper takeaway should now be simple. First, governance improves the admitted relational graph relative to a flat KG. Second, the governed-memory structure remains correct and auditable at 100-document scale. Third, the governed representation improves downstream QA faithfulness and reduces hallucination. Everything else — pairwise-v2 extraction robustness, detailed triage activity, strict-review tradeoffs, and judge-panel reruns — should be retained as supporting appendix evidence rather than crowding the main results section.
+The ideal main-paper takeaway should now be simple. First, governance improves the admitted relational graph relative to a flat KG. Second, the governed-memory structure remains correct and auditable at 100-document scale. Third, the governed representation improves downstream QA faithfulness and reduces hallucination on the SciERC governed KG and, on the harder external multi-hop benchmark MuSiQue, the governed graph plus bridge-entity expansion outperforms both document RAG and Microsoft's official GraphRAG implementation by a wide margin on exact match, substring exact match, and token F1. Everything else — pairwise-v2 extraction robustness, detailed triage activity, strict-review tradeoffs, and judge-panel reruns — should be retained as supporting appendix evidence rather than crowding the main results section.
