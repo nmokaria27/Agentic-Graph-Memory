@@ -7,6 +7,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
+from multi_agent_kg.core._qa_commit import ANTI_HEDGE_RIDER
 from multi_agent_kg.core.config import LLMConfig
 from multi_agent_kg.core.governance import Domain, OrgChart, TopicSubAgent
 from multi_agent_kg.core.graph_traversal import find_paths, neighbourhood, paths_to_text
@@ -84,7 +85,7 @@ You have access to the following knowledge from a knowledge graph:
 {f"Additional context: {context}" if context else ""}
 
 QUERY: {query}
-
+{ANTI_HEDGE_RIDER}
 Based ONLY on the knowledge graph data above, provide:
 1. A concise answer to the query using only claims that are directly supported by
    the evidence above. Prefer 1-3 sentences.
@@ -250,7 +251,7 @@ GRAPH EVIDENCE:
 {f"Additional context: {context}" if context else ""}
 
 QUERY: {query}
-
+{ANTI_HEDGE_RIDER}
 Return JSON:
 {{
     "answer": "Short evidence-grounded answer.",
@@ -750,7 +751,7 @@ DOMAIN EXPERT RESPONSES:
 {chr(10).join(response_texts)}
 
 {f"ADDITIONAL GRAPH CONTEXT (treat triples here as primary evidence — they are graph facts retrieved for this question, equal in authority to the domain experts above):{chr(10)}{cross_domain_context}" if cross_domain_context else ""}
-
+{ANTI_HEDGE_RIDER}
 RULES:
 - Do NOT mention domain experts, routing, confidence scores, or out-of-scope notes in the answer text.
 - Do NOT say "the knowledge graph says" or similar meta-commentary.

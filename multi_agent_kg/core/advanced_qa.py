@@ -63,6 +63,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
+from multi_agent_kg.core._qa_commit import ANTI_HEDGE_RIDER
 from multi_agent_kg.core.knowledge_graph import Entity, KnowledgeGraph, Triple
 from multi_agent_kg.core.config import LLMConfig
 from multi_agent_kg.core.domain_experts import (
@@ -416,7 +417,7 @@ EVIDENCE FROM KNOWLEDGE GRAPH:
 {round_note}
 
 QUERY: {query}
-
+{ANTI_HEDGE_RIDER}
 Based ONLY on the evidence above, provide:
 1. A concise answer using only claims directly supported by the evidence above.
    Prefer 1-3 sentences and at most 80 words.
@@ -1556,7 +1557,7 @@ DOMAIN EXPERT RESPONSES:
 
 {f"CROSS-DOMAIN CONTEXT:{chr(10)}{cross_domain_context}" if cross_domain_context else ""}
 {f"{chr(10)}{debate_context}" if debate_context else ""}
-
+{ANTI_HEDGE_RIDER}
 RULES:
 1. ONLY include claims that are supported by expert responses
 2. If a conflict was resolved in debate, use the RESOLVED version

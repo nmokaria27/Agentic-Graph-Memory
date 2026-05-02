@@ -14,6 +14,7 @@ from pathlib import Path
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from multi_agent_kg.core._qa_commit import ANTI_HEDGE_RIDER
 from multi_agent_kg.core.config import LLMConfig
 from multi_agent_kg.core.domain_experts import (
     Domain,
@@ -112,10 +113,11 @@ GRAPH EVIDENCE:
 {f"Additional context: {context}" if context else ""}
 
 QUERY: {query}
-
+{ANTI_HEDGE_RIDER}
 Return JSON:
 {{
   "answer": "Short evidence-grounded answer.",
+  "short_answer": "minimal span (1-5 words; the entity that answers the question)",
   "coverage": 0.0-1.0,
   "evidence": ["(entity) -[relation]-> (entity)"],
   "confidence": 0.0-1.0,
@@ -495,10 +497,11 @@ RETRIEVED COMMUNITIES:
 {chr(10).join(evidence_lines)}
 
 QUESTION: {question}
-
+{ANTI_HEDGE_RIDER}
 Return JSON:
 {{
   "answer": "Short evidence-grounded answer.",
+  "short_answer": "minimal span (1-5 words; the entity that answers the question)",
   "coverage": 0.0-1.0,
   "evidence": ["(entity) -[relation]-> (entity)"],
   "confidence": 0.0-1.0,
