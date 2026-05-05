@@ -6,8 +6,8 @@
   "examples_json": "evaluation/results/musique_pilot_50_supporting.json",
   "aggregate_metrics": {
     "num_questions": 50,
-    "exact_match": 0.0,
-    "token_f1": 0.1072,
+    "exact_match": 0.58,
+    "token_f1": 0.7085,
     "answer_rate": 1.0
   },
   "results": [
@@ -15,900 +15,900 @@
       "question_id": "2hop__460946_294723",
       "question": "Who is the spouse of the Green performer?",
       "gold_answer": "Miquette Giraudy",
-      "answer": "I\u2019m not fully sure who you mean by \u201cthe Green performer.\u201d If you\u2019re referring to Steve Hillage, the musician behind the album \u201cGreen,\u201d his partner is Miquette Giraudy; they also perform together (System 7) [Data: Sources (43, 22)]. If you meant someone else, please clarify.",
-      "scored_answer": "I\u2019m not fully sure who you mean by \u201cthe Green performer.\u201d If you\u2019re referring to Steve Hillage, the musician behind the album \u201cGreen,\u201d his partner is Miquette Giraudy; they also perform together (System 7) . If you meant someone else, please clarify",
+      "answer": "Steve Hillage",
+      "scored_answer": "Steve Hillage",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.09756097560975609
+        "token_f1": 0.0
       },
       "retrieval_metadata": {
-        "answer": "I\u2019m not fully sure who you mean by \u201cthe Green performer.\u201d If you\u2019re referring to Steve Hillage, the musician behind the album \u201cGreen,\u201d his partner is Miquette Giraudy; they also perform together (System 7) [Data: Sources (43, 22)]. If you meant someone else, please clarify.",
+        "answer": "Steve Hillage",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I\u2019m not fully sure who you mean by \u201cthe Green performer.\u201d If you\u2019re referring to Steve Hillage, the musician behind the album \u201cGreen,\u201d his partner is Miquette Giraudy; they also perform together (System 7) [Data: Sources (43, 22)]. If you meant someone else, please clarify.\n",
-        "duration_seconds": 5.219
+        "raw_stdout": "Steve Hillage\n",
+        "duration_seconds": 4.663
       }
     },
     {
       "question_id": "2hop__252311_366220",
       "question": "Who founded the company that distributed the film UHF?",
       "gold_answer": "Mike Medavoy",
-      "answer": "I don\u2019t have data here on which company distributed UHF. However, Orion Pictures supported the film\u2019s production, and Orion Pictures was co-founded by Mike Medavoy [Data: Sources (1, 73)]. If you can confirm Orion handled distribution for UHF, then Mike Medavoy would be one of the founders.",
-      "scored_answer": "I don\u2019t have data here on which company distributed UHF. However, Orion Pictures supported the film\u2019s production, and Orion Pictures was co-founded by Mike Medavoy . If you can confirm Orion handled distribution for UHF, then Mike Medavoy would be one of the founders",
+      "answer": "Mike Medavoy",
+      "scored_answer": "Mike Medavoy",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.09302325581395349
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have data here on which company distributed UHF. However, Orion Pictures supported the film\u2019s production, and Orion Pictures was co-founded by Mike Medavoy [Data: Sources (1, 73)]. If you can confirm Orion handled distribution for UHF, then Mike Medavoy would be one of the founders.",
+        "answer": "Mike Medavoy",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have data here on which company distributed UHF. However, Orion Pictures supported the film\u2019s production, and Orion Pictures was co-founded by Mike Medavoy [Data: Sources (1, 73)]. If you can confirm Orion handled distribution for UHF, then Mike Medavoy would be one of the founders.\n",
-        "duration_seconds": 5.01
+        "raw_stdout": "Mike Medavoy\n",
+        "duration_seconds": 4.449
       }
     },
     {
       "question_id": "2hop__701895_752697",
       "question": "What administrative territorial entity is the owner of Ciudad Deportiva located?",
       "gold_answer": "Tamaulipas",
-      "answer": "The Ciudad Deportiva is located in the Municipality of Nuevo Laredo, in the state of Tamaulipas, Mexico [Data: Sources (16, 18)].",
-      "scored_answer": "The Ciudad Deportiva is located in the Municipality of Nuevo Laredo, in the state of Tamaulipas, Mexico ",
+      "answer": "Nuevo Laredo",
+      "scored_answer": "Nuevo Laredo",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.13333333333333333
+        "token_f1": 0.0
       },
       "retrieval_metadata": {
-        "answer": "The Ciudad Deportiva is located in the Municipality of Nuevo Laredo, in the state of Tamaulipas, Mexico [Data: Sources (16, 18)].",
+        "answer": "Nuevo Laredo",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "The Ciudad Deportiva is located in the Municipality of Nuevo Laredo, in the state of Tamaulipas, Mexico [Data: Sources (16, 18)].\n",
-        "duration_seconds": 4.019
+        "raw_stdout": "Nuevo Laredo\n",
+        "duration_seconds": 4.495
       }
     },
     {
       "question_id": "2hop__259228_793698",
       "question": "Where is Ulrich Walter's employer headquartered?",
       "gold_answer": "Cologne",
-      "answer": "I don\u2019t have enough information in the provided data to determine Ulrich Walter\u2019s employer or its headquarters. The tables only note that he joined the German astronaut team in 1987 and trained at the German Aerospace Center (DLR) from 1988\u20131990, but they don\u2019t specify his employer or a headquarters location [Data: Sources (91)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to determine Ulrich Walter\u2019s employer or its headquarters. The tables only note that he joined the German astronaut team in 1987 and trained at the German Aerospace Center (DLR) from 1988\u20131990, but they don\u2019t specify his employer or a headquarters location ",
+      "answer": "Cologne",
+      "scored_answer": "Cologne",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.0
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to determine Ulrich Walter\u2019s employer or its headquarters. The tables only note that he joined the German astronaut team in 1987 and trained at the German Aerospace Center (DLR) from 1988\u20131990, but they don\u2019t specify his employer or a headquarters location [Data: Sources (91)].",
+        "answer": "Cologne",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to determine Ulrich Walter\u2019s employer or its headquarters. The tables only note that he joined the German astronaut team in 1987 and trained at the German Aerospace Center (DLR) from 1988\u20131990, but they don\u2019t specify his employer or a headquarters location [Data: Sources (91)].\n",
-        "duration_seconds": 4.133
+        "raw_stdout": "Cologne\n",
+        "duration_seconds": 3.935
       }
     },
     {
       "question_id": "2hop__481349_302087",
       "question": "Which company owns the manufacturer of Learjet 60?",
       "gold_answer": "Bombardier Inc.",
-      "answer": "Answer\n- Bombardier Inc. owns Bombardier Aerospace, the manufacturer of the Learjet 60 [Data: Sources (51, 79)].",
-      "scored_answer": "Answer\n- Bombardier Inc. owns Bombardier Aerospace, the manufacturer of the Learjet 60 ",
+      "answer": "Bombardier Inc.",
+      "scored_answer": "Bombardier Inc",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.33333333333333337
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Bombardier Inc. owns Bombardier Aerospace, the manufacturer of the Learjet 60 [Data: Sources (51, 79)].",
+        "answer": "Bombardier Inc.",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Bombardier Inc. owns Bombardier Aerospace, the manufacturer of the Learjet 60 [Data: Sources (51, 79)].\n",
-        "duration_seconds": 3.875
+        "raw_stdout": "Bombardier Inc.\n",
+        "duration_seconds": 3.697
       }
     },
     {
       "question_id": "2hop__697790_864352",
       "question": "Who is the child of Caroline LeRoy's spouse?",
       "gold_answer": "Fletcher Webster",
-      "answer": "Answer\n- Caroline LeRoy\u2019s spouse was Daniel Webster; one of his children was Daniel Fletcher \u201cFletcher\u201d Webster, who served as Chief Clerk of the U.S. State Department and later died in 1862 [Data: Sources (75, 90)].",
-      "scored_answer": "Answer\n- Caroline LeRoy\u2019s spouse was Daniel Webster; one of his children was Daniel Fletcher \u201cFletcher\u201d Webster, who served as Chief Clerk of the U.S. State Department and later died in 1862 ",
+      "answer": "Fletcher Webster",
+      "scored_answer": "Fletcher Webster",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.125
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Caroline LeRoy\u2019s spouse was Daniel Webster; one of his children was Daniel Fletcher \u201cFletcher\u201d Webster, who served as Chief Clerk of the U.S. State Department and later died in 1862 [Data: Sources (75, 90)].",
+        "answer": "Fletcher Webster",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Caroline LeRoy\u2019s spouse was Daniel Webster; one of his children was Daniel Fletcher \u201cFletcher\u201d Webster, who served as Chief Clerk of the U.S. State Department and later died in 1862 [Data: Sources (75, 90)].\n",
-        "duration_seconds": 5.029
+        "raw_stdout": "Fletcher Webster\n",
+        "duration_seconds": 3.954
       }
     },
     {
       "question_id": "2hop__207476_625987",
       "question": "Who is the grandmother of Philippe, Duke of Orl\u00e9ans?",
       "gold_answer": "Marie de' Medici",
-      "answer": "Answer\n- Philippe, Duke of Orl\u00e9ans\u2019 grandmothers were Anne of Austria (his paternal grandmother, mother of Louis XIII) and Margaret of Austria (his maternal grandmother, mother of Anne of Austria). From the provided data, only Anne of Austria is explicitly mentioned as his mother; therefore, the directly supported answer is: Anne of Austria (as Philippe\u2019s mother), making his grandmother not specified in the data excerpt [Data: Sources (42)].\nNote\n- The table confirms Philippe was the son of Louis XIII and Anne of Austria but does not list his grandparents; thus, the specific grandmother\u2019s name is not contained in the provided data [Data: Sources (42)].",
-      "scored_answer": "Answer\n- Philippe, Duke of Orl\u00e9ans\u2019 grandmothers were Anne of Austria (his paternal grandmother, mother of Louis XIII) and Margaret of Austria (his maternal grandmother, mother of Anne of Austria). From the provided data, only Anne of Austria is explicitly mentioned as his mother; therefore, the directly supported answer is: Anne of Austria (as Philippe\u2019s mother), making his grandmother not specified in the data excerpt .\nNote\n- The table confirms Philippe was the son of Louis XIII and Anne of Austria but does not list his grandparents; thus, the specific grandmother\u2019s name is not contained in the provided data ",
+      "answer": "Anne of Austria",
+      "scored_answer": "Anne of Austria",
       "metrics": {
         "exact_match": 0.0,
         "token_f1": 0.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Philippe, Duke of Orl\u00e9ans\u2019 grandmothers were Anne of Austria (his paternal grandmother, mother of Louis XIII) and Margaret of Austria (his maternal grandmother, mother of Anne of Austria). From the provided data, only Anne of Austria is explicitly mentioned as his mother; therefore, the directly supported answer is: Anne of Austria (as Philippe\u2019s mother), making his grandmother not specified in the data excerpt [Data: Sources (42)].\nNote\n- The table confirms Philippe was the son of Louis XIII and Anne of Austria but does not list his grandparents; thus, the specific grandmother\u2019s name is not contained in the provided data [Data: Sources (42)].",
+        "answer": "Anne of Austria",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Philippe, Duke of Orl\u00e9ans\u2019 grandmothers were Anne of Austria (his paternal grandmother, mother of Louis XIII) and Margaret of Austria (his maternal grandmother, mother of Anne of Austria). From the provided data, only Anne of Austria is explicitly mentioned as his mother; therefore, the directly supported answer is: Anne of Austria (as Philippe\u2019s mother), making his grandmother not specified in the data excerpt [Data: Sources (42)].\n\nNote\n- The table confirms Philippe was the son of Louis XIII and Anne of Austria but does not list his grandparents; thus, the specific grandmother\u2019s name is not contained in the provided data [Data: Sources (42)].\n",
-        "duration_seconds": 4.951
+        "raw_stdout": "Anne of Austria\n",
+        "duration_seconds": 3.735
       }
     },
     {
       "question_id": "2hop__390947_232243",
       "question": "What is the goal of the group that European Movement Germany is a member of?",
       "gold_answer": "European integration",
-      "answer": "Goal of the group\n- European Movement Germany is part of the European Movement International. The goal of this association is to coordinate member associations and national councils to promote European integration and disseminate information about it [Data: Sources (98, 82)].",
-      "scored_answer": "Goal of the group\n- European Movement Germany is part of the European Movement International. The goal of this association is to coordinate member associations and national councils to promote European integration and disseminate information about it ",
+      "answer": "promoting European integration",
+      "scored_answer": "promoting European integration",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.1142857142857143
+        "token_f1": 0.8
       },
       "retrieval_metadata": {
-        "answer": "Goal of the group\n- European Movement Germany is part of the European Movement International. The goal of this association is to coordinate member associations and national councils to promote European integration and disseminate information about it [Data: Sources (98, 82)].",
+        "answer": "promoting European integration",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Goal of the group\n\n- European Movement Germany is part of the European Movement International. The goal of this association is to coordinate member associations and national councils to promote European integration and disseminate information about it [Data: Sources (98, 82)].\n",
-        "duration_seconds": 4.399
+        "raw_stdout": "promoting European integration\n",
+        "duration_seconds": 3.594
       }
     },
     {
       "question_id": "2hop__354635_174222",
       "question": "What company succeeded the owner of Empire Sports Network?",
       "gold_answer": "Time Warner Cable",
-      "answer": "I don\u2019t have enough information in the provided data to identify which company succeeded the owner of Empire Sports Network after it ceased operations. The data only states that Empire Sports Network was owned by Adelphia Communications Corporation and shut down on March 7, 2005 during Adelphia\u2019s bankruptcy [Data: Sources (21)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to identify which company succeeded the owner of Empire Sports Network after it ceased operations. The data only states that Empire Sports Network was owned by Adelphia Communications Corporation and shut down on March 7, 2005 during Adelphia\u2019s bankruptcy ",
+      "answer": "Windjammer Cable",
+      "scored_answer": "Windjammer Cable",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.0
+        "token_f1": 0.4
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to identify which company succeeded the owner of Empire Sports Network after it ceased operations. The data only states that Empire Sports Network was owned by Adelphia Communications Corporation and shut down on March 7, 2005 during Adelphia\u2019s bankruptcy [Data: Sources (21)].",
+        "answer": "Windjammer Cable",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to identify which company succeeded the owner of Empire Sports Network after it ceased operations. The data only states that Empire Sports Network was owned by Adelphia Communications Corporation and shut down on March 7, 2005 during Adelphia\u2019s bankruptcy [Data: Sources (21)].\n",
-        "duration_seconds": 4.757
+        "raw_stdout": "Windjammer Cable\n",
+        "duration_seconds": 3.514
       }
     },
     {
       "question_id": "2hop__635187_861533",
       "question": "What province shares a border with the province where Lago District is located?",
       "gold_answer": "Cabo Delgado Province",
-      "answer": "Answer\n- Lago District is in Niassa Province, Mozambique. It shares its northern boundary with Tanzania (a country), and within Mozambique it is bordered by Lichinga to the south and Sanga District to the east. The prompt asks for a province sharing a border with the province where Lago District is located: Niassa Province borders Cabo Delgado Province within Mozambique. This is evidenced by the Niassa Reserve spanning both Niassa and Cabo Delgado Provinces, indicating they are adjacent [Data: Sources (65, 83)].",
-      "scored_answer": "Answer\n- Lago District is in Niassa Province, Mozambique. It shares its northern boundary with Tanzania (a country), and within Mozambique it is bordered by Lichinga to the south and Sanga District to the east. The prompt asks for a province sharing a border with the province where Lago District is located: Niassa Province borders Cabo Delgado Province within Mozambique. This is evidenced by the Niassa Reserve spanning both Niassa and Cabo Delgado Provinces, indicating they are adjacent ",
+      "answer": "Tanzania",
+      "scored_answer": "Tanzania",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.08333333333333333
+        "token_f1": 0.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Lago District is in Niassa Province, Mozambique. It shares its northern boundary with Tanzania (a country), and within Mozambique it is bordered by Lichinga to the south and Sanga District to the east. The prompt asks for a province sharing a border with the province where Lago District is located: Niassa Province borders Cabo Delgado Province within Mozambique. This is evidenced by the Niassa Reserve spanning both Niassa and Cabo Delgado Provinces, indicating they are adjacent [Data: Sources (65, 83)].",
+        "answer": "Tanzania",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Lago District is in Niassa Province, Mozambique. It shares its northern boundary with Tanzania (a country), and within Mozambique it is bordered by Lichinga to the south and Sanga District to the east. The prompt asks for a province sharing a border with the province where Lago District is located: Niassa Province borders Cabo Delgado Province within Mozambique. This is evidenced by the Niassa Reserve spanning both Niassa and Cabo Delgado Provinces, indicating they are adjacent [Data: Sources (65, 83)].\n",
-        "duration_seconds": 5.171
+        "raw_stdout": "Tanzania\n",
+        "duration_seconds": 3.848
       }
     },
     {
       "question_id": "2hop__166824_185403",
       "question": "What league does the team that plays in Stadio Ciro Vigorito play for?",
       "gold_answer": "Lega Pro Prima Divisione",
-      "answer": "I don\u2019t have enough information in the provided data to determine the league. The data only states that Stadio Ciro Vigorito is the home of Benevento Calcio, with capacity and opening year, but does not specify the league they play in [Data: Sources (62)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to determine the league. The data only states that Stadio Ciro Vigorito is the home of Benevento Calcio, with capacity and opening year, but does not specify the league they play in ",
+      "answer": "Lega Pro Prima Divisione",
+      "scored_answer": "Lega Pro Prima Divisione",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.0
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to determine the league. The data only states that Stadio Ciro Vigorito is the home of Benevento Calcio, with capacity and opening year, but does not specify the league they play in [Data: Sources (62)].",
+        "answer": "Lega Pro Prima Divisione",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to determine the league. The data only states that Stadio Ciro Vigorito is the home of Benevento Calcio, with capacity and opening year, but does not specify the league they play in [Data: Sources (62)].\n",
-        "duration_seconds": 4.384
+        "raw_stdout": "Lega Pro Prima Divisione\n",
+        "duration_seconds": 3.624
       }
     },
     {
       "question_id": "2hop__698577_851686",
       "question": "What is a notable work written by the author of The Timothy files?",
       "gold_answer": "Anderson Tapes",
-      "answer": "Answer\n- The Timothy Files is by Lawrence Sanders; a notable work he also wrote is The Anderson Tapes, his 1970 debut crime novel that won the Edgar Award for Best First Mystery and was adapted into a film directed by Sidney Lumet [Data: Sources (74, 27)].",
-      "scored_answer": "Answer\n- The Timothy Files is by Lawrence Sanders; a notable work he also wrote is The Anderson Tapes, his 1970 debut crime novel that won the Edgar Award for Best First Mystery and was adapted into a film directed by Sidney Lumet ",
+      "answer": "The Anderson Tapes",
+      "scored_answer": "The Anderson Tapes",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.10256410256410257
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- The Timothy Files is by Lawrence Sanders; a notable work he also wrote is The Anderson Tapes, his 1970 debut crime novel that won the Edgar Award for Best First Mystery and was adapted into a film directed by Sidney Lumet [Data: Sources (74, 27)].",
+        "answer": "The Anderson Tapes",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- The Timothy Files is by Lawrence Sanders; a notable work he also wrote is The Anderson Tapes, his 1970 debut crime novel that won the Edgar Award for Best First Mystery and was adapted into a film directed by Sidney Lumet [Data: Sources (74, 27)].\n",
-        "duration_seconds": 4.409
+        "raw_stdout": "The Anderson Tapes\n",
+        "duration_seconds": 3.649
       }
     },
     {
       "question_id": "2hop__362107_652514",
       "question": "In which borough was Callum McManaman born?",
       "gold_answer": "Knowsley",
-      "answer": "Answer\n- Callum McManaman was born in Whiston, within the Metropolitan Borough of Knowsley, Merseyside [Data: Sources (63, 24)].",
-      "scored_answer": "Answer\n- Callum McManaman was born in Whiston, within the Metropolitan Borough of Knowsley, Merseyside ",
+      "answer": "Knowsley",
+      "scored_answer": "Knowsley",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.14285714285714288
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Callum McManaman was born in Whiston, within the Metropolitan Borough of Knowsley, Merseyside [Data: Sources (63, 24)].",
+        "answer": "Knowsley",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Callum McManaman was born in Whiston, within the Metropolitan Borough of Knowsley, Merseyside [Data: Sources (63, 24)].\n",
-        "duration_seconds": 4.612
+        "raw_stdout": "Knowsley\n",
+        "duration_seconds": 3.65
       }
     },
     {
       "question_id": "2hop__402530_774333",
       "question": "What other county does the county where Imperial is located share a border with?",
       "gold_answer": "Crockett County",
-      "answer": "I\u2019m sorry, but the provided data does not specify which county Imperial (the CDP in Texas) borders or which other county its county shares a border with. The table only notes that Imperial is a census-designated place in Pecos County, Texas, with a 2010 population of 278 [Data: Sources (81)]. Without additional geographic boundary details for Pecos County, I can\u2019t determine its neighboring counties from the given data.",
-      "scored_answer": "I\u2019m sorry, but the provided data does not specify which county Imperial (the CDP in Texas) borders or which other county its county shares a border with. The table only notes that Imperial is a census-designated place in Pecos County, Texas, with a 2010 population of 278 . Without additional geographic boundary details for Pecos County, I can\u2019t determine its neighboring counties from the given data",
+      "answer": "Pecos County",
+      "scored_answer": "Pecos County",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.03333333333333333
+        "token_f1": 0.5
       },
       "retrieval_metadata": {
-        "answer": "I\u2019m sorry, but the provided data does not specify which county Imperial (the CDP in Texas) borders or which other county its county shares a border with. The table only notes that Imperial is a census-designated place in Pecos County, Texas, with a 2010 population of 278 [Data: Sources (81)]. Without additional geographic boundary details for Pecos County, I can\u2019t determine its neighboring counties from the given data.",
+        "answer": "Pecos County",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I\u2019m sorry, but the provided data does not specify which county Imperial (the CDP in Texas) borders or which other county its county shares a border with. The table only notes that Imperial is a census-designated place in Pecos County, Texas, with a 2010 population of 278 [Data: Sources (81)]. Without additional geographic boundary details for Pecos County, I can\u2019t determine its neighboring counties from the given data.\n",
-        "duration_seconds": 4.712
+        "raw_stdout": "Pecos County\n",
+        "duration_seconds": 3.737
       }
     },
     {
       "question_id": "2hop__195917_575657",
       "question": "In what county is William W. Blair's birthplace located?",
       "gold_answer": "Orleans County",
-      "answer": "Answer\n- William W. Blair was born in Holley, which is located in Orleans County, New York [Data: Sources (66, 72)].",
-      "scored_answer": "Answer\n- William W. Blair was born in Holley, which is located in Orleans County, New York ",
+      "answer": "Orleans County",
+      "scored_answer": "Orleans County",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.2222222222222222
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- William W. Blair was born in Holley, which is located in Orleans County, New York [Data: Sources (66, 72)].",
+        "answer": "Orleans County",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- William W. Blair was born in Holley, which is located in Orleans County, New York [Data: Sources (66, 72)].\n",
-        "duration_seconds": 3.73
+        "raw_stdout": "Orleans County\n",
+        "duration_seconds": 3.892
       }
     },
     {
       "question_id": "2hop__683835_709167",
       "question": "What award did the author of The Red Tree receive?",
       "gold_answer": "Academy Award for Best Animated Short Film",
-      "answer": "I don\u2019t have award information for the author of The Red Tree in the provided data. The data only notes that The Red Tree (2001) is a surreal, sparsely narrated picture book by Shaun Tan [Data: Sources (34)].",
-      "scored_answer": "I don\u2019t have award information for the author of The Red Tree in the provided data. The data only notes that The Red Tree (2001) is a surreal, sparsely narrated picture book by Shaun Tan ",
+      "answer": "Shaun Tan",
+      "scored_answer": "Shaun Tan",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.1111111111111111
+        "token_f1": 0.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have award information for the author of The Red Tree in the provided data. The data only notes that The Red Tree (2001) is a surreal, sparsely narrated picture book by Shaun Tan [Data: Sources (34)].",
+        "answer": "Shaun Tan",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have award information for the author of The Red Tree in the provided data. The data only notes that The Red Tree (2001) is a surreal, sparsely narrated picture book by Shaun Tan [Data: Sources (34)].\n",
-        "duration_seconds": 4.366
+        "raw_stdout": "Shaun Tan\n",
+        "duration_seconds": 4.303
       }
     },
     {
       "question_id": "2hop__197470_271394",
       "question": "Where was Tyler MacDuff's child educated?",
       "gold_answer": "Blair High School",
-      "answer": "I\u2019m sorry, but the provided data does not include information about Tyler MacDuff\u2019s child or their education. I don\u2019t have enough information to answer your question from the given sources.",
-      "scored_answer": "I\u2019m sorry, but the provided data does not include information about Tyler MacDuff\u2019s child or their education. I don\u2019t have enough information to answer your question from the given sources",
+      "answer": "Blair High School",
+      "scored_answer": "Blair High School",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.0
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I\u2019m sorry, but the provided data does not include information about Tyler MacDuff\u2019s child or their education. I don\u2019t have enough information to answer your question from the given sources.",
+        "answer": "Blair High School",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I\u2019m sorry, but the provided data does not include information about Tyler MacDuff\u2019s child or their education. I don\u2019t have enough information to answer your question from the given sources.\n",
-        "duration_seconds": 3.566
+        "raw_stdout": "Blair High School\n",
+        "duration_seconds": 4.288
       }
     },
     {
       "question_id": "2hop__458131_174974",
       "question": "Who is the spouse of the Rabbit Hole's producer?",
       "gold_answer": "Keith Urban",
-      "answer": "I don\u2019t have enough information in the provided data to identify the spouse of Rabbit Hole\u2019s producer.\nWhat the data does show:\n- Rabbit Hole was produced by Nicole Kidman (via her company, Blossom Films) [Data: Sources (35)].\n- The data provided does not include information about Nicole Kidman\u2019s spouse or any producer\u2019s spouse.",
-      "scored_answer": "I don\u2019t have enough information in the provided data to identify the spouse of Rabbit Hole\u2019s producer.\nWhat the data does show:\n- Rabbit Hole was produced by Nicole Kidman (via her company, Blossom Films) .\n- The data provided does not include information about Nicole Kidman\u2019s spouse or any producer\u2019s spouse",
+      "answer": "Keith Urban",
+      "scored_answer": "Keith Urban",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.0
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to identify the spouse of Rabbit Hole\u2019s producer.\nWhat the data does show:\n- Rabbit Hole was produced by Nicole Kidman (via her company, Blossom Films) [Data: Sources (35)].\n- The data provided does not include information about Nicole Kidman\u2019s spouse or any producer\u2019s spouse.",
+        "answer": "Keith Urban",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to identify the spouse of Rabbit Hole\u2019s producer.\n\nWhat the data does show:\n- Rabbit Hole was produced by Nicole Kidman (via her company, Blossom Films) [Data: Sources (35)].\n- The data provided does not include information about Nicole Kidman\u2019s spouse or any producer\u2019s spouse.\n",
-        "duration_seconds": 4.094
+        "raw_stdout": "Keith Urban\n",
+        "duration_seconds": 4.37
       }
     },
     {
       "question_id": "2hop__299142_347613",
       "question": "Who is the child of Sigrid Eskilsdotter's child?",
       "gold_answer": "Svante Stensson Sture",
-      "answer": "I don\u2019t have enough information to answer that. The data only states that Sigrid Eskilsdotter (Ban\u00e9r) was the mother of the Swedish regent Christina Gyllenstierna and the maternal grandmother of King Gustav Vasa, but it does not list which specific child of Sigrid had which child beyond that [Data: Sources (15)].",
-      "scored_answer": "I don\u2019t have enough information to answer that. The data only states that Sigrid Eskilsdotter (Ban\u00e9r) was the mother of the Swedish regent Christina Gyllenstierna and the maternal grandmother of King Gustav Vasa, but it does not list which specific child of Sigrid had which child beyond that ",
+      "answer": "Gustav Vasa",
+      "scored_answer": "Gustav Vasa",
       "metrics": {
         "exact_match": 0.0,
         "token_f1": 0.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information to answer that. The data only states that Sigrid Eskilsdotter (Ban\u00e9r) was the mother of the Swedish regent Christina Gyllenstierna and the maternal grandmother of King Gustav Vasa, but it does not list which specific child of Sigrid had which child beyond that [Data: Sources (15)].",
+        "answer": "Gustav Vasa",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information to answer that. The data only states that Sigrid Eskilsdotter (Ban\u00e9r) was the mother of the Swedish regent Christina Gyllenstierna and the maternal grandmother of King Gustav Vasa, but it does not list which specific child of Sigrid had which child beyond that [Data: Sources (15)].\n",
-        "duration_seconds": 4.437
+        "raw_stdout": "Gustav Vasa\n",
+        "duration_seconds": 3.805
       }
     },
     {
       "question_id": "2hop__528263_865831",
       "question": "In which county is Kimbrough Memorial Stadium located?",
       "gold_answer": "Randall County",
-      "answer": "Kimbrough Memorial Stadium is in Randall County, Texas [Data: Sources (10, 2)].",
-      "scored_answer": "Kimbrough Memorial Stadium is in Randall County, Texas ",
+      "answer": "Randall County",
+      "scored_answer": "Randall County",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.4
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Kimbrough Memorial Stadium is in Randall County, Texas [Data: Sources (10, 2)].",
+        "answer": "Randall County",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Kimbrough Memorial Stadium is in Randall County, Texas [Data: Sources (10, 2)].\n",
-        "duration_seconds": 4.056
+        "raw_stdout": "Randall County\n",
+        "duration_seconds": 3.671
       }
     },
     {
       "question_id": "2hop__569582_304416",
       "question": "What record label is the performer of Almost Made Ya signed to?",
       "gold_answer": "Derrty Entertainment",
-      "answer": "I don\u2019t have enough information in the provided data to determine what record label the performer of \u201cAlmost Made Ya\u201d is signed to. The data only notes that \u201cAlmost Made Ya\u201d is a song by Ali & Gipp from their album \u201cKinfolk\u201d (2007) and lists writers, but does not specify the performers\u2019 label or signing details [Data: Sources (77, 76)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to determine what record label the performer of \u201cAlmost Made Ya\u201d is signed to. The data only notes that \u201cAlmost Made Ya\u201d is a song by Ali & Gipp from their album \u201cKinfolk\u201d (2007) and lists writers, but does not specify the performers\u2019 label or signing details ",
+      "answer": "Derrty Entertainment",
+      "scored_answer": "Derrty Entertainment",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.0
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to determine what record label the performer of \u201cAlmost Made Ya\u201d is signed to. The data only notes that \u201cAlmost Made Ya\u201d is a song by Ali & Gipp from their album \u201cKinfolk\u201d (2007) and lists writers, but does not specify the performers\u2019 label or signing details [Data: Sources (77, 76)].",
+        "answer": "Derrty Entertainment",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to determine what record label the performer of \u201cAlmost Made Ya\u201d is signed to. The data only notes that \u201cAlmost Made Ya\u201d is a song by Ali & Gipp from their album \u201cKinfolk\u201d (2007) and lists writers, but does not specify the performers\u2019 label or signing details [Data: Sources (77, 76)].\n",
-        "duration_seconds": 4.296
+        "raw_stdout": "Derrty Entertainment\n",
+        "duration_seconds": 3.774
       }
     },
     {
       "question_id": "2hop__505860_650613",
       "question": "Where was the author of Hannibal and Scipio educated at?",
       "gold_answer": "Exeter College",
-      "answer": "I don\u2019t have information on the author\u2019s education in the provided data. The table notes that Hannibal and Scipio is by Thomas Nabbes and gives its performance/publication details, but it doesn\u2019t mention where Nabbes was educated [Data: Sources (8)].",
-      "scored_answer": "I don\u2019t have information on the author\u2019s education in the provided data. The table notes that Hannibal and Scipio is by Thomas Nabbes and gives its performance/publication details, but it doesn\u2019t mention where Nabbes was educated ",
+      "answer": "Exeter College, Oxford",
+      "scored_answer": "Exeter College, Oxford",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.0
+        "token_f1": 0.8
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have information on the author\u2019s education in the provided data. The table notes that Hannibal and Scipio is by Thomas Nabbes and gives its performance/publication details, but it doesn\u2019t mention where Nabbes was educated [Data: Sources (8)].",
+        "answer": "Exeter College, Oxford",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have information on the author\u2019s education in the provided data. The table notes that Hannibal and Scipio is by Thomas Nabbes and gives its performance/publication details, but it doesn\u2019t mention where Nabbes was educated [Data: Sources (8)].\n",
-        "duration_seconds": 4.118
+        "raw_stdout": "Exeter College, Oxford\n",
+        "duration_seconds": 4.21
       }
     },
     {
       "question_id": "2hop__821197_368148",
       "question": "In which county is Southern Maryland Electric Cooperative headquartered?",
       "gold_answer": "Charles County",
-      "answer": "Answer\n- Southern Maryland Electric Cooperative (SMECO) is headquartered in Hughesville, which is in Charles County, Maryland [Data: Sources (53)].",
-      "scored_answer": "Answer\n- Southern Maryland Electric Cooperative (SMECO) is headquartered in Hughesville, which is in Charles County, Maryland ",
+      "answer": "Charles County",
+      "scored_answer": "Charles County",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.2222222222222222
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Southern Maryland Electric Cooperative (SMECO) is headquartered in Hughesville, which is in Charles County, Maryland [Data: Sources (53)].",
+        "answer": "Charles County",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Southern Maryland Electric Cooperative (SMECO) is headquartered in Hughesville, which is in Charles County, Maryland [Data: Sources (53)].\n",
-        "duration_seconds": 4.363
+        "raw_stdout": "Charles County\n",
+        "duration_seconds": 4.094
       }
     },
     {
       "question_id": "2hop__554167_451128",
       "question": "Who is the child of the Victim of Romance performer?",
       "gold_answer": "Chynna Phillips",
-      "answer": "I\u2019m sorry, but the provided data doesn\u2019t identify any child of the \u201cVictim of Romance\u201d performer, Michelle Phillips. The tables only note that \u201cVictim of Romance\u201d is her first and only solo album, released in February 1977 [Data: Sources (70)].",
-      "scored_answer": "I\u2019m sorry, but the provided data doesn\u2019t identify any child of the \u201cVictim of Romance\u201d performer, Michelle Phillips. The tables only note that \u201cVictim of Romance\u201d is her first and only solo album, released in February 1977 ",
+      "answer": "Chynna Phillips",
+      "scored_answer": "Chynna Phillips",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.05555555555555555
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I\u2019m sorry, but the provided data doesn\u2019t identify any child of the \u201cVictim of Romance\u201d performer, Michelle Phillips. The tables only note that \u201cVictim of Romance\u201d is her first and only solo album, released in February 1977 [Data: Sources (70)].",
+        "answer": "Chynna Phillips",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I\u2019m sorry, but the provided data doesn\u2019t identify any child of the \u201cVictim of Romance\u201d performer, Michelle Phillips. The tables only note that \u201cVictim of Romance\u201d is her first and only solo album, released in February 1977 [Data: Sources (70)].\n",
-        "duration_seconds": 4.549
+        "raw_stdout": "Chynna Phillips\n",
+        "duration_seconds": 3.768
       }
     },
     {
       "question_id": "2hop__702496_430061",
       "question": "What county was Tim Dubois born in?",
       "gold_answer": "McDonald County",
-      "answer": "I don\u2019t have enough information in the provided data to identify the county of Tim DuBois\u2019s birth. The data only states he was born in Southwest City, Missouri, without specifying the county [Data: Sources (85)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to identify the county of Tim DuBois\u2019s birth. The data only states he was born in Southwest City, Missouri, without specifying the county ",
+      "answer": "McDonald County",
+      "scored_answer": "McDonald County",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.06666666666666667
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to identify the county of Tim DuBois\u2019s birth. The data only states he was born in Southwest City, Missouri, without specifying the county [Data: Sources (85)].",
+        "answer": "McDonald County",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to identify the county of Tim DuBois\u2019s birth. The data only states he was born in Southwest City, Missouri, without specifying the county [Data: Sources (85)].\n",
-        "duration_seconds": 4.351
+        "raw_stdout": "McDonald County\n",
+        "duration_seconds": 4.213
       }
     },
     {
       "question_id": "2hop__549146_223121",
       "question": "What record label did the person who is part of The Bruce Lee Band start?",
       "gold_answer": "Asian Man Records",
-      "answer": "Answer\n- Mike Park, the person behind The Bruce Lee Band, started Asian Man Records (originally beginning as Dill Records in 1989; Asian Man established in May 1996) [Data: Sources (20, 48)].",
-      "scored_answer": "Answer\n- Mike Park, the person behind The Bruce Lee Band, started Asian Man Records (originally beginning as Dill Records in 1989; Asian Man established in May 1996) ",
+      "answer": "Dill Records",
+      "scored_answer": "Dill Records",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.21428571428571425
+        "token_f1": 0.4
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Mike Park, the person behind The Bruce Lee Band, started Asian Man Records (originally beginning as Dill Records in 1989; Asian Man established in May 1996) [Data: Sources (20, 48)].",
+        "answer": "Dill Records",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Mike Park, the person behind The Bruce Lee Band, started Asian Man Records (originally beginning as Dill Records in 1989; Asian Man established in May 1996) [Data: Sources (20, 48)].\n",
-        "duration_seconds": 4.296
+        "raw_stdout": "Dill Records\n",
+        "duration_seconds": 3.715
       }
     },
     {
       "question_id": "2hop__647996_551681",
       "question": "What is another notable work made by the author of Miss Sara Sampson?",
       "gold_answer": "Emilia Galotti",
-      "answer": "Another notable work by Gotthold Ephraim Lessing, the author of Miss Sara Sampson, is Emilia Galotti, a classic example of the German bourgeois tragedy that premiered in 1772 [Data: Sources (6, 13)].",
-      "scored_answer": "Another notable work by Gotthold Ephraim Lessing, the author of Miss Sara Sampson, is Emilia Galotti, a classic example of the German bourgeois tragedy that premiered in 1772 ",
+      "answer": "Emilia Galotti",
+      "scored_answer": "Emilia Galotti",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.14814814814814814
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Another notable work by Gotthold Ephraim Lessing, the author of Miss Sara Sampson, is Emilia Galotti, a classic example of the German bourgeois tragedy that premiered in 1772 [Data: Sources (6, 13)].",
+        "answer": "Emilia Galotti",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Another notable work by Gotthold Ephraim Lessing, the author of Miss Sara Sampson, is Emilia Galotti, a classic example of the German bourgeois tragedy that premiered in 1772 [Data: Sources (6, 13)].\n",
-        "duration_seconds": 3.796
+        "raw_stdout": "Emilia Galotti\n",
+        "duration_seconds": 3.746
       }
     },
     {
       "question_id": "2hop__673655_316668",
       "question": "What instrument is played by the person from The Blackout All-Stars?",
       "gold_answer": "conga",
-      "answer": "I\u2019m sorry, but the data only lists the members of The Blackout All-Stars and does not specify which instrument \u201cthe person\u201d plays. The group included Ray Barretto, Sheila E., Tito Puente, Tito Nieves, Paquito D\u2019Rivera, Dave Valentin, Grover Washington, Jr., and Tony Pabon, but individual instruments are not provided in the table [Data: Sources (69)].",
-      "scored_answer": "I\u2019m sorry, but the data only lists the members of The Blackout All-Stars and does not specify which instrument \u201cthe person\u201d plays. The group included Ray Barretto, Sheila E., Tito Puente, Tito Nieves, Paquito D\u2019Rivera, Dave Valentin, Grover Washington, Jr., and Tony Pabon, but individual instruments are not provided in the table ",
+      "answer": "conga",
+      "scored_answer": "conga",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.0
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I\u2019m sorry, but the data only lists the members of The Blackout All-Stars and does not specify which instrument \u201cthe person\u201d plays. The group included Ray Barretto, Sheila E., Tito Puente, Tito Nieves, Paquito D\u2019Rivera, Dave Valentin, Grover Washington, Jr., and Tony Pabon, but individual instruments are not provided in the table [Data: Sources (69)].",
+        "answer": "conga",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I\u2019m sorry, but the data only lists the members of The Blackout All-Stars and does not specify which instrument \u201cthe person\u201d plays. The group included Ray Barretto, Sheila E., Tito Puente, Tito Nieves, Paquito D\u2019Rivera, Dave Valentin, Grover Washington, Jr., and Tony Pabon, but individual instruments are not provided in the table [Data: Sources (69)].\n",
-        "duration_seconds": 5.108
+        "raw_stdout": "conga\n",
+        "duration_seconds": 3.457
       }
     },
     {
       "question_id": "2hop__574419_270105",
       "question": "What is the seat of the county where Van Hook Township is located?",
       "gold_answer": "Stanley",
-      "answer": "Answer\n- Van Hook Township is in Mountrail County, North Dakota [Data: Sources (84)].\n- The county seat of Mountrail County is Stanley [Data: Sources (30)].",
-      "scored_answer": "Answer\n- Van Hook Township is in Mountrail County, North Dakota .\n- The county seat of Mountrail County is Stanley ",
+      "answer": "Stanley",
+      "scored_answer": "Stanley",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.1111111111111111
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Van Hook Township is in Mountrail County, North Dakota [Data: Sources (84)].\n- The county seat of Mountrail County is Stanley [Data: Sources (30)].",
+        "answer": "Stanley",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Van Hook Township is in Mountrail County, North Dakota [Data: Sources (84)].\n- The county seat of Mountrail County is Stanley [Data: Sources (30)].\n",
-        "duration_seconds": 3.949
+        "raw_stdout": "Stanley\n",
+        "duration_seconds": 3.81
       }
     },
     {
       "question_id": "2hop__403712_793210",
       "question": "Who is the father of Edward Baring, 1st Baron Revelstoke's father?",
       "gold_answer": "Sir Francis Baring, 1st Baronet",
-      "answer": "Answer\n- Edward Baring, 1st Baron Revelstoke\u2019s father was Henry Baring of Cromer Hall [Data: Sources (96)].",
-      "scored_answer": "Answer\n- Edward Baring, 1st Baron Revelstoke\u2019s father was Henry Baring of Cromer Hall ",
+      "answer": "Henry Baring",
+      "scored_answer": "Henry Baring",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.2222222222222222
+        "token_f1": 0.28571428571428575
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Edward Baring, 1st Baron Revelstoke\u2019s father was Henry Baring of Cromer Hall [Data: Sources (96)].",
+        "answer": "Henry Baring",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Edward Baring, 1st Baron Revelstoke\u2019s father was Henry Baring of Cromer Hall [Data: Sources (96)].\n",
-        "duration_seconds": 4.182
+        "raw_stdout": "Henry Baring\n",
+        "duration_seconds": 4.297
       }
     },
     {
       "question_id": "2hop__832795_350510",
       "question": "What group was the performer of Be the One a member of?",
       "gold_answer": "Jackson 5",
-      "answer": "I don\u2019t have information in the provided data about any group membership for the performer of \u201cBe the One\u201d (Jackie Jackson). The data only states that \u201cBe the One\u201d is Jackie Jackson\u2019s second solo studio album and lists some participating musicians [Data: Sources (23)].",
-      "scored_answer": "I don\u2019t have information in the provided data about any group membership for the performer of \u201cBe the One\u201d (Jackie Jackson). The data only states that \u201cBe the One\u201d is Jackie Jackson\u2019s second solo studio album and lists some participating musicians ",
+      "answer": "The Jackson 5",
+      "scored_answer": "The Jackson 5",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.05263157894736842
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have information in the provided data about any group membership for the performer of \u201cBe the One\u201d (Jackie Jackson). The data only states that \u201cBe the One\u201d is Jackie Jackson\u2019s second solo studio album and lists some participating musicians [Data: Sources (23)].",
+        "answer": "The Jackson 5",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have information in the provided data about any group membership for the performer of \u201cBe the One\u201d (Jackie Jackson). The data only states that \u201cBe the One\u201d is Jackie Jackson\u2019s second solo studio album and lists some participating musicians [Data: Sources (23)].\n",
-        "duration_seconds": 4.246
+        "raw_stdout": "The Jackson 5\n",
+        "duration_seconds": 3.889
       }
     },
     {
       "question_id": "2hop__744055_408817",
       "question": "Who is the lead singer of the band performing Bang Bang Rock & Roll?",
       "gold_answer": "Eddie Argos",
-      "answer": "Answer\n- Eddie Argos (born Kevin Macklin) is the lead singer of Art Brut, the band that performs Bang Bang Rock & Roll [Data: Sources (7, 56)].",
-      "scored_answer": "Answer\n- Eddie Argos (born Kevin Macklin) is the lead singer of Art Brut, the band that performs Bang Bang Rock & Roll ",
+      "answer": "Eddie Argos",
+      "scored_answer": "Eddie Argos",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.1904761904761905
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Eddie Argos (born Kevin Macklin) is the lead singer of Art Brut, the band that performs Bang Bang Rock & Roll [Data: Sources (7, 56)].",
+        "answer": "Eddie Argos",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Eddie Argos (born Kevin Macklin) is the lead singer of Art Brut, the band that performs Bang Bang Rock & Roll [Data: Sources (7, 56)].\n",
-        "duration_seconds": 3.813
+        "raw_stdout": "Eddie Argos\n",
+        "duration_seconds": 3.626
       }
     },
     {
       "question_id": "2hop__726717_610238",
       "question": "What is the network which National Cycle Route 57 is part of an example of?",
       "gold_answer": "national cycling route network",
-      "answer": "National Cycle Route 57 is part of the National Cycle Network, which is the United Kingdom\u2019s national cycling route network established to encourage cycling and bicycle touring across Britain [Data: Sources (19, 38)].",
-      "scored_answer": "National Cycle Route 57 is part of the National Cycle Network, which is the United Kingdom\u2019s national cycling route network established to encourage cycling and bicycle touring across Britain ",
+      "answer": "National Cycle Network",
+      "scored_answer": "National Cycle Network",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.25806451612903225
+        "token_f1": 0.5714285714285715
       },
       "retrieval_metadata": {
-        "answer": "National Cycle Route 57 is part of the National Cycle Network, which is the United Kingdom\u2019s national cycling route network established to encourage cycling and bicycle touring across Britain [Data: Sources (19, 38)].",
+        "answer": "National Cycle Network",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "National Cycle Route 57 is part of the National Cycle Network, which is the United Kingdom\u2019s national cycling route network established to encourage cycling and bicycle touring across Britain [Data: Sources (19, 38)].\n",
-        "duration_seconds": 4.222
+        "raw_stdout": "National Cycle Network\n",
+        "duration_seconds": 3.568
       }
     },
     {
       "question_id": "2hop__499577_617190",
       "question": "Who is the spouse of the child of Peter Andreas Heiberg?",
       "gold_answer": "Johanne Luise Heiberg",
-      "answer": "Answer\n- Peter Andreas Heiberg\u2019s son was Johan Ludvig Heiberg; his spouse was the actress Johanne Luise Heiberg [Data: Sources (52, 17)].",
-      "scored_answer": "Answer\n- Peter Andreas Heiberg\u2019s son was Johan Ludvig Heiberg; his spouse was the actress Johanne Luise Heiberg ",
+      "answer": "Johanne Luise Heiberg",
+      "scored_answer": "Johanne Luise Heiberg",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.3157894736842105
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Peter Andreas Heiberg\u2019s son was Johan Ludvig Heiberg; his spouse was the actress Johanne Luise Heiberg [Data: Sources (52, 17)].",
+        "answer": "Johanne Luise Heiberg",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Peter Andreas Heiberg\u2019s son was Johan Ludvig Heiberg; his spouse was the actress Johanne Luise Heiberg [Data: Sources (52, 17)].\n",
-        "duration_seconds": 4.198
+        "raw_stdout": "Johanne Luise Heiberg\n",
+        "duration_seconds": 3.465
       }
     },
     {
       "question_id": "2hop__685280_510757",
       "question": "The Unwinding author volunteered for which organisation?",
       "gold_answer": "Peace Corps",
-      "answer": "I don\u2019t have enough information in the provided data to identify any organization the author of \u201cThe Unwinding,\u201d George Packer, volunteered for. The tables mention his Peace Corps service in Togo (as recounted in his book \u201cThe Village of Waiting\u201d), but that is employment/service rather than described here as volunteering [Data: Sources (45)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to identify any organization the author of \u201cThe Unwinding,\u201d George Packer, volunteered for. The tables mention his Peace Corps service in Togo (as recounted in his book \u201cThe Village of Waiting\u201d), but that is employment/service rather than described here as volunteering ",
+      "answer": "Peace Corps",
+      "scored_answer": "Peace Corps",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.08163265306122448
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to identify any organization the author of \u201cThe Unwinding,\u201d George Packer, volunteered for. The tables mention his Peace Corps service in Togo (as recounted in his book \u201cThe Village of Waiting\u201d), but that is employment/service rather than described here as volunteering [Data: Sources (45)].",
+        "answer": "Peace Corps",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to identify any organization the author of \u201cThe Unwinding,\u201d George Packer, volunteered for. The tables mention his Peace Corps service in Togo (as recounted in his book \u201cThe Village of Waiting\u201d), but that is employment/service rather than described here as volunteering [Data: Sources (45)].\n",
-        "duration_seconds": 4.647
+        "raw_stdout": "Peace Corps\n",
+        "duration_seconds": 3.878
       }
     },
     {
       "question_id": "2hop__341305_332933",
       "question": "What is the capital of the county that Pine Springs is located in?",
       "gold_answer": "Van Horn",
-      "answer": "I don\u2019t have enough information in the provided data to answer that. The tables state Pine Springs is in northern Culberson County, Texas, but they don\u2019t list Culberson County\u2019s capital/seat [Data: Sources (60)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to answer that. The tables state Pine Springs is in northern Culberson County, Texas, but they don\u2019t list Culberson County\u2019s capital/seat ",
+      "answer": "Canyon",
+      "scored_answer": "Canyon",
       "metrics": {
         "exact_match": 0.0,
         "token_f1": 0.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to answer that. The tables state Pine Springs is in northern Culberson County, Texas, but they don\u2019t list Culberson County\u2019s capital/seat [Data: Sources (60)].",
+        "answer": "Canyon",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to answer that. The tables state Pine Springs is in northern Culberson County, Texas, but they don\u2019t list Culberson County\u2019s capital/seat [Data: Sources (60)].\n",
-        "duration_seconds": 4.421
+        "raw_stdout": "Canyon\n",
+        "duration_seconds": 3.595
       }
     },
     {
       "question_id": "2hop__731228_609866",
       "question": "What district is the headquarter of Julia's House located?",
       "gold_answer": "East Dorset",
-      "answer": "I don\u2019t have enough information to determine the district of Julia\u2019s House\u2019s headquarters from the provided data. The data only states that Julia\u2019s House is a children\u2019s hospice located in Corfe Mullen, Dorset, England, and notes its funding details [Data: Sources (44, 58)].",
-      "scored_answer": "I don\u2019t have enough information to determine the district of Julia\u2019s House\u2019s headquarters from the provided data. The data only states that Julia\u2019s House is a children\u2019s hospice located in Corfe Mullen, Dorset, England, and notes its funding details ",
+      "answer": "East Dorset",
+      "scored_answer": "East Dorset",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.05405405405405405
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information to determine the district of Julia\u2019s House\u2019s headquarters from the provided data. The data only states that Julia\u2019s House is a children\u2019s hospice located in Corfe Mullen, Dorset, England, and notes its funding details [Data: Sources (44, 58)].",
+        "answer": "East Dorset",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information to determine the district of Julia\u2019s House\u2019s headquarters from the provided data. The data only states that Julia\u2019s House is a children\u2019s hospice located in Corfe Mullen, Dorset, England, and notes its funding details [Data: Sources (44, 58)].\n",
-        "duration_seconds": 4.711
+        "raw_stdout": "East Dorset\n",
+        "duration_seconds": 3.562
       }
     },
     {
       "question_id": "2hop__693444_220151",
       "question": "Who is the spouse of Young Man Luther's author?",
       "gold_answer": "Joan Erikson",
-      "answer": "I don\u2019t have information on the spouse of Erik Erikson (author of Young Man Luther) in the provided data. The tables only note the book\u2019s title and subject matter, not Erikson\u2019s personal relationships [Data: Sources (26)].",
-      "scored_answer": "I don\u2019t have information on the spouse of Erik Erikson (author of Young Man Luther) in the provided data. The tables only note the book\u2019s title and subject matter, not Erikson\u2019s personal relationships ",
+      "answer": "Joan Erikson",
+      "scored_answer": "Joan Erikson",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.06451612903225806
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have information on the spouse of Erik Erikson (author of Young Man Luther) in the provided data. The tables only note the book\u2019s title and subject matter, not Erikson\u2019s personal relationships [Data: Sources (26)].",
+        "answer": "Joan Erikson",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have information on the spouse of Erik Erikson (author of Young Man Luther) in the provided data. The tables only note the book\u2019s title and subject matter, not Erikson\u2019s personal relationships [Data: Sources (26)].\n",
-        "duration_seconds": 5.14
+        "raw_stdout": "Joan Erikson\n",
+        "duration_seconds": 4.692
       }
     },
     {
       "question_id": "2hop__235471_565925",
       "question": "What record label did the performer of The Place and the Time belong to?",
       "gold_answer": "Columbia Records",
-      "answer": "I don\u2019t have enough information in the provided data to identify the performer of \u201cThe Place and the Time,\u201d and therefore can\u2019t state their record label. The data only notes that \u201cThe Place and the Time\u201d is a 2009 compilation by Moby Grape released by Sundazed Records, but it doesn\u2019t specify a performer whose label affiliation you\u2019re asking about [Data: Sources (95)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to identify the performer of \u201cThe Place and the Time,\u201d and therefore can\u2019t state their record label. The data only notes that \u201cThe Place and the Time\u201d is a 2009 compilation by Moby Grape released by Sundazed Records, but it doesn\u2019t specify a performer whose label affiliation you\u2019re asking about ",
+      "answer": "Sundazed Records",
+      "scored_answer": "Sundazed Records",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.037037037037037035
+        "token_f1": 0.5
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to identify the performer of \u201cThe Place and the Time,\u201d and therefore can\u2019t state their record label. The data only notes that \u201cThe Place and the Time\u201d is a 2009 compilation by Moby Grape released by Sundazed Records, but it doesn\u2019t specify a performer whose label affiliation you\u2019re asking about [Data: Sources (95)].",
+        "answer": "Sundazed Records",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to identify the performer of \u201cThe Place and the Time,\u201d and therefore can\u2019t state their record label. The data only notes that \u201cThe Place and the Time\u201d is a 2009 compilation by Moby Grape released by Sundazed Records, but it doesn\u2019t specify a performer whose label affiliation you\u2019re asking about [Data: Sources (95)].\n",
-        "duration_seconds": 4.342
+        "raw_stdout": "Sundazed Records\n",
+        "duration_seconds": 3.614
       }
     },
     {
       "question_id": "2hop__310456_846599",
       "question": "Who is the child of the person who followed Tihomir of Serbia?",
       "gold_answer": "Saint Sava",
-      "answer": "I don\u2019t have enough information in the provided data to determine who directly followed Tihomir of Serbia and thus identify that person\u2019s child. The tables mention Stefan Nemanja defeating Tihomir and becoming ruler of All Serbia, but they do not list the child(ren) of the successor [Data: Sources (40)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to determine who directly followed Tihomir of Serbia and thus identify that person\u2019s child. The tables mention Stefan Nemanja defeating Tihomir and becoming ruler of All Serbia, but they do not list the child(ren) of the successor ",
+      "answer": "Svante Turesson Bielke",
+      "scored_answer": "Svante Turesson Bielke",
       "metrics": {
         "exact_match": 0.0,
         "token_f1": 0.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to determine who directly followed Tihomir of Serbia and thus identify that person\u2019s child. The tables mention Stefan Nemanja defeating Tihomir and becoming ruler of All Serbia, but they do not list the child(ren) of the successor [Data: Sources (40)].",
+        "answer": "Svante Turesson Bielke",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to determine who directly followed Tihomir of Serbia and thus identify that person\u2019s child. The tables mention Stefan Nemanja defeating Tihomir and becoming ruler of All Serbia, but they do not list the child(ren) of the successor [Data: Sources (40)].\n",
-        "duration_seconds": 4.11
+        "raw_stdout": "Svante Turesson Bielke\n",
+        "duration_seconds": 3.793
       }
     },
     {
       "question_id": "2hop__335418_279684",
       "question": "What team was Anna Benson's husband on?",
       "gold_answer": "Pittsburgh Pirates",
-      "answer": "I don\u2019t have that information in the provided data. The tables only note that Anna Benson is the ex-wife of former MLB pitcher Kris Benson, without specifying any team he was on [Data: Sources (37)].",
-      "scored_answer": "I don\u2019t have that information in the provided data. The tables only note that Anna Benson is the ex-wife of former MLB pitcher Kris Benson, without specifying any team he was on ",
+      "answer": "Pittsburgh Pirates",
+      "scored_answer": "Pittsburgh Pirates",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.0
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have that information in the provided data. The tables only note that Anna Benson is the ex-wife of former MLB pitcher Kris Benson, without specifying any team he was on [Data: Sources (37)].",
+        "answer": "Pittsburgh Pirates",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have that information in the provided data. The tables only note that Anna Benson is the ex-wife of former MLB pitcher Kris Benson, without specifying any team he was on [Data: Sources (37)].\n",
-        "duration_seconds": 4.231
+        "raw_stdout": "Pittsburgh Pirates\n",
+        "duration_seconds": 3.93
       }
     },
     {
       "question_id": "2hop__191125_781346",
       "question": "What place does the administrative territorial entity that Juba is located in share a border with?",
       "gold_answer": "Eastern Equatoria",
-      "answer": "Answer\n- Juba is the capital of Central Equatoria State in South Sudan [Data: Sources (5)].\n- Central Equatoria shares a border with Eastern Equatoria via the Badigeru (Badingilu) swamp area between Terekeka (Central Equatoria) and Lafon (Eastern Equatoria) [Data: Sources (94)].",
-      "scored_answer": "Answer\n- Juba is the capital of Central Equatoria State in South Sudan .\n- Central Equatoria shares a border with Eastern Equatoria via the Badigeru (Badingilu) swamp area between Terekeka (Central Equatoria) and Lafon (Eastern Equatoria) ",
+      "answer": "Tanzania",
+      "scored_answer": "Tanzania",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.12121212121212122
+        "token_f1": 0.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Juba is the capital of Central Equatoria State in South Sudan [Data: Sources (5)].\n- Central Equatoria shares a border with Eastern Equatoria via the Badigeru (Badingilu) swamp area between Terekeka (Central Equatoria) and Lafon (Eastern Equatoria) [Data: Sources (94)].",
+        "answer": "Tanzania",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Juba is the capital of Central Equatoria State in South Sudan [Data: Sources (5)].\n- Central Equatoria shares a border with Eastern Equatoria via the Badigeru (Badingilu) swamp area between Terekeka (Central Equatoria) and Lafon (Eastern Equatoria) [Data: Sources (94)].\n",
-        "duration_seconds": 4.457
+        "raw_stdout": "Tanzania\n",
+        "duration_seconds": 3.348
       }
     },
     {
       "question_id": "2hop__475070_532404",
       "question": "Where was the spouse of Frances Tupper born?",
       "gold_answer": "Amherst",
-      "answer": "Answer\n- Frances Am\u00e9lia Tupper\u2019s spouse was Sir Charles Tupper. The provided data does not state his birthplace, so I can\u2019t answer where he was born based on these records [Data: Sources (41)].",
-      "scored_answer": "Answer\n- Frances Am\u00e9lia Tupper\u2019s spouse was Sir Charles Tupper. The provided data does not state his birthplace, so I can\u2019t answer where he was born based on these records ",
+      "answer": "Amherst, Nova Scotia",
+      "scored_answer": "Amherst, Nova Scotia",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.0
+        "token_f1": 0.5
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Frances Am\u00e9lia Tupper\u2019s spouse was Sir Charles Tupper. The provided data does not state his birthplace, so I can\u2019t answer where he was born based on these records [Data: Sources (41)].",
+        "answer": "Amherst, Nova Scotia",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Frances Am\u00e9lia Tupper\u2019s spouse was Sir Charles Tupper. The provided data does not state his birthplace, so I can\u2019t answer where he was born based on these records [Data: Sources (41)].\n",
-        "duration_seconds": 4.237
+        "raw_stdout": "Amherst, Nova Scotia\n",
+        "duration_seconds": 3.809
       }
     },
     {
       "question_id": "2hop__700093_455653",
       "question": "Who founded the political party of Dimuthu Bandara Abayakoon?",
       "gold_answer": "Rohana Wijeweera",
-      "answer": "Answer\n- Dimuthu Bandara Abayakoon belongs to the Janatha Vimukthi Peramuna (JVP) [Data: Sources (67)].\n- The JVP was founded by Rohana Wijeweera [Data: Sources (93)].",
-      "scored_answer": "Answer\n- Dimuthu Bandara Abayakoon belongs to the Janatha Vimukthi Peramuna (JVP) .\n- The JVP was founded by Rohana Wijeweera ",
+      "answer": "Rohana Wijeweera",
+      "scored_answer": "Rohana Wijeweera",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.2222222222222222
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Dimuthu Bandara Abayakoon belongs to the Janatha Vimukthi Peramuna (JVP) [Data: Sources (67)].\n- The JVP was founded by Rohana Wijeweera [Data: Sources (93)].",
+        "answer": "Rohana Wijeweera",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Dimuthu Bandara Abayakoon belongs to the Janatha Vimukthi Peramuna (JVP) [Data: Sources (67)].\n- The JVP was founded by Rohana Wijeweera [Data: Sources (93)].\n",
-        "duration_seconds": 4.635
+        "raw_stdout": "Rohana Wijeweera\n",
+        "duration_seconds": 3.777
       }
     },
     {
       "question_id": "2hop__512773_346751",
       "question": "Bancroft's county borders what county?",
       "gold_answer": "Haliburton County",
-      "answer": "I don\u2019t have enough information in the provided data to determine which county borders Bancroft. The tables only note that North Hastings High School is in Bancroft, Ontario, serving northern Hastings County, but they don\u2019t list bordering counties [Data: Sources (89)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to determine which county borders Bancroft. The tables only note that North Hastings High School is in Bancroft, Ontario, serving northern Hastings County, but they don\u2019t list bordering counties ",
+      "answer": "Hastings County",
+      "scored_answer": "Hastings County",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.05263157894736842
+        "token_f1": 0.5
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to determine which county borders Bancroft. The tables only note that North Hastings High School is in Bancroft, Ontario, serving northern Hastings County, but they don\u2019t list bordering counties [Data: Sources (89)].",
+        "answer": "Hastings County",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to determine which county borders Bancroft. The tables only note that North Hastings High School is in Bancroft, Ontario, serving northern Hastings County, but they don\u2019t list bordering counties [Data: Sources (89)].\n",
-        "duration_seconds": 4.211
+        "raw_stdout": "Hastings County\n",
+        "duration_seconds": 3.581
       }
     },
     {
       "question_id": "2hop__411091_625230",
       "question": "In which county is Mark Dismore's birthplace located?",
       "gold_answer": "Hancock County",
-      "answer": "Answer\n- Mark Dismore was born in Greenfield, which is in Hancock County, Indiana [Data: Sources (9, 50)].",
-      "scored_answer": "Answer\n- Mark Dismore was born in Greenfield, which is in Hancock County, Indiana ",
+      "answer": "Hancock County",
+      "scored_answer": "Hancock County",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.2666666666666667
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- Mark Dismore was born in Greenfield, which is in Hancock County, Indiana [Data: Sources (9, 50)].",
+        "answer": "Hancock County",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- Mark Dismore was born in Greenfield, which is in Hancock County, Indiana [Data: Sources (9, 50)].\n",
-        "duration_seconds": 4.431
+        "raw_stdout": "Hancock County\n",
+        "duration_seconds": 3.666
       }
     },
     {
       "question_id": "2hop__423972_540249",
       "question": "Who was the sibling of Nannina de' Medici?",
       "gold_answer": "Giuliano de' Medici",
-      "answer": "Nannina de' Medici\u2019s sibling was Lorenzo de' Medici (she was his elder sister) [Data: Sources (11)].",
-      "scored_answer": "Nannina de' Medici\u2019s sibling was Lorenzo de' Medici (she was his elder sister) ",
+      "answer": "Lorenzo de' Medici",
+      "scored_answer": "Lorenzo de' Medici",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.25
+        "token_f1": 0.6666666666666666
       },
       "retrieval_metadata": {
-        "answer": "Nannina de' Medici\u2019s sibling was Lorenzo de' Medici (she was his elder sister) [Data: Sources (11)].",
+        "answer": "Lorenzo de' Medici",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Nannina de' Medici\u2019s sibling was Lorenzo de' Medici (she was his elder sister) [Data: Sources (11)].\n",
-        "duration_seconds": 5.015
+        "raw_stdout": "Lorenzo de' Medici\n",
+        "duration_seconds": 3.843
       }
     },
     {
       "question_id": "2hop__455158_247871",
       "question": "What county is the NRHEG High School located in?",
       "gold_answer": "Waseca County",
-      "answer": "I don\u2019t have enough information in the provided data to determine the county for NRHEG High School. The data only states that NRHEG High School is in New Richland, Minnesota, and serves the towns of New Richland, Hartland, Ellendale, and Geneva, but it does not specify the county [Data: Sources (87, 80)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to determine the county for NRHEG High School. The data only states that NRHEG High School is in New Richland, Minnesota, and serves the towns of New Richland, Hartland, Ellendale, and Geneva, but it does not specify the county ",
+      "answer": "Waseca County",
+      "scored_answer": "Waseca County",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.04444444444444444
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to determine the county for NRHEG High School. The data only states that NRHEG High School is in New Richland, Minnesota, and serves the towns of New Richland, Hartland, Ellendale, and Geneva, but it does not specify the county [Data: Sources (87, 80)].",
+        "answer": "Waseca County",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to determine the county for NRHEG High School. The data only states that NRHEG High School is in New Richland, Minnesota, and serves the towns of New Richland, Hartland, Ellendale, and Geneva, but it does not specify the county [Data: Sources (87, 80)].\n",
-        "duration_seconds": 5.542
+        "raw_stdout": "Waseca County\n",
+        "duration_seconds": 3.533
       }
     },
     {
       "question_id": "2hop__189094_612080",
       "question": "What league does the team that occupies the Rabat Ajax Football Ground belong to?",
       "gold_answer": "Maltese Premier League",
-      "answer": "I don\u2019t have enough information in the provided data to determine the league of the team that occupies the Rabat Ajax Football Ground. The data only states that it is the training ground of Rabat Ajax F.C. in Mtarfa, Malta, without specifying the league [Data: Sources (47)].",
-      "scored_answer": "I don\u2019t have enough information in the provided data to determine the league of the team that occupies the Rabat Ajax Football Ground. The data only states that it is the training ground of Rabat Ajax F.C. in Mtarfa, Malta, without specifying the league ",
+      "answer": "Maltese Premier League",
+      "scored_answer": "Maltese Premier League",
       "metrics": {
-        "exact_match": 0.0,
-        "token_f1": 0.05
+        "exact_match": 1.0,
+        "token_f1": 1.0
       },
       "retrieval_metadata": {
-        "answer": "I don\u2019t have enough information in the provided data to determine the league of the team that occupies the Rabat Ajax Football Ground. The data only states that it is the training ground of Rabat Ajax F.C. in Mtarfa, Malta, without specifying the league [Data: Sources (47)].",
+        "answer": "Maltese Premier League",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "I don\u2019t have enough information in the provided data to determine the league of the team that occupies the Rabat Ajax Football Ground. The data only states that it is the training ground of Rabat Ajax F.C. in Mtarfa, Malta, without specifying the league [Data: Sources (47)].\n",
-        "duration_seconds": 5.201
+        "raw_stdout": "Maltese Premier League\n",
+        "duration_seconds": 3.925
       }
     },
     {
       "question_id": "2hop__765678_310556",
       "question": "Who was married to the star of No Escape?",
       "gold_answer": "John Profumo",
-      "answer": "Answer\n- The star of No Escape (1936), Valerie Hobson, was married to John Profumo [Data: Sources (49, 46)].",
-      "scored_answer": "Answer\n- The star of No Escape (1936), Valerie Hobson, was married to John Profumo ",
+      "answer": "David Profumo",
+      "scored_answer": "David Profumo",
       "metrics": {
         "exact_match": 0.0,
-        "token_f1": 0.2666666666666667
+        "token_f1": 0.5
       },
       "retrieval_metadata": {
-        "answer": "Answer\n- The star of No Escape (1936), Valerie Hobson, was married to John Profumo [Data: Sources (49, 46)].",
+        "answer": "David Profumo",
         "returncode": 0,
         "stderr": "",
-        "raw_stdout": "Answer\n- The star of No Escape (1936), Valerie Hobson, was married to John Profumo [Data: Sources (49, 46)].\n",
-        "duration_seconds": 4.888
+        "raw_stdout": "David Profumo\n",
+        "duration_seconds": 3.634
       }
     }
   ]
