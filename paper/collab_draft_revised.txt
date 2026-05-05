@@ -56,7 +56,7 @@ The pipeline is mostly sequential. Each specialized agent transforms or validate
 The workflow is as follows.
 The DocumentProcessor segments each document into coherent chunks.
 The DomainClassifier derives a working schema for the document. In benchmark mode it uses a fixed schema; in open-world mode it discovers entity and relation types from the content. From this schema, the system bootstraps preliminary domains before any triples are admitted. This is the first point at which governance becomes active during creation.
-The EntityExtractor identifies entity mentions, canonical labels, and candidate types. It is instructed to favor the shortest meaningful noun phrase and to preserve short scientific terms, abbreviations, tool names, and task phrases rather than discarding them as generic text.
+The EntityExtractor identifies entity mentions, canonical labels, and candidate types. The shortest-meaningful-noun-phrase rule is used only to normalize the entity span itself, so that entities are anchored to compact canonical labels rather than overly long surface forms. Relation extraction is not limited to noun pairs: downstream agents still use the full sentence context, including predicates, modifiers, and supporting evidence, to determine whether a typed relation should be proposed between the extracted entities. The extractor is also instructed to preserve short scientific terms, abbreviations, tool names, and task phrases rather than discarding them as generic text.
 Once entities exist, they are assigned to one or more domains. This partially instantiates the ownership function (φ), allowing the system to know who owns a proposed fact during creation.
 The RelationExtractor identifies relations between current entities and produces candidate triples. In fixed-schema benchmark mode, the extractor is constrained to the benchmark label set; in open-world mode, it can propose a new relation structure.
 The EvidenceLinker attaches supporting text spans and source references to each candidate triple.
@@ -142,85 +142,126 @@ Another application is incremental enrichment. New documents are processed, cand
 The enrichment path is worth stating more explicitly because it is the true "new information arrives" setting. The system first runs extraction on the new documents into a temporary delta KG. It then computes a diff between the delta KG and the base KG, identifying new entities, new triples, and conflicts with existing triples. New triples are sent to the governing owner domains for review. Conflicting triples are resolved either by the governance board or by a fallback conflict resolver. Only accepted changes are merged back into the base KG. In this sense, enrichment is not a second unrelated system: it is the additive counterpart to the initial governed creation pipeline.
 
 Experimental Setup
-We evaluate the system in two modes.
-First, fixed-schema benchmark mode evaluates extraction quality against SciERC annotations.
-Second, governance evaluation mode evaluates routing, auditability, structural coverage, and decision behavior.
-The first measures pipeline competence. The second measures the main contribution.
+We evaluate MaKG along four empirical axes.
 
-These two modes use different notions of ground truth and therefore answer different questions. In fixed-schema benchmark mode, entity and triple extraction are compared against human-annotated SciERC document labels. This gives hard benchmark metrics such as entity F1 and triple F1. In governance evaluation mode, the graph is evaluated as a governed memory structure: routing is checked against expected owner domains implied by the current org chart, and structural metrics such as coverage, completeness, and audit integrity are computed directly from the governed graph and its audit log.
+First, we evaluate KG construction quality on the SciERC test split in fixed-schema mode. SciERC provides gold entity spans, entity types, and typed relations over scientific abstracts. In this setting, the extraction schema is fixed to the SciERC label set so that all systems are evaluated against the same target ontology. This gives hard benchmark metrics: entity F1, strict triple F1, fuzzy/mapped triple F1, and triple hallucination. Strict triple F1 requires exact agreement on subject, relation, and object. Fuzzy/mapped triple F1 is more forgiving about surface normalization and relation-label canonicalization; this is important because many apparent errors are canonicalization mismatches rather than genuinely unsupported facts.
 
-It is also important to state what the large audit_only builds do and do not prove. The large corpus runs demonstrate that routing, ownership assignment, domain coverage, and auditability all scale during creation. They do not, by themselves, demonstrate selective expert filtering of every triple, because audit_only mode records and routes every proposal but does not invoke full review on every one. That selective decision quality is evaluated separately in the strict governance benchmark, where true and corrupted triples are explicitly reviewed by the governance board.
+Second, we run governance ablations over the same 50-document GPT-5 candidate proposal stream. These ablations ask whether MaKG is better because of governance itself or merely because some other part of the pipeline filters triples. The ablations remove different pieces of the governance stack: source filtering only, deterministic domain rules, a centralized global reviewer, and finally full domain-memory governance.
+
+Third, we prepare a human triple review study. This is necessary because SciERC is a closed benchmark annotation, not an exhaustive list of every valid scientific fact in an abstract. A triple can be supported by the source text and useful for the graph while still being counted as a false positive under SciERC if it is absent from the gold annotation. The human review study samples governed-only, flat-only, shared, and revised triples and asks annotators to judge support, relation correctness, endpoint correctness, graph usefulness, and governance decision quality.
+
+Fourth, we evaluate downstream QA on MuSiQue, a multi-hop QA dataset. MuSiQue is useful here because it tests whether the graph can support chaining across documents rather than only retrieving one local sentence. We run a 50-question MuSiQue slice with supporting-only contexts and compare MaKG domain-routed QA against graph-based baselines, especially official Microsoft GraphRAG. This tests whether the governed graph can be used as a stronger QA substrate than a standard graph-based retrieval system.
 
 Results
-The results section should center three main empirical claims and keep the rest for the appendix. The main text should therefore focus on: (1) governed versus flat KG creation, (2) governed structure at scale, and (3) downstream QA usefulness of the governed data structure. Additional ablations such as pairwise-v2 extraction, detailed triage activity, strict-review operating-mode tradeoffs, and judge-panel reruns should be described as supporting appendix results rather than allowed to dominate the main narrative.
+The completed results support four claims.
 
-1. Governed vs Flat KG Creation
+1. Governance improves the admitted graph relative to flat insertion.
+2. The improvement is not explained by source filtering or deterministic domain rules alone.
+3. Domain experts become strongest when they carry domain-local memory.
+4. The governed graph is useful for downstream QA relative to another graph-based system.
 
-The main head-to-head comparison is governed triage versus flat unguided creation on matched SciERC test subsets. The most important result is that governance improves the admitted relational graph without materially harming entity extraction.
+1. KG Construction Quality
 
-Table 1 — Governed vs Flat KG creation at 10 and 50 SciERC test documents
+The first result compares direct flat KG insertion against two governed variants of MaKG on the same 50 SciERC test documents using GPT-5. All three systems share the same extractor, model, fixed SciERC schema, and document set. The only difference is how candidate triples are admitted into the stored graph.
 
-| Scale | Config | Entity F1 | Triple F1 | Triple Hallucination | Entity Overlap | Triple Overlap | Cross-Domain Fraction | Overhead |
-|---|---|---|---|---|---|---|---|---|
-| 10 docs | Flat | 0.481 | 0.079 | 87.2% | — | — | — | — |
-| 10 docs | Governed (triage) | 0.642 | 0.292 | 62.5% | 0.340 | 0.092 | 0.375 | — |
-| 50 docs | Flat | 0.633 | 0.153 | 85.8% | — | — | — | — |
-| 50 docs | Governed (triage) | 0.629 | 0.189 | 78.5% | 0.677 | 0.180 | 0.434 | +4.55% |
+The Flat KG baseline directly inserts extracted triples into a single global graph. It has no ownership layer, no governance decision, no revision step, and no domain-local memory.
 
-At 10 documents, governed creation strongly outperforms the flat graph on the main relation metric: triple F1 rises from 0.079 to 0.292, and triple hallucination falls from 87.2% to 62.5%. At 50 documents, the effect becomes more conservative but still meaningful: entity F1 remains effectively unchanged (0.633 flat versus 0.629 governed), while triple F1 improves from 0.153 to 0.189 and triple hallucination falls from 85.8% to 78.5%. The low triple-overlap values show that governance is not a thin filter layered on top of the same graph; it changes which relational structure is ultimately admitted.
+MaKG basic governance routes each candidate triple to the owning domain and applies governed admission before commit. The reviewer sees the candidate triple, its source evidence, the ownership assignment derived from the subject and object, and the endpoint neighborhood in the current graph. The reviewer can approve, reject, or revise the triple. This tests whether governance already improves graph quality even before adding richer domain memory.
 
-This is the main empirical claim of the paper: governance improves the admitted relational graph relative to a flat KG while keeping entity extraction roughly stable.
+MaKG domain-memory governance is the full system. It keeps the same governed routing and evidence-based admission, but the domain expert also carries local memory: previously accepted and rejected relation patterns, recent revised examples, endpoint membership in the owning domain, and nearby admitted triples in the domain subgraph. This is the strongest version of the claim in the paper, because it turns governance from a generic review step into a domain-owned memory process.
 
-2. Governed Structure at Scale
+Table 1 — GPT-5 KG construction quality on 50 SciERC test documents
 
-The second core claim is that the governed-memory structure remains correct and auditable at larger corpus scale.
+| System | Entities | Triples | Strict Triple F1 | Fuzzy/Mapped Triple F1 | Triple Hallucination | TP / FP / FN |
+|---|---:|---:|---:|---:|---:|---:|
+| GPT-5 Flat KG | 703 | 1366 | 0.116 | 0.204 | 92.7% | 100 / 1266 / 251 |
+| GPT-5 MaKG basic governance | 687 | 750 | 0.144 | 0.305 | 89.5% | 79 / 671 / 272 |
+| GPT-5 MaKG domain-memory governance | 687 | 472 | 0.173 | 0.333 | 85.0% | 71 / 401 / 280 |
 
-Table 2 — Governed structure at 100 documents
+The flat KG has the highest raw triple count, but most of those triples do not match the SciERC gold graph. It produces 1366 triples, of which 1266 are counted as false positives under strict SciERC matching. MaKG basic governance is substantially more selective: it reduces the admitted graph to 750 triples, improves strict triple F1 from 0.116 to 0.144, improves fuzzy/mapped triple F1 from 0.204 to 0.305, and reduces hallucination from 92.7% to 89.5%. This already shows that governance changes what enters memory rather than acting as a cosmetic layer on top of the same graph.
 
-| Metric | Value |
-|---|---|
-| Routing exact match | 1.000 |
-| Domain coverage | 0.984 |
-| Governance completeness | 1.000 |
-| Audit integrity | 1.000 |
-| Cross-domain fraction | 0.444 |
-| Orphan-entity fraction | 0.638 |
-| Zero-triple docs | 30 / 100 |
+The full domain-memory version is stronger again. It admits 472 triples, improves strict triple F1 to 0.173, improves fuzzy/mapped triple F1 to 0.333, and lowers hallucination to 85.0%. In other words, adding domain-local memory on top of governed routing gives another clear lift over basic governance. This is the key result for the paper: governance is most effective when domains are not only routing destinations but active memory-holding experts.
 
-The 100-document governed audit_only build shows that routing, ownership assignment, coverage, completeness, and auditability remain essentially perfect at scale. The graph itself is still sparse and extraction quality remains noisy, but that is exactly the point of separating the claims: extraction degrades with scale, while the governed-memory structure remains intact.
+The absolute hallucination rates are still high because SciERC is a strict closed-label benchmark and does not treat all source-supported extracted facts as true positives. For that reason, the paper should not claim that extraction is solved. The right claim is narrower and stronger: given the same scientific extraction setting, governed admission produces a cleaner admitted graph than flat insertion, and domain-memory governance is the strongest admission policy tested. Basic governance is worth keeping in the table because it makes the mechanism legible: routing plus review already helps, and routing plus domain-local memory helps more.
 
-This is the second main claim of the paper: the governance layer scales structurally even when extraction quality is imperfect.
+2. Governance Ablation
 
-3. Downstream QA Usefulness
+The second result asks what part of governance matters. All rows replay the same 50-document GPT-5 candidate proposal stream from the MaKG audit log, so differences come from admission policy rather than from different extraction outputs.
 
-The third main claim is that the governed data structure is not only cleaner as a storage object, but more useful for downstream question answering.
+Table 2 — Governance ablation on 50 SciERC test documents
 
-Table 3 — QA on the governed 50-document KG
+| Condition | What is removed / kept | Triples | Strict F1 | Fuzzy/Mapped F1 | Hallucination | TP / FP / FN |
+|---|---|---:|---:|---:|---:|---:|
+| Flat KG | no governance | 1366 | 0.116 | 0.204 | 92.7% | 100 / 1266 / 251 |
+| Domain rules only | ownership routing, no LLM reviewer | 978 | 0.131 | 0.262 | 91.1% | 87 / 891 / 264 |
+| Global reviewer, minimal | centralized approve/reject reviewer, no domain memory | 674 | 0.146 | 0.304 | 88.9% | 75 / 599 / 276 |
+| Global reviewer, matched | centralized reviewer with stronger matched rubric | 533 | 0.167 | 0.330 | 86.1% | 74 / 459 / 277 |
+| MaKG domain-memory reviewer | domain routing + local domain memory + endpoint neighborhood | 472 | 0.173 | 0.333 | 85.0% | 71 / 401 / 280 |
 
-| Metric | flat_path_basic | graphrag_basic | domain_basic | domain_advanced |
-|---|---|---|---|---|
-| Corrected grounded-QA score | 0.691 | 0.673 | 0.680 | 0.698 |
-| Faithfulness | 1.000 | 0.984 | 1.000 | 1.000 |
-| Precision / support | 1.000 | 0.984 | 0.958 | 0.991 |
-| Hallucination rate | 0.000 | 0.016 | 0.042 | 0.009 |
-| Coverage | 0.938 | 0.875 | 0.938 | 1.000 |
+This ablation is the cleanest evidence that governance matters. Domain rules alone help but remain below MaKG, showing that ownership without review is insufficient. A minimal centralized global reviewer is competitive with basic MaKG, which is expected because both are performing isolated triple filtering. However, the full MaKG domain-memory reviewer is the strongest row: it exceeds both the minimal and matched global reviewer on strict F1 and fuzzy/mapped F1 and has the lowest hallucination.
 
-The main downstream comparison is now between four systems: a flat baseline, a GraphRAG-style community-summary baseline, a governed domain-routed baseline, and the full governed stack with critique and graph exploration. After correcting negative-question abstention scoring, GraphRAG no longer looks artificially broken; instead it behaves like a cautious graph-aware baseline with low hallucination but lower coverage than the governed system. The strongest result comes from the full governed stack, domain_advanced, which achieves the highest corrected composite score, full coverage, and near-perfect faithfulness and precision. This is the downstream version of the paper’s main claim: governance is not only producing a cleaner graph, but also a more useful graph for grounded question answering.
+The important interpretation is not that every domain label magically improves extraction. The result is that domain expertise becomes useful when it is implemented as memory. The domain-memory reviewer does not merely see a candidate triple and evidence. It also sees the owning domain, endpoint membership, local accepted/rejected relation patterns, and nearby admitted triples. This gives the reviewer information that a single global reviewer does not have. This is exactly the mechanism the paper argues for: the KG is a governed organizational memory, not a flat list of triples passed through a generic judge.
 
-This is the third main claim of the paper: the governed data structure improves downstream QA quality, especially on groundedness and hallucination control.
+We also run a smaller source-filtering ablation to check whether the MaKG gain is merely caused by EvidenceLinker and VerificationAgent filtering unsupported triples before insertion. This ablation is run on a 10-document slice because it invokes the full evidence-linking and verification path.
 
-Table 4 — Multi-hop QA on MuSiQue (n=20, 2026-04-30)
+Table 3 — Evidence-only ablation on 10 SciERC test documents
 
-This table compares the governed multi-agent KG (with bridge-entity expansion at QA time) against two strong open-source baselines on MuSiQue, a multi-hop QA benchmark explicitly designed to require chaining facts across documents. All three systems answer the same 20 questions in the same order, score against the same SQuAD-normalized gold answers, and use uniform metrics (exact match, substring exact match, token F1, answer rate). KG and GraphRAG answers are post-processed with the same short-answer extractor; document RAG is prompted for short answers directly. The MuSiQue governed KG was built from supporting facts only under permissive governance, matching prior MuSiQue runs in this paper.
+| Condition | Triples | Strict F1 | Fuzzy/Mapped F1 | Hallucination | TP / FP / FN |
+|---|---:|---:|---:|---:|---:|
+| Flat KG | 305 | 0.163 | 0.265 | 89.5% | 32 / 273 / 56 |
+| EvidenceLinker + Verification only | 298 | 0.124 | 0.228 | 91.9% | 24 / 274 / 64 |
+| MaKG basic governance | 166 | 0.165 | 0.362 | 87.3% | 21 / 145 / 67 |
 
-| System | Exact Match | Substring EM | Token F1 | Answer Rate |
-|---|---|---|---|---|
-| Document RAG (gemma4:31b, top-k=6) | 0.05 | 0.15 | 0.112 | 0.25 |
-| Official Microsoft GraphRAG (fast index, basic search) | 0.35 | 0.45 | 0.410 | 1.00 |
-| MAG-KG domain_basic + bridge expansion (ours) | 0.60 | 0.70 | 0.636 | 0.90 |
+Evidence-only filtering does not explain the MaKG result. On the 10-document slice, source filtering plus verification underperforms MaKG on strict F1, fuzzy/mapped F1, and hallucination. This supports the claim that the governance layer changes admission behavior beyond simply requiring evidence text.
 
-The governed multi-agent KG dominates both baselines on every retrieval-quality metric: a 1.7× lift on exact match over Microsoft's official GraphRAG implementation and a 12× lift over document-level RAG, with the largest gap on substring exact match where the gold span is a substring of the prediction. This is the cleanest evidence to date that the governed graph is not just structurally cleaner but operationally useful as a multi-hop reasoning substrate. The bridge-expansion mechanism — where domain experts surface entities that appear in their first-pass answers, and a second pass enriches the synthesizer prompt with the one-hop neighborhood of those entities — is what unlocks chained reasoning over the governed graph without any additional LLM calls beyond the standard QA pipeline. Document RAG fails because the gold answer typically requires combining facts from at least two paragraphs that retrieval cannot co-locate at top-k=6; GraphRAG recovers most entities but its community-summary representation does not preserve the fine-grained relational structure needed for spouse-of-performer-of-Green-style chains.
+3. Human Triple Review
+
+The automatic SciERC evaluation is useful but incomplete. It penalizes any predicted triple absent from the gold annotations, even if the source text supports it. To address this, we create a human review sample from the 50-document GPT-5 construction experiment.
+
+Table 4 — Human triple review sample design
+
+| Group | Source | Purpose |
+|---|---|---|
+| Governed-only triples | admitted by MaKG, absent from flat KG | checks whether governance adds supported useful facts |
+| Flat-only triples | admitted by flat KG, absent from MaKG | checks whether governance removes unsupported or noisy facts |
+| Shared triples | admitted by both systems | control group for robust facts |
+| Revised triples | revised by MaKG before admission | checks whether revision corrects subject/relation/object errors |
+
+The annotation file is `evaluation/results/governance_ablation_samples_gpt5_50docs_with_context.csv`. Each row contains the triple, entity labels, relation, confidence, extracted evidence, full source context, governance rationale when available, and blank annotation columns for support, relation correctness, endpoint correctness, graph usefulness, decision quality, and notes. The `source_context` column is included so annotators can judge the full document evidence rather than a shortened evidence snippet. This human review is important because it tests whether MaKG's alleged false positives are genuinely unsupported or merely missing from the SciERC gold graph.
+
+The expected reporting format after annotation is: support rate for governed-only triples, rejection quality for flat-only triples, robustness of shared triples, and correction quality for revised triples. This study directly validates the governance mechanism in a way that closed benchmark F1 cannot.
+
+4. Downstream QA on MuSiQue
+
+The downstream QA experiment evaluates whether the governed graph is useful for multi-hop question answering. We use a 50-question MuSiQue 2-hop slice. The supporting-only corpus contains 100 contexts across 99 unique titles. We compare MaKG domain-routed QA against official Microsoft GraphRAG, a graph-based retrieval baseline. This is the cleanest downstream comparison for the paper because it asks whether our governed graph structure leads to better graph-based QA than an existing graph-based system.
+
+Table 5 — MuSiQue QA, 50-question slice
+
+| System | Setting | EM | Token F1 | Answer Rate | Interpretation |
+|---|---|---:|---:|---:|---|
+| GPT-5 GraphRAG | supporting-only | 0.580 | 0.709 | 1.00 | official graph-aware baseline |
+| GPT-5 MaKG domain QA | supporting-only | 0.660 | 0.775 | 1.00 | governed graph with domain-routed QA |
+
+MaKG domain QA outperforms official GraphRAG on both exact match and token F1: 0.660 EM versus 0.580, and 0.775 token F1 versus 0.709. This supports the application-layer claim of the paper: the governed graph is not only a storage artifact, but can also be used by downstream applications through domain-routed experts. GraphRAG builds and retrieves from a graph-based representation, but it does not preserve ownership, domain-local memory, or governed routing. MaKG uses the organization of the graph directly during QA, routing questions through domain-owned subgraphs and synthesizing answers from domain expert responses.
+
+5. Cost and Runtime
+
+We also report computational cost because MaKG trades additional governance calls for a cleaner and more auditable graph. The following table uses exact API call and token counts from JSONL usage logs. We report tokens rather than dollar costs because API pricing changes over time and depends on account/model settings.
+
+Table 6 — LLM call and token cost
+
+| Stage | Unit | LLM Calls | Prompt Tokens | Completion Tokens | Total Tokens | Calls / Unit | Tokens / Unit |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| SciERC extraction build | 50 docs | 1169 | 4,042,896 | 814,849 | 4,857,745 | 23.38 / doc | 97,155 / doc |
+| Domain-memory governance review | 1304 candidate triples | 49 | 754,434 | 83,183 | 837,617 | 0.038 / candidate | 642 / candidate |
+| Full best extraction pipeline | 50 docs | 1218 | 4,797,330 | 898,032 | 5,695,362 | 24.36 / doc | 113,907 / doc |
+| Global reviewer, matched | 1304 candidates | 49 | 97,829 | 70,751 | 168,580 | 0.038 / candidate | 129 / candidate |
+| Global reviewer, minimal | 1304 candidates | 66 | 107,287 | 53,103 | 160,390 | 0.051 / candidate | 123 / candidate |
+| MuSiQue KG build | 99 supporting titles | 328 | 3,348,277 | 430,130 | 3,778,407 | 3.31 / title | 38,166 / title |
+| MuSiQue KG-QA ablation | 200 KG answers | 1371 | 3,349,454 | 2,080,567 | 5,430,021 | 6.86 / answer | 27,150 / answer |
+
+Runtime was also material. The GPT-5 SciERC governed extraction build took 9962 seconds, or 2.77 hours, for 50 documents. The flat GPT-5 SciERC build took 3891 seconds, or 1.08 hours. The 10-document evidence-only ablation took 821 seconds. The current usage logs do not separate every internal extraction sub-agent into distinct cost buckets. Entity extraction, relation extraction, evidence linking, and any deliberation triggered inside extraction are included in the extraction-build usage log. Governance review is separately logged because it was replayed as its own domain-memory review stage.
 
 Main Takeaway
 
-The ideal main-paper takeaway should now be simple. First, governance improves the admitted relational graph relative to a flat KG. Second, the governed-memory structure remains correct and auditable at 100-document scale. Third, the governed representation improves downstream QA faithfulness and reduces hallucination on the SciERC governed KG and, on the harder external multi-hop benchmark MuSiQue, the governed graph plus bridge-entity expansion outperforms both document RAG and Microsoft's official GraphRAG implementation by a wide margin on exact match, substring exact match, and token F1. Everything else — pairwise-v2 extraction robustness, detailed triage activity, strict-review tradeoffs, and judge-panel reruns — should be retained as supporting appendix evidence rather than crowding the main results section.
+The final empirical story should be stated as follows. Flat insertion produces a larger graph, but it admits many noisy triples. MaKG improves the admitted graph by adding governance, and the best result appears when domain experts carry local memory rather than acting as generic reviewers. The ablation shows that source filtering alone, deterministic ownership alone, and a centralized global reviewer do not fully explain the result. The full domain-memory governance condition is the strongest construction system tested: it has the best strict F1, best fuzzy/mapped F1, and lowest hallucination. Downstream, MaKG outperforms GraphRAG on MuSiQue graph-based QA, showing that the governed graph can serve as a useful application substrate rather than only a passive storage artifact. The human review study is the final validation layer, designed to show whether triples counted as false positives by SciERC are in fact source-supported and useful for the governed graph.
