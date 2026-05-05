@@ -100,6 +100,59 @@ HEAD -> TAIL direction reminder:
 - Evaluate-for: (metric or dataset) -> (method being evaluated)
 """
 
+SCIERC_PAIRWISE_DECISION_RULES = """
+SciERC annotation rules for this benchmark:
+- Label ONLY direct relations between two listed entities in the same sentence/window.
+- Prefer NONE when the sentence merely says both entities are in the same paper, field,
+  experiment, dataset description, title, or broad topic.
+- Prefer NONE for plausible background knowledge that is not stated by a clear phrase.
+- Prefer NONE for generic "related to" or topical association.
+- Used-for needs a use/application/function marker: "used for", "applied to",
+  "performs", "identifies", "recognizes", "extracts", "predicts", "classifies".
+- Feature-of needs an attribute/property marker: "feature", "property",
+  "characteristic", "attribute", "uses X as a feature".
+- Part-of needs containment/composition: "part of", "component", "includes",
+  "consists of", "stage", "module", "subset".
+- Hyponym-of needs type/subtype/instance language: "is a", "such as",
+  "including", "type of", "class of".
+- Evaluate-for needs an evaluation marker: "evaluated on/by", "measured by",
+  "score", "accuracy", "dataset/corpus used to evaluate".
+- Conjunction is only for explicit coordination/listing: "X and Y", "X, Y, and Z".
+- Compare is only for explicit comparison/contrast/baseline language.
+
+Confidence calibration:
+- 0.85-1.00: exact marker and clear head/tail direction.
+- 0.75-0.84: directly stated but wording is less explicit.
+- below 0.75: weak, topical, ambiguous, or plausible but not SciERC-annotatable.
+"""
+
+SCIERC_RELATION_ALIASES = {
+    "USED_FOR": "Used-for",
+    "USES": "Used-for",
+    "UTILIZES": "Used-for",
+    "APPLIED_TO": "Used-for",
+    "APPLIES_TO": "Used-for",
+    "FEATURE_OF": "Feature-of",
+    "HAS_FEATURE": "Feature-of",
+    "PROPERTY_OF": "Feature-of",
+    "PART_OF": "Part-of",
+    "IS_PART_OF": "Part-of",
+    "COMPONENT_OF": "Part-of",
+    "HYPONYM_OF": "Hyponym-of",
+    "IS_A": "Hyponym-of",
+    "TYPE_OF": "Hyponym-of",
+    "SUBTYPE_OF": "Hyponym-of",
+    "COMPARE": "Compare",
+    "COMPARES": "Compare",
+    "COMPARED_TO": "Compare",
+    "CONJUNCTION": "Conjunction",
+    "AND": "Conjunction",
+    "COMBINED_WITH": "Conjunction",
+    "EVALUATE_FOR": "Evaluate-for",
+    "EVALUATED_FOR": "Evaluate-for",
+    "EVALUATES": "Evaluate-for",
+}
+
 
 RELATION_IDENTIFICATION_PROMPT = """Identify all relation types present in the following text.
 
@@ -257,6 +310,7 @@ You are working in fixed-schema benchmark mode. Use ONLY these relation labels:
 {allowed_relation_types}
 
 {direction_guide}
+{decision_rules}
 
 DOCUMENT TEXT:
 {text}
@@ -267,9 +321,10 @@ CANDIDATE ENTITY PAIRS:
 Instructions:
 1. Each candidate pair is already an exact entity pair from the extracted entity list.
 2. For each pair, choose exactly one label from the allowed relation types or NONE.
-3. Only assign a relation if the text explicitly or strongly supports it.
+3. Only assign a relation if the text explicitly supports a SciERC annotation.
 4. Respect the required HEAD -> TAIL direction for asymmetric relations.
 5. For symmetric relations such as Conjunction / Compare, you may keep the presented order.
+6. If the best label is uncertain or merely plausible, choose NONE.
 
 Return JSON:
 {{
@@ -441,6 +496,7 @@ class RelationExtractor(BaseAgent):
         enable_fixed_schema_pairwise: bool = True,
         enable_relation_gleaning: bool = True,
         enable_deterministic_attribute_binding: bool = False,
+        fixed_schema_min_triple_confidence: Optional[float] = None,
     ):
         super().__init__(
             name="RelationExtractor",
@@ -458,6 +514,11 @@ class RelationExtractor(BaseAgent):
         self.enable_fixed_schema_pairwise = enable_fixed_schema_pairwise
         self.enable_relation_gleaning = enable_relation_gleaning
         self.enable_deterministic_attribute_binding = enable_deterministic_attribute_binding
+        if fixed_schema_min_triple_confidence is None:
+            fixed_schema_min_triple_confidence = float(
+                os.getenv("FIXED_SCHEMA_MIN_TRIPLE_CONFIDENCE", "0")
+            )
+        self.fixed_schema_min_triple_confidence = fixed_schema_min_triple_confidence
         
         # Track discovered relation types
         self.discovered_relations: Dict[str, DiscoveredRelation] = {}
@@ -551,6 +612,84 @@ class RelationExtractor(BaseAgent):
         if domain_config and domain_config.get("relation_types"):
             return True
         return False
+
+    def _canonicalize_fixed_schema_relation(
+        self,
+        relation: Any,
+        allowed_relation_types: List[str],
+    ) -> Optional[str]:
+        """Return an allowed fixed-schema relation label, or None if invalid.
+
+        GPT-5 often emits harmless label variants such as ``used_for`` or
+        ``COMPARES`` even when prompted with the exact SciERC labels. In
+        benchmark mode those aliases should be normalized before integration,
+        while genuinely out-of-schema labels such as ``Occurs-in`` should be
+        dropped instead of entering the KG through governance repair.
+        """
+        if relation is None:
+            return None
+        relation_text = str(relation).strip()
+        if not relation_text:
+            return None
+        allowed = [str(label).strip() for label in allowed_relation_types if str(label).strip()]
+        allowed_by_norm = {
+            label.upper().replace("-", "_").replace(" ", "_"): label
+            for label in allowed
+        }
+        norm = relation_text.upper().replace("-", "_").replace(" ", "_")
+        if norm in allowed_by_norm:
+            return allowed_by_norm[norm]
+        alias = SCIERC_RELATION_ALIASES.get(norm)
+        if alias and alias in allowed:
+            return alias
+        return None
+
+    def _enforce_fixed_schema_relations(
+        self,
+        triples: List[Dict[str, Any]],
+        allowed_relation_types: List[str],
+    ) -> List[Dict[str, Any]]:
+        if not triples or not allowed_relation_types:
+            return triples
+
+        cleaned: List[Dict[str, Any]] = []
+        for triple in triples:
+            raw_relation = triple.get("relation", "")
+            canonical = self._canonicalize_fixed_schema_relation(
+                raw_relation,
+                allowed_relation_types,
+            )
+            if canonical is None:
+                continue
+            if canonical != raw_relation:
+                metadata = triple.get("metadata")
+                if not isinstance(metadata, dict):
+                    metadata = {}
+                metadata["original_relation"] = raw_relation
+                metadata["relation_canonicalized"] = True
+                triple["metadata"] = metadata
+                triple["relation"] = canonical
+            cleaned.append(triple)
+        return cleaned
+
+    def _filter_fixed_schema_triples_by_confidence(
+        self,
+        triples: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Drop weak fixed-schema triples before governance admission."""
+        threshold = self.fixed_schema_min_triple_confidence
+        if threshold <= 0:
+            return triples
+
+        kept: List[Dict[str, Any]] = []
+        for triple in triples:
+            try:
+                confidence = float(triple.get("confidence", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                confidence = 0.0
+            if confidence >= threshold:
+                kept.append(triple)
+        return kept
 
     def _entity_surface_forms(self, entity: Dict[str, Any]) -> List[str]:
         surfaces: List[str] = []
@@ -660,6 +799,7 @@ class RelationExtractor(BaseAgent):
             prompt = PAIRWISE_RELATION_SCORING_PROMPT.format(
                 allowed_relation_types=", ".join(relation_types + ["NONE"]),
                 direction_guide=direction_guide,
+                decision_rules=SCIERC_PAIRWISE_DECISION_RULES,
                 text=text,
                 candidate_pairs=json.dumps(batch, indent=2),
             )
@@ -928,6 +1068,7 @@ class RelationExtractor(BaseAgent):
                 continue
 
             if not self.enable_open_world:
+                triples = self._enforce_fixed_schema_relations(triples, suggested_types)
                 triples = self._align_triples_to_known_entities(triples, segment_entities)
             post_align_count = len(triples)
             triples = self._dedupe_triples(triples)

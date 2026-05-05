@@ -128,6 +128,8 @@ class GovernedKnowledgeGraph:
         review_callback: Optional[
             Callable[[Triple, GovernanceAssignment, KnowledgeGraph, OrgChart], GovernanceDecision]
         ] = None,
+        min_admission_confidence: Optional[float] = None,
+        confidence_policy_label: str = "confidence_policy",
     ):
         self._kg = kg or KnowledgeGraph()
         self._org_chart = org_chart or OrgChart()
@@ -135,11 +137,14 @@ class GovernedKnowledgeGraph:
         self._audit_log: List[GovernanceDecision] = []
         self._pending_review: List[Triple] = []
         self._review_callback = review_callback
+        self._min_admission_confidence = min_admission_confidence
+        self._confidence_policy_label = confidence_policy_label
         self._bootstrap_assignment_stats: Dict[str, Any] = {}
         self._triage_threshold = 0.7
         self._triage_stats: Dict[str, Any] = {
             "auto_approved_low_risk": 0,
             "reviewed": 0,
+            "policy_rejected": 0,
             "escalated_without_callback": 0,
             "review_reasons": {},
         }
@@ -226,6 +231,11 @@ class GovernedKnowledgeGraph:
             metadata=metadata or {},
         )
         assignment = self._org_chart.route_triple_for_governance(triple)
+
+        policy_decision = self._admission_policy_decision(triple, assignment)
+        if policy_decision is not None:
+            self.commit_decision(policy_decision)
+            return policy_decision
 
         if self._governance_mode == "audit_only":
             decision = GovernanceDecision(
@@ -375,6 +385,46 @@ class GovernedKnowledgeGraph:
             return "conflict"
         return None
 
+    def _admission_policy_decision(
+        self,
+        triple: Triple,
+        assignment: GovernanceAssignment,
+    ) -> Optional[GovernanceDecision]:
+        """Apply deterministic governance policies before domain review.
+
+        This is intentionally part of admission governance, not evaluation.
+        Fixed-schema benchmarks can configure a conservative confidence floor
+        so weak triples are auditable rejections instead of silently filtered
+        during scoring.
+        """
+        if self._min_admission_confidence is None:
+            return None
+        confidence = triple.confidence if triple.confidence is not None else 0.0
+        if confidence >= self._min_admission_confidence:
+            return None
+
+        if self._governance_mode == "triage":
+            self._triage_stats["policy_rejected"] = (
+                self._triage_stats.get("policy_rejected", 0) + 1
+            )
+            reason_counts = self._triage_stats.setdefault("review_reasons", {})
+            reason_counts[self._confidence_policy_label] = (
+                reason_counts.get(self._confidence_policy_label, 0) + 1
+            )
+
+        return GovernanceDecision(
+            triple=triple,
+            action="reject",
+            domain_id=assignment.primary_domain_id,
+            rationale=(
+                f"Governance admission policy rejected proposal: confidence "
+                f"{confidence:.2f} is below required threshold "
+                f"{self._min_admission_confidence:.2f} "
+                f"[policy={self._confidence_policy_label}]"
+            ),
+            assignment=assignment,
+        )
+
     def _relation_outside_schema(self, relation: str) -> bool:
         if not self._org_chart.domains:
             return False
@@ -483,6 +533,10 @@ class GovernedKnowledgeGraph:
             },
             "bootstrap_assignment_stats": self._bootstrap_assignment_stats,
             "triage_stats": self._triage_stats,
+            "governance_policy": {
+                "min_admission_confidence": self._min_admission_confidence,
+                "confidence_policy_label": self._confidence_policy_label,
+            },
         }
 
     def to_dict(self) -> Dict[str, Any]:
@@ -493,6 +547,10 @@ class GovernedKnowledgeGraph:
             "audit_log": [decision.to_dict() for decision in self._audit_log],
             "bootstrap_assignment_stats": self._bootstrap_assignment_stats,
             "triage_stats": self._triage_stats,
+            "governance_policy": {
+                "min_admission_confidence": self._min_admission_confidence,
+                "confidence_policy_label": self._confidence_policy_label,
+            },
         }
 
     def to_json(self) -> str:
@@ -511,6 +569,13 @@ class GovernedKnowledgeGraph:
             kg=kg,
             org_chart=org_chart,
             governance_mode=data.get("governance_mode", "audit_only"),
+            min_admission_confidence=(
+                data.get("governance_policy", {}).get("min_admission_confidence")
+            ),
+            confidence_policy_label=(
+                data.get("governance_policy", {}).get("confidence_policy_label")
+                or "confidence_policy"
+            ),
         )
         graph._audit_log = [
             GovernanceDecision.from_dict(item)
@@ -522,6 +587,7 @@ class GovernedKnowledgeGraph:
             {
                 "auto_approved_low_risk": 0,
                 "reviewed": 0,
+                "policy_rejected": 0,
                 "escalated_without_callback": 0,
                 "review_reasons": {},
             },

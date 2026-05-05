@@ -98,6 +98,14 @@ def main() -> None:
     parser.add_argument("--reuse-corpus-schema", action="store_true", default=True)
     parser.add_argument("--skip-evidence-linking", action="store_true")
     parser.add_argument("--skip-verification", action="store_true")
+    parser.add_argument(
+        "--strict-source-only-verification",
+        action="store_true",
+        help=(
+            "Ablation mode: EvidenceLinker/VerificationAgent only keep triples "
+            "with exact source evidence spans from the current document."
+        ),
+    )
     parser.add_argument("--clear-caches", action="store_true",
                         help="Clear per-doc caches before running for fresh extraction")
     parser.add_argument(
@@ -166,6 +174,7 @@ def main() -> None:
         reuse_corpus_schema=args.reuse_corpus_schema,
         skip_evidence_linking=args.skip_evidence_linking,
         skip_verification=args.skip_verification,
+        strict_source_only_verification=args.strict_source_only_verification,
         quality_threshold=0.4,
         max_refinement_iterations=1,
         enable_self_consistency=False,
@@ -263,6 +272,7 @@ def main() -> None:
             "reuse_corpus_schema": args.reuse_corpus_schema,
             "skip_evidence_linking": args.skip_evidence_linking,
             "skip_verification": args.skip_verification,
+            "strict_source_only_verification": args.strict_source_only_verification,
             "governance_enabled": False,
             "relation_gleaning_enabled": getattr(
                 orchestrator.relation_extractor, "enable_relation_gleaning", False

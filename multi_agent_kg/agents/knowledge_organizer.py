@@ -603,6 +603,14 @@ class KnowledgeOrganizer(BaseAgent):
 
         allowed_relations = self._allowed_relation_types()
         seen_triples: Set[tuple] = set()
+        skipped_triple_reasons = {
+            "missing_field": 0,
+            "bad_relation": 0,
+            "schema_rejected": 0,
+            "self_reference": 0,
+            "duplicate": 0,
+            "add_failed": 0,
+        }
 
         # ── Add entities ─────────────────────────────────────────────
         for entity in entities:
@@ -688,9 +696,11 @@ class KnowledgeOrganizer(BaseAgent):
             relation = triple.get("relation", "")
 
             if not raw_subj or not raw_obj or not relation:
+                skipped_triple_reasons["missing_field"] += 1
                 skipped_triples += 1
                 continue
             if relation.upper() in _BAD_RELATIONS:
+                skipped_triple_reasons["bad_relation"] += 1
                 skipped_triples += 1
                 continue
             relation, relation_allowed = self._enforce_relation_schema(
@@ -699,6 +709,7 @@ class KnowledgeOrganizer(BaseAgent):
             )
             if not relation_allowed:
                 self.integration_stats["relations_schema_rejected"] += 1
+                skipped_triple_reasons["schema_rejected"] += 1
                 skipped_triples += 1
                 continue
 
@@ -752,9 +763,11 @@ class KnowledgeOrganizer(BaseAgent):
 
             triple_key = (resolved_subj, relation, resolved_obj)
             if resolved_subj == resolved_obj:
+                skipped_triple_reasons["self_reference"] += 1
                 skipped_triples += 1
                 continue
             if triple_key in seen_triples:
+                skipped_triple_reasons["duplicate"] += 1
                 skipped_triples += 1
                 continue
             seen_triples.add(triple_key)
@@ -828,10 +841,14 @@ class KnowledgeOrganizer(BaseAgent):
             if result is not None:
                 added_triples += 1
             else:
+                skipped_triple_reasons["add_failed"] += 1
                 skipped_triples += 1  # Duplicate
 
         print(f"  Entity resolution: mapped {len(name_to_id)} name variants")
         print(f"  Triples skipped (dup/invalid): {skipped_triples}")
+        if skipped_triples:
+            print(f"  Triple skip reasons: {skipped_triple_reasons}")
+        self.integration_stats["triple_skip_reasons"] = skipped_triple_reasons
         return added_entities, added_triples
 
     def _allowed_relation_types(self) -> Set[str]:

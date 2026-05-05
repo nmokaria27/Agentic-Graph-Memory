@@ -37,6 +37,19 @@ from multi_agent_kg.core.deliberative_orchestrator import DeliberativeOrchestrat
 from multi_agent_kg.llm.openai_client import chat_completion, chat_completion_json
 
 
+GOVERNANCE_REVIEW_DECISION_POLICY = """Decision policy:
+- "approve": accept as-is only if the source text directly supports the subject, relation, and object.
+- "reject": do not add it if evidence is missing, merely topical, too generic, or does not support the exact relation.
+- "revise": accept a corrected/normalized triple only when the correction is directly supported by the source text.
+- "escalate": use only for genuine ownership ambiguity or evidence ambiguity that cannot be safely resolved.
+
+Review rules:
+- Do not approve a triple because it is plausible from background knowledge.
+- Prefer reject over approve when source support is weak.
+- Prefer revise over reject when the evidence clearly supports the same fact with a normalized endpoint or relation.
+- Keep revised triples within the same source-supported claim; do not invent a new fact."""
+
+
 class ConflictResolver:
     """
     LLM-backed agent that decides how to handle conflicting triples
@@ -205,6 +218,7 @@ class GovernanceReviewBoard:
             ]
         )
         assignment_dict = assignment.to_dict() if hasattr(assignment, "to_dict") else assignment
+        neighborhood_context = self._entity_neighborhood_context(candidate)
 
         if existing is None:
             prompt = f"""You are reviewing a proposed knowledge-graph update under an
@@ -215,6 +229,9 @@ GOVERNANCE ROUTING:
 
 {domain_context or "No owning domain was found in the current org chart."}
 
+NEIGHBORHOOD CONTEXT:
+{neighborhood_context or "No prior graph context exists for this candidate's endpoints."}
+
 SOURCE TEXT:
 {source_text[:3000]}
 
@@ -222,11 +239,7 @@ PROPOSED TRIPLE:
 ({candidate.subject}) -[{candidate.relation}]-> ({candidate.object})
 [confidence={candidate.confidence}]
 
-Decide one action:
-- "approve": accept as-is
-- "reject": do not add it
-- "revise": accept a better normalized triple
-- "escalate": insufficient evidence or ownership ambiguity
+{GOVERNANCE_REVIEW_DECISION_POLICY}
 
 Return JSON:
 {{
@@ -245,6 +258,9 @@ GOVERNANCE ROUTING:
 
 {domain_context or "No owning domain was found in the current org chart."}
 
+NEIGHBORHOOD CONTEXT:
+{neighborhood_context or "No prior graph context exists for this candidate's endpoints."}
+
 SOURCE TEXT:
 {source_text[:3000]}
 
@@ -256,12 +272,17 @@ CANDIDATE TRIPLE:
 ({candidate.subject}) -[{candidate.relation}]-> ({candidate.object})
 [confidence={candidate.confidence}]
 
-Decide one resolution:
+Decision policy:
 - "keep_existing"
 - "keep_new"
 - "keep_both"
 - "merge"
 - "escalate"
+
+Review rules:
+- Use the source text and governance routing to decide which fact should remain.
+- Do not keep a new conflicting triple just because it is plausible.
+- Merge only when the merged triple is directly source-supported.
 
 Return JSON:
 {{
@@ -311,6 +332,30 @@ Return ONLY the JSON."""
         if conflict_index is not None:
             result["conflict_index"] = conflict_index
         return result
+
+    def _entity_neighborhood_context(self, candidate: Any, limit: int = 12) -> str:
+        """Compact 1-hop context around candidate endpoints for graph-aware review."""
+        endpoint_ids = [
+            str(getattr(candidate, "subject", "") or ""),
+            str(getattr(candidate, "object", "") or ""),
+        ]
+        lines: List[str] = []
+        seen = set()
+        for entity_id in endpoint_ids:
+            if not entity_id or entity_id in seen:
+                continue
+            seen.add(entity_id)
+            entity = self.base_kg.entities.get(entity_id)
+            if entity is not None:
+                label = ", ".join(entity.labels[:3]) if entity.labels else entity.id
+                lines.append(f"ENTITY {entity_id}: labels={label}; type={entity.type or 'unknown'}")
+            triples = (
+                self.base_kg.get_triples_by_subject(entity_id)
+                + self.base_kg.get_triples_by_object(entity_id)
+            )
+            for triple in triples[:limit]:
+                lines.append(f"  ({triple.subject}) -[{triple.relation}]-> ({triple.object})")
+        return "\n".join(lines[: max(limit * 2, limit)])
 
 
 class IncrementalEnricher:

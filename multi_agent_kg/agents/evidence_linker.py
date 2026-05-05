@@ -12,6 +12,7 @@ This is the last worker agent before coordinators validate.
 
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 import json
+import re
 
 from multi_agent_kg.agents.base import (
     BaseAgent,
@@ -126,6 +127,7 @@ class EvidenceLinker(BaseAgent):
         llm_config: Optional[LLMConfig] = None,
         quality_threshold: float = 0.85,
         enable_cross_reference: bool = True,
+        strict_source_only: bool = False,
     ):
         super().__init__(
             name="EvidenceLinker",
@@ -138,6 +140,7 @@ class EvidenceLinker(BaseAgent):
             quality_threshold=quality_threshold,
         )
         self.enable_cross_reference = enable_cross_reference
+        self.strict_source_only = strict_source_only
 
     def run(
         self,
@@ -181,11 +184,16 @@ class EvidenceLinker(BaseAgent):
         # Stage 1: Link to source evidence
         linked_triples = self._link_to_evidence(triples, full_text)
         
-        # Stage 2: Cross-reference with prior knowledge
-        if self.enable_cross_reference:
+        # Stage 2: Cross-reference with prior knowledge. Strict source-only
+        # ablations intentionally disable this so "source-supported" means
+        # supported by the current document, not by prior KG memory.
+        if self.enable_cross_reference and not self.strict_source_only:
             prior_knowledge = self._get_prior_knowledge()
             if prior_knowledge:
                 linked_triples = self._cross_reference(linked_triples, prior_knowledge)
+
+        if self.strict_source_only:
+            linked_triples = self._enforce_strict_source_support(linked_triples, full_text)
         
         # Calculate final confidence for each triple
         for triple in linked_triples:
@@ -279,15 +287,98 @@ class EvidenceLinker(BaseAgent):
                 max_tokens=4096,
             )
             
-            linked = result if isinstance(result, list) else result.get("linked_triples", [])
+            linked = (
+                result
+                if isinstance(result, list)
+                else result.get("linked_triples", []) if isinstance(result, dict)
+                else []
+            )
+            linked_by_key = {}
+            for item in linked:
+                if not isinstance(item, dict):
+                    continue
+                triple_payload = item.get("triple", item) if isinstance(item, dict) else {}
+                key = (
+                    str(triple_payload.get("subject", "")).strip().lower(),
+                    str(triple_payload.get("relation", "")).strip().lower(),
+                    str(triple_payload.get("object", "")).strip().lower(),
+                )
+                linked_by_key[key] = item
             
-            # Merge back with original triple data
-            for j, linked_triple in enumerate(linked):
-                if j < len(batch):
-                    merged = {**batch[j], **linked_triple}
-                    all_linked.append(merged)
+            # Merge back with original triple data. Never drop a candidate just
+            # because the LLM omitted it; missing links become unsupported
+            # candidates in strict ablation mode and low-confidence candidates
+            # otherwise.
+            for original in batch:
+                key = (
+                    str(original.get("subject", "")).strip().lower(),
+                    str(original.get("relation", "")).strip().lower(),
+                    str(original.get("object", "")).strip().lower(),
+                )
+                linked_triple = linked_by_key.get(key)
+                if linked_triple is None:
+                    linked_triple = {
+                        "triple": {
+                            "subject": original.get("subject", ""),
+                            "relation": original.get("relation", ""),
+                            "object": original.get("object", ""),
+                        },
+                        "evidence_sentences": [],
+                        "evidence_type": "none",
+                        "evidence_strength": 0.0,
+                        "contradictions": [],
+                        "link_missing": True,
+                    }
+                merged = {**original, **linked_triple}
+                all_linked.append(merged)
         
         return all_linked
+
+    def _enforce_strict_source_support(
+        self,
+        triples: List[Dict[str, Any]],
+        text: str,
+    ) -> List[Dict[str, Any]]:
+        """Mark support only when a quoted evidence span appears in the source.
+
+        This is intentionally stricter than normal pipeline behavior and is
+        used for the EvidenceLinker/VerificationAgent ablation. It prevents
+        implicit domain knowledge or hallucinated evidence strings from being
+        counted as source support.
+        """
+        source_norm = self._normalize_quote(text)
+        for triple in triples:
+            sentences = triple.get("evidence_sentences") or []
+            if isinstance(sentences, str):
+                sentences = [sentences]
+            exact = [
+                sentence
+                for sentence in sentences
+                if sentence and self._normalize_quote(sentence) in source_norm
+            ]
+            source_supported = bool(exact)
+            triple["evidence_sentences"] = exact
+            triple["source_supported"] = source_supported
+            triple["evidence_type"] = "explicit" if source_supported else "none"
+            triple["evidence_strength"] = max(
+                float(triple.get("evidence_strength") or 0.0),
+                0.95 if source_supported else 0.0,
+            ) if source_supported else 0.0
+            triple["final_confidence"] = max(
+                float(triple.get("confidence") or 0.0),
+                0.95,
+            ) if source_supported else 0.0
+            metadata = triple.setdefault("metadata", {})
+            if exact:
+                metadata["evidence"] = exact[0]
+                metadata["source_supported"] = True
+            else:
+                metadata["source_supported"] = False
+        return triples
+
+    @staticmethod
+    def _normalize_quote(value: str) -> str:
+        return re.sub(r"\s+", " ", str(value or "").strip().lower())
 
     def _get_prior_knowledge(self) -> List[Dict[str, Any]]:
         """Get prior knowledge from memory and knowledge graph."""

@@ -224,6 +224,9 @@ class DomainBuilder:
         For small fixed schemas, a deterministic partition is more stable and much
         faster than a heavyweight LLM clustering step.
         """
+        if domain_config.get("schema_source") != "fixed_schema_override":
+            return None
+
         entity_types = domain_config.get("entity_types", [])
         relation_types = domain_config.get("relation_types", [])
         if not entity_types:

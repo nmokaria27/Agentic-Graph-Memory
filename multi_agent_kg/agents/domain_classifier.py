@@ -620,6 +620,7 @@ class DomainClassifier(BaseAgent):
             "primary_domain": schema_override.get("domain", "FixedSchema"),
             "sub_domains": schema_override.get("sub_domains", ["FixedSchema"]),
             "domain_description": schema_override.get("description", "Fixed schema for benchmark evaluation"),
+            "schema_source": "fixed_schema_override",
             "confidence": 0.95,
             "reasoning": "Using fixed schema override",
             "key_indicators": [],

@@ -62,6 +62,36 @@ def test_dedupe_triples_prefers_higher_confidence() -> None:
     assert deduped[0]["confidence"] == 0.9
 
 
+def test_fixed_schema_confidence_floor_filters_weak_triples() -> None:
+    extractor = _make_extractor(
+        enable_open_world=False,
+        fixed_schema_min_triple_confidence=0.75,
+    )
+    triples = [
+        {
+            "subject": "CNN",
+            "subject_id": "cnn",
+            "relation": "Used-for",
+            "object": "classification",
+            "object_id": "classification",
+            "confidence": 0.74,
+        },
+        {
+            "subject": "CNN",
+            "subject_id": "cnn",
+            "relation": "Used-for",
+            "object": "image classification",
+            "object_id": "image_classification",
+            "confidence": 0.85,
+        },
+    ]
+
+    filtered = extractor._filter_fixed_schema_triples_by_confidence(triples)
+
+    assert len(filtered) == 1
+    assert filtered[0]["object_id"] == "image_classification"
+
+
 def test_pairwise_scoring_uses_exact_entity_pairs(monkeypatch) -> None:
     extractor = _make_extractor(enable_open_world=False)
     text = "CNN is used for classification."

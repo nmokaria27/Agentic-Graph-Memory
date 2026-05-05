@@ -40,7 +40,7 @@ from multi_agent_kg.agents.base import AgentContext, ModelTier
 from multi_agent_kg.agents.document_processor import DocumentProcessor
 from multi_agent_kg.agents.domain_classifier import DomainClassifier
 from multi_agent_kg.agents.entity_extractor import EntityExtractor
-from multi_agent_kg.agents.relation_extractor import RelationExtractor
+from multi_agent_kg.agents.relation_extractor import RelationExtractor, SCIERC_RELATION_ALIASES
 from multi_agent_kg.agents.evidence_linker import EvidenceLinker
 from multi_agent_kg.agents.extraction_validator import ExtractionValidator
 from multi_agent_kg.agents.extraction_verification_agent import ExtractionVerificationAgent
@@ -108,6 +108,7 @@ class DeliberativeOrchestrator:
         continue_on_document_error: bool = True,
         skip_evidence_linking: bool = False,
         skip_verification: bool = False,
+        strict_source_only_verification: bool = False,
         quality_threshold: float = 0.60,
         max_refinement_iterations: int = 4,
         enable_self_consistency: bool = True,
@@ -177,6 +178,7 @@ class DeliberativeOrchestrator:
         self.continue_on_document_error = continue_on_document_error
         self.skip_evidence_linking = skip_evidence_linking
         self.skip_verification = skip_verification
+        self.strict_source_only_verification = strict_source_only_verification
         self.quality_threshold = quality_threshold
         self.max_refinement_iterations = max_refinement_iterations
         self.enable_self_consistency = enable_self_consistency
@@ -227,6 +229,29 @@ class DeliberativeOrchestrator:
         self._print_header()
         self._configure_governance_review()
 
+    def _canonicalize_schema_relation(self, relation: Any) -> Optional[str]:
+        if not self.schema_override:
+            return str(relation).strip() if relation else None
+        allowed = [
+            item.get("type") if isinstance(item, dict) else str(item)
+            for item in self.schema_override.get("relation_types", [])
+        ]
+        allowed = [label.strip() for label in allowed if label and str(label).strip()]
+        if not allowed or relation is None:
+            return str(relation).strip() if relation else None
+        relation_text = str(relation).strip()
+        norm = relation_text.upper().replace("-", "_").replace(" ", "_")
+        allowed_by_norm = {
+            label.upper().replace("-", "_").replace(" ", "_"): label
+            for label in allowed
+        }
+        if norm in allowed_by_norm:
+            return allowed_by_norm[norm]
+        alias = SCIERC_RELATION_ALIASES.get(norm)
+        if alias in allowed:
+            return alias
+        return None
+
     def _init_agents(self) -> None:
         """Initialize all agents with shared infrastructure."""
         
@@ -275,6 +300,7 @@ class DeliberativeOrchestrator:
             llm_config=self.llm_config,
             quality_threshold=self.quality_threshold,
             enable_cross_reference=self.enable_cross_document,
+            strict_source_only=self.strict_source_only_verification,
         )
         
         # Coordinator Agents
@@ -293,6 +319,7 @@ class DeliberativeOrchestrator:
             message_bus=self.message_bus,
             llm_config=self.llm_config,
             quality_threshold=self.quality_threshold,
+            strict_source_only=self.strict_source_only_verification,
         )
         
         self.knowledge_organizer = KnowledgeOrganizer(
@@ -378,9 +405,24 @@ class DeliberativeOrchestrator:
             revised_triple = None
             revised_payload = result.get("revised_triple")
             if result.get("action") == "revise" and isinstance(revised_payload, dict):
+                revised_relation = self._canonicalize_schema_relation(
+                    revised_payload.get("relation", triple.relation)
+                )
+                if revised_relation is None:
+                    return GovernanceDecision(
+                        triple=triple,
+                        action="reject",
+                        domain_id=assignment.primary_domain_id if assignment else None,
+                        rationale=(
+                            "Review proposed an out-of-schema revised relation "
+                            f"'{revised_payload.get('relation')}' in fixed-schema mode; "
+                            "rejecting to preserve the benchmark schema."
+                        ),
+                        assignment=assignment,
+                    )
                 revised_triple = Triple(
                     subject=revised_payload.get("subject", triple.subject),
-                    relation=revised_payload.get("relation", triple.relation),
+                    relation=revised_relation,
                     object=revised_payload.get("object", triple.object),
                     confidence=triple.confidence,
                     source=triple.source,

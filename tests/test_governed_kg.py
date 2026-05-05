@@ -99,6 +99,45 @@ def test_triage_reviews_low_confidence_triples_when_callback_available() -> None
     assert "triage_reason=low_confidence" in decision.rationale
 
 
+def test_triage_confidence_policy_rejects_before_review() -> None:
+    kg = KnowledgeGraph()
+    kg.add_entity("heart", ["Heart"], "ORGAN")
+    kg.add_entity("blood_pressure", ["Blood Pressure"], "MEASUREMENT")
+    gkg = GovernedKnowledgeGraph(
+        kg=kg,
+        org_chart=_simple_org_chart(),
+        governance_mode="triage",
+        min_admission_confidence=0.75,
+        confidence_policy_label="fixed_schema_confidence_floor",
+    )
+
+    callback_calls = {"count": 0}
+
+    def callback(triple, assignment, _kg, _org_chart):
+        callback_calls["count"] += 1
+        return GovernanceDecision(
+            triple=triple,
+            action="approve",
+            domain_id=assignment.primary_domain_id,
+            rationale="should not be called",
+            assignment=assignment,
+        )
+
+    gkg.set_review_callback(callback)
+    decision = gkg.propose_triple("heart", "AFFECTS", "blood_pressure", confidence=0.74)
+
+    assert callback_calls["count"] == 0
+    assert decision.action == "reject"
+    assert decision.committed is False
+    assert len(gkg.triples) == 0
+    assert len(gkg.audit_log) == 1
+    assert "fixed_schema_confidence_floor" in decision.rationale
+    stats = gkg.get_stats()
+    assert stats["decision_counts"]["reject"] == 1
+    assert stats["triage_stats"]["policy_rejected"] == 1
+    assert stats["triage_stats"]["review_reasons"]["fixed_schema_confidence_floor"] == 1
+
+
 def test_triage_reviews_conflicts_when_callback_available() -> None:
     kg = KnowledgeGraph()
     kg.add_entity("heart", ["Heart"], "ORGAN")

@@ -12,6 +12,7 @@ This is the second coordinator - the final verification step.
 
 from typing import Any, Dict, List, Optional
 import json
+import re
 
 from multi_agent_kg.agents.base import (
     BaseAgent,
@@ -141,6 +142,7 @@ class ExtractionVerificationAgent(BaseAgent):
         llm_config: Optional[LLMConfig] = None,
         quality_threshold: float = 0.45,  # Further lowered to accept more inferred knowledge
         strict_mode: bool = False,  # Allow partial verifications
+        strict_source_only: bool = False,
     ):
         super().__init__(
             name="ExtractionVerificationAgent",
@@ -153,6 +155,7 @@ class ExtractionVerificationAgent(BaseAgent):
             quality_threshold=quality_threshold,
         )
         self.strict_mode = strict_mode
+        self.strict_source_only = strict_source_only
 
     def run(
         self,
@@ -192,10 +195,13 @@ class ExtractionVerificationAgent(BaseAgent):
             )
         
         # Step 1: Verify against source text
-        verification_result = self._verify_against_source(
-            context.text,
-            triples,
-        )
+        if self.strict_source_only:
+            verification_result = self._verify_by_existing_source_links(context.text, triples)
+        else:
+            verification_result = self._verify_against_source(
+                context.text,
+                triples,
+            )
         
         # Categorize results
         verified = []
@@ -235,7 +241,7 @@ class ExtractionVerificationAgent(BaseAgent):
         
         # Step 2: Cross-document consistency check
         existing_knowledge = self._get_existing_knowledge()
-        if existing_knowledge and verified:
+        if existing_knowledge and verified and not self.strict_source_only:
             verified = self._check_cross_doc_consistency(verified, existing_knowledge)
         
         # Filter by final confidence threshold
@@ -246,10 +252,24 @@ class ExtractionVerificationAgent(BaseAgent):
         for triple in verified + partial:
             conf = triple.get("final_confidence", 0)
             triple_data = triple.get('triple', {})
+            if not triple_data:
+                triple_data = {
+                    "subject": triple.get("subject", ""),
+                    "relation": triple.get("relation", ""),
+                    "object": triple.get("object", ""),
+                }
             triple_str = f"{triple_data.get('subject', '?')} -> {triple_data.get('relation', '?')} -> {triple_data.get('object', '?')}"
             
             if conf >= self.quality_threshold:
-                approved.append(triple)
+                approved_payload = {
+                    **triple,
+                    **{
+                        key: value
+                        for key, value in triple_data.items()
+                        if key in {"subject", "relation", "object"}
+                    },
+                }
+                approved.append(approved_payload)
                 print(f"  ✓ APPROVED (conf={conf:.2f}): {triple_str}")
                 logger.log_decision("ExtractionVerificationAgent", "triple", triple_data, "APPROVED", 
                                   f"Confidence {conf:.2f} >= threshold {self.quality_threshold}", conf)
@@ -305,6 +325,69 @@ class ExtractionVerificationAgent(BaseAgent):
                 "rejected_count": len(rejected),
             },
         )
+
+    def _verify_by_existing_source_links(
+        self,
+        text: str,
+        triples: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Deterministic source-only verification for ablation runs.
+
+        EvidenceLinker must already have attached source-supported evidence.
+        This avoids using the verification LLM as a second implicit-knowledge
+        judge when the experiment is explicitly testing evidence filtering.
+        """
+        source_norm = self._normalize_quote(text)
+        verified: List[Dict[str, Any]] = []
+        summary = {"total": len(triples), "verified": 0, "partial": 0, "rejected": 0, "hallucinated": 0}
+
+        for triple in triples:
+            evidence = triple.get("evidence_sentences") or []
+            if isinstance(evidence, str):
+                evidence = [evidence]
+            metadata = triple.get("metadata") if isinstance(triple.get("metadata"), dict) else {}
+            if metadata.get("evidence"):
+                evidence = list(evidence) + [metadata.get("evidence")]
+            exact = [
+                item
+                for item in evidence
+                if item and self._normalize_quote(item) in source_norm
+            ]
+            payload = {
+                "subject": triple.get("subject", triple.get("triple", {}).get("subject", "")),
+                "relation": triple.get("relation", triple.get("triple", {}).get("relation", "")),
+                "object": triple.get("object", triple.get("triple", {}).get("object", "")),
+            }
+            if exact:
+                summary["verified"] += 1
+                verified.append(
+                    {
+                        "triple": payload,
+                        "verified": True,
+                        "verification_status": "verified",
+                        "final_confidence": max(float(triple.get("confidence") or 0.0), 0.95),
+                        "supporting_evidence": exact[0],
+                        "rejection_reason": "",
+                    }
+                )
+            else:
+                summary["rejected"] += 1
+                verified.append(
+                    {
+                        "triple": payload,
+                        "verified": False,
+                        "verification_status": "rejected",
+                        "final_confidence": 0.0,
+                        "supporting_evidence": "",
+                        "rejection_reason": "No exact source evidence span attached by EvidenceLinker.",
+                    }
+                )
+
+        return {"verified_triples": verified, "verification_summary": summary}
+
+    @staticmethod
+    def _normalize_quote(value: str) -> str:
+        return re.sub(r"\s+", " ", str(value or "").strip().lower())
 
     def _verify_against_source(
         self,

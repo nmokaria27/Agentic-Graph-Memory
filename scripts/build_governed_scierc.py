@@ -105,6 +105,14 @@ def main() -> None:
     parser.add_argument("--skip-evidence-linking", action="store_true")
     parser.add_argument("--skip-verification", action="store_true")
     parser.add_argument(
+        "--strict-source-only-verification",
+        action="store_true",
+        help=(
+            "Ablation mode: EvidenceLinker/VerificationAgent only keep triples "
+            "with exact source evidence spans from the current document."
+        ),
+    )
+    parser.add_argument(
         "--clear-caches",
         action="store_true",
         help="Clear per-doc caches before running for fresh extraction.",
@@ -149,6 +157,15 @@ def main() -> None:
         help="Disable the secondary relation-gleaning LLM pass (precision-favoring).",
     )
     parser.add_argument(
+        "--fixed-schema-min-admission-confidence",
+        type=float,
+        default=0.75,
+        help=(
+            "Governance admission confidence floor for fixed-schema SciERC runs. "
+            "Low-confidence triples are rejected with audit entries before admission."
+        ),
+    )
+    parser.add_argument(
         "--no-fixed-schema-pairwise",
         action="store_true",
         help=(
@@ -174,6 +191,9 @@ def main() -> None:
 
     if args.resume_from_checkpoint and os.path.exists(checkpoint_path):
         governed_kg, processed_ids = _load_checkpoint(checkpoint_path)
+        if args.fixed_schema:
+            governed_kg._min_admission_confidence = args.fixed_schema_min_admission_confidence
+            governed_kg._confidence_policy_label = "fixed_schema_confidence_floor"
         print(
             f"Resumed from checkpoint {checkpoint_path} — "
             f"{len(processed_ids)} docs already processed, "
@@ -181,7 +201,13 @@ def main() -> None:
             f"{governed_kg.get_stats().get('triples', 0)} triples carried over."
         )
     else:
-        governed_kg = GovernedKnowledgeGraph(governance_mode=args.governance_mode)
+        governed_kg = GovernedKnowledgeGraph(
+            governance_mode=args.governance_mode,
+            min_admission_confidence=(
+                args.fixed_schema_min_admission_confidence if args.fixed_schema else None
+            ),
+            confidence_policy_label="fixed_schema_confidence_floor",
+        )
 
     remaining = _filter_remaining(documents, processed_ids)
 
@@ -192,6 +218,7 @@ def main() -> None:
         reuse_corpus_schema=args.reuse_corpus_schema,
         skip_evidence_linking=args.skip_evidence_linking,
         skip_verification=args.skip_verification,
+        strict_source_only_verification=args.strict_source_only_verification,
         quality_threshold=0.4,
         max_refinement_iterations=1,
         enable_self_consistency=False,
@@ -304,6 +331,7 @@ def main() -> None:
             "reuse_corpus_schema": args.reuse_corpus_schema,
             "skip_evidence_linking": args.skip_evidence_linking,
             "skip_verification": args.skip_verification,
+            "strict_source_only_verification": args.strict_source_only_verification,
             "clear_caches": args.clear_caches,
             "split": args.split,
             "max_docs": args.max_docs,
@@ -331,6 +359,7 @@ def main() -> None:
             "reuse_corpus_schema": args.reuse_corpus_schema,
             "skip_evidence_linking": args.skip_evidence_linking,
             "skip_verification": args.skip_verification,
+            "strict_source_only_verification": args.strict_source_only_verification,
             "clear_caches": args.clear_caches,
             "governance_enabled": True,
             "governance_mode": args.governance_mode,
