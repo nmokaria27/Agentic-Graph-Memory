@@ -325,7 +325,7 @@ any LLM reviewer filter triples?
 
 We evaluate all conditions on the full 100-document SciERC test split using GPT-5 and the fixed
 SciERC schema. SciERC provides gold scientific entities and typed relations, so it gives a
-controlled benchmark for entity F1 and relation-level precision, recall, and F1. Using the full
+controlled benchmark for relation-level precision, recall, and F1. Using the full
 test split is important: the earlier pilot used only 50 documents, while this result uses the full
 available test set for this benchmark setting. Across all rows, the document set, target ontology,
 and base model are fixed. The experimental variable is the admission pathway: whether candidate
@@ -366,14 +366,14 @@ decide what extracted knowledge becomes memory.
     \centering
     \scriptsize
     \resizebox{\textwidth}{!}{%
-    \begin{tabular}{llccccccccc}
+    \begin{tabular}{llcccccccc}
     \toprule
-    Condition & Admission policy & Entities & Triples & Entity F1 & Strict P & Strict R & Strict F1 & Mapped P & Mapped R & Mapped F1 \\
+    Condition & Admission policy & Entities & Triples & Strict P & Strict R & Strict F1 & Mapped P & Mapped R & Mapped F1 \\
     \midrule
-    Direct flat insertion & no evidence linking, verification, or governance & 1742 & 2881 & 0.528 & 0.066 & 0.271 & 0.106 & 0.119 & 0.490 & 0.192 \\
-    Source-grounded flat insertion & evidence linking and verification, no governance & 1838 & 2912 & 0.550 & 0.067 & 0.277 & 0.107 & 0.123 & 0.510 & 0.198 \\
-    Global reviewer & single centralized approve/reject reviewer & 1755 & 1599 & 0.541 & 0.103 & 0.234 & 0.143 & 0.194 & 0.444 & 0.271 \\
-    \system{} & domain-routed governed admission & 1731 & 1077 & 0.541 & 0.129 & 0.199 & 0.156 & 0.240 & 0.369 & 0.290 \\
+    Direct flat insertion & no evidence linking, verification, or governance & 1742 & 2881 & 0.066 & 0.271 & 0.106 & 0.119 & 0.490 & 0.192 \\
+    Source-grounded flat insertion & evidence linking and verification, no governance & 1838 & 2912 & 0.067 & 0.277 & 0.107 & 0.123 & 0.510 & 0.198 \\
+    Global reviewer & single centralized approve/reject reviewer & 1755 & 1599 & 0.103 & 0.234 & 0.143 & 0.194 & 0.444 & 0.271 \\
+    \system{} & domain-routed governed admission & 1731 & 1077 & 0.129 & 0.199 & 0.156 & 0.240 & 0.369 & 0.290 \\
     \bottomrule
     \end{tabular}
     }
@@ -406,8 +406,8 @@ relations by admitting a much larger graph, but most admitted triples do not mat
 relation set.
 
 Source-grounded flat insertion shows that evidence linking and verification alone do not solve the
-admission problem. It slightly improves entity F1 (0.528 to 0.550), strict F1 (0.106 to 0.107),
-and mapped F1 (0.192 to 0.198), but the improvement is small. It also admits nearly the same
+admission problem. It slightly improves strict F1 (0.106 to 0.107) and mapped F1 (0.192 to 0.198),
+but the improvement is small. It also admits nearly the same
 number of triples as direct insertion (2912 versus 2881). This is the important ablation point:
 source grounding is necessary for auditability and later human inspection, but a provenance span
 does not by itself decide whether a candidate fact should become durable memory. Without ownership
@@ -421,17 +421,17 @@ the global reviewer is still a generic filter. It sees the candidate and evidenc
 know which domain owns the fact, what related triples have already been admitted nearby, or what
 relation patterns have previously been accepted or rejected in that domain.
 
-\system{} performs best overall. It admits 1077 triples, preserves comparable entity quality
-(entity F1 of 0.541), and achieves the strongest admitted-triple scores: strict F1 of 0.156 and
-mapped F1 of 0.290. The improvement is driven primarily by precision. Compared with direct flat
-insertion, strict precision rises from 0.066 to 0.129, and mapped precision rises from 0.119 to
-0.240. Compared with the global reviewer, \system{} further improves strict precision from 0.103
-to 0.129 and mapped precision from 0.194 to 0.240. This comes with lower recall because governance
-rejects or revises more candidate triples before they enter memory, but the overall
+\system{} performs best overall. It admits 1077 triples and achieves the strongest admitted-triple
+scores: strict F1 of 0.156 and mapped F1 of 0.290. The improvement is driven primarily by
+precision. Compared with direct flat insertion, strict precision rises from 0.066 to 0.129, and
+mapped precision rises from 0.119 to 0.240. Compared with the global reviewer, \system{} further
+improves strict precision from 0.103 to 0.129 and mapped precision from 0.194 to 0.240. This comes
+with lower recall because governance rejects or revises more candidate triples before they enter
+memory, but the overall
 precision-recall balance improves.
 
 This result supports two claims at once. First, governance improves admitted graph quality:
-\system{} produces the best strict F1 and mapped F1 while preserving entity quality. Second, the
+\system{} produces the best strict F1 and mapped F1. Second, the
 gain is not explained by simple filtering. Source grounding plus verification is not enough, and a
 single centralized reviewer only partially closes the gap. What \system{} adds is structured
 governance: ownership, routing, domain-local memory, and subgraph-aware review. Domain Expert
