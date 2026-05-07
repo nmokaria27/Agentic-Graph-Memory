@@ -849,13 +849,14 @@ class DeliberativeOrchestrator:
         merged = 0
         for candidate in candidate_org.domains:
             existing_domain = existing.get(candidate.domain_id)
-            if (
-                existing_domain is None
-                and self.target_num_domains
-                and len(current.domains) >= self.target_num_domains
-                and current.domains
-            ):
-                existing_domain = self._best_domain_merge_target(candidate, current.domains)
+            if existing_domain is None and current.domains:
+                existing_domain = self._schema_merge_target(candidate, current.domains)
+                if (
+                    existing_domain is None
+                    and self.target_num_domains
+                    and len(current.domains) >= self.target_num_domains
+                ):
+                    existing_domain = self._best_domain_merge_target(candidate, current.domains)
             if existing_domain is None:
                 current.domains.append(candidate)
                 existing[candidate.domain_id] = candidate
@@ -863,19 +864,117 @@ class DeliberativeOrchestrator:
                 continue
 
             merged += 1
-            existing_domain.description = existing_domain.description or candidate.description
-            existing_domain.relation_schema.update(candidate.relation_schema)
-            existing_meta = existing_domain.metadata if isinstance(existing_domain.metadata, dict) else {}
-            candidate_meta = candidate.metadata if isinstance(candidate.metadata, dict) else {}
-            for key in ("seed_entity_types", "seed_relation_types"):
-                values = list(existing_meta.get(key, []))
-                for value in candidate_meta.get(key, []):
-                    if value not in values:
-                        values.append(value)
-                existing_meta[key] = values
-            existing_domain.metadata = existing_meta
+            self._merge_domain_schema(existing_domain, candidate)
         current._entity_domain_map_cache = None
         return added, merged
+
+    @classmethod
+    def _schema_merge_target(cls, candidate, domains):
+        """Return an existing domain only when the new schema is genuinely related.
+
+        Open-world schemas are discovered per document, so their domain IDs are
+        unstable. Domain expansion must therefore be merge-first by semantic
+        schema overlap, not append-unless-ID-matches.
+        """
+        best_domain = None
+        best_score = 0.0
+        for domain in domains:
+            score = cls._domain_schema_similarity(candidate, domain)
+            if score > best_score:
+                best_score = score
+                best_domain = domain
+        return best_domain if best_score >= 0.28 else None
+
+    @staticmethod
+    def _merge_domain_schema(existing_domain, candidate) -> None:
+        existing_domain.description = existing_domain.description or candidate.description
+        existing_domain.relation_schema.update(candidate.relation_schema)
+
+        existing_topics = {topic.topic_id for topic in existing_domain.topics}
+        for topic in candidate.topics:
+            if topic.topic_id not in existing_topics:
+                existing_domain.topics.append(topic)
+                existing_topics.add(topic.topic_id)
+
+        existing_meta = existing_domain.metadata if isinstance(existing_domain.metadata, dict) else {}
+        candidate_meta = candidate.metadata if isinstance(candidate.metadata, dict) else {}
+        for key in ("seed_entity_types", "seed_relation_types"):
+            values = list(existing_meta.get(key, []))
+            for value in candidate_meta.get(key, []):
+                if value not in values:
+                    values.append(value)
+            existing_meta[key] = values
+        merged_ids = list(existing_meta.get("merged_domain_ids", []))
+        if candidate.domain_id not in merged_ids and candidate.domain_id != existing_domain.domain_id:
+            merged_ids.append(candidate.domain_id)
+        existing_meta["merged_domain_ids"] = merged_ids
+        existing_domain.metadata = existing_meta
+
+    @classmethod
+    def _domain_schema_similarity(cls, left, right) -> float:
+        left_tokens = cls._domain_schema_tokens(left)
+        right_tokens = cls._domain_schema_tokens(right)
+        union = left_tokens | right_tokens
+        token_score = len(left_tokens & right_tokens) / len(union) if union else 0.0
+
+        left_meta = left.metadata if isinstance(left.metadata, dict) else {}
+        right_meta = right.metadata if isinstance(right.metadata, dict) else {}
+        left_entities = cls._normalized_schema_set(left_meta.get("seed_entity_types", []))
+        right_entities = cls._normalized_schema_set(right_meta.get("seed_entity_types", []))
+        left_relations = cls._normalized_schema_set(
+            list(left.relation_schema.keys()) + list(left_meta.get("seed_relation_types", []))
+        )
+        right_relations = cls._normalized_schema_set(
+            list(right.relation_schema.keys()) + list(right_meta.get("seed_relation_types", []))
+        )
+
+        entity_score = cls._overlap_score(left_entities, right_entities)
+        relation_score = cls._overlap_score(left_relations, right_relations)
+        return max(token_score, entity_score * 0.75 + relation_score * 0.25, relation_score * 0.65 + token_score * 0.35)
+
+    @staticmethod
+    def _normalized_schema_set(values) -> set:
+        import re
+
+        normalized = set()
+        for value in values or []:
+            parts = re.findall(r"[a-z0-9]+", str(value).lower())
+            if not parts:
+                continue
+            normalized.add("_".join(parts))
+            for part in parts:
+                if len(part) >= 3:
+                    normalized.add(part.rstrip("s"))
+        return normalized
+
+    @staticmethod
+    def _overlap_score(left: set, right: set) -> float:
+        if not left or not right:
+            return 0.0
+        return len(left & right) / min(len(left), len(right))
+
+    @classmethod
+    def _domain_schema_tokens(cls, domain) -> set:
+        metadata = domain.metadata if isinstance(domain.metadata, dict) else {}
+        text = " ".join(
+            [
+                domain.domain_id,
+                domain.label,
+                domain.description,
+                " ".join(metadata.get("seed_entity_types", [])),
+                " ".join(metadata.get("seed_relation_types", [])),
+                " ".join(domain.relation_schema.keys()),
+                " ".join(topic.label for topic in getattr(domain, "topics", []) or []),
+                " ".join(" ".join(topic.keywords) for topic in getattr(domain, "topics", []) or []),
+            ]
+        )
+        import re
+
+        tokens = set()
+        for token in re.findall(r"[a-z0-9]+", text.lower()):
+            if len(token) >= 3:
+                tokens.add(token.rstrip("s"))
+        return tokens
 
     @staticmethod
     def _best_domain_merge_target(candidate, domains):

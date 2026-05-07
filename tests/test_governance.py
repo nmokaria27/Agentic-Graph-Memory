@@ -1,5 +1,6 @@
 from multi_agent_kg.core.config import LLMConfig
 from multi_agent_kg.core.domain_experts import Domain, DomainBuilder, OrgChart
+from multi_agent_kg.core.deliberative_orchestrator import DeliberativeOrchestrator
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
 
 
@@ -180,3 +181,86 @@ def test_domain_builder_single_domain_mode() -> None:
     assert len(org_chart.domains) == 1
     assert org_chart.domains[0].domain_id == "global_expert"
     assert org_chart.domains[0].entity_ids == set(kg.entities.keys())
+
+
+def test_open_world_schema_expansion_merges_similar_domains_without_fixed_target() -> None:
+    existing = Domain(
+        domain_id="music_releases",
+        label="Music Releases",
+        description="Albums, record labels, artists, and release history.",
+        relation_schema={"ALBUM_BY_ARTIST": "", "RELEASED_BY_LABEL": ""},
+        metadata={
+            "seed_entity_types": ["ALBUM", "ARTIST", "RECORD_LABEL"],
+            "seed_relation_types": ["ALBUM_BY_ARTIST", "RELEASED_BY_LABEL"],
+        },
+    )
+    candidate = Domain(
+        domain_id="album_label_catalog",
+        label="Album Label Catalog",
+        description="Album releases, labels, artists, and catalog timing.",
+        relation_schema={"ALBUM_BY_ARTIST": "", "TIMED_TO_CAPITALIZE_ON": ""},
+        metadata={
+            "seed_entity_types": ["ALBUM", "ARTIST", "LABEL"],
+            "seed_relation_types": ["ALBUM_BY_ARTIST", "TIMED_TO_CAPITALIZE_ON"],
+        },
+    )
+
+    class FakeGovernedKG:
+        org_chart = OrgChart(domains=[existing], cross_domain_relations=[])
+
+    class FakeDomainBuilder:
+        def bootstrap_from_schema(self, domain_config):
+            return OrgChart(domains=[candidate], cross_domain_relations=[])
+
+    orchestrator = DeliberativeOrchestrator.__new__(DeliberativeOrchestrator)
+    orchestrator.governed_kg = FakeGovernedKG()
+    orchestrator.domain_builder = FakeDomainBuilder()
+    orchestrator.target_num_domains = None
+
+    added, merged = orchestrator._expand_org_chart_from_schema({"primary_domain": "music"})
+
+    assert (added, merged) == (0, 1)
+    assert len(orchestrator.governed_kg.org_chart.domains) == 1
+    assert "TIMED_TO_CAPITALIZE_ON" in existing.relation_schema
+    assert "LABEL" in existing.metadata["seed_entity_types"]
+
+
+def test_open_world_schema_expansion_adds_novel_domains_without_fixed_target() -> None:
+    existing = Domain(
+        domain_id="music_releases",
+        label="Music Releases",
+        description="Albums, record labels, artists, and release history.",
+        relation_schema={"ALBUM_BY_ARTIST": "", "RELEASED_BY_LABEL": ""},
+        metadata={
+            "seed_entity_types": ["ALBUM", "ARTIST", "RECORD_LABEL"],
+            "seed_relation_types": ["ALBUM_BY_ARTIST", "RELEASED_BY_LABEL"],
+        },
+    )
+    candidate = Domain(
+        domain_id="medieval_serbian_politics",
+        label="Medieval Serbian Politics",
+        description="Dynastic conflicts, rulers, battles, and church foundations.",
+        relation_schema={"DEFEATED_IN_BATTLE": "", "FOUNDED_INSTITUTION": ""},
+        metadata={
+            "seed_entity_types": ["RULER", "BATTLE", "MONASTERY"],
+            "seed_relation_types": ["DEFEATED_IN_BATTLE", "FOUNDED_INSTITUTION"],
+        },
+    )
+
+    class FakeGovernedKG:
+        org_chart = OrgChart(domains=[existing], cross_domain_relations=[])
+
+    class FakeDomainBuilder:
+        def bootstrap_from_schema(self, domain_config):
+            return OrgChart(domains=[candidate], cross_domain_relations=[])
+
+    orchestrator = DeliberativeOrchestrator.__new__(DeliberativeOrchestrator)
+    orchestrator.governed_kg = FakeGovernedKG()
+    orchestrator.domain_builder = FakeDomainBuilder()
+    orchestrator.target_num_domains = None
+
+    added, merged = orchestrator._expand_org_chart_from_schema({"primary_domain": "history"})
+
+    assert (added, merged) == (1, 0)
+    assert len(orchestrator.governed_kg.org_chart.domains) == 2
+    assert orchestrator.governed_kg.org_chart.domains[1].domain_id == "medieval_serbian_politics"

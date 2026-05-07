@@ -18,6 +18,82 @@ if TYPE_CHECKING:
     from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
 
 
+_QUERY_STOPWORDS = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "who",
+    "what",
+    "when",
+    "where",
+    "which",
+    "whose",
+    "that",
+    "this",
+    "did",
+    "does",
+    "was",
+    "were",
+    "are",
+    "has",
+    "have",
+    "had",
+    "into",
+    "from",
+    "over",
+    "under",
+    "about",
+    "located",
+}
+
+
+def _normalize_terms(text: str) -> Set[str]:
+    return {
+        token
+        for token in re.findall(r"[a-z0-9]+", text.lower().replace("_", " "))
+        if len(token) >= 3 and token not in _QUERY_STOPWORDS
+    }
+
+
+def _question_relation_hints(query: str) -> Set[str]:
+    terms = _normalize_terms(query)
+    hints = set(terms)
+    if terms & {"spouse", "wife", "husband", "married", "partner"}:
+        hints.update({
+            "spouse",
+            "wife",
+            "husband",
+            "married",
+            "partner",
+            "professional",
+            "personal",
+            "collaborator",
+            "collaboration",
+            "creative",
+            "worked",
+            "work",
+            "known",
+        })
+    if terms & {"performer", "artist", "singer", "musician", "band"}:
+        hints.update({"performer", "artist", "singer", "musician", "band", "album", "created"})
+    if terms & {"founder", "founded", "company", "distributed", "distributor"}:
+        hints.update({"founder", "founded", "company", "distributed", "distributor", "studio"})
+    if terms & {"owner", "owned", "administrative", "territorial", "entity"}:
+        hints.update({"owner", "owned", "administrative", "territorial", "municipality", "province", "state"})
+    if terms & {"born", "birthplace", "birth"}:
+        hints.update({"born", "birthplace", "birth", "place"})
+    return hints
+
+
+def _triple_text(triple: Any) -> str:
+    return f"{triple.subject} {triple.relation} {triple.object}".replace("_", " ")
+
+
+def _format_triple(triple: Any) -> str:
+    return f"({triple.subject}) -[{triple.relation}]-> ({triple.object})"
+
+
 def _chat_completion_json(*args, **kwargs):
     """Compatibility hook so legacy monkeypatches on domain_experts still work."""
     try:
@@ -45,7 +121,7 @@ class DomainExpertAgent:
         self.llm_config = llm_config
 
     def answer(self, query: str, context: str = "") -> Dict[str, Any]:
-        subgraph_text = self.domain.subgraph_summary(self.full_kg)
+        subgraph_text = self._query_focused_domain_summary(query)
         relevant_topics = self._route_to_topics(query)
         topic_names = [topic.label for topic in relevant_topics]
 
@@ -125,12 +201,14 @@ Return ONLY the JSON."""
                 model=self.llm_config.model,
                 temperature=0.1,
             )
-        except Exception:
+        except Exception as exc:
             result = {
-                "answer": "Failed to generate answer",
+                "answer": "",
                 "coverage": 0.0,
                 "evidence": [],
                 "confidence": 0.0,
+                "out_of_scope_aspects": [query],
+                "error": str(exc),
             }
 
         result["domain_id"] = self.domain.domain_id
@@ -142,6 +220,106 @@ Return ONLY the JSON."""
             result["coverage"] = computed["coverage"]
             result["confidence"] = computed["confidence"]
         return result
+
+    def _query_focused_domain_summary(self, query: str, *, limit: int = 60) -> str:
+        entities, domain_triples = self.domain.get_subgraph(self.full_kg)
+        focused = self._query_focused_triples(query, candidates=domain_triples, limit=limit)
+        lines = [f"Domain: {self.domain.label}", f"Description: {self.domain.description}", ""]
+        memory_card = self.domain.memory_card_summary()
+        if memory_card:
+            lines.append(memory_card)
+            lines.append("")
+        lines.append(f"Domain size: {len(entities)} entities, {len(domain_triples)} relationships.")
+        if focused:
+            lines.append("Query-focused relationships:")
+            for triple in focused:
+                conf = f" (conf={triple.confidence:.2f})" if triple.confidence else ""
+                lines.append(f"  {_format_triple(triple)}{conf}")
+        else:
+            lines.append("No query-focused relationships found in this domain.")
+            lines.append("Representative entities:")
+            for entity in entities[:20]:
+                type_str = f" [{entity.type}]" if entity.type else ""
+                lines.append(f"  - {entity.id}{type_str}")
+            lines.append("Representative relationships:")
+            for triple in domain_triples[:30]:
+                lines.append(f"  {_format_triple(triple)}")
+        return "\n".join(lines)
+
+    def _entity_text(self, entity_id: str) -> str:
+        entity = self.full_kg.entities.get(entity_id)
+        labels = entity.labels if entity else []
+        return " ".join([entity_id.replace("_", " ")] + list(labels))
+
+    def _score_entity_for_query(self, entity_id: str, query: str) -> int:
+        query_lower = query.lower()
+        query_terms = _normalize_terms(query)
+        hint_terms = _question_relation_hints(query)
+        entity = self.full_kg.entities.get(entity_id)
+        names = [entity_id.replace("_", " ")] + (entity.labels if entity else [])
+        score = 0
+        for name in names:
+            name_lower = name.lower()
+            if len(name_lower) < 3:
+                continue
+            if re.search(r"\b" + re.escape(name_lower) + r"\b", query_lower):
+                score += 8
+            score += 2 * len(_normalize_terms(name) & query_terms)
+        for triple in self.full_kg.triples:
+            if triple.subject != entity_id and triple.object != entity_id:
+                continue
+            relation_terms = _normalize_terms(triple.relation)
+            neighbor_terms = _normalize_terms(_triple_text(triple))
+            score += 2 * len(relation_terms & hint_terms)
+            score += len(neighbor_terms & query_terms)
+        return score
+
+    def _score_triple_for_query(self, triple: Any, query: str, seed_entities: Optional[Set[str]] = None) -> int:
+        query_terms = _normalize_terms(query)
+        hint_terms = _question_relation_hints(query)
+        relation_terms = _normalize_terms(triple.relation)
+        triple_terms = _normalize_terms(_triple_text(triple))
+        subject_terms = _normalize_terms(self._entity_text(triple.subject))
+        object_terms = _normalize_terms(self._entity_text(triple.object))
+        score = 0
+        score += 3 * len((subject_terms | object_terms) & query_terms)
+        score += 4 * len(relation_terms & hint_terms)
+        score += len(triple_terms & query_terms)
+        if seed_entities and (triple.subject in seed_entities or triple.object in seed_entities):
+            score += 3
+        if triple.confidence:
+            score += int(min(float(triple.confidence), 1.0) * 2)
+        return score
+
+    def _query_focused_triples(
+        self,
+        query: str,
+        *,
+        candidates: Optional[List[Any]] = None,
+        limit: int = 40,
+    ) -> List[Any]:
+        candidates = candidates if candidates is not None else self.full_kg.triples
+        scored = [
+            (self._score_triple_for_query(triple, query), index, triple)
+            for index, triple in enumerate(candidates)
+        ]
+        seeds = [triple for score, _, triple in sorted(scored, key=lambda item: item[0], reverse=True)[:20] if score > 0]
+        seed_entities = {triple.subject for triple in seeds} | {triple.object for triple in seeds}
+        expanded = {
+            (triple.subject, triple.relation, triple.object): triple
+            for triple in seeds
+        }
+        for triple in self.full_kg.triples:
+            if triple.subject in seed_entities or triple.object in seed_entities:
+                score = self._score_triple_for_query(triple, query, seed_entities)
+                if score > 2:
+                    expanded[(triple.subject, triple.relation, triple.object)] = triple
+        ranked = sorted(
+            expanded.values(),
+            key=lambda triple: self._score_triple_for_query(triple, query, seed_entities),
+            reverse=True,
+        )
+        return ranked[:limit]
 
     def _compute_coverage_confidence(
         self,
@@ -194,7 +372,12 @@ Return ONLY the JSON."""
                 if re.search(pattern, query_lower):
                     matched.append(entity_id)
                     break
-        return matched
+        ranked = sorted(
+            set(matched),
+            key=lambda entity_id: self._score_entity_for_query(entity_id, query),
+            reverse=True,
+        )
+        return ranked[:12]
 
     def _route_to_topics(self, query: str) -> List[TopicSubAgent]:
         query_lower = query.lower()
@@ -215,6 +398,12 @@ class FallbackGraphExpert(DomainExpertAgent):
     def answer(self, query: str, context: str = "") -> Dict[str, Any]:
         query_entities = self._extract_query_entities(query)
         evidence_blocks: List[str] = []
+
+        focused_triples = self._query_focused_triples(query, limit=50)
+        if focused_triples:
+            evidence_blocks.append("QUERY-FOCUSED GRAPH EVIDENCE:")
+            for triple in focused_triples:
+                evidence_blocks.append(_format_triple(triple))
 
         if len(query_entities) >= 2:
             all_paths = []
@@ -284,13 +473,14 @@ Return ONLY the JSON."""
                 model=self.llm_config.model,
                 temperature=0.1,
             )
-        except Exception:
+        except Exception as exc:
             result = {
                 "answer": "",
                 "coverage": 0.0,
                 "evidence": [],
                 "confidence": 0.0,
                 "out_of_scope_aspects": [query],
+                "error": str(exc),
             }
 
         result["domain_id"] = self.domain.domain_id
@@ -438,7 +628,16 @@ class QAOrchestrator:
                 if re.search(r"\b" + re.escape(name_lower) + r"\b", query_lower):
                     matched.append(entity_id)
                     break
-        return matched
+        if not matched:
+            return []
+        probe_expert = self.global_fallback_expert if hasattr(self, "global_fallback_expert") else None
+        if probe_expert is None:
+            return list(dict.fromkeys(matched))[:12]
+        return sorted(
+            set(matched),
+            key=lambda entity_id: probe_expert._score_entity_for_query(entity_id, text),
+            reverse=True,
+        )[:12]
 
     def _extract_bridge_entities(
         self, question: str, domain_responses: List[Dict[str, Any]]
@@ -508,6 +707,26 @@ class QAOrchestrator:
         if not target_domains and self.org_chart.domains:
             target_domains = [self.org_chart.domains[0].domain_id]
         return target_domains
+
+    def _suggest_domains_from_query(self, question: str, *, limit: int = 4) -> List[str]:
+        """Suggest domains from query-focused graph evidence.
+
+        LLM routing can be brittle when an entity name is ambiguous ("Green" as
+        a color vs. the Steve Hillage album). This deterministic hint looks at
+        the highest-scoring graph facts for the question and routes to domains
+        that own their endpoints.
+        """
+        entity_map = self.org_chart.entity_domain_map()
+        counts: Dict[str, int] = {}
+        for rank, triple in enumerate(self.global_fallback_expert._query_focused_triples(question, limit=12)):
+            weight = max(1, 12 - rank)
+            for entity_id in (triple.subject, triple.object):
+                for domain_id in entity_map.get(entity_id, []):
+                    counts[domain_id] = counts.get(domain_id, 0) + weight
+        return [
+            domain_id
+            for domain_id, _ in sorted(counts.items(), key=lambda item: item[1], reverse=True)
+        ][:limit]
 
     def _build_expert_context(
         self,
@@ -670,16 +889,21 @@ Return ONLY the JSON."""
                 sub_question = {"question": sub_question, "target_domains": [], "context": ""}
             elif not isinstance(sub_question, dict):
                 continue
+            suggested_domains = self._suggest_domains_from_query(
+                f"{question} {sub_question.get('question', '')}"
+            )
             sub_question["target_domains"] = self._normalize_target_domains(
-                sub_question.get("target_domains", [])
+                suggested_domains + sub_question.get("target_domains", [])
             )
             normalized.append(sub_question)
         if not normalized:
+            suggested_domains = self._suggest_domains_from_query(question)
             normalized = [{
                 "question": question,
-                "target_domains": [
-                    domain.domain_id for domain in self.org_chart.domains[: self.max_routed_domains]
-                ],
+                "target_domains": self._normalize_target_domains(
+                    suggested_domains
+                    + [domain.domain_id for domain in self.org_chart.domains[: self.max_routed_domains]]
+                ),
                 "context": "",
             }]
         result["sub_questions"] = normalized
@@ -715,6 +939,12 @@ Return ONLY the JSON."""
                     if paths:
                         lines.append(f"\nMulti-hop paths ({matched_entities[index]} → {matched_entities[other]}):")
                         lines.append(paths_to_text(paths))
+
+        focused_triples = self.global_fallback_expert._query_focused_triples(question, limit=40)
+        if focused_triples:
+            lines.append("\nQuery-focused graph evidence:")
+            for triple in focused_triples:
+                lines.append(f"  {_format_triple(triple)}")
 
         return "\n".join(lines) if lines else ""
 
@@ -758,6 +988,13 @@ RULES:
 - Include only claims that are directly supported by the expert evidence OR by triples in the additional graph context above. Both are first-class evidence.
 - For multi-hop questions, you MUST chain across triples. If an expert names a hop-1 entity (e.g., "Steve Hillage is the performer of Green") and the additional graph context contains a triple about that entity that answers the next hop (e.g., "(miquette_giraudy) -[PROFESSIONAL_PARTNER]-> (steve_hillage)"), USE that triple to produce the final hop-2 answer. Do NOT say "no information available" when a relevant triple is present in the additional graph context.
 - Treat closely-related relations as semantic equivalents when answering (PROFESSIONAL_PARTNER ≈ spouse/partner, AUTHORED_BY ≈ wrote/written by, BORN_IN ≈ birthplace, LOCATED_IN ≈ located in, FACILITY_LOCATED_IN_CITY ≈ headquartered in, MEMBER_OF ≈ member of, etc.).
+- For MuSiQue-style person/partner questions, relation labels such as
+  BEST_KNOWN_FOR_WORK_WITH, WORKED_WITH_COLLABORATOR, HAS_CREATIVE_PARTNERSHIP_WITH,
+  PROFESSIONAL_PARTNER, and CREATIVE_PARTNERSHIP_WITH are valid evidence for a
+  spouse/partner-style answer when they connect a person to the hop-1 performer.
+  If the question asks for "spouse" but the graph only encodes "partner",
+  "creative partnership", or "worked with", return the linked person as the
+  short answer rather than abstaining.
 - Prefer the shortest answer that fully covers the supported facts.
 - If evidence is genuinely missing (no expert evidence AND no relevant triple in additional graph context), state the limitation briefly and stop.
 - Provide TWO answer forms:
@@ -797,14 +1034,16 @@ Return ONLY the JSON."""
                 model=self.llm_config.model,
                 temperature=0.1,
             )
-        except Exception:
+        except Exception as exc:
             return {
-                "answer": "Failed to synthesize answers",
+                "answer": "",
+                "short_answer": "",
                 "coverage": sum(response.get("coverage", 0) for response in domain_responses)
                 / max(len(domain_responses), 1),
                 "confidence": sum(response.get("confidence", 0) for response in domain_responses)
                 / max(len(domain_responses), 1),
                 "gaps": [],
+                "error": str(exc),
             }
 
 

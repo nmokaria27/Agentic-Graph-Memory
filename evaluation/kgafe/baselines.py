@@ -24,6 +24,7 @@ from multi_agent_kg.core.domain_experts import (
     find_paths,
     neighbourhood,
 )
+from multi_agent_kg.core.qa_orchestrator import _format_triple
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.llm.openai_client import chat_completion_json
 
@@ -77,6 +78,12 @@ class PathFocusedExpert(DomainExpertAgent):
     def answer(self, query: str, context: str = "") -> Dict[str, Any]:
         query_entities = self._extract_query_entities(query)
         evidence_blocks: List[str] = []
+
+        focused_triples = self._query_focused_triples(query, limit=50)
+        if focused_triples:
+            evidence_blocks.append("QUERY-FOCUSED GRAPH EVIDENCE:")
+            for triple in focused_triples:
+                evidence_blocks.append(_format_triple(triple))
 
         if len(query_entities) >= 2:
             all_paths = []
@@ -147,13 +154,14 @@ Return ONLY the JSON."""
                 model=self.llm_config.model,
                 temperature=0.1,
             )
-        except Exception:
+        except Exception as exc:
             result = {
                 "answer": "",
                 "coverage": 0.0,
                 "evidence": [],
                 "confidence": 0.0,
                 "out_of_scope_aspects": [query],
+                "error": str(exc),
             }
 
         result["domain_id"] = self.domain.domain_id
