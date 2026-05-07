@@ -806,7 +806,7 @@ class QAOrchestrator:
             for response in domain_responses
         )
 
-        if not (unowned or uncovered or (query_entities and not has_supported_answer and best_confidence < 0.35)):
+        if not (unowned or uncovered or (query_entities and not has_supported_answer)):
             return ""
 
         lines = [
