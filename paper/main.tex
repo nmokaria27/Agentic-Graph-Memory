@@ -309,58 +309,26 @@ first setting combines extraction quality and governance ablation because both a
 triples should enter memory.
 
 \begin{enumerate}[leftmargin=*]
-    \item \textbf{Extraction Quality and Governance Ablation:} We benchmark extraction performance against the SciERC test split and isolate the impact of governed admission over direct insertion, source-grounded insertion, and single-reviewer baselines. \system{} operates in a fixed-schema mode to compute exact precision/recall metrics (Entity F1, Strict/Mapped Triple F1) against a standardized target ontology.
+    \item \textbf{Extraction Quality and Governance Ablation:} We benchmark extraction performance against the SciERC test split and isolate the impact of governed admission over direct insertion, source-grounded insertion, and single-reviewer baselines. \system{} operates in a fixed-schema mode to compute exact precision/recall metrics over strict and mapped triples against a standardized target ontology.
     \item \textbf{Human Triple Review:} Because SciERC is a closed-world annotation, we conduct a blinded human adjudication study to evaluate actual source-support and graph utility for out-of-ontology triple proposals.
     \item \textbf{Downstream QA:} We test end-to-end multi-hop retrieval in an open-world setting using a 50-question slice of the MuSiQue dataset \citep{trivedi2022musique}, directly comparing our domain-routed QA approach against Microsoft GraphRAG.
 \end{enumerate}
 
 \subsection{Extraction Quality and Governance Ablation}
 
-This subsection combines the construction-quality result and the governance ablation because both
-ask the same underlying question: after candidate facts have been extracted, what should determine
-whether those facts enter persistent memory? The experiment therefore answers the first two results
-questions together. First, does governed admission improve the quality of the graph relative to
-direct insertion? Second, if it does, is the gain simply explained by source grounding or by having
-any LLM reviewer filter triples?
+This subsection answers the first two results questions: whether governed admission improves the
+quality of the stored graph, and whether the improvement is explained by simpler filtering. We
+evaluate all conditions on the full 100-document SciERC test split using GPT-5 and the fixed SciERC
+schema. The documents, target ontology, and base model are held fixed; only the admission pathway
+changes.
 
-We evaluate all conditions on the full 100-document SciERC test split using GPT-5 and the fixed
-SciERC schema. SciERC provides gold scientific entities and typed relations, so it gives a
-controlled benchmark for relation-level precision, recall, and F1. Using the full
-test split is important: the earlier pilot used only 50 documents, while this result uses the full
-available test set for this benchmark setting. Across all rows, the document set, target ontology,
-and base model are fixed. The experimental variable is the admission pathway: whether candidate
-triples are inserted directly, grounded and verified before insertion, filtered by a centralized
-reviewer, or routed through \system{} governance.
-
-\textbf{Direct flat insertion} is the simplest construction baseline. It runs the extraction
-pipeline and inserts extracted triples into a single graph after basic structural cleanup, but it
-does not use evidence linking, verification, domain ownership, reviewer decisions, revision, or
-domain-local memory. This row is useful because it measures what happens if the system treats the
-extractor output as the graph.
-
-\textbf{Source-grounded flat insertion} tests whether provenance and verification alone explain
-the improvement. In this condition, candidate triples are passed through the EvidenceLinker and
-VerificationAgent before insertion. The EvidenceLinker attaches localized source spans to proposed
-triples, and the VerificationAgent checks whether the candidate is supported well enough to remain
-in the construction stream. However, the surviving triples are still inserted into a flat graph.
-There are no domain owners, no governance routing, no admission decision, and no domain-local
-memory. This row isolates source grounding from governance.
-
-\textbf{Global reviewer} tests whether the result can be explained by adding a single LLM judge.
-The global reviewer receives candidate triples and evidence and makes a centralized approve/reject
-decision. It is stronger than direct insertion because it can reject unsupported or malformed
-triples, but it is intentionally not a governed graph: it has no notion of which domain owns a
-fact, no access to domain-specific accepted or rejected patterns, and no local subgraph memory.
-This row isolates generic LLM review from domain-governed review.
-
-\textbf{\system{}} applies the full governed admission pathway. Candidate triples are assigned to
-Domain Expert Agents, reviewed against source evidence and local graph context, and committed only
-after an explicit governance decision. The reviewer can approve, reject, or revise a proposed
-triple before it enters memory. The key difference is that the decision is not made in isolation:
-Domain Expert Agents review candidates relative to endpoint ownership, nearby admitted triples,
-and relation patterns already accepted or rejected in their domain. The comparison is therefore
-not between different datasets or different target schemas; it is a comparison of four ways to
-decide what extracted knowledge becomes memory.
+We compare four admission pathways. \textbf{Direct flat insertion} inserts extracted triples after
+basic structural cleanup, with no evidence linking, verification, domain ownership, or review.
+\textbf{Source-grounded flat insertion} adds EvidenceLinker and VerificationAgent, so triples are
+attached to source spans and checked for support before flat insertion. \textbf{Global reviewer}
+adds a single centralized LLM approve/reject reviewer, but no domain ownership or local graph
+memory. \textbf{\system{}} routes candidate triples to Domain Expert Agents, which review evidence
+and local graph context before approving, rejecting, or revising the triple for admission.
 
 \begin{table}[h]
     \centering
@@ -381,74 +349,34 @@ decide what extracted knowledge becomes memory.
     \label{tab:kg_results}
 \end{table}
 
-We report precision, recall, and F1 because the systems make different admission tradeoffs.
-\textbf{Precision} measures how many admitted triples match the benchmark graph, while
-\textbf{recall} measures how many benchmark triples are recovered. Direct insertion tends to
-recover more benchmark triples because it admits many more candidates, but that strategy also
-admits many relations that are redundant, weakly grounded, poorly normalized, or absent from the
-closed SciERC annotation. Governed admission is expected to be more selective: it may recover fewer
-gold triples, but a larger fraction of admitted triples should be correct. F1 summarizes this
-precision-recall tradeoff.
+We report strict and mapped triple precision, recall, and F1. Strict scoring requires exact
+subject--relation--object agreement; mapped scoring applies relation canonicalization and fuzzy
+entity normalization before scoring. Precision captures how clean the admitted graph is, while
+recall captures how much of the benchmark graph is recovered. This distinction matters because
+direct insertion can improve recall by admitting many candidates, but at the cost of a noisier
+graph.
 
-We also report both \textbf{strict} and \textbf{mapped} triple scores. Strict scoring requires
-exact agreement on subject, relation, and object after standard normalization. Mapped scoring
-applies relation-label canonicalization and fuzzy entity normalization before scoring. This matters
-for SciERC because many apparent relation errors are boundary or label-normalization differences
-rather than genuinely unsupported facts. Strict F1 is therefore the hardest benchmark condition,
-while mapped F1 gives a complementary estimate of whether the admitted graph captures the same
-scientific relation structure.
+The results show that source grounding alone does not explain the gain. Source-grounded flat
+insertion barely improves over direct insertion, increasing strict F1 from 0.106 to 0.107 and
+mapped F1 from 0.192 to 0.198 while admitting nearly the same number of triples. A centralized
+global reviewer is stronger: it reduces the graph to 1599 triples and improves strict F1 to 0.143
+and mapped F1 to 0.271. This shows that review helps, but also that generic review is not the full
+governance mechanism.
 
-The direct insertion row has the highest raw relation count: 2881 triples across the 100
-documents. This gives it the highest recall, with strict recall of 0.271 and mapped recall of
-0.490. However, the admitted graph is noisy under precision-based scoring. Strict precision is only
-0.066, and mapped precision is 0.119. In other words, direct insertion recovers more gold
-relations by admitting a much larger graph, but most admitted triples do not match the benchmark
-relation set.
+\system{} performs best overall. It admits 1077 triples, achieves the highest strict F1 (0.156)
+and mapped F1 (0.290), and has the strongest precision under both scoring regimes. Compared with
+direct flat insertion, strict precision rises from 0.066 to 0.129 and mapped precision rises from
+0.119 to 0.240. The recall drop is expected: governance rejects or revises more candidate triples
+before they enter memory. The net effect is a cleaner admitted graph, with strict triple F1
+improving by 47\% and mapped triple F1 by 52\% over direct GPT-5 insertion.
 
-Source-grounded flat insertion shows that evidence linking and verification alone do not solve the
-admission problem. It slightly improves strict F1 (0.106 to 0.107) and mapped F1 (0.192 to 0.198),
-but the improvement is small. It also admits nearly the same
-number of triples as direct insertion (2912 versus 2881). This is the important ablation point:
-source grounding is necessary for auditability and later human inspection, but a provenance span
-does not by itself decide whether a candidate fact should become durable memory. Without ownership
-and reviewer-based admission, the graph remains high-recall and low-precision.
-
-The global reviewer row shows that review helps more than source grounding alone. A centralized
-reviewer reduces the admitted graph to 1599 triples and improves strict F1 from 0.106 to 0.143 and
-mapped F1 from 0.192 to 0.271 relative to direct insertion. This confirms that some form of
-reviewer-mediated admission is better than simply inserting extracted triples. At the same time,
-the global reviewer is still a generic filter. It sees the candidate and evidence, but it does not
-know which domain owns the fact, what related triples have already been admitted nearby, or what
-relation patterns have previously been accepted or rejected in that domain.
-
-\system{} performs best overall. It admits 1077 triples and achieves the strongest admitted-triple
-scores: strict F1 of 0.156 and mapped F1 of 0.290. The improvement is driven primarily by
-precision. Compared with direct flat insertion, strict precision rises from 0.066 to 0.129, and
-mapped precision rises from 0.119 to 0.240. Compared with the global reviewer, \system{} further
-improves strict precision from 0.103 to 0.129 and mapped precision from 0.194 to 0.240. This comes
-with lower recall because governance rejects or revises more candidate triples before they enter
-memory, but the overall
-precision-recall balance improves.
-
-This result supports two claims at once. First, governance improves admitted graph quality:
-\system{} produces the best strict F1 and mapped F1. Second, the
-gain is not explained by simple filtering. Source grounding plus verification is not enough, and a
-single centralized reviewer only partially closes the gap. What \system{} adds is structured
-governance: ownership, routing, domain-local memory, and subgraph-aware review. Domain Expert
-Agents do not review triples as isolated text snippets. They evaluate candidates relative to the
-local graph context and relation patterns already accepted or rejected in their domain. Given the
-same scientific extraction setting, that organizational context produces a cleaner admitted graph
-than direct insertion, source-grounded insertion, or centralized review. In relative terms,
-\system{} improves strict triple F1 by 47\% and mapped triple F1 by 52\% over direct GPT-5
-insertion on the full SciERC test split.
-
-The absolute triple F1 values remain modest because SciERC is a strict closed-label benchmark
-rather than an exhaustive fact inventory. A source-supported scientific relation can still be
-counted as a false positive if it is absent from the gold annotations or uses a different
-boundary/canonicalization. For that reason, we use SciERC as a controlled benchmark for relative
-graph quality rather than as a claim that all valid scientific facts are captured by the gold graph.
-We later complement this benchmark evaluation with human review to assess whether triples counted
-as false positives are actually unsupported.
+This supports the governance claim. The improvement is not reproduced by source grounding alone
+and is only partially reproduced by a single global reviewer. \system{} adds ownership, routing,
+domain-local memory, and subgraph-aware review, so Domain Expert Agents evaluate triples relative
+to the local graph context and prior accepted or rejected relation patterns. Because SciERC is a
+closed benchmark rather than an exhaustive fact inventory, some source-supported triples may still
+be counted as false positives; the human review study below complements this benchmark by checking
+whether such triples are actually supported.
 
 \subsection{Human Triple Review}
 
