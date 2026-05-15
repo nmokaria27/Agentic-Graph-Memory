@@ -28,7 +28,7 @@ from multi_agent_kg.core.advanced_qa import AdvancedQAOrchestrator
 
 def main():
     llm_config = LLMConfig(
-        model="gemma3:27b",
+        model="gemma4:31b",
         temperature=0.2,
         max_tokens=4096,
     )

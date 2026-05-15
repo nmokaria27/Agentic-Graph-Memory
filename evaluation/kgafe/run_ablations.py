@@ -222,7 +222,7 @@ def main() -> None:
         choices=["single_hop", "multi_hop", "aggregation", "comparison", "negative", "cross_domain"],
         help="Question types to include",
     )
-    parser.add_argument("--model", default="gemma3:27b", help="Model name for the QA system/evaluator")
+    parser.add_argument("--model", default="gemma4:31b", help="Model name for the QA system/evaluator")
     parser.add_argument("--no-judge", action="store_true", help="Disable LLM judge panel")
     parser.add_argument("--output", required=True, help="Where to save ablation results JSON")
     args = parser.parse_args()

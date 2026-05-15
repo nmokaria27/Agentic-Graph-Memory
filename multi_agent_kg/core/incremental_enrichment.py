@@ -393,7 +393,7 @@ class IncrementalEnricher:
             raise ValueError("IncrementalEnricher requires either base_kg or governed_kg.")
         self.base_kg = base_kg
         self.governed_kg = governed_kg
-        self.llm_config = llm_config or LLMConfig(model="gemma3:27b")
+        self.llm_config = llm_config or LLMConfig(model="gemma4:31b")
         self.match_threshold = match_threshold
         self.auto_resolve_conflicts = auto_resolve_conflicts
         self.org_chart = org_chart

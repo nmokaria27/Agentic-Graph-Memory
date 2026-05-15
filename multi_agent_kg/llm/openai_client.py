@@ -400,12 +400,18 @@ def chat_completion_json(
         response_text = chat_completion(
             messages=modified_messages,
             model=resolved_model,
-            temperature=temperature + (0.1 * (attempt - 1)),  # slightly raise temp on retry
+            temperature=temperature + (0.2 * (attempt - 1)),  # raise temp more on retry
             max_tokens=max_tokens,
             response_format={"type": "json_object"},
             **kwargs,
         )
         last_response_text = response_text
+
+        if not response_text or not response_text.strip():
+            print(f"  WARNING: LLM returned an empty response (attempt {attempt}/{max_retries}). This may indicate a backend timeout or OOM.")
+            if attempt < max_retries:
+                time.sleep(2.0)
+                continue
 
         result = _extract_json(response_text)
         if result is not None:
@@ -413,6 +419,7 @@ def chat_completion_json(
 
         if attempt < max_retries:
             print(f"  WARNING: JSON parse failed (attempt {attempt}/{max_retries}), retrying...")
+            time.sleep(1.0)
 
     # All attempts failed - log and return empty fallback
     print(f"  WARNING: Failed to parse JSON after {max_retries} attempts.")

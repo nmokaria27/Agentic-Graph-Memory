@@ -363,11 +363,34 @@ class EntityExtractor(BaseAgent):
             and "Fixed" in domain_config.get("reasoning", "")
         ) if domain_config else False
 
-        for text, segment_id in texts_to_process:
-            if not text:
-                continue
+        # Process segments in parallel
+        all_entities = []
+        low_confidence_entities = []
+        
+        texts_to_process = []
+        if segments:
+            texts_to_process = [(s.get("text", ""), s.get("segment_id")) for s in segments]
+        elif context.text:
+            texts_to_process = [(context.text, f"{context.document_id}_full")]
+        
+        # Detect fixed schema mode
+        strict_types = (
+            domain_config.get("confidence") == 0.95
+            and "Fixed" in domain_config.get("reasoning", "")
+        ) if domain_config else False
 
-            # Combined extraction: extract + type + verify boundaries in one LLM call
+        from concurrent.futures import ThreadPoolExecutor
+        import os
+
+        # Use CPU count or a safe default for parallel LLM calls
+        max_workers = min(len(texts_to_process), int(os.getenv("MAX_PARALLEL_SEGMENTS", "4")))
+        
+        def process_segment(item):
+            text, segment_id = item
+            if not text:
+                return []
+            
+            # Combined extraction
             typed = self._extract_entities_combined(
                 text, entity_types, context.domain,
                 strict_types=strict_types,
@@ -378,7 +401,6 @@ class EntityExtractor(BaseAgent):
             if not strict_types and self.enable_deterministic_value_harvesting:
                 typed = self._augment_open_domain_entities(text, typed)
 
-            # Include ALL entities in output; track low-confidence separately for logging/escalation
             for entity in typed:
                 entity["source_segment"] = segment_id
                 entity["source_document_id"] = context.document_id
@@ -387,9 +409,24 @@ class EntityExtractor(BaseAgent):
                     entity["confidence"] = float(entity.get("confidence", 0) or 0)
                 except (TypeError, ValueError):
                     entity["confidence"] = 0.0
-                all_entities.append(entity)
-                if entity["confidence"] < self.quality_threshold:
-                    low_confidence_entities.append(entity)
+            return typed
+
+        if max_workers > 1:
+            print(f"  Processing {len(texts_to_process)} segments in parallel (workers={max_workers})...")
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                results_list = list(executor.map(process_segment, texts_to_process))
+                for segment_results in results_list:
+                    all_entities.extend(segment_results)
+                    for entity in segment_results:
+                        if entity["confidence"] < self.quality_threshold:
+                            low_confidence_entities.append(entity)
+        else:
+            for item in texts_to_process:
+                segment_results = process_segment(item)
+                all_entities.extend(segment_results)
+                for entity in segment_results:
+                    if entity["confidence"] < self.quality_threshold:
+                        low_confidence_entities.append(entity)
         
         # Stage 4: Coreference Resolution (across all segments)
         known_entities = self._get_known_entities()

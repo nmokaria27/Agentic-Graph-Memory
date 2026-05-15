@@ -243,7 +243,7 @@ class KGAFEEvaluator:
     def __init__(
         self,
         kg: KnowledgeGraph,
-        model: str = "gemma3:27b",
+        model: str = "gemma4:31b",
         enable_judge_panel: bool = True,
         org_chart: Optional[OrgChart] = None,
     ):

@@ -84,7 +84,7 @@ Return ONLY the JSON. Be thorough — extract EVERY factual claim."""
 class AtomicDecomposer:
     """Decomposes QA answers into atomic facts for verification."""
 
-    def __init__(self, model: str = "gemma3:27b"):
+    def __init__(self, model: str = "gemma4:31b"):
         self.model = model
 
     def decompose(

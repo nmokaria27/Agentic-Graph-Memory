@@ -67,7 +67,7 @@ class BenchmarkGenerator:
     def __init__(
         self,
         kg: KnowledgeGraph,
-        model: str = "gemma3:27b",
+        model: str = "gemma4:31b",
         seed: int = 42,
         org_chart: Optional[OrgChart] = None,
     ):

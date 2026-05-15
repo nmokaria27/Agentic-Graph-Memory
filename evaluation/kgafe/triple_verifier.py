@@ -79,7 +79,7 @@ class TripleVerifier:
     def __init__(
         self,
         kg: KnowledgeGraph,
-        model: str = "gemma3:27b",
+        model: str = "gemma4:31b",
         path_max_hops: int = 3,
         neighbourhood_hops: int = 2,
     ):

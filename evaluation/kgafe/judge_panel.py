@@ -65,7 +65,7 @@ class JudgePanel:
     Each judge scores a single dimension using chain-of-thought reasoning.
     """
 
-    def __init__(self, model: str = "gemma3:27b"):
+    def __init__(self, model: str = "gemma4:31b"):
         self.model = model
 
     def evaluate(
