@@ -1,0 +1,10 @@
+{
+  "knowledge_graph": {
+    "entities": [],
+    "triples": []
+  },
+  "metadata": {
+    "recovery_timestamp": "recovered",
+    "source": "log_recovery"
+  }
+}

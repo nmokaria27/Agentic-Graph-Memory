@@ -14,13 +14,16 @@ os.chdir(PROJECT_ROOT)
 
 from dotenv import load_dotenv
 from multi_agent_kg.core import (
+    CheckpointManager,
     DeliberativeOrchestrator,
     GovernedKnowledgeGraph,
     LLMConfig,
     create_qa_system,
+    discover_checkpoints,
     load_governed_kg,
     save_governed_kg,
 )
+from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.utils.debug_logger import DebugLogger
 
 # Load environment
@@ -79,13 +82,98 @@ parser.add_argument(
     default=os.getenv("PIPELINE_GOVERNANCE_MODE", "audit_only"),
     choices=["strict", "permissive", "audit_only"],
 )
+parser.add_argument(
+    "--model",
+    default=os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b"),
+    help="Ollama model to use for all pipeline agents (default: gemma4:31b)",
+)
+parser.add_argument(
+    "--resume",
+    "-r",
+    action="store_true",
+    help="Resume from per-stage checkpoints under --checkpoint-dir (skips completed stages).",
+)
+parser.add_argument(
+    "--checkpoint-dir",
+    default="checkpoints",
+    help="Directory to store per-document, per-stage checkpoints (default: checkpoints/).",
+)
+parser.add_argument(
+    "--no-checkpoint",
+    action="store_true",
+    help="Disable checkpointing entirely (overrides --checkpoint-dir).",
+)
 args = parser.parse_args()
+CHECKPOINT_DIR = None if args.no_checkpoint else args.checkpoint_dir
 
 print("=" * 70)
 print("LOADING EXTRACTED TEXT")
 print("=" * 70)
 
 documents = load_documents(args.input)
+
+# Check for resume — per-document, per-stage checkpoint discovery.
+initial_kg = None
+initial_governed_kg = None
+
+if args.resume and CHECKPOINT_DIR is not None:
+    existing = discover_checkpoints(CHECKPOINT_DIR)
+    relevant = {entry["document_id"]: entry for entry in existing}
+    resumable = [doc for doc in documents if doc["id"] in relevant]
+    if not resumable:
+        print(f"--resume set but no checkpoints found under {CHECKPOINT_DIR}/. Starting from scratch.")
+    else:
+        print(f"--resume: found checkpoints for {len(resumable)} doc(s):")
+        for doc in resumable:
+            entry = relevant[doc["id"]]
+            stages = entry.get("completed_stages", [])
+            print(f"  - {doc['id']}: last_stage={entry.get('last_stage')}, completed={stages}")
+
+        # Pick the most-advanced doc's KG snapshot as the orchestrator's starting
+        # governance state. Per-doc checkpoint files restore per-stage progress.
+        latest = max(
+            resumable,
+            key=lambda doc: len(relevant[doc["id"]].get("completed_stages", [])),
+        )
+        latest_dir = os.path.join(CHECKPOINT_DIR, latest["id"])
+        gov_path = os.path.join(latest_dir, "governed_kg_latest.json")
+        kg_path = os.path.join(latest_dir, "knowledge_graph_latest.json")
+        if os.path.exists(gov_path):
+            try:
+                initial_governed_kg = load_governed_kg(gov_path)
+                initial_kg = initial_governed_kg.kg
+                print(f"Restored governed_kg snapshot from {gov_path}")
+            except Exception as e:
+                print(f"WARNING: could not load governed_kg snapshot at {gov_path}: {e}")
+        elif os.path.exists(kg_path):
+            try:
+                with open(kg_path, "r", encoding="utf-8") as f:
+                    initial_kg = KnowledgeGraph.from_dict(json.load(f))
+                print(f"Restored knowledge_graph snapshot from {kg_path}")
+            except Exception as e:
+                print(f"WARNING: could not load knowledge_graph snapshot at {kg_path}: {e}")
+elif args.resume and CHECKPOINT_DIR is None:
+    print("WARNING: --resume requires checkpointing; --no-checkpoint cancels it. Starting from scratch.")
+elif not args.resume and CHECKPOINT_DIR is not None:
+    # Fresh run with existing checkpoints is destructive: the new run will
+    # overwrite stage files + governed_kg_latest.json as it progresses,
+    # leaving stale files mixed with new ones if it crashes early. Refuse
+    # unless the user explicitly opts in.
+    existing = discover_checkpoints(CHECKPOINT_DIR)
+    collision = [entry for entry in existing if entry["document_id"] in {d["id"] for d in documents}]
+    if collision:
+        print("=" * 70)
+        print("ERROR: existing checkpoints would be overwritten by this fresh run:")
+        for entry in collision:
+            print(f"  - {entry['document_id']}: completed={entry.get('completed_stages', [])}")
+        print()
+        print("Options:")
+        print("  1. python3 scripts/run_pipeline.py --input ... --resume    (continue from checkpoint)")
+        print("  2. rm -rf checkpoints/<document_id>                        (delete then re-run fresh)")
+        print("  3. python3 scripts/run_pipeline.py --input ... --checkpoint-dir checkpoints_new/")
+        print("=" * 70)
+        raise SystemExit(1)
+
 total_chars = sum(len(doc["text"]) for doc in documents)
 total_words = sum(len(doc["text"].split()) for doc in documents)
 print(f"Loaded {len(documents)} document(s), {total_chars} characters (~{total_words} words)")
@@ -94,9 +182,21 @@ print("\n" + "=" * 70)
 print("RUNNING MULTI-AGENT PIPELINE")
 print("=" * 70)
 
-# Configure LLM (using gemma4:31b via Ollama for best quality)
+# Configure LLM. --model only seeds LLM_DEFAULT_MODEL; per-tier env vars
+# (LLM_SMALL/MEDIUM/LARGE_MODEL) win over defaults, which now come from
+# multi_agent_kg.agents.base.get_default_model_tiers (qwen3:8b / gemma3:27b
+# / gemma4:31b per HANDOFF.md §4).
+os.environ.setdefault("LLM_DEFAULT_MODEL", args.model)
+print(f"Default model (LLM_DEFAULT_MODEL): {args.model}")
+print(
+    "Tier resolution: "
+    f"SMALL={os.getenv('LLM_SMALL_MODEL', 'qwen3:8b')}, "
+    f"MEDIUM={os.getenv('LLM_MEDIUM_MODEL', 'gemma3:27b')}, "
+    f"LARGE={os.getenv('LLM_LARGE_MODEL', 'gemma4:31b')}"
+)
+
 llm_config = LLMConfig(
-    model="gemma4:31b",
+    model=args.model,
     temperature=0.2,
     max_tokens=4096,
 )
@@ -105,13 +205,16 @@ llm_config = LLMConfig(
 print("\nInitializing orchestrator...")
 orchestrator = DeliberativeOrchestrator(
     llm_config=llm_config,
-    governed_kg=GovernedKnowledgeGraph(governance_mode=args.governance_mode),
-    quality_threshold=0.5,  # Lowered for maximum recall; garbage filtered by verification
+    knowledge_graph=initial_kg,
+    governed_kg=initial_governed_kg or GovernedKnowledgeGraph(governance_mode=args.governance_mode),
+    quality_threshold=0.35,  # Lowered for tuning Stage 1
     max_refinement_iterations=1,
     enable_self_consistency=False,
     enable_open_world=True,
     enable_cross_document=False,
     debug_logger=debug_logger,
+    checkpoint_dir=CHECKPOINT_DIR,
+    resume=args.resume,
 )
 if args.governance_mode == "strict":
     print("Strict governance enabled: creation will request explicit review before committing triples.")
@@ -158,6 +261,34 @@ try:
     # Export knowledge graph
     export = orchestrator.export()
     kg = export['knowledge_graph']
+    
+    # Calculate Connectivity Metrics
+    try:
+        import networkx as nx
+        G = nx.Graph()
+        if kg.get('entities'):
+            G.add_nodes_from([e['id'] for e in kg.get('entities', []) if 'id' in e])
+        if kg.get('triples'):
+            for t in kg.get('triples', []):
+                subj = t.get('subject_id') or t.get('subject')
+                obj = t.get('object_id') or t.get('object')
+                if subj and obj:
+                    G.add_edge(subj, obj)
+        
+        components = list(nx.connected_components(G))
+        if components:
+            largest_component = max(components, key=len)
+            largest_component_size = len(largest_component)
+            orphan_count = sum(1 for c in components if len(c) == 1)
+            num_entities = len(G.nodes)
+            connectivity_pct = (largest_component_size / num_entities * 100) if num_entities > 0 else 0
+            
+            print(f"\nConnectivity Metrics:")
+            print(f"  Largest Component Size: {largest_component_size} / {num_entities} ({connectivity_pct:.1f}%)")
+            print(f"  Orphan Count: {orphan_count}")
+    except ImportError:
+        print("\nConnectivity Metrics: networkx not installed, skipping.")
+
     
     print("\n" + "=" * 70)
     print("EXTRACTED ENTITIES")

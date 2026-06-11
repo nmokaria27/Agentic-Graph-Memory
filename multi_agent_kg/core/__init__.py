@@ -108,6 +108,10 @@ from multi_agent_kg.core.advanced_qa import (
     ProvenanceChain,
     ProvenanceRecord,
 )
+from multi_agent_kg.core.checkpoint import (
+    CheckpointManager,
+    discover_checkpoints,
+)
 
 __all__ = [
     # Knowledge Graph
@@ -185,4 +189,7 @@ __all__ = [
     "SessionMemory",
     "ProvenanceChain",
     "ProvenanceRecord",
+    # Checkpointing
+    "CheckpointManager",
+    "discover_checkpoints",
 ]

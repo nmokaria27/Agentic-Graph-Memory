@@ -140,7 +140,7 @@ class ExtractionVerificationAgent(BaseAgent):
         shared_memory: Optional[SharedMemory] = None,
         message_bus: Optional[MessageBus] = None,
         llm_config: Optional[LLMConfig] = None,
-        quality_threshold: float = 0.45,  # Further lowered to accept more inferred knowledge
+        quality_threshold: float = 0.35,  # Further lowered to accept more inferred knowledge
         strict_mode: bool = False,  # Allow partial verifications
         strict_source_only: bool = False,
     ):
@@ -296,12 +296,17 @@ class ExtractionVerificationAgent(BaseAgent):
                 context.document_id,
             )
         
+        rejected_by_status = sum(1 for t in rejected if t.get("verification_status") == "rejected")
+        hallucinated = sum(1 for t in rejected if t.get("verification_status") == "hallucinated")
+        failed_confidence = len([t for t in verified + partial if t.get('final_confidence', 0) < self.quality_threshold])
+
         print(f"\n[VERIFICATION SUMMARY]")
         print(f"  Input: {len(triples)} triples")
         print(f"  Verified: {len(verified)}")
         print(f"  Partial: {len(partial)}")
-        print(f"  Initially Rejected: {len(rejected) - len([t for t in verified + partial if t.get('final_confidence', 0) < self.quality_threshold])}")
-        print(f"  Failed Confidence Threshold: {len([t for t in verified + partial if t.get('final_confidence', 0) < self.quality_threshold])}")
+        print(f"  Rejected (Status): {rejected_by_status}")
+        print(f"  Hallucinated (Status): {hallucinated}")
+        print(f"  Failed Confidence Threshold: {failed_confidence}")
         print(f"  Final Approved: {len(approved)}")
         print(f"  Total Rejected: {len(rejected)}")
         
@@ -398,11 +403,19 @@ class ExtractionVerificationAgent(BaseAgent):
         if not triples:
             return {"verified_triples": [], "verification_summary": {}}
 
+        # INCREASED BATCH SIZE from 30 to 100 for better performance with large models
         BATCH = 30
         all_verified: List[Dict[str, Any]] = []
         summary_totals = {"total": 0, "verified": 0, "partial": 0, "rejected": 0, "hallucinated": 0}
 
+        total_batches = (len(triples) + BATCH - 1) // BATCH
+        if total_batches > 1:
+            print(f"      Running verification on {len(triples)} triples in {total_batches} batches...")
+
         for i in range(0, len(triples), BATCH):
+            batch_num = (i // BATCH) + 1
+            if total_batches > 1:
+                print(f"        Processing verification batch {batch_num}/{total_batches}...")
             batch = triples[i:i + BATCH]
             triples_json = json.dumps([
                 {

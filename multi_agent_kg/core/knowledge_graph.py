@@ -71,7 +71,7 @@ class Triple:
         )
 
     def __repr__(self) -> str:
-        conf_str = f" ({self.confidence:.2f})" if self.confidence else ""
+        conf_str = f" ({self.confidence:.2f})" if self.confidence is not None else ""
         return f"({self.subject}) -[{self.relation}]-> ({self.object}){conf_str}"
 
 
@@ -197,8 +197,8 @@ class KnowledgeGraph:
         if triple in self._triple_set:
             return None
 
-        self.triples.append(triple)
         self._triple_set.add(triple)
+        self.triples.append(triple)
 
         # Do NOT auto-create phantom entities.  The KnowledgeOrganizer is
         # responsible for ensuring that subject/object IDs exist before
@@ -283,7 +283,7 @@ class KnowledgeGraph:
         print(f"\nTriples ({len(self.triples)}):")
         print("-" * 60)
         for triple in self.triples:
-            conf_str = f" [confidence: {triple.confidence:.2f}]" if triple.confidence else ""
+            conf_str = f" [confidence: {triple.confidence:.2f}]" if triple.confidence is not None else ""
             source_str = f" (source: {triple.source})" if triple.source else ""
             print(f"  • {triple}{conf_str}{source_str}")
 

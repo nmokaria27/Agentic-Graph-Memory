@@ -1,0 +1,245 @@
+{
+  "domain_config": {
+    "primary_domain": "Corporate_Technological_Evolution",
+    "sub_domains": [
+      "Business_History",
+      "Consumer_Electronics",
+      "Technology_Industry"
+    ],
+    "domain_description": "This document details the history, development, and current state of Apple Inc., a major technology company, focusing on its products, leadership, and market position.",
+    "confidence": 0.95,
+    "reasoning": "The text centers around the lifecycle of a single company, Apple, detailing its founding, key products, leadership changes, and market performance. This necessitates a domain focused on corporate evolution within the technology sector.",
+    "key_indicators": [
+      "Company Founding",
+      "Product Innovation",
+      "Leadership Succession",
+      "Market Share",
+      "Financial Performance",
+      "Corporate Criticism"
+    ],
+    "entity_types": [
+      {
+        "type": "CORPORATE_ENTITY",
+        "description": "Represents the company Apple Inc. and its various iterations.",
+        "priority": "high",
+        "examples_from_text": [
+          "Apple Inc.",
+          "Apple Computer Company"
+        ]
+      },
+      {
+        "type": "INDIVIDUAL_LEADER",
+        "description": "Represents key individuals who held leadership positions within Apple.",
+        "priority": "high",
+        "examples_from_text": [
+          "Steve Jobs",
+          "Tim Cook"
+        ]
+      },
+      {
+        "type": "PRODUCT_LINE",
+        "description": "Represents a specific series or family of products offered by Apple.",
+        "priority": "high",
+        "examples_from_text": [
+          "iPhone",
+          "Mac"
+        ]
+      },
+      {
+        "type": "OPERATING_SYSTEM",
+        "description": "Represents the software systems developed by Apple for its devices.",
+        "priority": "medium",
+        "examples_from_text": [
+          "iOS",
+          "macOS"
+        ]
+      },
+      {
+        "type": "FINANCIAL_METRIC",
+        "description": "Represents quantitative measures of Apple's financial performance.",
+        "priority": "medium",
+        "examples_from_text": [
+          "$4 trillion",
+          "$1 trillion"
+        ]
+      },
+      {
+        "type": "CRITICAL_ISSUE",
+        "description": "Represents areas of public or internal concern regarding Apple's practices.",
+        "priority": "low",
+        "examples_from_text": [
+          "labor conditions",
+          "environmental practices"
+        ]
+      }
+    ],
+    "relation_types": [
+      {
+        "type": "FOUNDED_BY",
+        "description": "Indicates the individuals who established a corporate entity.",
+        "source_types": [
+          "CORPORATE_ENTITY"
+        ],
+        "target_types": [
+          "INDIVIDUAL_LEADER"
+        ],
+        "priority": "high",
+        "example_from_text": "Apple Inc. is ... Founded in 1976 as Apple Computer Company by Steve Jobs, Steve Wozniak and Ronald Wayne"
+      },
+      {
+        "type": "LEADS",
+        "description": "Indicates a leadership role held by an individual within a corporate entity.",
+        "source_types": [
+          "INDIVIDUAL_LEADER"
+        ],
+        "target_types": [
+          "CORPORATE_ENTITY"
+        ],
+        "priority": "high",
+        "example_from_text": "Tim Cook, who will be succeeded by John Ternus in 2026."
+      },
+      {
+        "type": "PRODUCES",
+        "description": "Indicates that a corporate entity creates or offers a specific product line.",
+        "source_types": [
+          "CORPORATE_ENTITY"
+        ],
+        "target_types": [
+          "PRODUCT_LINE"
+        ],
+        "priority": "high",
+        "example_from_text": "Apple's product lineup includes portable and home hardware like the iPhone, iPad, Mac..."
+      },
+      {
+        "type": "RUNS_ON",
+        "description": "Indicates which operating system a product line utilizes.",
+        "source_types": [
+          "PRODUCT_LINE"
+        ],
+        "target_types": [
+          "OPERATING_SYSTEM"
+        ],
+        "priority": "medium",
+        "example_from_text": "Macs use Apple silicon chips, run the macOS operating system..."
+      },
+      {
+        "type": "ACHIEVES",
+        "description": "Indicates a financial milestone reached by a corporate entity.",
+        "source_types": [
+          "CORPORATE_ENTITY"
+        ],
+        "target_types": [
+          "FINANCIAL_METRIC"
+        ],
+        "priority": "medium",
+        "example_from_text": "Apple became the first publicly traded US company to be valued at over $1 trillion in 2018"
+      },
+      {
+        "type": "FACED_WITH",
+        "description": "Indicates a critical issue that a corporate entity is dealing with.",
+        "source_types": [
+          "CORPORATE_ENTITY"
+        ],
+        "target_types": [
+          "CRITICAL_ISSUE"
+        ],
+        "priority": "low",
+        "example_from_text": "Apple has received criticism regarding its contractors' labor conditions"
+      }
+    ],
+    "entity_type_names": [
+      "CORPORATE_ENTITY",
+      "INDIVIDUAL_LEADER",
+      "PRODUCT_LINE",
+      "OPERATING_SYSTEM",
+      "FINANCIAL_METRIC",
+      "CRITICAL_ISSUE"
+    ],
+    "relation_type_names": [
+      "FOUNDED_BY",
+      "LEADS",
+      "PRODUCES",
+      "RUNS_ON",
+      "ACHIEVES",
+      "FACED_WITH"
+    ],
+    "entity_examples": [
+      {
+        "text_span": "Apple Inc. is an American multinational technology company...",
+        "entity": "Apple Inc.",
+        "entity_type": "CORPORATE_ENTITY",
+        "explanation": "This is the primary company discussed in the document."
+      },
+      {
+        "text_span": "Steve Jobs, Steve Wozniak and Ronald Wayne",
+        "entity": "Steve Jobs",
+        "entity_type": "INDIVIDUAL_LEADER",
+        "explanation": "This is a key individual involved in the founding of Apple."
+      },
+      {
+        "text_span": "the iPhone, iPad, Mac",
+        "entity": "iPhone",
+        "entity_type": "PRODUCT_LINE",
+        "explanation": "These are specific product lines manufactured and sold by Apple."
+      }
+    ],
+    "relation_examples": [
+      {
+        "relation_type": "FOUNDED_BY",
+        "text_span": "Founded in 1976 as Apple Computer Company by Steve Jobs, Steve Wozniak and Ronald Wayne",
+        "subject": "Apple Computer Company",
+        "subject_type": "CORPORATE_ENTITY",
+        "object": "Steve Jobs",
+        "object_type": "INDIVIDUAL_LEADER",
+        "explanation": "The text explicitly states that Steve Jobs, Steve Wozniak, and Ronald Wayne founded Apple Computer Company."
+      },
+      {
+        "relation_type": "LEADS",
+        "text_span": "Jobs resigned in 2011 for health reasons and died the same year; he was succeeded as CEO by Tim Cook",
+        "subject": "Tim Cook",
+        "subject_type": "INDIVIDUAL_LEADER",
+        "object": "Apple Inc.",
+        "object_type": "CORPORATE_ENTITY",
+        "explanation": "The text indicates Tim Cook succeeded Jobs as CEO of Apple Inc., demonstrating a leadership role."
+      },
+      {
+        "relation_type": "PRODUCES",
+        "text_span": "Under his leadership, Apple returned to profitability by introducing the iMac, iPod, iPhone, and iPad devices",
+        "subject": "Apple Inc.",
+        "subject_type": "CORPORATE_ENTITY",
+        "object": "iMac",
+        "object_type": "PRODUCT_LINE",
+        "explanation": "The text states Apple introduced the iMac, indicating that Apple produces the iMac product line."
+      },
+      {
+        "relation_type": "ACHIEVES",
+        "text_span": "Apple returned to profitability",
+        "subject": "Apple Inc.",
+        "subject_type": "CORPORATE_ENTITY",
+        "object": "profitability",
+        "object_type": "FINANCIAL_METRIC",
+        "explanation": "The text explicitly states Apple returned to a state of profitability, indicating a positive financial achievement."
+      },
+      {
+        "relation_type": "FACED_WITH",
+        "text_span": "Apple lost considerable market share in the PC industry to the lower-priced Wintel duopoly of Intel-powered PC clones running Windows, and neared bankruptcy by 1997.",
+        "subject": "Apple Inc.",
+        "subject_type": "CORPORATE_ENTITY",
+        "object": "loss of market share",
+        "object_type": "CRITICAL_ISSUE",
+        "explanation": "The text describes Apple losing market share and nearing bankruptcy, indicating a critical issue the company faced."
+      }
+    ],
+    "extraction_parameters": {
+      "complexity": "medium",
+      "knowledge_density": "dense",
+      "recommended_chunk_size": 256,
+      "requires_coreference": true,
+      "has_temporal_relations": true,
+      "has_hierarchical_entities": false
+    },
+    "document_id": "wikipedia_test"
+  },
+  "domain": "general",
+  "confidence": 0.7
+}

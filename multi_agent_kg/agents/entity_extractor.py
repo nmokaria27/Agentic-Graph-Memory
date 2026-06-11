@@ -363,21 +363,27 @@ class EntityExtractor(BaseAgent):
             and "Fixed" in domain_config.get("reasoning", "")
         ) if domain_config else False
 
-        for text, segment_id in texts_to_process:
+        total_segments = len(texts_to_process)
+        for i, (text, segment_id) in enumerate(texts_to_process):
             if not text:
                 continue
 
+            print(f"    Segment {i+1}/{total_segments} ({segment_id}) — extracting entities...")
             # Combined extraction: extract + type + verify boundaries in one LLM call
             typed = self._extract_entities_combined(
                 text, entity_types, context.domain,
                 strict_types=strict_types,
             )
 
+            if not typed:
+                print(f"    WARNING: segment {i+1}/{total_segments} ({segment_id}) returned 0 entities — possible LLM parse failure, data lost for this segment")
+
             if strict_types and entity_types:
                 typed = self._enforce_strict_schema(typed, entity_types)
             if not strict_types and self.enable_deterministic_value_harvesting:
                 typed = self._augment_open_domain_entities(text, typed)
 
+            entity_count_before = len(all_entities)
             # Include ALL entities in output; track low-confidence separately for logging/escalation
             for entity in typed:
                 entity["source_segment"] = segment_id
@@ -390,7 +396,10 @@ class EntityExtractor(BaseAgent):
                 all_entities.append(entity)
                 if entity["confidence"] < self.quality_threshold:
                     low_confidence_entities.append(entity)
-        
+            segment_extracted = len(all_entities) - entity_count_before
+            if segment_extracted > 0:
+                print(f"      -> {segment_extracted} entities extracted")
+
         # Stage 4: Coreference Resolution (across all segments)
         known_entities = self._get_known_entities()
         resolved = self._stage4_coreference_resolution(
@@ -405,7 +414,7 @@ class EntityExtractor(BaseAgent):
         # Handle low confidence entities
         print(f"\n[ENTITY EXTRACTOR DEBUG]")
         print(f"  Total extracted: {len(all_entities)}")
-        print(f"  High confidence (>={self.quality_threshold}): {len(all_entities)}")
+        print(f"  High confidence (>={self.quality_threshold}): {len(all_entities) - len(low_confidence_entities)}")
         print(f"  Low confidence (<{self.quality_threshold}): {len(low_confidence_entities)}")
         
         if low_confidence_entities:
@@ -520,7 +529,13 @@ class EntityExtractor(BaseAgent):
             )
             confidence = 0.7
 
+        if not isinstance(result, (dict, list)):
+            print(f"  WARNING: LLM returned unexpected type {type(result).__name__} instead of dict/list — treating as 0 entities")
+            return []
         entities = result if isinstance(result, list) else result.get("entities", [])
+        if not isinstance(entities, list):
+            print(f"  WARNING: 'entities' key is {type(entities).__name__}, not list — treating as 0 entities")
+            return []
         # Ensure each entity has a confidence score
         for e in entities:
             if "confidence" not in e:
@@ -539,11 +554,16 @@ class EntityExtractor(BaseAgent):
         
         import json
         
-        # Process in batches to avoid token limit
-        batch_size = 20  # Smaller batches for coreference resolution
+        # INCREASED BATCH SIZE: 100 for better performance with large models
+        batch_size = 100
         all_resolved = []
         
+        total_batches = (len(entities) + batch_size - 1) // batch_size
+        print(f"    Running coreference resolution on {len(entities)} entities ({total_batches} batches)...")
+        
         for i in range(0, len(entities), batch_size):
+            batch_num = (i // batch_size) + 1
+            print(f"      Processing coref batch {batch_num}/{total_batches}...")
             batch = entities[i:i+batch_size]
             entities_json = json.dumps(batch, indent=2)
             known_json = json.dumps(known_entities[:20], indent=2) if known_entities else "[]"
@@ -652,6 +672,8 @@ class EntityExtractor(BaseAgent):
                         if mention != canonical_name:
                             self.shared_memory.register_entity_alias(mention, canonical_id)
         
+        if not all_resolved:
+            print(f"  WARNING: Coreference resolution produced 0 groups from {len(entities)} entities — falling back to raw entities")
         return all_resolved if all_resolved else entities
 
     def _augment_open_domain_entities(

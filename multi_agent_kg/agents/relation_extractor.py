@@ -791,10 +791,17 @@ class RelationExtractor(BaseAgent):
             return [], stats
 
         triples: List[Dict[str, Any]] = []
-        batch_size = 10
+        # INCREASED BATCH SIZE from 10 to 100 for better performance
+        batch_size = 100
         direction_guide = SCIERC_DIRECTION_HINT
 
+        total_batches = (len(candidate_pairs) + batch_size - 1) // batch_size
+        print(f"      Pairwise scoring {len(candidate_pairs)} candidate pairs in {total_batches} batches...")
+
         for start in range(0, len(candidate_pairs), batch_size):
+            batch_num = (start // batch_size) + 1
+            if total_batches > 1:
+                print(f"        Processing pairwise batch {batch_num}/{total_batches}...")
             batch = candidate_pairs[start:start + batch_size]
             prompt = PAIRWISE_RELATION_SCORING_PROMPT.format(
                 allowed_relation_types=", ".join(relation_types + ["NONE"]),
@@ -1003,6 +1010,10 @@ class RelationExtractor(BaseAgent):
                 "pairwise_positive_predictions": 0,
                 "pairwise_triples_added": 0,
             }
+            # NOTE: Pairwise relation scoring is gated on fixed_schema_mode.
+            # In open-world mode (enable_open_world=True), fixed_schema_mode is
+            # always False, so pairwise produces 0 triples. This is by design
+            # but means open-world runs rely entirely on RHF head/tail binding.
             if (
                 self.enable_fixed_schema_pairwise
                 and fixed_schema_mode
@@ -1016,6 +1027,7 @@ class RelationExtractor(BaseAgent):
                 pairwise_pairs_considered += pairwise_stats["pairwise_pairs_considered"]
                 pairwise_positive_predictions += pairwise_stats["pairwise_positive_predictions"]
                 pairwise_triples_added += pairwise_stats["pairwise_triples_added"]
+                print(f"  Segment {segment_id}: Pairwise pairs considered = {pairwise_stats['pairwise_pairs_considered']}")
 
             # Stage 2: Head Entity Binding
             head_bindings = self._stage2_head_binding(

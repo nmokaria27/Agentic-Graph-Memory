@@ -318,8 +318,8 @@ class ExtractionValidator(BaseAgent):
         if not entities and not triples:
             return {"overall_quality": 0.0}
 
-        # Process in batches of 40 items to stay within token limits
-        BATCH = 40
+        # Process in batches of 100 items to stay within token limits
+        BATCH = 100
         all_entity_validations: List[Dict[str, Any]] = []
         all_triple_validations: List[Dict[str, Any]] = []
         quality_scores: List[float] = []
@@ -330,7 +330,12 @@ class ExtractionValidator(BaseAgent):
 
         # Pair up entity and triple batches
         n = max(len(entity_batches), len(triple_batches))
+        if n > 1:
+            print(f"      Running validation in {n} batches...")
+
         for idx in range(n):
+            if n > 1:
+                print(f"        Processing validation batch {idx+1}/{n}...")
             e_batch = entity_batches[idx] if idx < len(entity_batches) else []
             t_batch = triple_batches[idx] if idx < len(triple_batches) else []
             if not e_batch and not t_batch:

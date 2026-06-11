@@ -259,10 +259,18 @@ class EvidenceLinker(BaseAgent):
         
         # Calculate how many triples can fit while leaving room for output
         available_for_data = model_input_limit - prompt_overhead - len(text) // 4
-        batch_size = max(3, min(20, available_for_data // avg_triple_size))
+        # INCREASED MAX BATCH SIZE to 100 for better throughput with large models
+        batch_size = max(3, min(100, available_for_data // avg_triple_size))
         all_linked = []
         
+        total_batches = (len(triples) + batch_size - 1) // batch_size
+        if total_batches > 1:
+            print(f"      Running evidence linking in {total_batches} batches...")
+            
         for i in range(0, len(triples), batch_size):
+            batch_num = (i // batch_size) + 1
+            if total_batches > 1:
+                print(f"        Processing evidence batch {batch_num}/{total_batches}...")
             batch = triples[i:i + batch_size]
             
             triples_json = json.dumps([

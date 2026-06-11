@@ -46,12 +46,16 @@ class ModelTier(str, Enum):
     LARGE = "large"     # highest quality reasoning
 
 
-# Default model mapping (Ollama models on GPU via SSH tunnel)
-DEFAULT_MODEL_TIERS = {
-    ModelTier.SMALL: os.getenv("LLM_SMALL_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
-    ModelTier.MEDIUM: os.getenv("LLM_MEDIUM_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
-    ModelTier.LARGE: os.getenv("LLM_LARGE_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
-}
+# Default model mapping (Ollama models on GPU via SSH tunnel).
+# Tiered defaults per HANDOFF.md §4: light parsing on small, heavy extraction
+# on medium, deep reasoning on large.
+def get_default_model_tiers() -> Dict[ModelTier, str]:
+    """Get default model mapping from environment, evaluated at runtime."""
+    return {
+        ModelTier.SMALL: os.getenv("LLM_SMALL_MODEL", "qwen3:8b"),
+        ModelTier.MEDIUM: os.getenv("LLM_MEDIUM_MODEL", "gemma3:27b"),
+        ModelTier.LARGE: os.getenv("LLM_LARGE_MODEL", "gemma4:31b"),
+    }
 
 
 @dataclass
@@ -127,7 +131,8 @@ class BaseAgent(ABC):
         self.shared_memory = shared_memory
         self.message_bus = message_bus
         self.llm_config = llm_config or LLMConfig()
-        self.model_tiers = model_tiers or DEFAULT_MODEL_TIERS
+        # Initialize model_tiers - if None, will be evaluated dynamically in call_llm
+        self.model_tiers = model_tiers
         self.default_tier = default_tier
         self.quality_threshold = quality_threshold
         self.max_iterations = max_iterations
@@ -172,6 +177,15 @@ class BaseAgent(ABC):
 
     # ==================== LLM Methods ====================
 
+    def _get_model_for_tier(self, tier: ModelTier) -> str:
+        """Resolve model name for a given tier, prioritizing local config then environment."""
+        if self.model_tiers and tier in self.model_tiers:
+            return self.model_tiers[tier]
+        
+        # Fall back to dynamic environment evaluation
+        tiers = get_default_model_tiers()
+        return tiers.get(tier, self.llm_config.model)
+
     def call_llm(
         self,
         prompt: str,
@@ -196,7 +210,7 @@ class BaseAgent(ABC):
             Parsed JSON response from LLM
         """
         tier = tier or self.default_tier
-        model = self.model_tiers.get(tier, self.llm_config.model)
+        model = self._get_model_for_tier(tier)
         
         config = LLMConfig(
             model=model,
@@ -285,7 +299,7 @@ class BaseAgent(ABC):
         for r in responses:
             try:
                 serialized.append(json.dumps(r, sort_keys=True))
-            except:
+            except (TypeError, ValueError):
                 serialized.append(str(r))
         
         # Count votes
@@ -298,7 +312,7 @@ class BaseAgent(ABC):
         # Deserialize winner
         try:
             result = json.loads(most_common)
-        except:
+        except (json.JSONDecodeError, ValueError):
             result = responses[0]
         
         return result, confidence

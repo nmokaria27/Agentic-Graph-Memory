@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MaKG — Knowledge Graph Extraction</title>
+
+  <script type="text/javascript" nonce="914c3261fd78418593cc3307433" src="//local.adguard.org?ts=1778881179065&amp;type=content-script&amp;dmn=claude.ai&amp;url=https%3A%2F%2Fclaude.ai%2Fdesign%2Fv1%2Fdesign%2Fprojects%2F019e2c9c-29c1-7de4-afbb-521c71cafc4c%2Fdownload%3Fpath%3DMaKG%2520Upload.html&amp;app=company.thebrowser.Browser&amp;css=2&amp;js=1&amp;rel=1&amp;rji=1&amp;sbe=1&amp;stealth=1&amp;st-push&amp;st-loc&amp;st-java&amp;st-dnt"></script><script type="text/javascript" nonce="914c3261fd78418593cc3307433" src="//local.adguard.org?ts=1778881179065&amp;name=Web%20of%20Trust&amp;name=AdGuard%20Extra&amp;type=user-script"></script><link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; width: 100%; }
+    body {
+      background: #0f1117;
+      color: #e2e8f0;
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideInProgress { from { width: 0; } to { width: var(--width); } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .fade-in { animation: fadeIn 0.4s ease forwards; }
+    .container {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 60px 40px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+    .title {
+      font-size: 42px;
+      font-weight: 700;
+      color: #e2e8f0;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      font-size: 16px;
+      color: #6a7585;
+      font-weight: 400;
+    }
+    .upload-section {
+      background: #12151f;
+      border: 2px dashed rgba(29,233,182,0.25);
+      border-radius: 8px;
+      padding: 48px 40px;
+      text-align: center;
+      margin-bottom: 32px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .upload-section:hover {
+      border-color: rgba(29,233,182,0.4);
+      background: #181c26;
+    }
+    .upload-section.active {
+      border-color: #1de9b6;
+      background: rgba(29,233,182,0.05);
+    }
+    .upload-icon {
+      width: 56px;
+      height: 56px;
+      background: rgba(29,233,182,0.12);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 28px;
+    }
+    .upload-text {
+      font-size: 16px;
+      color: #c8d3e0;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .upload-hint {
+      font-size: 13px;
+      color: #5a6375;
+      margin-bottom: 20px;
+    }
+    .btn-browse {
+      display: inline-block;
+      padding: 8px 18px;
+      background: rgba(29,233,182,0.12);
+      border: 1px solid rgba(29,233,182,0.3);
+      border-radius: 4px;
+      color: #1de9b6;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-browse:hover {
+      background: rgba(29,233,182,0.2);
+      border-color: rgba(29,233,182,0.5);
+    }
+    input[type="file"] { display: none; }
+    .files-list {
+      margin-bottom: 32px;
+    }
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: #181c26;
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      animation: fadeIn 0.3s ease forwards;
+    }
+    .file-icon {
+      width: 32px;
+      height: 32px;
+      background: rgba(124,131,232,0.12);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #7c83e8;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .file-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .file-name {
+      font-size: 13px;
+      color: #c8d3e0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-bottom: 2px;
+    }
+    .file-size {
+      font-size: 11px;
+      color: #5a6375;
+      font-family: "'JetBrains Mono', monospace";
+    }
+    .file-remove {
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      border: none;
+      color: #3d4555;
+      cursor: pointer;
+      font-size: 14px;
+      transition: color 0.2s;
+      flex-shrink: 0;
+    }
+    .file-remove:hover { color: #8892a4; }
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 48px;
+    }
+    .btn {
+      flex: 1;
+      padding: 12px 24px;
+      border-radius: 6px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-primary {
+      background: #1de9b6;
+      color: #0f1117;
+    }
+    .btn-primary:hover:not(:disabled) { background: #1ad4a0; }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #8892a4;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.15);
+      color: #c8d3e0;
+    }
+    .progress-section {
+      display: none;
+    }
+    .progress-section.active {
+      display: block;
+      animation: fadeIn 0.5s ease forwards;
+    }
+    .progress-item {
+      margin-bottom: 28px;
+      opacity: 0.4;
+      transition: opacity 0.3s ease;
+    }
+    .progress-item.active { opacity: 1; }
+    .progress-item.done { opacity: 1; }
+    .progress-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #c8d3e0;
+    }
+    .progress-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: rgba(124,131,232,0.12);
+      color: #7c83e8;
+      font-size: 11px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .progress-item.active .progress-icon {
+      background: rgba(29,233,182,0.2);
+      color: #1de9b6;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    .progress-item.done .progress-icon {
+      background: rgba(34,197,94,0.15);
+      color: #22c55e;
+    }
+    .progress-item.done .progress-icon::before { content: '✓'; }
+    .progress-bar-container {
+      width: 100%;
+      height: 4px;
+      background: #1e2334;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #1de9b6, #1ad4a0);
+      border-radius: 2px;
+      width: var(--width, 0%);
+      animation: slideInProgress 0.4s ease forwards;
+      box-shadow: 0 0 8px rgba(29,233,182,0.3);
+    }
+    .progress-stats {
+      font-size: 11px;
+      color: #5a6375;
+      margin-top: 6px;
+      font-family: "'JetBrains Mono', monospace";
+    }
+    .status-text {
+      font-size: 13px;
+      color: #8892a4;
+      margin-top: 4px;
+    }
+    .completion-section {
+      text-align: center;
+      display: none;
+    }
+    .completion-section.active {
+      display: block;
+      animation: fadeIn 0.6s ease forwards;
+    }
+    .completion-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(34,197,94,0.15);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 32px;
+    }
+    .completion-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 8px;
+    }
+    .completion-text {
+      font-size: 14px;
+      color: #6a7585;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    .btn-view-graph {
+      padding: 12px 32px;
+      background: #1de9b6;
+      color: #0f1117;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .btn-view-graph:hover { background: #1ad4a0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- UPLOAD PHASE -->
+    <div id="uploadPhase">
+      <div class="header fade-in">
+        <div class="title">Ma<span style="color: #1de9b6;">K</span>G</div>
+        <div class="subtitle">Extract knowledge graphs from documents</div>
+      </div>
+
+      <div class="upload-section fade-in" id="uploadArea" style="animation-delay: 0.1s;">
+        <div class="upload-icon">📄</div>
+        <div class="upload-text">Upload documents</div>
+        <div class="upload-hint">Drag files here or click to browse (PDF, TXT, DOCX)</div>
+        <button class="btn-browse" onclick="document.getElementById('fileInput').click();">Browse files</button>
+        <input type="file" id="fileInput" multiple accept=".pdf,.txt,.docx">
+      </div>
+
+      <div class="files-list" id="filesList"></div>
+
+      <div class="controls fade-in" style="animation-delay: 0.2s;">
+        <button class="btn btn-secondary" onclick="clearFiles();">Clear</button>
+        <button class="btn btn-primary" id="submitBtn" disabled onclick="startExtraction();">Submit & Extract</button>
+      </div>
+    </div>
+
+    <!-- PROGRESS PHASE -->
+    <div id="progressPhase" class="progress-section">
+      <div class="header fade-in">
+        <div class="title">Extracting Knowledge Graph</div>
+        <div class="subtitle">Processing your documents</div>
+      </div>
+
+      <div style="margin-top: 48px;">
+        <div class="progress-item active" id="stage0">
+          <div class="progress-label">
+            <div class="progress-icon">1</div>
+            <span>Parsing documents</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" style="--width: 100%;"></div>
+          </div>
+          <div class="progress-stats" id="stats0">0 documents processed</div>
+          <div class="status-text">Reading and preprocessing files</div>
+        </div>
+
+        <div class="progress-item" id="stage1">
+          <div class="progress-label">
+            <div class="progress-icon">2</div>
+            <span>Entity extraction</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" style="--width: 0%;"></div>
+          </div>
+          <div class="progress-stats" id="stats1">0 entities extracted</div>
+          <div class="status-text">Identifying entities and types</div>
+        </div>
+
+        <div class="progress-item" id="stage2">
+          <div class="progress-label">
+            <div class="progress-icon">3</div>
+            <span>Relation extraction</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" style="--width: 0%;"></div>
+          </div>
+          <div class="progress-stats" id="stats2">0 relations extracted</div>
+          <div class="status-text">Discovering connections between entities</div>
+        </div>
+
+        <div class="progress-item" id="stage3">
+          <div class="progress-label">
+            <div class="progress-icon">4</div>
+            <span>Governance & validation</span>
+          </div>
+          <div class="progress-bar-container">
+            <div class="progress-bar" style="--width: 0%;"></div>
+          </div>
+          <div class="progress-stats" id="stats3">0 conflicts resolved</div>
+          <div class="status-text">Validating and resolving contradictions</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPLETION PHASE -->
+    <div id="completionPhase" class="completion-section">
+      <div class="completion-icon">✓</div>
+      <div class="completion-title">Extraction complete</div>
+      <div class="completion-text">
+        Your knowledge graph is ready for exploration.<br>
+        <span id="finalStats" style="color: #7c83e8; font-family: 'JetBrains Mono', monospace;"></span>
+      </div>
+      <button class="btn-view-graph" onclick="viewGraph();">View graph</button>
+    </div>
+  </div>
+
+  <script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const filesList = document.getElementById('filesList');
+    const submitBtn = document.getElementById('submitBtn');
+    let selectedFiles = [];
+
+    // File input handling
+    fileInput.addEventListener('change', (e) => {
+      addFiles(Array.from(e.target.files));
+    });
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('active');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('active');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('active');
+      addFiles(Array.from(e.dataTransfer.files));
+    });
+
+    function addFiles(files) {
+      selectedFiles = files.filter(f => /\.(pdf|txt|docx)$/i.test(f.name));
+      renderFiles();
+      updateSubmitBtn();
+    }
+
+    function renderFiles() {
+      filesList.innerHTML = selectedFiles.map((f, i) => `
+        <div class="file-item">
+          <div class="file-icon">${getFileIcon(f.name)}</div>
+          <div class="file-info">
+            <div class="file-name">${f.name}</div>
+            <div class="file-size">${(f.size / 1024).toFixed(1)} KB</div>
+          </div>
+          <button class="file-remove" onclick="removeFile(${i});">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function getFileIcon(name) {
+      if (name.endsWith('.pdf')) return '📕';
+      if (name.endsWith('.docx')) return '📘';
+      return '📄';
+    }
+
+    function removeFile(i) {
+      selectedFiles.splice(i, 1);
+      renderFiles();
+      updateSubmitBtn();
+    }
+
+    function clearFiles() {
+      selectedFiles = [];
+      fileInput.value = '';
+      renderFiles();
+      updateSubmitBtn();
+    }
+
+    function updateSubmitBtn() {
+      submitBtn.disabled = selectedFiles.length === 0;
+    }
+
+    async function startExtraction() {
+      document.getElementById('uploadPhase').style.display = 'none';
+      document.getElementById('progressPhase').classList.add('active');
+
+      // Simulate extraction stages
+      const stages = [
+        { stage: 0, duration: 2000, entities: selectedFiles.length * 12, relations: 0, conflicts: 0 },
+        { stage: 1, duration: 3000, entities: selectedFiles.length * 24, relations: selectedFiles.length * 8, conflicts: 0 },
+        { stage: 2, duration: 4000, entities: selectedFiles.length * 28, relations: selectedFiles.length * 18, conflicts: 2 },
+        { stage: 3, duration: 2500, entities: selectedFiles.length * 28, relations: selectedFiles.length * 20, conflicts: 0 }
+      ];
+
+      for (const { stage, duration, entities, relations, conflicts } of stages) {
+        // Mark current stage as active
+        document.querySelectorAll('.progress-item').forEach((el, i) => {
+          el.classList.remove('active');
+          if (i < stage) el.classList.add('done');
+          if (i === stage) el.classList.add('active');
+        });
+
+        // Animate progress bar
+        const bar = document.getElementById(`stage${stage}`).querySelector('.progress-bar');
+        const startTime = Date.now();
+        
+        await new Promise(resolve => {
+          const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            bar.style.setProperty('--width', (progress * 100) + '%');
+            if (progress < 1) requestAnimationFrame(animate);
+            else resolve();
+          };
+          animate();
+        });
+
+        // Update stats
+        if (stage === 0) document.getElementById('stats0').textContent = `${entities} documents processed`;
+        if (stage === 1) document.getElementById('stats1').textContent = `${entities} entities extracted`;
+        if (stage === 2) document.getElementById('stats2').textContent = `${relations} relations extracted`;
+        if (stage === 3) document.getElementById('stats3').textContent = `${conflicts} conflicts resolved`;
+
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      // Mark final stage as done
+      document.querySelectorAll('.progress-item').forEach(el => {
+        el.classList.remove('active');
+        el.classList.add('done');
+      });
+
+      // Show completion
+      await new Promise(r => setTimeout(r, 800));
+      document.getElementById('progressPhase').classList.remove('active');
+      const totalEntities = selectedFiles.length * 28;
+      const totalRelations = selectedFiles.length * 20;
+      document.getElementById('finalStats').textContent = `${totalEntities} entities • ${totalRelations} relations`;
+      document.getElementById('completionPhase').classList.add('active');
+    }
+
+    function viewGraph() {
+      // In production, redirect to MaKG.html with extracted data
+      window.location.href = 'MaKG.html';
+    }
+  </script>
+</body>
+</html>

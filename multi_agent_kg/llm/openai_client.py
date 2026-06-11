@@ -110,25 +110,63 @@ def _resolve_model(model: str) -> str:
     return _OPENAI_TO_OLLAMA.get(model, model)
 
 
+# Ollama model families known to emit <think>...</think> reasoning tokens.
+# When these models are used with response_format=json_object, Ollama's GBNF
+# grammar blocks the leading '<' character and the model returns empty content.
+_THINKING_MODEL_PATTERNS = (
+    "gemma4",       # Google Gemma 4 family (gemma4:12b, gemma4:27b, gemma4:31b)
+    "deepseek-r1",  # DeepSeek R1 family
+    "qwen3",        # Qwen 3 (thinking by default unless /no_think)
+    "qwq",          # Qwen QwQ reasoning models
+)
+
+
+def _model_is_thinking(model_name: str) -> bool:
+    """Return True if the model is known to emit reasoning/thinking tokens."""
+    name_lower = model_name.lower()
+    return any(pat in name_lower for pat in _THINKING_MODEL_PATTERNS)
+
+
 def _extract_json(text: str) -> Any:
     """
     Robustly extract and parse JSON from LLM output that may contain
     markdown fences, preamble text, thinking tags, or trailing commentary.
+
+    Handles thinking-model output where:
+    - <think>...</think> blocks precede the JSON (possibly unclosed if truncated)
+    - JSON may be truncated mid-value due to token limits
+    - Markdown fences may or may not be present
     """
     if not text or not text.strip():
         return None
 
-    # 1. Strip <think>...</think> blocks
-    text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
+    # 1. Strip <think>...</think> blocks (closed tags)
+    cleaned = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL).strip()
 
-    # 2. Strip markdown code fences
-    cleaned = text.strip()
-    # Handle ```json ... ``` and ``` ... ```
+    # 2. Strip unclosed <think> tags (model hit token limit mid-reasoning, then
+    #    continued with JSON, OR the JSON follows a truncated think block)
+    if '<think>' in cleaned:
+        # Take everything after the last <think> tag that was never closed
+        parts = cleaned.split('<think>')
+        # The JSON is most likely in the last part, after any remaining think content
+        # Look for JSON start in each part from the end
+        for part in reversed(parts):
+            if '{' in part or '[' in part:
+                cleaned = part.strip()
+                break
+        else:
+            cleaned = parts[-1].strip()
+
+    # 3. Strip markdown code fences
     fence_match = re.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', cleaned, re.DOTALL)
     if fence_match:
         cleaned = fence_match.group(1).strip()
     else:
-        # No fences - strip any leading/trailing ``` just in case
+        # Handle unclosed fences (truncation cut off the closing ```)
+        open_fence = re.search(r'```(?:json)?\s*\n?', cleaned)
+        if open_fence:
+            cleaned = cleaned[open_fence.end():].strip()
+        # Strip any leading/trailing ``` fragments
         if cleaned.startswith("```json"):
             cleaned = cleaned[7:]
         elif cleaned.startswith("```"):
@@ -137,18 +175,17 @@ def _extract_json(text: str) -> Any:
             cleaned = cleaned[:-3]
         cleaned = cleaned.strip()
 
-    # 3. Try direct parse
+    # 4. Try direct parse
     try:
         return json.loads(cleaned)
     except json.JSONDecodeError:
         pass
 
-    # 4. Find the outermost JSON object or array
+    # 5. Find the outermost JSON object or array via bracket matching
     for open_char, close_char in [('{', '}'), ('[', ']')]:
         start = cleaned.find(open_char)
         if start == -1:
             continue
-        # Find matching close by counting nesting
         depth = 0
         in_string = False
         escape_next = False
@@ -171,12 +208,10 @@ def _extract_json(text: str) -> Any:
                 depth -= 1
                 if depth == 0:
                     json_str = cleaned[start:i+1]
-                    # Try parsing as-is
                     try:
                         return json.loads(json_str)
                     except json.JSONDecodeError:
                         pass
-                    # Fix common issues: trailing commas
                     fixed = re.sub(r',(\s*[}\]])', r'\1', json_str)
                     try:
                         return json.loads(fixed)
@@ -184,30 +219,98 @@ def _extract_json(text: str) -> Any:
                         pass
                     break
 
-    # 5. Last resort: find first { and last } and try to fix truncation
-    start = cleaned.find('{')
-    end = cleaned.rfind('}')
+    # 6. Truncation repair: model hit token limit mid-JSON.
+    #    Find the first { and attempt to close the structure.
+    result = _repair_truncated_json(cleaned)
+    if result is not None:
+        return result
+
+    return None
+
+
+def _repair_truncated_json(text: str) -> Any:
+    """Attempt to salvage a truncated JSON object/array.
+
+    Strategy: find the outermost opening brace, take everything from there to the
+    end, strip any trailing partial value (e.g. ``"type": "PEO``), then close all
+    open brackets/braces. This recovers all *complete* entries in a truncated list.
+    """
+    start = text.find('{')
     if start == -1:
-        start = cleaned.find('[')
-        end = cleaned.rfind(']')
-    if start != -1 and end > start:
-        json_str = cleaned[start:end+1]
-        # Fix trailing commas
-        json_str = re.sub(r',(\s*[}\]])', r'\1', json_str)
+        start = text.find('[')
+    if start == -1:
+        return None
+
+    fragment = text[start:]
+
+    # Strip trailing commas
+    fragment = re.sub(r',(\s*[}\]])', r'\1', fragment)
+
+    # Try parsing as-is first (maybe it's valid after comma cleanup)
+    try:
+        return json.loads(fragment)
+    except json.JSONDecodeError:
+        pass
+
+    # Truncation likely cut mid-value. Trim back to the last complete JSON element.
+    # Strategy: remove the last partial key-value or array element.
+    # Find the last complete "}" or "]" or quoted string followed by comma/bracket.
+    # Simpler approach: walk backwards from the end, remove characters until we can
+    # close the brackets and parse.
+
+    # First, try removing everything after the last comma at depth > 0
+    # (this drops the truncated element but keeps all complete ones)
+    trimmed = _trim_to_last_complete_element(fragment)
+    if trimmed:
+        # Count unclosed brackets/braces and close them
+        opens_brace = trimmed.count('{') - trimmed.count('}')
+        opens_bracket = trimmed.count('[') - trimmed.count(']')
+        suffix = ']' * max(opens_bracket, 0) + '}' * max(opens_brace, 0)
+        candidate = trimmed + suffix
+        # Fix trailing commas that may appear before the new closing brackets
+        candidate = re.sub(r',(\s*[}\]])', r'\1', candidate)
         try:
-            return json.loads(json_str)
+            return json.loads(candidate)
         except json.JSONDecodeError:
-            # Try closing unclosed brackets
-            opens = json_str.count('{') - json_str.count('}')
-            if opens > 0:
-                json_str += '}' * opens
-            opens = json_str.count('[') - json_str.count(']')
-            if opens > 0:
-                json_str += ']' * opens
-            try:
-                return json.loads(json_str)
-            except json.JSONDecodeError:
-                pass
+            pass
+
+    # Brute force: close all open brackets/braces on the raw fragment
+    opens_brace = fragment.count('{') - fragment.count('}')
+    opens_bracket = fragment.count('[') - fragment.count(']')
+    if opens_brace > 0 or opens_bracket > 0:
+        candidate = fragment + ']' * max(opens_bracket, 0) + '}' * max(opens_brace, 0)
+        candidate = re.sub(r',(\s*[}\]])', r'\1', candidate)
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            pass
+
+    return None
+
+
+def _trim_to_last_complete_element(fragment: str) -> Optional[str]:
+    """Walk backwards through a JSON fragment to find the end of the last
+    complete element (object or value). Returns the trimmed string, or None."""
+    # Find positions of all }, ], and complete quoted strings followed by
+    # structural characters. We look for the last "}" that reduces depth,
+    # or the last complete array element.
+
+    # Simple heuristic: find the last occurrence of "},", "}", "],", "]",
+    # or a complete value followed by "," and trim there.
+    # Look for the last "}" or "]" that appears before a "," or at the end
+    best = -1
+    for pattern in [r'\}\s*,', r'\]\s*,', r'"\s*,', r'\d\s*,', r'true\s*,', r'false\s*,', r'null\s*,']:
+        for m in re.finditer(pattern, fragment):
+            end_pos = m.end() - 1  # position of the comma
+            if end_pos > best:
+                best = end_pos
+    if best > 0:
+        return fragment[:best]
+
+    # No comma found — try last complete closing bracket
+    for i in range(len(fragment) - 1, -1, -1):
+        if fragment[i] in ('}', ']'):
+            return fragment[:i+1]
 
     return None
 
@@ -262,6 +365,11 @@ def chat_completion(
             params["max_completion_tokens"] = max(max_tokens * 4, 16384)
             # Keep reasoning lightweight so cost stays bounded for extraction tasks.
             params["reasoning_effort"] = os.getenv("OPENAI_REASONING_EFFORT", "minimal")
+        elif _model_is_thinking(resolved_model) and LLM_BACKEND != "openai":
+            # Ollama thinking models (gemma4, deepseek-r1, qwen3) burn completion
+            # tokens on hidden <think> blocks. Inflate max_tokens so the visible
+            # JSON output isn't truncated after reasoning consumes the budget.
+            params["max_tokens"] = max(max_tokens * 3, 8192)
         else:
             params["max_tokens"] = max_tokens
     # Ollama's OpenAI-compatible endpoint supports response_format for JSON
@@ -393,19 +501,44 @@ def chat_completion_json(
 
     resolved_model = _resolve_model(model)
 
-    max_retries = 2
+    # Detect thinking models that emit <think>...</think> before the answer.
+    # Ollama's GBNF json_object grammar expects '{' as the first token, which
+    # blocks the '<' that starts a think tag → model returns empty content.
+    # Skip json_object mode entirely for these models to avoid a wasted call.
+    _is_thinking_model = _model_is_thinking(resolved_model)
+
+    max_retries = 3
     last_response_text = ""
 
     for attempt in range(1, max_retries + 1):
+        # Use json_object mode only when it won't conflict with model behavior:
+        # - Never for thinking models on Ollama (GBNF blocks <think> tokens)
+        # - Always for OpenAI (native support, no GBNF issue)
+        # - Only on first attempt for non-thinking Ollama models (fallback on retry)
+        if LLM_BACKEND == "openai":
+            use_json_mode = True
+        elif _is_thinking_model:
+            use_json_mode = False
+        else:
+            use_json_mode = (attempt == 1)
+
+        call_kwargs = dict(kwargs)
+        if use_json_mode:
+            call_kwargs["response_format"] = {"type": "json_object"}
+
         response_text = chat_completion(
             messages=modified_messages,
             model=resolved_model,
-            temperature=temperature + (0.1 * (attempt - 1)),  # slightly raise temp on retry
+            temperature=temperature + (0.1 * (attempt - 1)),
             max_tokens=max_tokens,
-            response_format={"type": "json_object"},
-            **kwargs,
+            **call_kwargs,
         )
         last_response_text = response_text
+
+        # Empty response with json_object mode → GBNF conflict, skip to unconstrained retry
+        if not response_text.strip() and use_json_mode:
+            print(f"  WARNING: Empty response with json_object mode (attempt {attempt}/{max_retries}); retrying without constrained decoding...")
+            continue
 
         result = _extract_json(response_text)
         if result is not None:

@@ -584,6 +584,8 @@ class KnowledgeOrganizer(BaseAgent):
         if self.shared_memory and hasattr(self.shared_memory, 'entity_aliases'):
             for alias, canonical in self.shared_memory.entity_aliases.items():
                 name_to_id[alias.lower().strip()] = canonical
+                
+        resolve_misses: Dict[str, int] = {}
 
         def _resolve_entity_name(name: Optional[str]) -> Optional[str]:
             """Resolve a triple subject/object text to an entity ID."""
@@ -599,6 +601,8 @@ class KnowledgeOrganizer(BaseAgent):
                 )
                 if known_normalized == normalized:
                     return known_id
+            miss_key = str(name)
+            resolve_misses[miss_key] = resolve_misses.get(miss_key, 0) + 1
             return None
 
         allowed_relations = self._allowed_relation_types()
@@ -687,8 +691,7 @@ class KnowledgeOrganizer(BaseAgent):
         # ── Add triples (with entity resolution) ─────────────────────
         # Filter out meaningless relation types
         _BAD_RELATIONS = {
-            "DRUG_EXAMPLE", "EXAMPLE_OF", "SAME_AS", "SIMILAR_TO",
-            "INSTANCE_OF", "IS_A", "TYPE_OF", "RELATED_TO",
+            "DRUG_EXAMPLE", "EXAMPLE_OF",
         }
         for triple in triples:
             raw_subj = triple.get("subject", "")
@@ -845,9 +848,21 @@ class KnowledgeOrganizer(BaseAgent):
                 skipped_triples += 1  # Duplicate
 
         print(f"  Entity resolution: mapped {len(name_to_id)} name variants")
+        miss_count = sum(resolve_misses.values())
+        print(f"  Entity resolution misses: {miss_count}")
+        if resolve_misses:
+            for miss_name, count in sorted(resolve_misses.items(), key=lambda x: x[1], reverse=True)[:10]:
+                print(f"    - Miss: '{miss_name}' ({count} times)")
+        
         print(f"  Triples skipped (dup/invalid): {skipped_triples}")
         if skipped_triples:
             print(f"  Triple skip reasons: {skipped_triple_reasons}")
+            
+        self.integration_stats["kg_triples_added"] = added_triples
+        self.integration_stats["kg_entities_added"] = added_entities
+        self.integration_stats["skipped_triple_reasons"] = skipped_triple_reasons
+        self.integration_stats["resolve_entity_name_misses"] = miss_count
+        self.integration_stats["relations_schema_rejected"] = self.integration_stats.get("relations_schema_rejected", 0)
         self.integration_stats["triple_skip_reasons"] = skipped_triple_reasons
         return added_entities, added_triples
 
@@ -938,7 +953,8 @@ Return ONLY JSON."""
                 tier=ModelTier.MEDIUM,
                 max_tokens=512,
             )
-        except Exception:
+        except Exception as e:
+            print(f"  [GOVERNANCE] _repair_triple_for_governance failed: {e}")
             return None
 
         if result.get("action") != "revise":

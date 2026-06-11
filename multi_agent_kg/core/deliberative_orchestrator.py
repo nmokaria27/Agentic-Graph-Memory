@@ -35,6 +35,7 @@ from multi_agent_kg.core.communication import MessageBus, CollaborationProtocol
 from multi_agent_kg.core.config import LLMConfig
 from multi_agent_kg.core.deliberation import DeliberationCoordinator, VoteType
 from multi_agent_kg.core.domain_builder import DomainBuilder
+from multi_agent_kg.core.checkpoint import CheckpointManager
 
 from multi_agent_kg.agents.base import AgentContext, ModelTier
 from multi_agent_kg.agents.document_processor import DocumentProcessor
@@ -109,7 +110,7 @@ class DeliberativeOrchestrator:
         skip_evidence_linking: bool = False,
         skip_verification: bool = False,
         strict_source_only_verification: bool = False,
-        quality_threshold: float = 0.60,
+        quality_threshold: float = 0.35,
         max_refinement_iterations: int = 4,
         enable_self_consistency: bool = True,
         enable_open_world: bool = True,
@@ -122,6 +123,8 @@ class DeliberativeOrchestrator:
         target_num_domains: Optional[int] = None,
         debug_logger = None,
         schema_override: Optional[Dict[str, Any]] = None,
+        checkpoint_dir: Optional[str] = None,
+        resume: bool = False,
     ):
         """
         Initialize the deliberative orchestrator.
@@ -191,15 +194,19 @@ class DeliberativeOrchestrator:
         self.debug_logger = debug_logger
         self.schema_override = schema_override
         self.target_num_domains = target_num_domains
+        self.checkpoint_dir = checkpoint_dir
+        self.resume = resume
         self.domain_builder = DomainBuilder(self.llm_config, target_num_domains=target_num_domains)
         self._active_source_text = ""
         self._strict_review_board = None
         
-        # Model tier configuration
+        # Model tier configuration. Defaults match
+        # multi_agent_kg.agents.base.get_default_model_tiers (qwen3:8b /
+        # gemma3:27b / gemma4:31b per HANDOFF.md §4). User env wins.
         self.model_tiers = model_tiers or {
-            ModelTier.SMALL: os.getenv("LLM_SMALL_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
-            ModelTier.MEDIUM: os.getenv("LLM_MEDIUM_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
-            ModelTier.LARGE: os.getenv("LLM_LARGE_MODEL", os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")),
+            ModelTier.SMALL: os.getenv("LLM_SMALL_MODEL", "qwen3:8b"),
+            ModelTier.MEDIUM: os.getenv("LLM_MEDIUM_MODEL", "gemma3:27b"),
+            ModelTier.LARGE: os.getenv("LLM_LARGE_MODEL", "gemma4:31b"),
         }
         
         # Shared infrastructure
@@ -350,6 +357,35 @@ class DeliberativeOrchestrator:
         # Set deliberation coordinator on all agents
         if self.deliberation_coordinator:
             self._setup_deliberation()
+
+    def _rebind_governed_kg(self, governed_kg: GovernedKnowledgeGraph) -> None:
+        """Swap orchestrator + agent references to a restored governed_kg.
+
+        Agents capture self.knowledge_graph / self.governed_kg by reference
+        in their __init__. When resume loads a per-doc governed_kg snapshot,
+        those references must be rewritten so downstream stages mutate the
+        restored state rather than the original construction-time instance.
+        """
+        self.governed_kg = governed_kg
+        self.knowledge_graph = governed_kg.kg
+        self.governance_mode = governed_kg.governance_mode
+        for agent in (
+            self.document_processor,
+            self.domain_classifier,
+            self.entity_extractor,
+            self.relation_extractor,
+            self.evidence_linker,
+            self.extraction_validator,
+            self.verification_agent,
+            self.knowledge_organizer,
+        ):
+            agent.knowledge_graph = self.knowledge_graph
+        # KnowledgeOrganizer owns the only direct governed_kg ref outside
+        # the orchestrator; keep it in sync.
+        if hasattr(self.knowledge_organizer, "governed_kg"):
+            self.knowledge_organizer.governed_kg = self.governed_kg
+        # Strict-mode review callback closes over old org_chart/kg; rebuild.
+        self._configure_governance_review()
 
     def _setup_deliberation(self) -> None:
         """Set up deliberation coordinator for all agents."""
@@ -505,95 +541,219 @@ class DeliberativeOrchestrator:
             max_iterations=self.max_refinement_iterations,
         )
         self._active_source_text = context.text
-        
+
+        # Per-document checkpoint store. If --resume, completed stages are
+        # loaded from disk instead of re-running.
+        ckpt = CheckpointManager(
+            base_dir=self.checkpoint_dir or "checkpoints",
+            document_id=document_id,
+            enabled=self.checkpoint_dir is not None,
+            resume=self.resume,
+        )
+        if ckpt.enabled and ckpt.resume and ckpt.completed_stages():
+            print(f"\nResuming from checkpoint: completed stages = {ckpt.completed_stages()}")
+            # Multi-doc safety: a previous run-pipeline invocation may have
+            # restored the LATEST doc's governed_kg snapshot. When we now
+            # enter a different (partially-completed) doc, we must swap to
+            # *that* doc's snapshot so per-stage skips line up with the
+            # right governance state. Single-doc resume is a no-op
+            # (snapshot already matches the running orchestrator's state).
+            restored = ckpt.load_governed_kg()
+            if restored is not None and restored is not self.governed_kg:
+                self._rebind_governed_kg(restored)
+                print(f"Rebound orchestrator + agents to {document_id}'s governed_kg snapshot")
+
         results = {}
-        
+
         # ===== WORKER AGENTS =====
-        
+
         # Step 1: Document Processing
         if self.debug_logger:
             self.debug_logger.log_stage_header(1, "Document Processing")
         print("\n[1/9] Document Processing")
         print("-" * 50)
-        doc_result = self.document_processor.run(context, source_path=source_path)
-        segments = doc_result.items
-        results["segments"] = len(segments)
-        print(f"  Segments: {len(segments)}")
+        if ckpt.has("1"):
+            payload = ckpt.load("1")
+            segments = payload["segments"]
+            results["segments"] = len(segments)
+            print(f"  SKIPPED (resumed) — {len(segments)} segments from checkpoint")
+        else:
+            doc_result = self.document_processor.run(context, source_path=source_path)
+            segments = doc_result.items
+            results["segments"] = len(segments)
+            print(f"  Segments: {len(segments)}")
+            ckpt.save("1", {"segments": segments}, governed_kg=self.governed_kg)
         
         # Step 2: Domain Classification
         if self.debug_logger:
             self.debug_logger.log_stage_header(2, "Domain Classification")
         print("\n[2/9] Domain Classification")
         print("-" * 50)
-        if self.schema_override:
-            # Use fixed schema instead of dynamic discovery
-            domain_config = self.domain_classifier.build_fixed_schema(
-                self.schema_override, context.document_id
-            )
-            domain_result_confidence = 0.95
-            print(f"  Using fixed schema override ({len(domain_config.get('entity_types', []))} entity types, "
-                  f"{len(domain_config.get('relation_types', []))} relation types)")
-        elif self.reuse_corpus_schema and self._corpus_domain_config is not None:
-            domain_config = self._corpus_domain_config
-            domain_result_confidence = 0.95
-            print(
-                "  Reusing corpus schema "
-                f"({len(domain_config.get('entity_types', []))} entity types, "
-                f"{len(domain_config.get('relation_types', []))} relation types)"
-            )
-        else:
-            domain_result = self.domain_classifier.run(context, segments=segments)
-            domain_config = domain_result.items[0] if domain_result.items else {}
-            domain_result_confidence = domain_result.confidence
+        if ckpt.has("2"):
+            payload = ckpt.load("2")
+            domain_config = payload["domain_config"]
+            domain_result_confidence = payload.get("confidence", 0.95)
+            context.domain = payload.get("domain") or domain_config.get("domain", "general")
             if self.reuse_corpus_schema and domain_config:
                 self._corpus_domain_config = domain_config
-        context.domain = domain_config.get("domain", "general")
-        results["domain"] = context.domain
-        print(f"  Domain: {context.domain} (confidence: {domain_result_confidence:.2f})")
+            results["domain"] = context.domain
+            print(f"  SKIPPED (resumed) — domain={context.domain}")
+        else:
+            if self.schema_override:
+                # Use fixed schema instead of dynamic discovery
+                domain_config = self.domain_classifier.build_fixed_schema(
+                    self.schema_override, context.document_id
+                )
+                domain_result_confidence = 0.95
+                print(f"  Using fixed schema override ({len(domain_config.get('entity_types', []))} entity types, "
+                      f"{len(domain_config.get('relation_types', []))} relation types)")
+            elif self.reuse_corpus_schema and self._corpus_domain_config is not None:
+                domain_config = self._corpus_domain_config
+                domain_result_confidence = 0.95
+                print(
+                    "  Reusing corpus schema "
+                    f"({len(domain_config.get('entity_types', []))} entity types, "
+                    f"{len(domain_config.get('relation_types', []))} relation types)"
+                )
+            else:
+                domain_result = self.domain_classifier.run(context, segments=segments)
+                domain_config = domain_result.items[0] if domain_result.items else {}
+                domain_result_confidence = domain_result.confidence
+                if self.reuse_corpus_schema and domain_config:
+                    self._corpus_domain_config = domain_config
+            context.domain = domain_config.get("domain", "general")
+            results["domain"] = context.domain
+            print(f"  Domain: {context.domain} (confidence: {domain_result_confidence:.2f})")
+            ckpt.save(
+                "2",
+                {
+                    "domain_config": domain_config,
+                    "domain": context.domain,
+                    "confidence": domain_result_confidence,
+                },
+                governed_kg=self.governed_kg,
+            )
 
         # Step 2b: Bootstrap preliminary domains from the discovered schema
         if self.debug_logger:
             self.debug_logger.log_stage_header("2b", "Governance Bootstrap")
         print("\n[2b/9] Governance Bootstrap")
         print("-" * 50)
-        if not self.enable_governance or self.governed_kg is None:
+        if ckpt.has("2b"):
+            # Defensive: governed_kg snapshot may have been overwritten by a
+            # later fresh-run that crashed before reaching 2b again. If the
+            # current org_chart is empty but we have a saved domain_config,
+            # rebuild deterministically from the saved schema (no LLM call).
+            if (
+                self.enable_governance
+                and self.governed_kg is not None
+                and not self.governed_kg.org_chart.domains
+                and domain_config
+            ):
+                preliminary_org = self._bootstrap_domains_from_schema(domain_config)
+                if preliminary_org is not None:
+                    self.governed_kg.set_org_chart(preliminary_org)
+                    print(
+                        f"  SKIPPED (resumed) — rebuilt empty org_chart from saved "
+                        f"domain_config ({len(self.governed_kg.org_chart.domains)} domains)"
+                    )
+                else:
+                    print("  SKIPPED (resumed) — org chart empty and bootstrap returned None")
+            else:
+                domain_count = (
+                    len(self.governed_kg.org_chart.domains)
+                    if self.governed_kg is not None and self.governed_kg.org_chart is not None
+                    else 0
+                )
+                print(f"  SKIPPED (resumed) — org chart has {domain_count} domains")
+        elif not self.enable_governance or self.governed_kg is None:
             print("  Governance disabled - skipping")
-        elif not self.governed_kg.org_chart.domains:
-            preliminary_org = self._bootstrap_domains_from_schema(domain_config)
-            self.governed_kg.set_org_chart(preliminary_org)
-            print(f"  Bootstrapped {len(preliminary_org.domains)} preliminary domains")
-        elif self.expand_org_chart_with_schema and domain_config:
-            added, merged = self._expand_org_chart_from_schema(domain_config)
-            print(
-                "  Expanded governed org chart "
-                f"(added {added}, merged {merged}, total {len(self.governed_kg.org_chart.domains)} domains)"
-            )
+            ckpt.save("2b", {"governance_enabled": False}, governed_kg=self.governed_kg)
         else:
-            print(f"  Reusing existing governed org chart ({len(self.governed_kg.org_chart.domains)} domains)")
+            if not self.governed_kg.org_chart.domains:
+                preliminary_org = self._bootstrap_domains_from_schema(domain_config)
+                self.governed_kg.set_org_chart(preliminary_org)
+                print(f"  Bootstrapped {len(preliminary_org.domains)} preliminary domains")
+            elif self.expand_org_chart_with_schema and domain_config:
+                added, merged = self._expand_org_chart_from_schema(domain_config)
+                print(
+                    "  Expanded governed org chart "
+                    f"(added {added}, merged {merged}, total {len(self.governed_kg.org_chart.domains)} domains)"
+                )
+            else:
+                print(f"  Reusing existing governed org chart ({len(self.governed_kg.org_chart.domains)} domains)")
+            ckpt.save(
+                "2b",
+                {"domains_in_org_chart": len(self.governed_kg.org_chart.domains)},
+                governed_kg=self.governed_kg,
+            )
         
         # Step 3: Entity Extraction
         if self.debug_logger:
             self.debug_logger.log_stage_header(3, "Entity Extraction (Multi-Stage)")
         print("\n[3/9] Entity Extraction (Multi-Stage)")
         print("-" * 50)
-        entity_result = self.entity_extractor.run(
-            context, 
-            segments=segments,
-            domain_config=domain_config,
-        )
-        entities = entity_result.items
-        context.entities = entities
-        results["entities_extracted"] = len(entities)
-        print(f"  Entities: {len(entities)} (confidence: {entity_result.confidence:.2f})")
-        if entity_result.needs_escalation:
-            print(f"  Escalation: {entity_result.escalation_reason}")
+        if ckpt.has("3"):
+            payload = ckpt.load("3")
+            entities = payload["entities"]
+            context.entities = entities
+            results["entities_extracted"] = len(entities)
+            print(f"  SKIPPED (resumed) — {len(entities)} entities from checkpoint")
+        else:
+            entity_result = self.entity_extractor.run(
+                context,
+                segments=segments,
+                domain_config=domain_config,
+            )
+            entities = entity_result.items
+            context.entities = entities
+            results["entities_extracted"] = len(entities)
+            print(f"  Entities: {len(entities)} (confidence: {entity_result.confidence:.2f})")
+            if entity_result.needs_escalation:
+                print(f"  Escalation: {entity_result.escalation_reason}")
+            ckpt.save(
+                "3",
+                {
+                    "entities": entities,
+                    "confidence": entity_result.confidence,
+                    "needs_escalation": entity_result.needs_escalation,
+                    "escalation_reason": entity_result.escalation_reason,
+                },
+                governed_kg=self.governed_kg,
+            )
 
         print("\n[3b/9] Preliminary Domain Assignment")
         print("-" * 50)
-        if not self.enable_governance or self.governed_kg is None:
+        if ckpt.has("3b"):
+            payload = ckpt.load("3b")
+            entities = payload["entities"]
+            context.entities = entities
+            results["entities_domain_assigned"] = payload.get("entities_domain_assigned", 0)
+            results["bootstrap_assignment_stats"] = payload.get("bootstrap_assignment_stats", {})
+            # Re-apply bootstrap stats to governed_kg (may have been wiped by a
+            # later overwrite of governed_kg_latest.json).
+            if (
+                self.enable_governance
+                and self.governed_kg is not None
+                and results["bootstrap_assignment_stats"]
+            ):
+                self.governed_kg.set_bootstrap_assignment_stats(
+                    results["bootstrap_assignment_stats"]
+                )
+            print(f"  SKIPPED (resumed) — {results['entities_domain_assigned']} entities had domains assigned")
+        elif not self.enable_governance or self.governed_kg is None:
             results["entities_domain_assigned"] = 0
             results["bootstrap_assignment_stats"] = {}
             print("  Governance disabled - skipping")
+            ckpt.save(
+                "3b",
+                {
+                    "entities": entities,
+                    "entities_domain_assigned": 0,
+                    "bootstrap_assignment_stats": {},
+                },
+                governed_kg=self.governed_kg,
+            )
         else:
             entity_domain_assignments, bootstrap_stats = self._assign_entities_to_domains(entities)
             assigned_count = 0
@@ -607,94 +767,144 @@ class DeliberativeOrchestrator:
             results["bootstrap_assignment_stats"] = bootstrap_stats
             self.governed_kg.set_bootstrap_assignment_stats(bootstrap_stats)
             print(f"  Assigned provisional domains to {assigned_count} entities")
+            ckpt.save(
+                "3b",
+                {
+                    "entities": entities,
+                    "entities_domain_assigned": assigned_count,
+                    "bootstrap_assignment_stats": bootstrap_stats,
+                },
+                governed_kg=self.governed_kg,
+            )
         
         # Step 4: Relation Extraction (RHF)
         if self.debug_logger:
             self.debug_logger.log_stage_header(4, "Relation Extraction (RHF Pipeline)")
         print("\n[4/9] Relation Extraction (RHF Pipeline)")
         print("-" * 50)
-        relation_result = self.relation_extractor.run(
-            context,
-            segments=segments,
-            entities=entities,
-            domain_config=domain_config,
-        )
-        triples = relation_result.items
-        context.relations = triples
-        results["triples_extracted"] = len(triples)
-        print(f"  Triples: {len(triples)} (confidence: {relation_result.confidence:.2f})")
-        if relation_result.metadata.get("new_relations_discovered"):
-            print(f"  New Relation Types: {relation_result.metadata['new_relations_discovered']}")
-        if relation_result.metadata.get("pairwise_pairs_considered"):
-            print(
-                "  Pairwise scoring:"
-                f" pairs={relation_result.metadata['pairwise_pairs_considered']}"
-                f", positives={relation_result.metadata.get('pairwise_positive_predictions', 0)}"
-                f", added={relation_result.metadata.get('pairwise_triples_added', 0)}"
+        if ckpt.has("4"):
+            payload = ckpt.load("4")
+            triples = payload["triples"]
+            context.relations = triples
+            results["triples_extracted"] = len(triples)
+            relation_metadata = payload.get("metadata", {}) or {}
+            relation_confidence = payload.get("confidence", 0.7)
+            if relation_metadata.get("funnel_diagnostics"):
+                results["relation_funnel_diagnostics"] = relation_metadata["funnel_diagnostics"]
+            print(f"  SKIPPED (resumed) — {len(triples)} triples from checkpoint")
+        else:
+            relation_result = self.relation_extractor.run(
+                context,
+                segments=segments,
+                entities=entities,
+                domain_config=domain_config,
             )
-        if relation_result.metadata.get("gleaned_triples_added"):
-            print(f"  Gleaning pass added: {relation_result.metadata['gleaned_triples_added']} triples")
-        if relation_result.metadata.get("funnel_diagnostics"):
-            results["relation_funnel_diagnostics"] = relation_result.metadata["funnel_diagnostics"]
+            triples = relation_result.items
+            context.relations = triples
+            results["triples_extracted"] = len(triples)
+            relation_metadata = relation_result.metadata or {}
+            relation_confidence = relation_result.confidence
+            print(f"  Triples: {len(triples)} (confidence: {relation_result.confidence:.2f})")
+            if relation_metadata.get("new_relations_discovered"):
+                print(f"  New Relation Types: {relation_metadata['new_relations_discovered']}")
+            if relation_metadata.get("pairwise_pairs_considered"):
+                print(
+                    "  Pairwise scoring:"
+                    f" pairs={relation_metadata['pairwise_pairs_considered']}"
+                    f", positives={relation_metadata.get('pairwise_positive_predictions', 0)}"
+                    f", added={relation_metadata.get('pairwise_triples_added', 0)}"
+                )
+            if relation_metadata.get("gleaned_triples_added"):
+                print(f"  Gleaning pass added: {relation_metadata['gleaned_triples_added']} triples")
+            if relation_metadata.get("funnel_diagnostics"):
+                results["relation_funnel_diagnostics"] = relation_metadata["funnel_diagnostics"]
+            ckpt.save(
+                "4",
+                {
+                    "triples": triples,
+                    "confidence": relation_confidence,
+                    "metadata": relation_metadata,
+                },
+                governed_kg=self.governed_kg,
+            )
 
         # Step 4b: Connectivity Pass — find relations for disconnected entities
-        connected_ids = set()
-        for t in triples:
-            connected_ids.add(t.get("subject_id") or t.get("subject", ""))
-            connected_ids.add(t.get("object_id") or t.get("object", ""))
-        disconnected_count = sum(
-            1 for e in entities
-            if (e.get("id", e.get("text", "")) not in connected_ids)
-        )
-        should_run_connectivity = (
-            disconnected_count > 5
-            and (
-                self.enable_open_world
-                or len(triples) <= 2
-                or relation_result.confidence < 0.55
-            )
-        )
-        if should_run_connectivity:
-            if self.debug_logger:
-                self.debug_logger.log_stage_header(4, "Connectivity Pass")
-            print(f"\n[4b/9] Connectivity Pass ({disconnected_count} disconnected entities)")
-            print("-" * 50)
-            connectivity_relation_types = (
-                relation_result.metadata.get("relation_types_found")
-                or relation_result.metadata.get("relation_types_used")
-                or relation_result.metadata.get("suggested_relation_types")
-                or [
-                    rt.get("type")
-                    for rt in domain_config.get("relation_types", [])
-                    if isinstance(rt, dict) and rt.get("type")
-                ]
-            )
-            connectivity_triples = self.relation_extractor.extract_connectivity_relations(
-                text=context.text,
-                entities=entities,
-                triples=triples,
-                relation_types=connectivity_relation_types,
-            )
-            if connectivity_triples:
-                triples.extend(connectivity_triples)
-                context.relations = triples
-                results["triples_extracted"] = len(triples)
-                # Recount connected
-                connected_after = set()
-                for t in triples:
-                    connected_after.add(t.get("subject_id") or t.get("subject", ""))
-                    connected_after.add(t.get("object_id") or t.get("object", ""))
-                disconnected_after = sum(
-                    1 for e in entities
-                    if (e.get("id", e.get("text", "")) not in connected_after)
-                )
-                print(f"  Total triples now: {len(triples)}")
-                print(f"  Disconnected entities: {disconnected_count} → {disconnected_after}")
+        if ckpt.has("4b"):
+            payload = ckpt.load("4b")
+            triples = payload["triples"]
+            context.relations = triples
+            results["triples_extracted"] = len(triples)
+            print(f"\n[4b/9] Connectivity Pass — SKIPPED (resumed) — {len(triples)} triples")
         else:
-            print(f"\n[4b/9] Connectivity Pass — skipped ({disconnected_count} disconnected, threshold=5)")
+            connected_ids = set()
+            for t in triples:
+                connected_ids.add(t.get("subject_id") or t.get("subject", ""))
+                connected_ids.add(t.get("object_id") or t.get("object", ""))
+            disconnected_count = sum(
+                1 for e in entities
+                if (e.get("id", e.get("text", "")) not in connected_ids)
+            )
+            should_run_connectivity = (
+                disconnected_count > 5
+                and (
+                    self.enable_open_world
+                    or len(triples) <= 2
+                    or relation_confidence < 0.55
+                )
+            )
+            if should_run_connectivity:
+                if self.debug_logger:
+                    self.debug_logger.log_stage_header(4, "Connectivity Pass")
+                print(f"\n[4b/9] Connectivity Pass ({disconnected_count} disconnected entities)")
+                print("-" * 50)
+                connectivity_relation_types = (
+                    relation_metadata.get("relation_types_found")
+                    or relation_metadata.get("relation_types_used")
+                    or relation_metadata.get("suggested_relation_types")
+                    or [
+                        rt.get("type")
+                        for rt in domain_config.get("relation_types", [])
+                        if isinstance(rt, dict) and rt.get("type")
+                    ]
+                )
+                connectivity_triples = self.relation_extractor.extract_connectivity_relations(
+                    text=context.text,
+                    entities=entities,
+                    triples=triples,
+                    relation_types=connectivity_relation_types,
+                )
+                if connectivity_triples:
+                    triples.extend(connectivity_triples)
+                    context.relations = triples
+                    results["triples_extracted"] = len(triples)
+                    # Recount connected
+                    connected_after = set()
+                    for t in triples:
+                        connected_after.add(t.get("subject_id") or t.get("subject", ""))
+                        connected_after.add(t.get("object_id") or t.get("object", ""))
+                    disconnected_after = sum(
+                        1 for e in entities
+                        if (e.get("id", e.get("text", "")) not in connected_after)
+                    )
+                    print(f"  Total triples now: {len(triples)}")
+                    print(f"  Disconnected entities: {disconnected_count} → {disconnected_after}")
+            else:
+                print(f"\n[4b/9] Connectivity Pass — skipped ({disconnected_count} disconnected, threshold=5)")
+            ckpt.save(
+                "4b",
+                {"triples": triples, "ran_connectivity_pass": should_run_connectivity},
+                governed_kg=self.governed_kg,
+            )
 
         # Step 5: Evidence Linking
-        if self.skip_evidence_linking:
+        if ckpt.has("5"):
+            payload = ckpt.load("5")
+            linked_triples = payload["linked_triples"]
+            results["triples_linked"] = len(linked_triples)
+            print("\n[5/9] Evidence Linking")
+            print("-" * 50)
+            print(f"  SKIPPED (resumed) — {len(linked_triples)} linked triples from checkpoint")
+        elif self.skip_evidence_linking:
             if self.debug_logger:
                 self.debug_logger.log_stage_header(5, "Evidence Linking (Skipped)")
             print("\n[5/9] Evidence Linking — SKIPPED")
@@ -702,6 +912,7 @@ class DeliberativeOrchestrator:
             linked_triples = triples
             results["triples_linked"] = len(linked_triples)
             print(f"  Passing through {len(linked_triples)} triples")
+            ckpt.save("5", {"linked_triples": linked_triples}, governed_kg=self.governed_kg)
         else:
             if self.debug_logger:
                 self.debug_logger.log_stage_header(5, "Evidence Linking")
@@ -716,37 +927,68 @@ class DeliberativeOrchestrator:
             linked_triples = evidence_result.items
             results["triples_linked"] = len(linked_triples)
             print(f"  Linked: {len(linked_triples)} (confidence: {evidence_result.confidence:.2f})")
+            ckpt.save(
+                "5",
+                {
+                    "linked_triples": linked_triples,
+                    "confidence": evidence_result.confidence,
+                },
+                governed_kg=self.governed_kg,
+            )
         
         # Step 6: Multi-Agent Deliberation
         if self.debug_logger:
             self.debug_logger.log_stage_header(6, "Multi-Agent Deliberation")
         print("\n[6/9] Multi-Agent Deliberation")
         print("-" * 50)
-        
-        if self.enable_deliberation and self.deliberation_coordinator:
-            deliberation_results = self._run_deliberation_phase(
-                context=context,
-                entities=entities,
-                triples=linked_triples,
-                segments=segments,
-            )
-            results["voting_sessions"] = deliberation_results.get("voting_sessions", 0)
-            results["debates_triggered"] = deliberation_results.get("debates_triggered", 0)
-            results["items_accepted_by_vote"] = deliberation_results.get("accepted", 0)
-            results["items_rejected_by_vote"] = deliberation_results.get("rejected", 0)
-            
-            # Update entities/triples based on deliberation
-            if deliberation_results.get("refined_entities"):
-                entities = deliberation_results["refined_entities"]
-                context.entities = entities
-            if deliberation_results.get("refined_triples"):
-                linked_triples = deliberation_results["refined_triples"]
+
+        if ckpt.has("6"):
+            payload = ckpt.load("6")
+            entities = payload["entities"]
+            context.entities = entities
+            linked_triples = payload["linked_triples"]
+            results["voting_sessions"] = payload.get("voting_sessions", 0)
+            results["debates_triggered"] = payload.get("debates_triggered", 0)
+            results["items_accepted_by_vote"] = payload.get("items_accepted_by_vote", 0)
+            results["items_rejected_by_vote"] = payload.get("items_rejected_by_vote", 0)
+            print(f"  SKIPPED (resumed) — {len(entities)} entities, {len(linked_triples)} triples")
         else:
-            results["voting_sessions"] = 0
-            results["debates_triggered"] = 0
-            results["items_accepted_by_vote"] = 0
-            results["items_rejected_by_vote"] = 0
-            print("  Deliberation disabled - skipping")
+            if self.enable_deliberation and self.deliberation_coordinator:
+                deliberation_results = self._run_deliberation_phase(
+                    context=context,
+                    entities=entities,
+                    triples=linked_triples,
+                    segments=segments,
+                )
+                results["voting_sessions"] = deliberation_results.get("voting_sessions", 0)
+                results["debates_triggered"] = deliberation_results.get("debates_triggered", 0)
+                results["items_accepted_by_vote"] = deliberation_results.get("accepted", 0)
+                results["items_rejected_by_vote"] = deliberation_results.get("rejected", 0)
+
+                # Update entities/triples based on deliberation
+                if deliberation_results.get("refined_entities"):
+                    entities = deliberation_results["refined_entities"]
+                    context.entities = entities
+                if deliberation_results.get("refined_triples"):
+                    linked_triples = deliberation_results["refined_triples"]
+            else:
+                results["voting_sessions"] = 0
+                results["debates_triggered"] = 0
+                results["items_accepted_by_vote"] = 0
+                results["items_rejected_by_vote"] = 0
+                print("  Deliberation disabled - skipping")
+            ckpt.save(
+                "6",
+                {
+                    "entities": entities,
+                    "linked_triples": linked_triples,
+                    "voting_sessions": results["voting_sessions"],
+                    "debates_triggered": results["debates_triggered"],
+                    "items_accepted_by_vote": results["items_accepted_by_vote"],
+                    "items_rejected_by_vote": results["items_rejected_by_vote"],
+                },
+                governed_kg=self.governed_kg,
+            )
         
         print(f"  Voting Sessions: {results['voting_sessions']}")
         print(f"  Debates Triggered: {results['debates_triggered']}")
@@ -764,7 +1006,15 @@ class DeliberativeOrchestrator:
         results["refinement_iterations"] = 0
 
         # Step 8: Verification (single quality gate)
-        if self.skip_verification:
+        if ckpt.has("8"):
+            payload = ckpt.load("8")
+            verified = payload["verified"]
+            results["approved_triples"] = len(verified.get("approved_triples", []))
+            results["rejected_triples"] = len(verified.get("rejected_triples", []))
+            print("\n[8/9] Extraction Verification")
+            print("-" * 50)
+            print(f"  SKIPPED (resumed) — {results['approved_triples']} approved, {results['rejected_triples']} rejected")
+        elif self.skip_verification:
             if self.debug_logger:
                 self.debug_logger.log_stage_header(8, "Extraction Verification (Skipped)")
             print("\n[8/9] Extraction Verification — SKIPPED")
@@ -774,6 +1024,7 @@ class DeliberativeOrchestrator:
             results["rejected_triples"] = 0
             print(f"  Approved: {results['approved_triples']}")
             print(f"  Rejected: {results['rejected_triples']}")
+            ckpt.save("8", {"verified": verified}, governed_kg=self.governed_kg)
         else:
             if self.debug_logger:
                 self.debug_logger.log_stage_header(8, "Extraction Verification")
@@ -789,24 +1040,40 @@ class DeliberativeOrchestrator:
             results["rejected_triples"] = len(verified.get("rejected_triples", []))
             print(f"  Approved: {results['approved_triples']}")
             print(f"  Rejected: {results['rejected_triples']}")
+            ckpt.save("8", {"verified": verified}, governed_kg=self.governed_kg)
         
         # Step 9: Knowledge Organization
         if self.debug_logger:
             self.debug_logger.log_stage_header(9, "Knowledge Graph Integration")
         print("\n[9/9] Knowledge Graph Integration")
         print("-" * 50)
-        integration_result = self.knowledge_organizer.run(
-            context,
-            entities=verified.get("entities", entities),
-            triples=verified.get("approved_triples", []),
-        )
-        kg_stats = integration_result.metadata.get("kg_stats", {})
-        results["kg_entities"] = kg_stats.get("total_entities", 0)
-        results["kg_triples"] = kg_stats.get("total_triples", 0)
-        if self.governed_kg is not None and self.governed_kg.org_chart.domains:
-            self.governed_kg.org_chart.refresh_memory_cards(self.governed_kg.kg)
-        print(f"  KG Entities: {results['kg_entities']}")
-        print(f"  KG Triples: {results['kg_triples']}")
+        if ckpt.has("9"):
+            payload = ckpt.load("9")
+            results["kg_entities"] = payload.get("kg_entities", 0)
+            results["kg_triples"] = payload.get("kg_triples", 0)
+            print(f"  SKIPPED (resumed) — KG has {results['kg_entities']} entities, {results['kg_triples']} triples")
+        else:
+            integration_result = self.knowledge_organizer.run(
+                context,
+                entities=verified.get("entities", entities),
+                triples=verified.get("approved_triples", []),
+            )
+            kg_stats = integration_result.metadata.get("kg_stats", {})
+            results["kg_entities"] = kg_stats.get("total_entities", 0)
+            results["kg_triples"] = kg_stats.get("total_triples", 0)
+            if self.governed_kg is not None and self.governed_kg.org_chart.domains:
+                self.governed_kg.org_chart.refresh_memory_cards(self.governed_kg.kg)
+            print(f"  KG Entities: {results['kg_entities']}")
+            print(f"  KG Triples: {results['kg_triples']}")
+            ckpt.save(
+                "9",
+                {
+                    "kg_entities": results["kg_entities"],
+                    "kg_triples": results["kg_triples"],
+                },
+                governed_kg=self.governed_kg,
+                knowledge_graph=self.knowledge_graph,
+            )
         
         # Summary
         elapsed = (datetime.now() - start_time).total_seconds()
@@ -1072,20 +1339,23 @@ class DeliberativeOrchestrator:
         document_id = getattr(context, "document_id", None)
         
         # === ENTITY DELIBERATION ===
-        # Only entities in the genuinely uncertain band (0.35–0.65) need voting.
-        # Entities ≥ 0.65 are accepted directly; entities < 0.35 are rejected outright.
-        # This prevents hundreds of pre-baked identical votes for items that are
-        # clearly acceptable (confidence ~0.70) from flooding the log.
-        ENTITY_UNCERTAIN_LOW  = 0.15
-        ENTITY_UNCERTAIN_HIGH = 0.65
+        # Entities in the uncertain band (0.05–0.85) go to multi-agent voting.
+        # Entities ≥ 0.85 are accepted directly; entities < 0.05 are rejected outright.
+        # This widened band (tuning Stage 2) ensures almost all items get deliberated.
+        ENTITY_UNCERTAIN_LOW  = 0.05
+        ENTITY_UNCERTAIN_HIGH = 0.85
         low_confidence_entities = [
             e for e in entities
             if ENTITY_UNCERTAIN_LOW <= e.get("confidence", 1.0) < ENTITY_UNCERTAIN_HIGH
         ]
         # Items clearly below the floor → reject immediately, no vote needed
+        entities_rejected_below_floor = 0
         for e in entities:
             if e.get("confidence", 1.0) < ENTITY_UNCERTAIN_LOW:
                 results["rejected"] += 1
+                entities_rejected_below_floor += 1
+        if entities_rejected_below_floor > 0:
+            print(f"  Rejected {entities_rejected_below_floor} entities below confidence floor {ENTITY_UNCERTAIN_LOW}")
         # Items clearly above the ceiling → accept immediately
         high_confidence_entities = [
             e for e in entities
@@ -1118,15 +1388,19 @@ class DeliberativeOrchestrator:
                 self._collect_entity_votes(hyp_id, entity, context)
         
         # === TRIPLE DELIBERATION ===
-        TRIPLE_UNCERTAIN_LOW  = 0.15
-        TRIPLE_UNCERTAIN_HIGH = 0.65
+        TRIPLE_UNCERTAIN_LOW  = 0.05
+        TRIPLE_UNCERTAIN_HIGH = 0.85
         low_confidence_triples = [
             t for t in triples
             if TRIPLE_UNCERTAIN_LOW <= t.get("confidence", 1.0) < TRIPLE_UNCERTAIN_HIGH
         ]
+        triples_rejected_below_floor = 0
         for t in triples:
             if t.get("confidence", 1.0) < TRIPLE_UNCERTAIN_LOW:
                 results["rejected"] += 1
+                triples_rejected_below_floor += 1
+        if triples_rejected_below_floor > 0:
+            print(f"  Rejected {triples_rejected_below_floor} triples below confidence floor {TRIPLE_UNCERTAIN_LOW}")
         high_confidence_triples_direct = [
             t for t in triples
             if t.get("confidence", 1.0) >= TRIPLE_UNCERTAIN_HIGH
@@ -1225,11 +1499,9 @@ class DeliberativeOrchestrator:
         # High-confidence items were already added at the start of this method
         # (band-filtering above). No duplicates needed here.
         
-        # Return refined lists
-        if low_confidence_entities:
-            results["refined_entities"] = accepted_entities
-        if low_confidence_triples:
-            results["refined_triples"] = accepted_triples
+        # Return refined lists — always set these so the caller never sees stale data
+        results["refined_entities"] = accepted_entities
+        results["refined_triples"] = accepted_triples
         
         return results
 
@@ -1350,8 +1622,8 @@ class DeliberativeOrchestrator:
                     position=position,
                     argument=f"[{vote_type.value}, conf={confidence:.2f}] {rationale}",
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"  [DELIBERATION] debate argument submission failed for {agent_name}: {e}")
 
     def process_corpus(
         self,
