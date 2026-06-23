@@ -31,6 +31,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 # Resolve project root
@@ -65,15 +66,39 @@ INBOX_DIR = PROJECT_ROOT / "inbox"
 INBOX_DIR.mkdir(exist_ok=True)
 PIPELINE_LOG_DIR = PROJECT_ROOT / "pipeline_logs"
 PIPELINE_LOG_DIR.mkdir(exist_ok=True)
-CHECKPOINT_FILE = PROJECT_ROOT / "pipeline_checkpoint.json"
+JOBS_FILE = PIPELINE_LOG_DIR / "jobs.json"
+JOB_CHECKPOINT_ROOT = PROJECT_ROOT / "checkpoints" / "jobs"
 
 governed_kg = None
 qa_system = None
 _startup_time = time.time()
 _qa_model_lock = threading.Lock()  # protects per-request model swap on qa_system.llm_config
+_kg_reload_lock = threading.Lock()  # protects governed_kg/qa_system swap during reload
 
-# In-memory job table for /ingest + /pipeline/status
+# How the KG/QA stack was initialized; reused by /kg/reload after ingestion.
+_INIT_CONFIG: dict = {"mode": "none"}
+
+# Job table for /ingest + /pipeline/status (persisted to JOBS_FILE).
 JOBS: dict[str, dict] = {}
+if JOBS_FILE.exists():
+    try:
+        JOBS.update(json.loads(JOBS_FILE.read_text()))
+        # Jobs that were queued/running when the server died are stale.
+        for _job in JOBS.values():
+            if _job.get("status") in ("queued", "running"):
+                _job["status"] = "failed"
+                _job["error"] = "server restarted while job was in flight"
+    except (json.JSONDecodeError, OSError):
+        pass
+
+
+def _save_jobs() -> None:
+    try:
+        tmp = JOBS_FILE.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(JOBS, indent=2, default=str))
+        os.replace(tmp, JOBS_FILE)
+    except OSError:
+        pass
 
 
 # ── Request / response models ────────────────────────────────────────────────
@@ -230,6 +255,13 @@ def _build_org_chart_summary() -> dict:
             "label": getattr(d, "label", d.domain_id),
             "description": getattr(d, "description", ""),
             "entity_count": len(getattr(d, "entity_ids", [])),
+            "owner_label": getattr(d, "owner_label", ""),
+            "topics": [
+                {"topic_id": t.topic_id, "label": t.label}
+                for t in getattr(d, "topics", [])
+            ],
+            "relation_types": sorted(getattr(d, "relation_schema", {}).keys()),
+            "entity_ids": sorted(getattr(d, "entity_ids", [])),
         })
     # entity_id → primary domain (first one wins for coloring)
     assignments = {eid: dids[0] for eid, dids in org.entity_domain_map().items() if dids}
@@ -318,7 +350,11 @@ def qa_query(req: QARequest):
                 llm_cfg.model = prev_model  # restore after query
 
     print(f"A: {result.get('final_answer', '')[:200]}...")
+    return _build_qa_payload(result, used_model)
 
+
+def _build_qa_payload(result: dict, used_model: str | None) -> dict:
+    """Convert a raw QA orchestrator result into the frontend response shape."""
     triple_index = _build_triple_index()
     # Map "entity_id" -> set of triple ids it appears in (for fallback edge lookup)
     entity_triples: dict[str, set[str]] = {}
@@ -396,17 +432,215 @@ def qa_query(req: QARequest):
     }
 
 
+@app.post("/qa/stream")
+def qa_query_stream(req: QARequest):
+    """Server-Sent Events version of /qa.
+
+    Emits `progress` events (stage names from the QA orchestrator) while the
+    pipeline runs, then a final `result` event with the same payload as /qa.
+    """
+    if qa_system is None:
+        raise HTTPException(status_code=503, detail="QA system not initialized")
+    if not req.question.strip():
+        raise HTTPException(status_code=400, detail="Empty question")
+
+    import queue as _queue
+
+    events: _queue.Queue = _queue.Queue()
+
+    def on_progress(stage: str, info: dict):
+        events.put({"event": "progress", "stage": stage, "info": info})
+
+    def worker():
+        llm_cfg = getattr(qa_system, "llm_config", None)
+        with _qa_model_lock:
+            prev_model = getattr(llm_cfg, "model", None) if llm_cfg else None
+            used_model = req.model if (req.model and llm_cfg) else prev_model
+            if req.model and llm_cfg and req.model != prev_model:
+                llm_cfg.model = req.model
+            had_callback = getattr(qa_system, "progress_callback", None)
+            qa_system.progress_callback = on_progress
+            try:
+                result = qa_system.query(req.question)
+                payload = _build_qa_payload(result, used_model)
+                events.put({"event": "result", "payload": payload})
+            except Exception as exc:  # noqa: BLE001
+                events.put({"event": "error", "message": str(exc)})
+            finally:
+                qa_system.progress_callback = had_callback
+                if llm_cfg and prev_model and getattr(llm_cfg, "model", None) != prev_model:
+                    llm_cfg.model = prev_model
+                events.put(None)  # sentinel: stream done
+
+    threading.Thread(target=worker, daemon=True).start()
+
+    def event_stream():
+        while True:
+            try:
+                item = events.get(timeout=15)
+            except _queue.Empty:
+                yield ": keep-alive\n\n"
+                continue
+            if item is None:
+                break
+            yield f"data: {json.dumps(item, default=str)}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# ── Governance endpoints ──────────────────────────────────────────────
+
+
+class GovernanceReviewRequest(BaseModel):
+    index: int
+    action: str  # "approve" | "reject"
+    rationale: str | None = None
+
+
+@app.get("/governance/audit")
+def governance_audit(offset: int = 0, limit: int = 100, action: str | None = None, domain_id: str | None = None):
+    """Paginated governance audit log, newest first."""
+    if governed_kg is None:
+        raise HTTPException(status_code=503, detail="KG not loaded")
+    entries = [d.to_dict() for d in reversed(governed_kg.audit_log)]
+    if action:
+        entries = [e for e in entries if e.get("action") == action]
+    if domain_id:
+        entries = [e for e in entries if e.get("domain_id") == domain_id]
+    total = len(entries)
+    page = entries[offset:offset + max(0, min(limit, 500))]
+    return {
+        "total": total,
+        "offset": offset,
+        "entries": page,
+        "stats": governed_kg.get_stats(),
+    }
+
+
+@app.get("/governance/pending")
+def governance_pending():
+    """Pending-review queue (strict/triage governance escalations)."""
+    if governed_kg is None:
+        raise HTTPException(status_code=503, detail="KG not loaded")
+    return {
+        "pending": [
+            {
+                "index": i,
+                "subject": t.subject,
+                "relation": t.relation,
+                "object": t.object,
+                "confidence": t.confidence,
+                "source": t.source,
+            }
+            for i, t in enumerate(governed_kg.pending_review)
+        ],
+    }
+
+
+@app.post("/governance/review")
+def governance_review(req: GovernanceReviewRequest):
+    """Approve or reject a pending-review triple, then persist the KG export."""
+    if governed_kg is None:
+        raise HTTPException(status_code=503, detail="KG not loaded")
+    if req.action not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action must be 'approve' or 'reject'")
+
+    from multi_agent_kg.core.governed_kg import GovernanceDecision
+
+    pending = governed_kg.pending_review
+    if req.index < 0 or req.index >= len(pending):
+        raise HTTPException(status_code=404, detail=f"No pending entry at index {req.index}")
+
+    triple = pending[req.index]
+    assignment = governed_kg.org_chart.route_triple_for_governance(triple)
+    decision = GovernanceDecision(
+        triple=triple,
+        action=req.action,
+        domain_id=assignment.primary_domain_id if assignment else None,
+        rationale=req.rationale or f"Manual {req.action} via governance review UI.",
+        assignment=assignment,
+    )
+    governed_kg.resolve_pending(req.index, decision)
+
+    # Persist the updated governed KG so the decision survives restarts.
+    try:
+        from multi_agent_kg.core import save_governed_kg
+        save_governed_kg(governed_kg, KG_FILE)
+    except Exception as exc:  # noqa: BLE001
+        print(f"WARNING: failed to persist governed KG after review: {exc}")
+
+    return {
+        "action": req.action,
+        "committed": decision.committed,
+        "remaining_pending": len(governed_kg.pending_review),
+        "triple": {
+            "subject": triple.subject,
+            "relation": triple.relation,
+            "object": triple.object,
+        },
+    }
+
+
+# ── KG reload ─────────────────────────────────────────────────────────────
+
+
+def _reload_kg() -> dict:
+    """Re-initialize the KG (and QA stack if it was enabled) from disk."""
+    with _kg_reload_lock:
+        mode = _INIT_CONFIG.get("mode")
+        if mode == "full":
+            init_kg_and_qa(
+                basic=_INIT_CONFIG.get("basic", False),
+                no_debate=_INIT_CONFIG.get("no_debate", False),
+                no_critic=_INIT_CONFIG.get("no_critic", False),
+                exploration_rounds=_INIT_CONFIG.get("exploration_rounds", 3),
+            )
+        else:
+            init_kg_only()
+    stats = governed_kg.kg.get_stats() if governed_kg else {}
+    return {
+        "reloaded": governed_kg is not None,
+        "entities": stats.get("num_entities", 0),
+        "triples": stats.get("num_triples", 0),
+    }
+
+
+@app.post("/kg/reload")
+def kg_reload():
+    """Reload governed_kg_export.json from disk (e.g. after a pipeline run)."""
+    try:
+        return _reload_kg()
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"Reload failed: {exc}")
+
+
 # ── Ingestion + pipeline status ──────────────────────────────────────────────
 
 
 def _run_pipeline_job(job_id: str, doc_path: Path):
     """Run scripts/run_pipeline.py against a single document and update JOBS."""
     log_path = PIPELINE_LOG_DIR / f"{job_id}.log"
-    JOBS[job_id].update({"status": "running", "started_at": time.time(), "log_file": str(log_path)})
+    checkpoint_dir = JOB_CHECKPOINT_ROOT / job_id
+    JOBS[job_id].update({
+        "status": "running",
+        "started_at": time.time(),
+        "log_file": str(log_path),
+        "checkpoint_dir": str(checkpoint_dir),
+    })
+    _save_jobs()
     try:
         with open(log_path, "w") as logf:
             proc = subprocess.run(
-                [sys.executable, str(PROJECT_ROOT / "scripts" / "run_pipeline.py"), str(doc_path)],
+                [
+                    sys.executable,
+                    str(PROJECT_ROOT / "scripts" / "run_pipeline.py"),
+                    "--input", str(doc_path),
+                    "--checkpoint-dir", str(checkpoint_dir),
+                ],
                 cwd=str(PROJECT_ROOT),
                 stdout=logf,
                 stderr=subprocess.STDOUT,
@@ -415,23 +649,51 @@ def _run_pipeline_job(job_id: str, doc_path: Path):
         JOBS[job_id]["return_code"] = proc.returncode
         JOBS[job_id]["finished_at"] = time.time()
         JOBS[job_id]["status"] = "completed" if proc.returncode == 0 else "failed"
+        if proc.returncode == 0:
+            # The pipeline rewrote governed_kg_export.json — swap the in-memory
+            # KG so /kg/data serves fresh data without a server restart.
+            try:
+                _reload_kg()
+                JOBS[job_id]["kg_reloaded"] = True
+            except Exception as exc:  # noqa: BLE001
+                JOBS[job_id]["kg_reloaded"] = False
+                JOBS[job_id]["reload_error"] = str(exc)
     except Exception as exc:  # noqa: BLE001
         JOBS[job_id]["status"] = "failed"
         JOBS[job_id]["error"] = str(exc)
         JOBS[job_id]["finished_at"] = time.time()
+    _save_jobs()
 
 
 @app.post("/ingest")
 async def ingest(file: UploadFile = File(...)):
-    """Accept a .txt document, save it, and launch the pipeline in the background."""
+    """Accept a .txt or .pdf document, save it, and launch the pipeline in the background."""
     filename = file.filename or "upload.txt"
-    if not filename.lower().endswith(".txt"):
-        raise HTTPException(status_code=400, detail="Only .txt files are supported")
+    lower = filename.lower()
+    if not (lower.endswith(".txt") or lower.endswith(".pdf")):
+        raise HTTPException(status_code=400, detail="Only .txt and .pdf files are supported")
     content = await file.read()
     if not content.strip():
         raise HTTPException(status_code=400, detail="Empty file")
 
     job_id = uuid.uuid4().hex[:12]
+
+    if lower.endswith(".pdf"):
+        try:
+            import io
+            from pypdf import PdfReader
+        except ImportError:
+            raise HTTPException(status_code=400, detail="PDF support requires the pypdf package")
+        try:
+            reader = PdfReader(io.BytesIO(content))
+            text = "\n\n".join(p.extract_text() or "" for p in reader.pages).strip()
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=400, detail=f"PDF extraction failed: {exc}")
+        if not text:
+            raise HTTPException(status_code=400, detail="No extractable text found in PDF")
+        content = text.encode("utf-8")
+        filename = Path(filename).stem + ".txt"
+
     safe_name = f"{job_id}_{Path(filename).name}"
     doc_path = INBOX_DIR / safe_name
     doc_path.write_bytes(content)
@@ -443,6 +705,7 @@ async def ingest(file: UploadFile = File(...)):
         "status": "queued",
         "queued_at": time.time(),
     }
+    _save_jobs()
 
     # Fire-and-forget the pipeline subprocess on a worker thread.
     asyncio.get_event_loop().run_in_executor(None, _run_pipeline_job, job_id, doc_path)
@@ -450,19 +713,41 @@ async def ingest(file: UploadFile = File(...)):
     return {"job_id": job_id, "status": "queued", "filename": filename}
 
 
-def _read_checkpoint_progress() -> dict:
-    if not CHECKPOINT_FILE.exists():
+def _read_checkpoint_progress(job_id: str | None = None) -> dict:
+    """Read per-stage progress written by CheckpointManager for a job.
+
+    The pipeline writes checkpoints/jobs/<job_id>/<doc_id>/manifest.json plus a
+    governed_kg_latest.json snapshot after each completed stage.
+    """
+    if job_id is None:
         return {}
+    root = JOB_CHECKPOINT_ROOT / job_id
+    if not root.exists():
+        return {}
+    progress: dict = {}
     try:
-        with open(CHECKPOINT_FILE) as f:
-            data = json.load(f)
-        return {
-            "current_stage": data.get("stage"),
-            "entity_count": len(data.get("entities", {}) or {}),
-            "triple_count": len(data.get("triples", []) or []),
-        }
+        for doc_dir in sorted(root.iterdir()):
+            manifest_path = doc_dir / "manifest.json"
+            if not manifest_path.exists():
+                continue
+            with open(manifest_path) as f:
+                manifest = json.load(f)
+            progress = {
+                "document_id": manifest.get("document_id"),
+                "current_stage": manifest.get("last_stage"),
+                "completed_stages": manifest.get("completed_stages", []),
+                "last_update": manifest.get("last_update"),
+            }
+            snapshot_path = doc_dir / "governed_kg_latest.json"
+            if snapshot_path.exists():
+                with open(snapshot_path) as f:
+                    snapshot = json.load(f)
+                kg_blob = snapshot.get("knowledge_graph", snapshot)
+                progress["entity_count"] = len(kg_blob.get("entities", []) or [])
+                progress["triple_count"] = len(kg_blob.get("triples", []) or [])
     except (json.JSONDecodeError, OSError):
-        return {}
+        pass
+    return progress
 
 
 @app.get("/pipeline/status")
@@ -471,10 +756,10 @@ def pipeline_status(job_id: str | None = None):
         job = JOBS.get(job_id)
         if not job:
             raise HTTPException(status_code=404, detail=f"Unknown job_id: {job_id}")
-        return {**job, "checkpoint": _read_checkpoint_progress()}
+        return {**job, "checkpoint": _read_checkpoint_progress(job_id)}
     return {
         "jobs": sorted(JOBS.values(), key=lambda j: j.get("queued_at", 0), reverse=True),
-        "checkpoint": _read_checkpoint_progress(),
+        "checkpoint": {},
     }
 
 
@@ -484,6 +769,8 @@ def pipeline_status(job_id: str | None = None):
 def init_kg_only():
     """Load KG data only — no LLM calls, no org chart, no QA system."""
     global governed_kg
+
+    _INIT_CONFIG.update({"mode": "data_only"})
 
     from multi_agent_kg.core import load_governed_kg
 
@@ -502,6 +789,14 @@ def init_kg_and_qa(basic: bool = False, no_debate: bool = False,
                    no_critic: bool = False, exploration_rounds: int = 3):
     """Load KG and initialize QA system."""
     global governed_kg, qa_system
+
+    _INIT_CONFIG.update({
+        "mode": "full",
+        "basic": basic,
+        "no_debate": no_debate,
+        "no_critic": no_critic,
+        "exploration_rounds": exploration_rounds,
+    })
 
     from multi_agent_kg.core import (
         DomainBuilder,
@@ -606,5 +901,6 @@ if __name__ == "__main__":
         )
 
     print(f"\nMaKG API server at http://{args.host}:{args.port}")
-    print("Endpoints: /health, /kg/data, /kg/stats, /models, /qa, /ingest, /pipeline/status\n")
+    print("Endpoints: /health, /kg/data, /kg/stats, /kg/reload, /models, /qa, /qa/stream, "
+          "/governance/audit, /governance/pending, /governance/review, /ingest, /pipeline/status\n")
     uvicorn.run(app, host=args.host, port=args.port)

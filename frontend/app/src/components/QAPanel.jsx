@@ -167,7 +167,9 @@ function QATurn({ turn, onChipHover, entities, entityTypes }) {
 
             {turn.status === 'loading' && (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '8px 0' }}>
-                <span style={{ fontSize: 12, color: '#3d4555', fontStyle: 'italic' }}>Routing to domain experts</span>
+                <span style={{ fontSize: 12, color: '#3d4555', fontStyle: 'italic' }}>
+                  {turn.stage ? turn.stage.replace(/_/g, ' ') : 'Routing to domain experts'}
+                </span>
                 {[0,1,2].map(i => (
                   <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: TEAL, display: 'inline-block', animation: `dotBounce 1.2s ${i * 0.2}s ease-in-out infinite` }} />
                 ))}

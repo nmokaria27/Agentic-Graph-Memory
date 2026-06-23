@@ -3,7 +3,8 @@ import GraphCanvas from './components/GraphCanvas.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import QAPanel from './components/QAPanel.jsx';
 import UploadPanel from './components/UploadPanel.jsx';
-import { fetchHealth, fetchKGData, submitQuestion } from './api.js';
+import GovernancePanel from './components/GovernancePanel.jsx';
+import { fetchHealth, fetchKGData, submitQuestion, submitQuestionStream } from './api.js';
 import {
   MOCK_ENTITY_TYPES, MOCK_ENTITIES, MOCK_TRIPLES,
   MOCK_RELATION_TYPES,
@@ -44,6 +45,11 @@ export default function App() {
   const [serverConnected, setServer]  = useState(false);
   const [backendStatus, setBackendStatus] = useState('loading'); // 'loading' | 'online' | 'offline' | 'no-kg'
   const [qaReady, setQaReady]         = useState(false);
+  const [kgStats, setKgStats]         = useState(null);
+
+  // ── Governance ──────────────────────────────────────────────────────────
+  const [selectedDomainId, setSelectedDomainId] = useState(null);
+  const [auditTriple, setAuditTriple]           = useState(null);
 
   // ── Filters ───────────────────────────────────────────────────────────────
   const [filters, setFilters] = useState(() => ({
@@ -94,6 +100,7 @@ export default function App() {
         if (health.status === 'ok') {
           setServer(true);
           setQaReady(!!health.qa_ready);
+          setKgStats(health.kg_stats ?? null);
 
           if (health.kg_loaded) {
             const data = await fetchKGData();
@@ -131,14 +138,35 @@ export default function App() {
   }, [reloadKey]);
 
   // ── Derived: filtered entities / triples ──────────────────────────────────
-  const filteredEntities = useMemo(() => {
+  // Cap rendered nodes for performance on very large KGs; highest-degree
+  // entities are kept so the visible graph stays informative.
+  const MAX_RENDER_NODES = 1500;
+
+  const degreeById = useMemo(() => {
+    const deg = {};
+    triples.forEach(t => {
+      deg[t.subject] = (deg[t.subject] || 0) + 1;
+      deg[t.object]  = (deg[t.object]  || 0) + 1;
+    });
+    return deg;
+  }, [triples]);
+
+  const { filteredEntities, nodeCapApplied } = useMemo(() => {
     const q = filters.searchQuery.toLowerCase();
-    return entities.filter(e => {
+    let list = entities.filter(e => {
       if (filters.entityTypes[e.type] === false) return false;
       if (q && !e.labels.some(l => l.toLowerCase().includes(q)) && !e.id.includes(q)) return false;
       return true;
     });
-  }, [entities, filters]);
+    let capped = false;
+    if (list.length > MAX_RENDER_NODES) {
+      capped = true;
+      list = [...list]
+        .sort((a, b) => (degreeById[b.id] || 0) - (degreeById[a.id] || 0))
+        .slice(0, MAX_RENDER_NODES);
+    }
+    return { filteredEntities: list, nodeCapApplied: capped };
+  }, [entities, filters, degreeById]);
 
   const filteredTriples = useMemo(() => {
     const ids = new Set(filteredEntities.map(e => e.id));
@@ -151,17 +179,37 @@ export default function App() {
 
   // ── Derived: highlighted nodes/edges for graph ────────────────────────────
   const { highlightedNodes, highlightedEdges } = useMemo(() => {
+    const empty = { highlightedNodes: new Set(), highlightedEdges: new Set() };
+
+    if (mode === 'governance') {
+      if (auditTriple) {
+        const gnodes = new Set([auditTriple.subject, auditTriple.object].filter(Boolean));
+        const gedges = new Set(triples
+          .filter(t => t.subject === auditTriple.subject && t.relation === auditTriple.relation && t.object === auditTriple.object)
+          .map(t => t.id));
+        return { highlightedNodes: gnodes, highlightedEdges: gedges };
+      }
+      if (selectedDomainId && orgChart?.domains) {
+        const domain = orgChart.domains.find(d => d.domain_id === selectedDomainId);
+        if (!domain) return empty;
+        const gnodes = new Set(domain.entity_ids || []);
+        const gedges = new Set(triples.filter(t => gnodes.has(t.subject) || gnodes.has(t.object)).map(t => t.id));
+        return { highlightedNodes: gnodes, highlightedEdges: gedges };
+      }
+      return empty;
+    }
+
     const qaId = hoveredQaId || selectedQaId;
-    if (!qaId || mode !== 'qa') return { highlightedNodes: new Set(), highlightedEdges: new Set() };
+    if (!qaId || mode !== 'qa') return empty;
     const turn = qaHistory.find(t => t.id === qaId);
-    if (!turn || turn.status === 'loading') return { highlightedNodes: new Set(), highlightedEdges: new Set() };
+    if (!turn || turn.status === 'loading') return empty;
     const hnodes = new Set(turn.referencedNodes || []);
     // Use explicit edge IDs if available, otherwise derive from triples whose both endpoints are highlighted
     const hedges = (turn.referencedEdges && turn.referencedEdges.length > 0)
       ? new Set(turn.referencedEdges)
       : new Set(triples.filter(t => hnodes.has(t.subject) && hnodes.has(t.object)).map(t => t.id));
     return { highlightedNodes: hnodes, highlightedEdges: hedges };
-  }, [hoveredQaId, selectedQaId, qaHistory, mode, triples]);
+  }, [hoveredQaId, selectedQaId, qaHistory, mode, triples, selectedDomainId, auditTriple, orgChart]);
 
   // ── QA submit ─────────────────────────────────────────────────────────────
   const handleSubmitQuestion = useCallback(async (question) => {
@@ -176,8 +224,24 @@ export default function App() {
     setSelectedQaId(turnId);
     if (mode !== 'qa') setMode('qa');
 
+    const onProgress = (msg) => {
+      setQaHistory(prev => prev.map(t =>
+        t.id === turnId ? { ...t, stage: msg.stage, stageInfo: msg.info || {} } : t
+      ));
+    };
+
     try {
-      const data = await submitQuestion(question, selectedModel);
+      let data;
+      try {
+        data = await submitQuestionStream(question, selectedModel, onProgress);
+      } catch (streamErr) {
+        // Older backends without /qa/stream — fall back to the blocking endpoint.
+        if (String(streamErr?.message || '').includes('HTTP 404')) {
+          data = await submitQuestion(question, selectedModel);
+        } else {
+          throw streamErr;
+        }
+      }
       finalizeTurn(setQaHistory, turnId,
         data.answer || '',
         data.referenced_nodes || [],
@@ -203,7 +267,17 @@ export default function App() {
   // question prompts (in QAPanel) which the user clicks to fire real questions.
 
   // ── Layout ────────────────────────────────────────────────────────────────
+  const handleModeChange = useCallback((m) => {
+    setMode(m);
+    if (m !== 'governance') {
+      setSelectedDomainId(null);
+      setAuditTriple(null);
+    }
+  }, []);
+
   const qaMode = mode === 'qa';
+  const govMode = mode === 'governance';
+  const panelOpen = qaMode || govMode;
 
   const banner = (() => {
     if (backendStatus === 'loading' || backendStatus === 'online') return null;
@@ -228,7 +302,7 @@ export default function App() {
       {/* Left sidebar */}
       <Sidebar
         mode={mode}
-        onModeChange={setMode}
+        onModeChange={handleModeChange}
         filters={filters}
         onFiltersChange={setFilters}
         entityTypes={entityTypes}
@@ -238,6 +312,7 @@ export default function App() {
         onQaSelect={id => setSelectedQaId(prev => prev === id ? null : id)}
         onQaHover={setHoveredQaId}
         serverConnected={serverConnected}
+        kgStats={kgStats}
       />
 
       {/* Center: graph canvas */}
@@ -257,8 +332,8 @@ export default function App() {
           nodeColorById={nodeColorById}
         />
 
-        {/* QA dim overlay */}
-        {qaMode && (
+        {/* QA / governance dim overlay */}
+        {panelOpen && (
           <div style={{
             position: 'absolute', inset: 0, pointerEvents: 'none',
             background: 'rgba(15,17,23,0.18)', transition: 'opacity 0.4s',
@@ -273,35 +348,58 @@ export default function App() {
           position: 'absolute', top: 16, left: 16,
           padding: '4px 10px', borderRadius: 3, fontSize: 10,
           fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em',
-          background: qaMode ? 'rgba(124,131,232,0.15)' : 'rgba(29,233,182,0.12)',
-          color: qaMode ? '#7c83e8' : '#1de9b6',
-          border: `1px solid ${qaMode ? 'rgba(124,131,232,0.25)' : 'rgba(29,233,182,0.2)'}`,
+          background: qaMode ? 'rgba(124,131,232,0.15)' : govMode ? 'rgba(245,158,11,0.12)' : 'rgba(29,233,182,0.12)',
+          color: qaMode ? '#7c83e8' : govMode ? '#f59e0b' : '#1de9b6',
+          border: `1px solid ${qaMode ? 'rgba(124,131,232,0.25)' : govMode ? 'rgba(245,158,11,0.25)' : 'rgba(29,233,182,0.2)'}`,
           pointerEvents: 'none',
         }}>
-          {qaMode ? 'QA \u2014 EVIDENCE VIEW' : 'EXPLORE'}
+          {qaMode ? 'QA \u2014 EVIDENCE VIEW' : govMode ? 'GOVERNANCE' : 'EXPLORE'}
         </div>
+
+        {/* Node cap notice */}
+        {nodeCapApplied && (
+          <div style={{
+            position: 'absolute', bottom: 16, right: 16,
+            padding: '4px 10px', borderRadius: 3, fontSize: 10,
+            fontFamily: "'JetBrains Mono', monospace",
+            background: 'rgba(245,158,11,0.1)', color: '#f59e0b',
+            border: '1px solid rgba(245,158,11,0.25)', pointerEvents: 'none',
+          }}>
+            showing top {MAX_RENDER_NODES} nodes by degree {'\u2014'} use filters to narrow
+          </div>
+        )}
       </div>
 
-      {/* Right QA panel (slides in) */}
+      {/* Right panel (slides in): QA or Governance */}
       <div style={{
-        width: qaMode ? 380 : 0,
+        width: panelOpen ? 380 : 0,
         overflow: 'hidden',
         transition: 'width 0.28s cubic-bezier(0.4,0,0.2,1)',
         flexShrink: 0,
       }}>
         <div style={{ width: 380, height: '100%' }}>
-          <QAPanel
-            qaHistory={qaHistory}
-            onSubmitQuestion={handleSubmitQuestion}
-            onChipHover={setHoveredChipNodeId}
-            selectedModel={selectedModel}
-            onModelChange={setModel}
-            activeQaId={selectedQaId}
-            entities={entities}
-            entityTypes={entityTypes}
-            onClearChats={clearChats}
-            qaReady={qaReady}
-          />
+          {govMode ? (
+            <GovernancePanel
+              orgChart={orgChart}
+              selectedDomainId={selectedDomainId}
+              onDomainSelect={id => { setSelectedDomainId(id); setAuditTriple(null); }}
+              onAuditSelect={t => { setAuditTriple(t); setSelectedDomainId(null); }}
+              onKGChanged={() => setReloadKey(k => k + 1)}
+            />
+          ) : (
+            <QAPanel
+              qaHistory={qaHistory}
+              onSubmitQuestion={handleSubmitQuestion}
+              onChipHover={setHoveredChipNodeId}
+              selectedModel={selectedModel}
+              onModelChange={setModel}
+              activeQaId={selectedQaId}
+              entities={entities}
+              entityTypes={entityTypes}
+              onClearChats={clearChats}
+              qaReady={qaReady}
+            />
+          )}
         </div>
       </div>
     </div>

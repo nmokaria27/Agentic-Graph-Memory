@@ -12,6 +12,7 @@ This is the second coordinator - the final verification step.
 
 from typing import Any, Dict, List, Optional
 import json
+import os
 import re
 
 from multi_agent_kg.agents.base import (
@@ -155,7 +156,9 @@ class ExtractionVerificationAgent(BaseAgent):
             quality_threshold=quality_threshold,
         )
         self.strict_mode = strict_mode
-        self.strict_source_only = strict_source_only
+        # Allow env-var override so accuracy mode can be toggled without code edits
+        self.strict_source_only = strict_source_only or os.getenv("STRICT_VERIFICATION") == "1"
+        self.cooccurrence_window = int(os.getenv("VERIFICATION_COOCCURRENCE_WINDOW", "300"))
 
     def run(
         self,
@@ -194,7 +197,15 @@ class ExtractionVerificationAgent(BaseAgent):
                 metadata={"status": "no_triples_to_verify"},
             )
         
-        # Step 1: Verify against source text
+        # Step 1a: Token-window co-occurrence pre-filter
+        # Drop triples where neither subject nor object surface form appears
+        # within cooccurrence_window tokens of each other in the source text.
+        # This is a cheap, deterministic hallucination filter that runs before
+        # any LLM call.
+        if context.text and self.cooccurrence_window > 0:
+            triples = self._cooccurrence_filter(context.text, triples)
+
+        # Step 1b: Verify against source text
         if self.strict_source_only:
             verification_result = self._verify_by_existing_source_links(context.text, triples)
         else:
@@ -435,10 +446,14 @@ class ExtractionVerificationAgent(BaseAgent):
             result = self.call_llm(
                 prompt=prompt,
                 system_prompt=(
-                    "You are an expert fact verifier. Accept BOTH explicit and "
-                    "reasonably inferred relationships. Only reject triples that "
-                    "are clearly contradicted or completely unsupported by the text. "
-                    "Partial support counts as valid with lower confidence."
+                    "You are an expert fact verifier. "
+                    "Only mark a triple as 'verified' when the source text contains "
+                    "a direct linguistic marker (verb, preposition, or explicit phrase) "
+                    "that supports the exact subject-relation-object claim. "
+                    "Mark as 'partial' only when the text strongly implies the relation. "
+                    "Mark as 'hallucinated' when the relation is plausible from background "
+                    "knowledge but NOT stated or implied in the source text. "
+                    "Err on the side of 'hallucinated' over 'partial' for ambiguous cases."
                 ),
                 tier=ModelTier.LARGE,
                 max_tokens=4096,
@@ -454,6 +469,70 @@ class ExtractionVerificationAgent(BaseAgent):
                 summary_totals[key] += batch_summary.get(key, 0)
 
         return {"verified_triples": all_verified, "verification_summary": summary_totals}
+
+    def _cooccurrence_filter(
+        self,
+        text: str,
+        triples: List[Dict[str, Any]],
+        window: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """Drop triples where subject and object don't co-occur within *window* tokens.
+
+        Uses character-level approximate token count (1 token ≈ 4 chars) so no
+        tokeniser is needed. Only drops a triple when BOTH surface forms are found
+        in the text but are more than *window* tokens apart — triples where
+        either endpoint is absent are passed through (the LLM verifier handles them).
+        """
+        window = window if window is not None else self.cooccurrence_window
+        if window <= 0 or not text:
+            return triples
+        char_window = window * 4
+        text_lower = text.lower()
+
+        def _all_positions(needle: str) -> List[int]:
+            positions: List[int] = []
+            start = 0
+            while True:
+                idx = text_lower.find(needle, start)
+                if idx < 0:
+                    break
+                positions.append(idx)
+                start = idx + 1
+            return positions
+
+        def _min_gap(subj_positions: List[int], obj_positions: List[int]) -> int:
+            # Closest pair of occurrences (any subject mention vs any object
+            # mention). A repeated entity must not be penalised because its
+            # FIRST mention happens to be far from the object.
+            best = None
+            for sp in subj_positions:
+                for op in obj_positions:
+                    gap = abs(sp - op)
+                    if best is None or gap < best:
+                        best = gap
+            return best if best is not None else -1
+
+        kept: List[Dict[str, Any]] = []
+        dropped = 0
+        for triple in triples:
+            subj = str(triple.get("subject") or "").strip().lower()
+            obj = str(triple.get("object") or "").strip().lower()
+            if not subj or not obj:
+                kept.append(triple)
+                continue
+            subj_positions = _all_positions(subj)
+            obj_positions = _all_positions(obj)
+            if not subj_positions or not obj_positions:
+                # One endpoint not found — pass to LLM verifier
+                kept.append(triple)
+                continue
+            if _min_gap(subj_positions, obj_positions) <= char_window:
+                kept.append(triple)
+            else:
+                dropped += 1
+        if dropped:
+            print(f"  [CooccurrenceFilter] Dropped {dropped} triples (endpoints > {window} tokens apart)")
+        return kept
 
     def _get_existing_knowledge(self) -> List[Dict[str, Any]]:
         """Get existing knowledge for consistency check."""

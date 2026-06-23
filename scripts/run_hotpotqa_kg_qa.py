@@ -126,6 +126,12 @@ def main() -> None:
     parser.add_argument("--examples-json", default="evaluation/results/hotpotqa_pilot_20.json")
     parser.add_argument("--configs", nargs="+", default=["flat_path_basic", "graphrag_basic", "domain_basic", "domain_advanced"], choices=sorted(EXPERIMENTS))
     parser.add_argument("--model", default="gemma4:31b")
+    parser.add_argument(
+        "--retrieval",
+        choices=["lexical", "dense", "hybrid"],
+        default=None,
+        help="Retrieval mode for domain QA systems (default: RETRIEVAL_MODE env or hybrid).",
+    )
     parser.add_argument("--output", default="evaluation/results/hotpotqa_kg_qa_20.json")
     args = parser.parse_args()
 
@@ -144,6 +150,7 @@ def main() -> None:
             llm_config=llm_config,
             config=config,
             org_chart_path=args.org_chart,
+            retrieval_mode=args.retrieval,
         )
         for i, example in enumerate(examples, start=1):
             if example.question_id in completed:
@@ -154,10 +161,17 @@ def main() -> None:
             result = qa_system.query(example.question)
             answer = _extract_answer(result)
             short_answer = _extract_hotpot_short_answer(example.question, answer, model=args.model)
+            try:
+                linked_entities = list(
+                    getattr(qa_system, "_extract_query_entities", lambda q: [])(example.question)
+                )
+            except Exception:
+                linked_entities = []
             row = {
                 "question_id": example.question_id,
                 "question": example.question,
                 "gold_answer": example.answer,
+                "linked_entities": linked_entities,
                 "answer": answer,
                 "scored_answer": clean_prediction_for_scoring(short_answer, example.answer),
                 "short_answer": short_answer,

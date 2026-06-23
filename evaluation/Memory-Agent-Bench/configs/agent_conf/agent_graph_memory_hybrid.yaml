@@ -1,0 +1,13 @@
+agent_name: agent_graph_memory_hybrid
+model: gemma4:31b
+temperature: 0.0
+input_length_limit: 300000
+buffer_length: 1000
+output_dir: ./outputs/agent_graph_memory_hybrid
+
+# Agent-Graph-Memory specific
+embedding_model: mxbai-embed-large
+retrieval_mode: hybrid        # lexical | dense | hybrid
+use_advanced_qa: true         # AdvancedQAOrchestrator (debate + critic)
+governance_mode: permissive   # permissive | strict | triage | audit_only
+chunk_size: 4096

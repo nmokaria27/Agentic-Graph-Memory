@@ -29,7 +29,7 @@ from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
 from multi_agent_kg.core.governance import coerce_metadata
 from multi_agent_kg.core.memory import SharedMemory
 from multi_agent_kg.core.communication import MessageBus, CommunicationType
-from multi_agent_kg.core.config import LLMConfig
+from multi_agent_kg.core.config import LLMConfig, RetrievalConfig
 
 
 ENTITY_DEDUP_PROMPT = """Identify duplicate entities that should be merged.
@@ -115,6 +115,7 @@ class KnowledgeOrganizer(BaseAgent):
         llm_config: Optional[LLMConfig] = None,
         enable_deduplication: bool = True,
         enable_normalization: bool = True,
+        retrieval_config: Optional[RetrievalConfig] = None,
     ):
         super().__init__(
             name="KnowledgeOrganizer",
@@ -128,6 +129,18 @@ class KnowledgeOrganizer(BaseAgent):
         self.governed_kg = governed_kg
         self.enable_deduplication = enable_deduplication
         self.enable_normalization = enable_normalization
+        self.retrieval_config = retrieval_config or RetrievalConfig()
+        # Set to False permanently for this run if the embedding backend errors
+        # or is unreachable, so a downed server degrades to lexical resolution
+        # instead of crashing or hanging in retry backoff.
+        self._embeddings_available = False
+        if self.retrieval_config.use_vectors:
+            try:
+                from multi_agent_kg.llm.openai_client import _ollama_is_up
+
+                self._embeddings_available = _ollama_is_up()
+            except Exception:
+                self._embeddings_available = False
         
         # Track relation normalizations
         self.relation_mappings: Dict[str, str] = {}
@@ -338,11 +351,37 @@ class KnowledgeOrganizer(BaseAgent):
         vectors = [trigram_vector(text) for text in normalized]
         types = [(entity.get("type") or "").upper() for entity in entities]
 
+        # Optional embedding-based similarity: catches synonym/abbreviation
+        # duplicates ("NYC" vs "New York City") that trigram overlap misses.
+        embedding_matrix = None
+        if self._embeddings_available and len(entities) >= 2:
+            try:
+                import numpy as np
+
+                from multi_agent_kg.llm.openai_client import embed_passages
+
+                raw = np.asarray(
+                    embed_passages(normalized, model=self.retrieval_config.embedding_model),
+                    dtype=np.float32,
+                )
+                norms = np.linalg.norm(raw, axis=1, keepdims=True)
+                norms[norms == 0] = 1.0
+                embedding_matrix = raw / norms
+            except Exception as exc:
+                print(f"  WARNING: embedding dedup disabled ({exc})")
+                self._embeddings_available = False
+
+        def embedding_similarity(left: int, right: int) -> float:
+            if embedding_matrix is None:
+                return 0.0
+            return float(embedding_matrix[left] @ embedding_matrix[right])
+
         for idx, entity in enumerate(entities):
             if idx in consumed:
                 continue
             canonical_id = entity.get("id", entity.get("text", ""))
             merged_ids: List[str] = []
+            merge_reason = "type-aware trigram similarity"
             for other_idx in range(idx + 1, len(entities)):
                 if other_idx in consumed:
                     continue
@@ -350,7 +389,9 @@ class KnowledgeOrganizer(BaseAgent):
                     continue
                 similarity = cosine_similarity(vectors[idx], vectors[other_idx])
                 if similarity < 0.88:
-                    continue
+                    if embedding_similarity(idx, other_idx) < 0.85:
+                        continue
+                    merge_reason = "embedding similarity"
                 other_id = entities[other_idx].get("id", entities[other_idx].get("text", ""))
                 merged_ids.append(other_id)
                 consumed.add(other_idx)
@@ -360,7 +401,7 @@ class KnowledgeOrganizer(BaseAgent):
                         "canonical_id": canonical_id,
                         "canonical_name": entity.get("text", canonical_id),
                         "merge_ids": merged_ids,
-                        "reason": "type-aware trigram similarity",
+                        "reason": merge_reason,
                     }
                 )
             remaining.append(entity)
@@ -428,7 +469,12 @@ class KnowledgeOrganizer(BaseAgent):
         
         if len(relations) < 2:
             return triples, 0
-        
+
+        # Embedding-similarity pre-clustering: map near-duplicate relation
+        # surface forms to a canonical (most frequent) form before the LLM call.
+        # This curbs relation-type drift (WORKS_AT / EMPLOYED_BY / IS_EMPLOYED_AT).
+        embedding_count = self._cluster_relations_by_embedding(relations, triples)
+
         # Check cache first
         uncached_relations = [r for r in relations if r not in self.relation_mappings]
         
@@ -461,7 +507,90 @@ class KnowledgeOrganizer(BaseAgent):
                     triple["relation"] = normalized_rel
                     normalized_count += 1
         
-        return triples, normalized_count
+        return triples, normalized_count + embedding_count
+
+    def _cluster_relations_by_embedding(
+        self,
+        relations: List[str],
+        triples: List[Dict[str, Any]],
+        threshold: float = 0.88,
+    ) -> int:
+        """Cluster near-duplicate relations via embedding cosine similarity.
+
+        For each cluster of similar relations, the most frequent surface form
+        becomes canonical; all others are added to self.relation_mappings and
+        rewritten on the triples in place. Returns the count of triples rewritten.
+
+        Falls back to a no-op when embeddings are unavailable.
+        """
+        if not self._embeddings_available or len(relations) < 2:
+            return 0
+        try:
+            import numpy as np
+            from multi_agent_kg.llm.openai_client import embed_passages
+        except Exception:
+            return 0
+
+        # Humanize relation names for better embedding semantics
+        texts = [r.replace("_", " ").lower() for r in relations]
+        try:
+            vectors = np.asarray(embed_passages(texts), dtype=np.float32)
+        except Exception as exc:
+            print(f"  [RelationCluster] embedding unavailable ({exc}); skipping")
+            self._embeddings_available = False
+            return 0
+        if vectors.ndim != 2 or vectors.shape[0] != len(relations):
+            return 0
+        norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        unit = vectors / norms
+        sims = unit @ unit.T
+
+        # Frequency of each relation across triples (for canonical selection)
+        freq: Dict[str, int] = {}
+        for t in triples:
+            rel = t.get("relation", "")
+            if rel:
+                freq[rel] = freq.get(rel, 0) + 1
+
+        assigned: Dict[int, int] = {}  # row -> cluster canonical row
+        for i in range(len(relations)):
+            if i in assigned:
+                continue
+            cluster = [i]
+            for j in range(i + 1, len(relations)):
+                if j in assigned:
+                    continue
+                if float(sims[i, j]) >= threshold:
+                    cluster.append(j)
+            # Canonical = most frequent (tie-break: longest descriptive name)
+            canonical_row = max(
+                cluster,
+                key=lambda r: (freq.get(relations[r], 0), len(relations[r])),
+            )
+            for r in cluster:
+                assigned[r] = canonical_row
+
+        rewritten = 0
+        cluster_map: Dict[str, str] = {}
+        for row, canon_row in assigned.items():
+            if row == canon_row:
+                continue
+            original = relations[row]
+            canonical = relations[canon_row]
+            if original != canonical:
+                cluster_map[original] = canonical
+                self.relation_mappings[original] = canonical
+
+        if cluster_map:
+            for triple in triples:
+                rel = triple.get("relation", "")
+                if rel in cluster_map:
+                    triple["original_relation"] = rel
+                    triple["relation"] = cluster_map[rel]
+                    rewritten += 1
+            print(f"  [RelationCluster] merged {len(cluster_map)} relation variant(s) via embedding similarity")
+        return rewritten
 
     def _integrate_to_kg(
         self,
@@ -586,6 +715,29 @@ class KnowledgeOrganizer(BaseAgent):
                 name_to_id[alias.lower().strip()] = canonical
                 
         resolve_misses: Dict[str, int] = {}
+        embedding_resolutions: Dict[str, str] = {}
+
+        # Lazily-built embedding index over all known entity names. Tier 3 of
+        # resolution: catches surface-form mismatches ("CEO of Apple",
+        # "Apple's retail outlets") that exact/normalized matching misses,
+        # which previously spawned UNRESOLVED duplicate nodes.
+        _name_index: Dict[str, Any] = {"index": None}
+
+        def _get_name_index():
+            if not self._embeddings_available:
+                return None
+            if _name_index["index"] is None:
+                try:
+                    from multi_agent_kg.core.vector_index import VectorIndex
+
+                    index = VectorIndex(model=self.retrieval_config.embedding_model)
+                    index.upsert({known_name: known_name for known_name in name_to_id})
+                    _name_index["index"] = index
+                except Exception as exc:
+                    print(f"  WARNING: embedding resolution disabled ({exc})")
+                    self._embeddings_available = False
+                    return None
+            return _name_index["index"]
 
         def _resolve_entity_name(name: Optional[str]) -> Optional[str]:
             """Resolve a triple subject/object text to an entity ID."""
@@ -601,6 +753,22 @@ class KnowledgeOrganizer(BaseAgent):
                 )
                 if known_normalized == normalized:
                     return known_id
+            index = _get_name_index()
+            if index is not None:
+                try:
+                    hits = index.search(
+                        normalized,
+                        top_k=1,
+                        min_score=self.retrieval_config.resolution_min_score,
+                    )
+                except Exception as exc:
+                    print(f"  WARNING: embedding resolution disabled ({exc})")
+                    self._embeddings_available = False
+                    hits = []
+                if hits:
+                    matched_id = name_to_id[hits[0][0]]
+                    embedding_resolutions[str(name)] = matched_id
+                    return matched_id
             miss_key = str(name)
             resolve_misses[miss_key] = resolve_misses.get(miss_key, 0) + 1
             return None
@@ -848,6 +1016,10 @@ class KnowledgeOrganizer(BaseAgent):
                 skipped_triples += 1  # Duplicate
 
         print(f"  Entity resolution: mapped {len(name_to_id)} name variants")
+        if embedding_resolutions:
+            print(f"  Embedding-tier resolutions: {len(embedding_resolutions)}")
+            for raw_name, matched_id in list(embedding_resolutions.items())[:10]:
+                print(f"    - '{raw_name}' -> {matched_id}")
         miss_count = sum(resolve_misses.values())
         print(f"  Entity resolution misses: {miss_count}")
         if resolve_misses:
@@ -862,6 +1034,8 @@ class KnowledgeOrganizer(BaseAgent):
         self.integration_stats["kg_entities_added"] = added_entities
         self.integration_stats["skipped_triple_reasons"] = skipped_triple_reasons
         self.integration_stats["resolve_entity_name_misses"] = miss_count
+        self.integration_stats["resolve_misses"] = dict(resolve_misses)
+        self.integration_stats["embedding_resolutions"] = dict(embedding_resolutions)
         self.integration_stats["relations_schema_rejected"] = self.integration_stats.get("relations_schema_rejected", 0)
         self.integration_stats["triple_skip_reasons"] = skipped_triple_reasons
         return added_entities, added_triples

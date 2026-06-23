@@ -3,12 +3,15 @@ import { useState } from 'react';
 const TEAL   = '#1de9b6';
 const INDIGO = '#7c83e8';
 
+const AMBER = '#f59e0b';
+
 export default function Sidebar({
   mode, onModeChange,
   filters, onFiltersChange,
   entityTypes, relationTypes,
   qaHistory, selectedQaId, onQaSelect, onQaHover,
   serverConnected,
+  kgStats,
 }) {
   const [relExpanded, setRelExpanded] = useState(false);
 
@@ -36,18 +39,22 @@ export default function Sidebar({
       {/* Mode switcher */}
       <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div style={{ display: 'flex', gap: 0, border: '1px solid rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
-          {['Explore', 'QA'].map(m => {
-            const active = mode === m.toLowerCase();
+          {[
+            { label: 'Explore', value: 'explore', color: TEAL,   bg: 'rgba(29,233,182,0.12)' },
+            { label: 'QA',      value: 'qa',      color: INDIGO, bg: 'rgba(124,131,232,0.15)' },
+            { label: 'Govern',  value: 'governance', color: AMBER, bg: 'rgba(245,158,11,0.12)' },
+          ].map((m, i, arr) => {
+            const active = mode === m.value;
             return (
-              <button key={m} onClick={() => onModeChange(m.toLowerCase())}
+              <button key={m.value} onClick={() => onModeChange(m.value)}
                 style={{
-                  flex: 1, padding: '7px 0', fontSize: 12, fontWeight: 500,
+                  flex: 1, padding: '7px 0', fontSize: 11, fontWeight: 500,
                   border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                  background: active ? (m === 'Explore' ? 'rgba(29,233,182,0.12)' : 'rgba(124,131,232,0.15)') : 'transparent',
-                  color: active ? (m === 'Explore' ? TEAL : INDIGO) : '#4a5568',
-                  borderRight: m === 'Explore' ? '1px solid rgba(255,255,255,0.08)' : 'none',
+                  background: active ? m.bg : 'transparent',
+                  color: active ? m.color : '#4a5568',
+                  borderRight: i < arr.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none',
                 }}>
-                {m}
+                {m.label}
               </button>
             );
           })}
@@ -145,6 +152,19 @@ export default function Sidebar({
           </>
         )}
 
+        {mode === 'governance' && (
+          <div style={{ fontSize: 11, color: '#4a5568', lineHeight: 1.6, padding: '8px 2px' }}>
+            <div style={sectionLabel}>Governance mode</div>
+            Inspect governed domains, the decision audit log, and the pending-review
+            queue in the panel on the right.
+            <div style={{ marginTop: 10, fontSize: 10, color: '#3d4555', fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.7 }}>
+              · click a domain to highlight its subgraph<br />
+              · click an audit entry to locate its triple<br />
+              · approve / reject escalated triples
+            </div>
+          </div>
+        )}
+
         {mode === 'qa' && (
           <>
             <div style={sectionLabel}>Session history</div>
@@ -208,6 +228,11 @@ export default function Sidebar({
         <span style={{ fontSize: 10, color: '#3d4555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.04em' }}>
           {serverConnected ? 'Connected to server' : 'Using mock data'}
         </span>
+        {serverConnected && kgStats && (
+          <span style={{ marginLeft: 'auto', fontSize: 9, color: '#3d4555', fontFamily: "'JetBrains Mono', monospace" }}>
+            {kgStats.entities ?? 0}e · {kgStats.triples ?? 0}t
+          </span>
+        )}
       </div>
     </div>
   );

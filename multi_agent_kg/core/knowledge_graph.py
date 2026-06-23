@@ -214,6 +214,18 @@ class KnowledgeGraph:
             if t.subject not in self.entities or t.object not in self.entities
         ]
 
+    def get_orphan_entities(self) -> List[Entity]:
+        """Return entities that appear in no triple (no connections)."""
+        connected: Set[str] = set()
+        for triple in self.triples:
+            connected.add(triple.subject)
+            connected.add(triple.object)
+        return [
+            entity
+            for entity_id, entity in self.entities.items()
+            if entity_id not in connected
+        ]
+
     def find_conflicts(self, candidate_triples: List[Triple]) -> List[Conflict]:
         """
         Find conflicts between candidate triples and existing triples.

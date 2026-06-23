@@ -1,0 +1,7 @@
+dataset: Accurate_Retrieval
+sub_dataset: eventqa_full
+chunk_size: 4096
+max_test_samples: -1   # -1 = full set
+generation_max_length: 40
+seed: 42
+debug: false

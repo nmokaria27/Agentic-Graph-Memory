@@ -1,0 +1,7 @@
+dataset: Conflict_Resolution
+sub_dataset: fact_mh
+chunk_size: 4096
+max_test_samples: -1
+generation_max_length: 40
+seed: 42
+debug: false

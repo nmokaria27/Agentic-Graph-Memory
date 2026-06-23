@@ -68,7 +68,9 @@ def load_org_chart(path: str, kg) -> OrgChart:
 
 # --- Setup (runs once at startup) ---
 print("Loading KG and building QA system...")
-llm_config = LLMConfig(model="gemma4:31b", temperature=0.2, max_tokens=4096)
+_default_model = os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")
+llm_config = LLMConfig(model=_default_model, temperature=0.2, max_tokens=4096)
+print(f"Using model: {_default_model}")
 
 governed_kg = load_governed_kg(KG_FILE)
 kg = governed_kg.kg
@@ -102,6 +104,21 @@ else:
 if governed_kg.org_chart.domains:
     org_chart = governed_kg.org_chart
 
+# --- Load vector index for hybrid retrieval if available ---
+try:
+    from multi_agent_kg.core.vector_index import KGVectorStore
+    from multi_agent_kg.core.config import RetrievalConfig
+    _retrieval_cfg = RetrievalConfig()
+    _vector_cache = os.getenv("VECTOR_CACHE_DIR", "governed_kg_export.vectors")
+    _vector_store = None
+    if _retrieval_cfg.use_vectors and os.path.exists(_vector_cache):
+        _vector_store = KGVectorStore.load_dir(_vector_cache, governed_kg, model=_retrieval_cfg.embedding_model)
+        if _vector_store is not None:
+            print(f"Loaded vector index from: {_vector_cache}")
+except Exception as _ve:
+    _vector_store = None
+    print(f"Vector index unavailable: {_ve}")
+
 # Parse command-line args for mode selection
 parser = argparse.ArgumentParser(description="KG QA Server")
 parser.add_argument("--basic", action="store_true",
@@ -122,6 +139,7 @@ else:
         max_exploration_rounds=args.exploration_rounds,
         enable_debate=not args.no_debate,
         enable_critic=not args.no_critic,
+        vector_store=_vector_store,
     )
     print("Advanced QA system ready (active exploration + debate + critic + memory + provenance)\n")
 

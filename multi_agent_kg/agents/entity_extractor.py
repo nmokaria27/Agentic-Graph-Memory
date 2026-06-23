@@ -14,7 +14,10 @@ Features:
 
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 from dataclasses import dataclass, field
+import os
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from multi_agent_kg.agents.base import (
     BaseAgent,
@@ -364,27 +367,30 @@ class EntityExtractor(BaseAgent):
         ) if domain_config else False
 
         total_segments = len(texts_to_process)
-        for i, (text, segment_id) in enumerate(texts_to_process):
-            if not text:
-                continue
+        # --- Parallel segment extraction -----------------------------------
+        # Each LLM call is independent (no shared write state per segment).
+        # We fan out via threads; vLLM handles concurrent requests natively.
+        _print_lock = threading.Lock()
+        max_workers = int(os.getenv("ENTITY_EXTRACT_WORKERS", "8"))
 
-            print(f"    Segment {i+1}/{total_segments} ({segment_id}) — extracting entities...")
-            # Combined extraction: extract + type + verify boundaries in one LLM call
+        def _extract_segment(args):
+            i, text, segment_id = args
+            if not text:
+                return segment_id, []
+            with _print_lock:
+                print(f"    Segment {i+1}/{total_segments} ({segment_id}) — extracting entities...")
             typed = self._extract_entities_combined(
                 text, entity_types, context.domain,
                 strict_types=strict_types,
             )
-
             if not typed:
-                print(f"    WARNING: segment {i+1}/{total_segments} ({segment_id}) returned 0 entities — possible LLM parse failure, data lost for this segment")
-
+                with _print_lock:
+                    print(f"    WARNING: segment {i+1}/{total_segments} ({segment_id}) returned 0 entities — possible LLM parse failure, data lost for this segment")
             if strict_types and entity_types:
                 typed = self._enforce_strict_schema(typed, entity_types)
             if not strict_types and self.enable_deterministic_value_harvesting:
                 typed = self._augment_open_domain_entities(text, typed)
-
-            entity_count_before = len(all_entities)
-            # Include ALL entities in output; track low-confidence separately for logging/escalation
+            # Annotate segment provenance before returning
             for entity in typed:
                 entity["source_segment"] = segment_id
                 entity["source_document_id"] = context.document_id
@@ -393,12 +399,32 @@ class EntityExtractor(BaseAgent):
                     entity["confidence"] = float(entity.get("confidence", 0) or 0)
                 except (TypeError, ValueError):
                     entity["confidence"] = 0.0
+            with _print_lock:
+                if typed:
+                    print(f"      -> {len(typed)} entities extracted")
+            return segment_id, typed
+
+        indexed = [(i, text, sid) for i, (text, sid) in enumerate(texts_to_process)]
+        # Preserve deterministic output order by sorting futures on segment index
+        seg_results: List[tuple] = [None] * len(indexed)  # type: ignore[assignment]
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_idx = {executor.submit(_extract_segment, item): item[0] for item in indexed}
+            for future in as_completed(future_to_idx):
+                idx = future_to_idx[future]
+                try:
+                    seg_results[idx] = future.result()
+                except Exception as exc:
+                    _, _, sid = indexed[idx]
+                    print(f"    ERROR: segment {sid} raised {exc}")
+                    seg_results[idx] = (sid, [])
+
+        for _sid, typed in seg_results:
+            if typed is None:
+                continue
+            for entity in typed:
                 all_entities.append(entity)
-                if entity["confidence"] < self.quality_threshold:
+                if entity.get("confidence", 0.0) < self.quality_threshold:
                     low_confidence_entities.append(entity)
-            segment_extracted = len(all_entities) - entity_count_before
-            if segment_extracted > 0:
-                print(f"      -> {segment_extracted} entities extracted")
 
         # Stage 4: Coreference Resolution (across all segments)
         known_entities = self._get_known_entities()
@@ -622,6 +648,7 @@ class EntityExtractor(BaseAgent):
                 source_segments: List[str] = []
                 source_document_ids: List[str] = []
                 source_texts: List[str] = []
+                member_confidences: List[float] = []
                 mention_keys = {
                     str(value).lower().strip()
                     for value in [canonical_name, clean_id, raw_id, *mentions]
@@ -644,6 +671,27 @@ class EntityExtractor(BaseAgent):
                         source_text = original.get("source_text")
                         if source_text and source_text not in source_texts:
                             source_texts.append(source_text)
+                        try:
+                            member_confidences.append(float(original.get("confidence", 0) or 0))
+                        except (TypeError, ValueError):
+                            pass
+
+                # Propagate extraction confidence through coreference instead of
+                # flattening every group to 0.7/0.8. Flattening pushed nearly all
+                # entities into the deliberation band (<0.85), defeating the
+                # high-confidence gate and erasing the extractor's own signal.
+                # Use the strongest member mention (coref is a recall operation:
+                # merging mentions should not lower the group's confidence) with a
+                # small known-entity bonus, clamped to [0, 1].
+                if member_confidences:
+                    base_confidence = max(member_confidences)
+                    if group.get("is_known_entity"):
+                        base_confidence = min(1.0, base_confidence + 0.1)
+                    resolved_confidence = round(base_confidence, 4)
+                else:
+                    # No matched mentions (LLM invented the group) — fall back to
+                    # the previous conservative defaults.
+                    resolved_confidence = 0.8 if group.get("is_known_entity") else 0.7
 
                 resolved_entity = {
                     "id": clean_id,
@@ -651,7 +699,7 @@ class EntityExtractor(BaseAgent):
                     "labels": labels,
                     "type": etype,
                     "mentions": mentions,
-                    "confidence": 0.8 if group.get("is_known_entity") else 0.7,
+                    "confidence": resolved_confidence,
                     "is_known_entity": group.get("is_known_entity", False),
                 }
                 if source_segments:
@@ -674,7 +722,56 @@ class EntityExtractor(BaseAgent):
         
         if not all_resolved:
             print(f"  WARNING: Coreference resolution produced 0 groups from {len(entities)} entities — falling back to raw entities")
-        return all_resolved if all_resolved else entities
+            return entities
+
+        # Coref runs in batches of `batch_size`; the same canonical entity can
+        # surface in more than one batch and produce duplicate groups that the
+        # per-batch LLM never sees together. Merge groups sharing the same
+        # canonical id so the KG gets one node, not one-per-batch.
+        merged = self._merge_resolved_by_id(all_resolved)
+        if len(merged) < len(all_resolved):
+            print(f"    Merged {len(all_resolved) - len(merged)} cross-batch duplicate coref groups")
+        return merged
+
+    @staticmethod
+    def _merge_resolved_by_id(resolved: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Collapse resolved coref groups that share a canonical id.
+
+        Union mentions/labels/sources, keep the max confidence, and OR the
+        known-entity flag. Order is preserved by first appearance.
+        """
+        merged: Dict[str, Dict[str, Any]] = {}
+        order: List[str] = []
+        for entity in resolved:
+            key = entity.get("id") or entity.get("text", "")
+            if not key:
+                continue
+            existing = merged.get(key)
+            if existing is None:
+                merged[key] = dict(entity)
+                order.append(key)
+                continue
+            # Union list-valued fields without duplicates, preserving order.
+            for field_name in ("labels", "mentions", "source_segments",
+                                "source_document_ids", "source_texts"):
+                combined = list(existing.get(field_name) or [])
+                for value in (entity.get(field_name) or []):
+                    if value not in combined:
+                        combined.append(value)
+                if combined:
+                    existing[field_name] = combined
+            # Keep first non-empty singular provenance fields.
+            for field_name in ("source_segment", "source_document_id", "source_text"):
+                if not existing.get(field_name) and entity.get(field_name):
+                    existing[field_name] = entity[field_name]
+            existing["confidence"] = max(
+                float(existing.get("confidence", 0) or 0),
+                float(entity.get("confidence", 0) or 0),
+            )
+            existing["is_known_entity"] = bool(
+                existing.get("is_known_entity") or entity.get("is_known_entity")
+            )
+        return [merged[key] for key in order]
 
     def _augment_open_domain_entities(
         self,

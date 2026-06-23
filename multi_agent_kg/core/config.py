@@ -117,3 +117,36 @@ class LLMConfig:
         if self.max_tokens:
             config["max_tokens"] = self.max_tokens
         return config
+
+
+@dataclass
+class RetrievalConfig:
+    """
+    Configuration for hybrid (graph + vector) retrieval.
+
+    Modes:
+        lexical: legacy exact/regex matching only (ablation baseline)
+        dense:   vector search only (ablation)
+        hybrid:  lexical ∪ vector fused with RRF, then graph expansion (default)
+    """
+
+    retrieval_mode: str = field(
+        default_factory=lambda: os.getenv("RETRIEVAL_MODE", "hybrid").lower()
+    )
+    embedding_model: Optional[str] = field(
+        default_factory=lambda: os.getenv("EMBEDDING_MODEL") or None
+    )
+    entity_top_k: int = 10
+    triple_top_k: int = 40
+    domain_top_k: int = 4
+    entity_min_score: float = 0.62
+    resolution_min_score: float = 0.75
+    relation_schema_min_score: float = 0.85
+
+    @property
+    def use_vectors(self) -> bool:
+        return self.retrieval_mode in {"dense", "hybrid"}
+
+    @property
+    def use_lexical(self) -> bool:
+        return self.retrieval_mode in {"lexical", "hybrid"}

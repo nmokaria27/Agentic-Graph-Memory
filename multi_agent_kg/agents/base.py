@@ -50,7 +50,20 @@ class ModelTier(str, Enum):
 # Tiered defaults per HANDOFF.md §4: light parsing on small, heavy extraction
 # on medium, deep reasoning on large.
 def get_default_model_tiers() -> Dict[ModelTier, str]:
-    """Get default model mapping from environment, evaluated at runtime."""
+    """Get default model mapping from environment, evaluated at runtime.
+
+    vLLM serves one model per server, so until multiple models are deployed we
+    collapse all tiers to LLM_DEFAULT_MODEL. Set LLM_SMALL_MODEL /
+    LLM_MEDIUM_MODEL / LLM_LARGE_MODEL explicitly to re-enable tiered routing
+    once more models are available.
+    """
+    if os.getenv("LLM_BACKEND", "ollama").lower() == "vllm":
+        single = os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")
+        return {
+            ModelTier.SMALL:  os.getenv("LLM_SMALL_MODEL",  single),
+            ModelTier.MEDIUM: os.getenv("LLM_MEDIUM_MODEL", single),
+            ModelTier.LARGE:  os.getenv("LLM_LARGE_MODEL",  single),
+        }
     return {
         ModelTier.SMALL: os.getenv("LLM_SMALL_MODEL", "qwen3:8b"),
         ModelTier.MEDIUM: os.getenv("LLM_MEDIUM_MODEL", "gemma3:27b"),
@@ -655,6 +668,12 @@ class BaseAgent(ABC):
 
     # ==================== Deliberation Methods ====================
 
+    # Configurable via env; default 0.7 means items with confidence >= 0.7
+    # bypass multi-agent vote and are accepted directly, saving ~30% LLM calls.
+    _DELIBERATION_SKIP_THRESHOLD: float = float(
+        __import__("os").getenv("DELIBERATION_CONFIDENCE_THRESHOLD", "0.7")
+    )
+
     def submit_for_deliberation(
         self,
         hypothesis_type: str,
@@ -679,6 +698,10 @@ class BaseAgent(ABC):
         Returns:
             Hypothesis ID if submitted
         """
+        # High-confidence items don't need debate — skip deliberation entirely.
+        if confidence >= self._DELIBERATION_SKIP_THRESHOLD:
+            return None
+
         if not self._deliberation_coordinator:
             # Fall back to blackboard posting
             if self.shared_memory:

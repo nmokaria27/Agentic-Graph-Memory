@@ -37,7 +37,7 @@ from multi_agent_kg.core.deliberation import DeliberationCoordinator, VoteType
 from multi_agent_kg.core.domain_builder import DomainBuilder
 from multi_agent_kg.core.checkpoint import CheckpointManager
 
-from multi_agent_kg.agents.base import AgentContext, ModelTier
+from multi_agent_kg.agents.base import AgentContext, ModelTier, get_default_model_tiers
 from multi_agent_kg.agents.document_processor import DocumentProcessor
 from multi_agent_kg.agents.domain_classifier import DomainClassifier
 from multi_agent_kg.agents.entity_extractor import EntityExtractor
@@ -200,14 +200,10 @@ class DeliberativeOrchestrator:
         self._active_source_text = ""
         self._strict_review_board = None
         
-        # Model tier configuration. Defaults match
-        # multi_agent_kg.agents.base.get_default_model_tiers (qwen3:8b /
-        # gemma3:27b / gemma4:31b per HANDOFF.md §4). User env wins.
-        self.model_tiers = model_tiers or {
-            ModelTier.SMALL: os.getenv("LLM_SMALL_MODEL", "qwen3:8b"),
-            ModelTier.MEDIUM: os.getenv("LLM_MEDIUM_MODEL", "gemma3:27b"),
-            ModelTier.LARGE: os.getenv("LLM_LARGE_MODEL", "gemma4:31b"),
-        }
+        # Model tier configuration. Defaults from get_default_model_tiers:
+        # tiered (qwen3:8b / gemma3:27b / gemma4:31b) on Ollama; collapsed to
+        # LLM_DEFAULT_MODEL on vLLM until per-tier env vars are set. User env wins.
+        self.model_tiers = model_tiers or get_default_model_tiers()
         
         # Shared infrastructure
         self.shared_memory = SharedMemory()

@@ -279,8 +279,16 @@ class ActiveExplorerExpert(DomainExpertAgent):
         llm_config: LLMConfig,
         max_exploration_rounds: int = 3,
         confidence_threshold: float = 0.7,
+        vector_store: Optional[Any] = None,
+        retrieval_config: Optional[Any] = None,
     ):
-        super().__init__(domain, full_kg, llm_config)
+        super().__init__(
+            domain,
+            full_kg,
+            llm_config,
+            vector_store=vector_store,
+            retrieval_config=retrieval_config,
+        )
         self.max_exploration_rounds = max_exploration_rounds
         self.confidence_threshold = confidence_threshold
 
@@ -1114,6 +1122,8 @@ class AdvancedQAOrchestrator:
         enable_debate: bool = True,
         enable_critic: bool = True,
         max_critic_revisions: int = 2,
+        vector_store: Optional[Any] = None,
+        retrieval_config: Optional[Any] = None,
     ):
         if governed_kg is not None:
             org_chart = governed_kg.org_chart
@@ -1130,6 +1140,22 @@ class AdvancedQAOrchestrator:
         self.max_critic_revisions = max_critic_revisions
         self.max_routed_domains = min(4, max(1, len(org_chart.domains)))
 
+        from multi_agent_kg.core.config import RetrievalConfig
+
+        self.retrieval_config = retrieval_config or RetrievalConfig()
+        self.vector_store = vector_store
+        if self.vector_store is None and self.retrieval_config.use_vectors and governed_kg is not None:
+            try:
+                from multi_agent_kg.core.vector_index import KGVectorStore
+
+                store = KGVectorStore(model=self.retrieval_config.embedding_model)
+                store.build(governed_kg)
+                self.vector_store = store
+                governed_kg.vector_store = store
+            except Exception as exc:
+                print(f"  WARNING: vector store unavailable, using lexical retrieval ({exc})")
+                self.vector_store = None
+
         # Initialize Active Explorer Experts (upgrade #1)
         self.experts: Dict[str, ActiveExplorerExpert] = {}
         for domain in org_chart.domains:
@@ -1138,6 +1164,8 @@ class AdvancedQAOrchestrator:
                 full_kg=full_kg,
                 llm_config=self.llm_config,
                 max_exploration_rounds=max_exploration_rounds,
+                vector_store=self.vector_store,
+                retrieval_config=self.retrieval_config,
             )
 
         global_domain = Domain(
@@ -1152,6 +1180,8 @@ class AdvancedQAOrchestrator:
             domain=global_domain,
             full_kg=full_kg,
             llm_config=self.llm_config,
+            vector_store=self.vector_store,
+            retrieval_config=self.retrieval_config,
         )
 
         # Initialize components for improvements #2-5
@@ -1159,6 +1189,17 @@ class AdvancedQAOrchestrator:
         self.debate_arena = DebateArena(self.llm_config) if enable_debate else None
         self.session_memory = SessionMemory()
         self.provenance_tracker = ProvenanceChain()
+
+        # Optional hook: called as progress_callback(stage: str, info: dict)
+        # at each pipeline stage. Used by streaming API endpoints.
+        self.progress_callback = None
+
+    def _emit_progress(self, stage: str, **info: Any) -> None:
+        if self.progress_callback is not None:
+            try:
+                self.progress_callback(stage, info)
+            except Exception:
+                pass
 
     def _extract_query_entities(self, text: str) -> List[str]:
         import re
@@ -1207,18 +1248,40 @@ class AdvancedQAOrchestrator:
             print(f"  [Session] Context from {len(self.session_memory.turns)} prior turns")
 
         # ── Step 1: Decompose and route ─────────────────────────────
+        self._emit_progress("routing", question=question)
         routing = self._decompose_and_route(question, session_context)
         sub_questions = routing.get("sub_questions", [])
         print(f"  Decomposed into {len(sub_questions)} sub-questions")
+        self._emit_progress(
+            "decomposed",
+            sub_questions=[sq.get("question", "") for sq in sub_questions],
+        )
 
         # ── Step 2: Active exploration by domain experts ────────────
         domain_responses: List[Dict[str, Any]] = []
         called_domains: Set[str] = set()
+        # step_answers[i] = short answer string from sub-question i (for chain resolution)
+        step_answers: List[str] = []
 
-        for sq in sub_questions:
+        for sq_idx, sq in enumerate(sub_questions):
             sq_text = sq.get("question", question)
             target_domains = sq.get("target_domains", [])
             sq_context = sq.get("context", "")
+
+            # ── Multi-hop chain: inject prior step answer ──────────
+            depends_on = sq.get("depends_on")
+            if depends_on is not None and isinstance(depends_on, int) and 0 <= depends_on < len(step_answers):
+                prior_answer = step_answers[depends_on]
+                if prior_answer:
+                    # Replace [answer from step N] placeholder if present, else append
+                    import re as _re
+                    placeholder = _re.compile(r"\[answer from step \d+\]", _re.IGNORECASE)
+                    if placeholder.search(sq_text):
+                        sq_text = placeholder.sub(prior_answer, sq_text)
+                    else:
+                        sq_text = f"{sq_text} (context: {prior_answer})"
+                    sq_context = f"Prior step answer: {prior_answer}\n{sq_context}".strip()
+                    print(f"  [MultiHop] Step {sq_idx} injected prior answer: {prior_answer[:80]}")
 
             # Boost preferred domains from session memory
             preferred = self.session_memory.get_preferred_domains()
@@ -1229,6 +1292,7 @@ class AdvancedQAOrchestrator:
             print(f"\n  Sub-Q: {sq_text}")
             print(f"  → Routing to: {target_domains}")
 
+            _sq_responses: List[Dict[str, Any]] = []
             for domain_id in target_domains:
                 if domain_id in called_domains:
                     continue
@@ -1242,18 +1306,35 @@ class AdvancedQAOrchestrator:
                     response = expert.answer(sq_text, context=expert_context)
                     response["sub_question"] = sq_text
                     domain_responses.append(response)
+                    _sq_responses.append(response)
                     called_domains.add(domain_id)
+                    self._emit_progress(
+                        "domain_answered",
+                        domain_id=domain_id,
+                        coverage=response.get("coverage", 0),
+                        confidence=response.get("confidence", 0),
+                    )
 
                     rounds = response.get("exploration_rounds", 1)
                     print(f"    [{domain_id}] coverage={response.get('coverage', 0):.2f}, "
                           f"confidence={response.get('confidence', 0):.2f}, "
                           f"exploration_rounds={rounds}")
 
+            # Capture best answer for chained sub-questions
+            _best = max(_sq_responses, key=lambda r: r.get("confidence", 0.0), default=None)
+            if _best:
+                step_answers.append(
+                    str(_best.get("short_answer") or _best.get("answer") or "").strip()
+                )
+            else:
+                step_answers.append("")
+
         fallback_context = QAOrchestrator._build_global_fallback_context(
             self, question, domain_responses, called_domains,
         )
         if fallback_context:
             print("\n  → Triggering global fallback")
+            self._emit_progress("fallback")
             fallback_response = self.global_fallback_expert.answer(
                 question, context=fallback_context,
             )
@@ -1276,6 +1357,7 @@ class AdvancedQAOrchestrator:
             conflicts = self.debate_arena.detect_conflicts(domain_responses)
             if conflicts:
                 print(f"\n  [Debate] {len(conflicts)} conflict(s) detected!")
+                self._emit_progress("debate", num_conflicts=len(conflicts))
                 resp_by_domain = {r["domain_id"]: r for r in domain_responses}
                 for conflict in conflicts:
                     print(f"    Debating: {conflict.get('description', '?')[:80]}")
@@ -1294,6 +1376,7 @@ class AdvancedQAOrchestrator:
         debate_context = self._format_debate_results(debate_results)
 
         print(f"\n  Synthesizing from {len(domain_responses)} responses...")
+        self._emit_progress("synthesizing", num_responses=len(domain_responses))
         synthesized = self._synthesize(
             question, domain_responses, cross_domain_context, debate_context,
         )
@@ -1305,6 +1388,7 @@ class AdvancedQAOrchestrator:
         if self.critic:
             kg_evidence = self._get_relevant_evidence(question, final_answer)
             print("  [Critic] Reviewing synthesized answer...")
+            self._emit_progress("critic")
 
             for revision_round in range(self.max_critic_revisions):
                 critic_result = self.critic.critique(
@@ -1381,31 +1465,58 @@ class AdvancedQAOrchestrator:
 
         return result
 
+    # Multi-hop bridge patterns — questions that require chaining two lookups
+    _MULTIHOP_PATTERNS = [
+        r"\b(who|what|where|when)\b.{0,60}\b(that|which|who)\b",
+        r"\b(founded|created|established|owned|acquired|discovered)\b.{0,60}\b(also|later|then|who)\b",
+        r"\bcompany\b.{0,40}\b(that|which)\b",
+        r"\bperson\b.{0,40}\b(that|who|which)\b",
+    ]
+
+    @classmethod
+    def _is_multihop(cls, question: str) -> bool:
+        """Heuristically detect bridge/chain questions that need multi-hop planning."""
+        import re as _re
+        q = question.lower()
+        return any(_re.search(pat, q) for pat in cls._MULTIHOP_PATTERNS)
+
     def _decompose_and_route(
         self, question: str, session_context: str,
     ) -> Dict[str, Any]:
-        """Enhanced decomposition with session context."""
+        """Enhanced decomposition with session context and multi-hop chain planning."""
         org_summary = self.org_chart.domain_summary()
 
         session_note = ""
         if session_context:
             session_note = f"""
-SESSION CONTEXT (prior conversation — use this to resolve ambiguous references
-like "it", "that protein", "the same condition", etc.):
+SESSION CONTEXT (prior conversation — resolve pronouns/references like "it", "that", "the same"):
 {session_context}
 """
 
-        prompt = f"""You are a query routing agent. Decompose the question and route to experts.
+        multihop_note = ""
+        if self._is_multihop(question):
+            multihop_note = """
+MULTI-HOP DETECTED: This question requires chaining answers. Break it into an
+ordered plan where later steps depend on the answers from earlier steps.
+Use depends_on to declare which step index (0-based) this step relies on.
+Examples:
+  Q: "Who founded the company that acquired X?"
+  Step 0: "Which company acquired X?" — finds the company name
+  Step 1: "Who founded [answer from step 0]?" — uses answer from step 0
+"""
+
+        prompt = f"""You are a query planning agent. Decompose the question and route to experts.
 
 AVAILABLE DOMAIN EXPERTS:
 {org_summary}
-{session_note}
+{session_note}{multihop_note}
 
 USER QUESTION: {question}
 
-Decompose into focused sub-questions. For each, identify target domain expert(s).
-If the question references prior conversation (pronouns, "that", "the same"),
-resolve the reference using the session context.
+Decompose into focused sub-questions. For each:
+- Identify target domain expert(s).
+- If a step depends on a previous answer, set depends_on to the 0-based step index.
+- If the question references prior conversation, resolve the reference first.
 
 Return JSON:
 {{
@@ -1413,7 +1524,8 @@ Return JSON:
         {{
             "question": "resolved sub-question text",
             "target_domains": ["domain_id_1"],
-            "context": "Additional context for the expert"
+            "context": "Additional context for the expert",
+            "depends_on": null
         }}
     ]
 }}
@@ -1440,6 +1552,7 @@ Return ONLY the JSON."""
                         d.domain_id for d in self.org_chart.domains[: self.max_routed_domains]
                     ],
                     "context": "",
+                    "depends_on": None,
                 }]
             }
 
@@ -1453,12 +1566,13 @@ Return ONLY the JSON."""
         normalized = []
         for sq in sub_questions:
             if isinstance(sq, str):
-                sq = {"question": sq, "target_domains": [], "context": ""}
+                sq = {"question": sq, "target_domains": [], "context": "", "depends_on": None}
             elif not isinstance(sq, dict):
                 continue
             sq["target_domains"] = QAOrchestrator._normalize_target_domains(
                 self, sq.get("target_domains", [])
             )
+            sq.setdefault("depends_on", None)
             normalized.append(sq)
         if not normalized:
             normalized = [{
@@ -1467,6 +1581,7 @@ Return ONLY the JSON."""
                     d.domain_id for d in self.org_chart.domains[: self.max_routed_domains]
                 ],
                 "context": "",
+                "depends_on": None,
             }]
         result["sub_questions"] = normalized
         return result

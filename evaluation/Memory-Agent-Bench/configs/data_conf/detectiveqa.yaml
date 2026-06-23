@@ -1,0 +1,7 @@
+dataset: Long_Range_Understanding
+sub_dataset: detectiveqa
+chunk_size: 4096
+max_test_samples: -1
+generation_max_length: 100
+seed: 42
+debug: false

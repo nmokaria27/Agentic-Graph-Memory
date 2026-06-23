@@ -140,6 +140,14 @@ class GovernedKnowledgeGraph:
         self._min_admission_confidence = min_admission_confidence
         self._confidence_policy_label = confidence_policy_label
         self._bootstrap_assignment_stats: Dict[str, Any] = {}
+        # Optional KGVectorStore kept in sync with committed updates.
+        # None = vector features off; the index is derived state and is
+        # always rebuildable from the graph itself.
+        self.vector_store: Optional[Any] = None
+        # Lazy cache for schema-relation embeddings used by
+        # _relation_outside_schema: (frozenset_of_relations, VectorIndex).
+        self._relation_schema_index: Optional[Any] = None
+        self._relation_schema_index_key: Optional[frozenset] = None
         self._triage_threshold = 0.7
         self._triage_stats: Dict[str, Any] = {
             "auto_approved_low_risk": 0,
@@ -172,6 +180,21 @@ class GovernedKnowledgeGraph:
     @property
     def audit_log(self) -> List[GovernanceDecision]:
         return self._audit_log
+
+    @property
+    def pending_review(self) -> List[Triple]:
+        return self._pending_review
+
+    def resolve_pending(self, index: int, decision: GovernanceDecision) -> Optional[Triple]:
+        """Resolve a queued pending-review triple with an explicit decision.
+
+        Removes the triple at `index` from the pending queue, records the
+        decision in the audit log, and commits it if approved/revised.
+        """
+        if index < 0 or index >= len(self._pending_review):
+            raise IndexError(f"No pending review entry at index {index}")
+        self._pending_review.pop(index)
+        return self.commit_decision(decision)
 
     def set_review_callback(
         self,
@@ -206,12 +229,15 @@ class GovernedKnowledgeGraph:
         entity_type: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Entity:
-        return self._kg.add_entity(
+        entity = self._kg.add_entity(
             entity_id=entity_id,
             labels=labels,
             entity_type=entity_type,
             metadata=metadata,
         )
+        if self.vector_store is not None:
+            self.vector_store.mark_dirty(entity_ids=[entity_id])
+        return entity
 
     def propose_triple(
         self,
@@ -364,6 +390,8 @@ class GovernedKnowledgeGraph:
         decision.committed = result is not None
         if result is not None:
             self._org_chart.update_cross_domain_relation(result)
+            if self.vector_store is not None:
+                self.vector_store.mark_dirty(triples=[result])
         return result
 
     def _triage_reason(
@@ -441,6 +469,31 @@ class GovernedKnowledgeGraph:
         for allowed in allowed_relations:
             if allowed.upper().replace("-", "_").replace(" ", "_") == normalized:
                 return False
+        # Embedding tier: treat semantically equivalent relations (SPOUSE_OF
+        # vs MARRIED_TO) as in-schema instead of flagging them schema_novel.
+        # Only active when a vector store is attached (hybrid retrieval on).
+        if self.vector_store is not None:
+            try:
+                key = frozenset(allowed_relations)
+                if self._relation_schema_index_key != key:
+                    from multi_agent_kg.core.vector_index import VectorIndex
+
+                    index_kwargs = getattr(self.vector_store, "_index_kwargs", {})
+                    index = VectorIndex(**index_kwargs)
+                    index.upsert(
+                        {r: r.replace("_", " ").replace("-", " ").lower() for r in allowed_relations}
+                    )
+                    self._relation_schema_index = index
+                    self._relation_schema_index_key = key
+                hits = self._relation_schema_index.search(
+                    relation.replace("_", " ").replace("-", " ").lower(),
+                    top_k=1,
+                    min_score=0.85,
+                )
+                if hits:
+                    return False
+            except Exception:
+                pass
         return True
 
     def add_triple_bypass(
@@ -479,6 +532,8 @@ class GovernedKnowledgeGraph:
         decision.committed = result is not None
         if result is not None:
             self._org_chart.update_cross_domain_relation(result)
+            if self.vector_store is not None:
+                self.vector_store.mark_dirty(triples=[result])
         return result
 
     def get_domain_subgraph(self, domain_id: str) -> Dict[str, Any]:
@@ -516,6 +571,7 @@ class GovernedKnowledgeGraph:
         return {
             "entities": len(self._kg.entities),
             "triples": len(self._kg.triples),
+            "orphan_entities": len(self._kg.get_orphan_entities()),
             "domains": len(self._org_chart.domains),
             "cross_domain_relations": len(self._org_chart.cross_domain_relations),
             "governance_mode": self._governance_mode,
@@ -545,6 +601,17 @@ class GovernedKnowledgeGraph:
             "org_chart": self._org_chart.to_dict(),
             "governance_mode": self._governance_mode,
             "audit_log": [decision.to_dict() for decision in self._audit_log],
+            "pending_review": [
+                {
+                    "subject": t.subject,
+                    "relation": t.relation,
+                    "object": t.object,
+                    "confidence": t.confidence,
+                    "source": t.source,
+                    "metadata": t.metadata,
+                }
+                for t in self._pending_review
+            ],
             "bootstrap_assignment_stats": self._bootstrap_assignment_stats,
             "triage_stats": self._triage_stats,
             "governance_policy": {
@@ -580,6 +647,17 @@ class GovernedKnowledgeGraph:
         graph._audit_log = [
             GovernanceDecision.from_dict(item)
             for item in data.get("audit_log", [])
+        ]
+        graph._pending_review = [
+            Triple(
+                subject=item["subject"],
+                relation=item["relation"],
+                object=item["object"],
+                confidence=item.get("confidence"),
+                source=item.get("source"),
+                metadata=item.get("metadata", {}),
+            )
+            for item in data.get("pending_review", [])
         ]
         graph._bootstrap_assignment_stats = data.get("bootstrap_assignment_stats", {})
         graph._triage_stats = data.get(

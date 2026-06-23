@@ -25,7 +25,7 @@ class ModelSpec:
 
 # Model specifications
 MODEL_SPECS = {
-    # Ollama models (default)
+    # Ollama models (default, LLM_BACKEND=ollama)
     "qwen3:4b": ModelSpec("qwen3:4b", 32768, 8192),
     "qwen3:8b": ModelSpec("qwen3:8b", 32768, 8192),
     "gemma4:31b": ModelSpec("gemma4:31b", 32768, 8192),
@@ -33,11 +33,23 @@ MODEL_SPECS = {
     "mistral:latest": ModelSpec("mistral:latest", 32768, 8192),
     "mistral-small3.1:latest": ModelSpec("mistral-small3.1:latest", 32768, 8192),
     "deepseek-r1:14b": ModelSpec("deepseek-r1:14b", 32768, 8192),
-    # OpenAI models (for LLM_BACKEND=openai)
+    # OpenAI models (LLM_BACKEND=openai)
     "gpt-3.5-turbo": ModelSpec("gpt-3.5-turbo", 16385, 4096),
     "gpt-4o-mini": ModelSpec("gpt-4o-mini", 128000, 16384),
     "gpt-4o": ModelSpec("gpt-4o", 128000, 16384),
     "gpt-4-turbo": ModelSpec("gpt-4-turbo", 128000, 4096),
+    # VLLM-served models (LLM_BACKEND=vllm)
+    # Use the HuggingFace repo ID as the model name when launching VLLM:
+    #   python -m vllm.entrypoints.openai.api_server --model <name>
+    "meta-llama/Llama-3.1-8B-Instruct": ModelSpec("meta-llama/Llama-3.1-8B-Instruct", 131072, 32768),
+    "meta-llama/Llama-3.1-70B-Instruct": ModelSpec("meta-llama/Llama-3.1-70B-Instruct", 131072, 32768),
+    "meta-llama/Llama-3.3-70B-Instruct": ModelSpec("meta-llama/Llama-3.3-70B-Instruct", 131072, 32768),
+    "Qwen/Qwen2.5-7B-Instruct": ModelSpec("Qwen/Qwen2.5-7B-Instruct", 131072, 32768),
+    "Qwen/Qwen2.5-72B-Instruct": ModelSpec("Qwen/Qwen2.5-72B-Instruct", 131072, 32768),
+    "mistralai/Mistral-7B-Instruct-v0.3": ModelSpec("mistralai/Mistral-7B-Instruct-v0.3", 32768, 8192),
+    "mistralai/Mixtral-8x7B-Instruct-v0.1": ModelSpec("mistralai/Mixtral-8x7B-Instruct-v0.1", 32768, 8192),
+    "deepseek-ai/DeepSeek-R1-Distill-Llama-8B": ModelSpec("deepseek-ai/DeepSeek-R1-Distill-Llama-8B", 131072, 32768),
+    "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": ModelSpec("deepseek-ai/DeepSeek-R1-Distill-Qwen-14B", 131072, 32768),
 }
 
 
@@ -150,7 +162,8 @@ class AdaptiveBatchCalculator:
         Returns:
             Optimal batch size
         """
-        spec = MODEL_SPECS.get(model_name, MODEL_SPECS["mistral:latest"])
+        _fallback = ModelSpec(model_name, 32768, 8192)
+        spec = MODEL_SPECS.get(model_name, _fallback)
         
         # Calculate available tokens for content
         available_output_tokens = int(spec.max_output_tokens * safety_margin)

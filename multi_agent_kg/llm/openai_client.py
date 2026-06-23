@@ -1,8 +1,9 @@
 """
-LLM client wrapper supporting both Ollama (default) and OpenAI backends.
+LLM client wrapper supporting Ollama (default), OpenAI, and VLLM backends.
 
 Backend selection:
-- Set LLM_BACKEND=openai to use OpenAI (requires OPENAI_API_KEY)
+- Set LLM_BACKEND=openai  to use OpenAI (requires OPENAI_API_KEY)
+- Set LLM_BACKEND=vllm    to use a VLLM server (set VLLM_BASE_URL, e.g. http://gpu-host:8000/v1)
 - Default: Ollama at http://localhost:11434 (via SSH tunnel to GPU)
 """
 
@@ -19,24 +20,50 @@ load_dotenv()
 # ── Backend configuration ─────────────────────────────────────────────
 LLM_BACKEND = os.getenv("LLM_BACKEND", "ollama").lower()
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://localhost:8000/v1")
 
-# Timeout for Ollama calls (local models can be slow)
+# Default chat model for callsites that don't pass one explicitly. Follows
+# LLM_DEFAULT_MODEL so vLLM/OpenAI deployments aren't hit with the Ollama name.
+DEFAULT_CHAT_MODEL = os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")
+
+# Timeout for local/remote model calls
 _TIMEOUT = float(os.getenv("LLM_TIMEOUT", "300"))  # 5 min default
 _MAX_RETRIES = int(os.getenv("LLM_MAX_RETRIES", "8"))
 _RETRY_BACKOFF = float(os.getenv("LLM_RETRY_BACKOFF", "3.0"))
 _RETRY_BACKOFF_CAP = float(os.getenv("LLM_RETRY_BACKOFF_CAP", "60.0"))
-# When Ollama is unreachable (tunnel dropped, process restart), keep polling the
-# /api/tags endpoint for this many seconds before giving up on the call.
+# When Ollama/VLLM is unreachable (tunnel dropped, process restart), keep polling
+# the health endpoint for this many seconds before giving up on the call.
 _HEALTHCHECK_TIMEOUT = float(os.getenv("LLM_HEALTHCHECK_TIMEOUT", "300"))
 
 if LLM_BACKEND == "openai":
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+elif LLM_BACKEND == "vllm":
+    client = OpenAI(
+        base_url=VLLM_BASE_URL,
+        api_key=os.getenv("VLLM_API_KEY", "EMPTY"),
+        timeout=_TIMEOUT,
+    )
 else:
     client = OpenAI(
         base_url=OLLAMA_BASE_URL,
         api_key="ollama",
         timeout=_TIMEOUT,
     )
+
+# ── Embedding backend (may differ from chat) ──────────────────────────
+# Embeddings can target a separate OpenAI-compatible server than chat. Common
+# setup: chat on vLLM (gemma), embeddings on Ollama's mxbai-embed-large via the
+# existing tunnel. Set EMBEDDING_BASE_URL to route embedding calls elsewhere;
+# otherwise the main chat client is reused.
+EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL")
+if EMBEDDING_BASE_URL:
+    embed_client = OpenAI(
+        base_url=EMBEDDING_BASE_URL,
+        api_key=os.getenv("EMBEDDING_API_KEY", "ollama"),
+        timeout=_TIMEOUT,
+    )
+else:
+    embed_client = client
 
 # Optional per-call usage logging. When LLM_USAGE_LOG points to a file path,
 # each completion appends one JSON line with {model, prompt_tokens,
@@ -67,28 +94,38 @@ def _log_usage(model: str, response: Any) -> None:
         pass
 
 
-def _ollama_is_up() -> bool:
-    """Quick TCP probe of the Ollama health endpoint. Returns False on any error."""
+def _backend_is_up() -> bool:
+    """Quick TCP probe of the active backend health endpoint. Returns False on any error."""
     if LLM_BACKEND == "openai":
         return True
     try:
         import urllib.request
-        import urllib.error
-        base = OLLAMA_BASE_URL.rstrip("/")
-        # OLLAMA_BASE_URL commonly includes /v1; strip it for the native health endpoint.
-        if base.endswith("/v1"):
-            base = base[:-3]
-        url = f"{base}/api/tags"
+        if LLM_BACKEND == "vllm":
+            # VLLM exposes /health on its HTTP server
+            base = VLLM_BASE_URL.rstrip("/")
+            if base.endswith("/v1"):
+                base = base[:-3]
+            url = f"{base}/health"
+        else:
+            base = OLLAMA_BASE_URL.rstrip("/")
+            # OLLAMA_BASE_URL commonly includes /v1; strip it for the native health endpoint.
+            if base.endswith("/v1"):
+                base = base[:-3]
+            url = f"{base}/api/tags"
         with urllib.request.urlopen(url, timeout=5) as resp:
             return 200 <= resp.status < 500
     except Exception:
         return False
 
 
+# Keep old name as alias so any external callers are not broken
+_ollama_is_up = _backend_is_up
+
+
 def _wait_for_ollama(deadline: float) -> bool:
-    """Poll Ollama until it responds or the deadline passes. Returns True on recovery."""
+    """Poll the active backend until it responds or the deadline passes. Returns True on recovery."""
     while time.time() < deadline:
-        if _ollama_is_up():
+        if _backend_is_up():
             return True
         time.sleep(5.0)
     return False
@@ -104,20 +141,23 @@ _OPENAI_TO_OLLAMA = {
 
 
 def _resolve_model(model: str) -> str:
-    """Resolve model name: translate OpenAI names to Ollama when using Ollama backend."""
-    if LLM_BACKEND == "openai":
+    """Resolve model name: translate OpenAI names to Ollama/VLLM when using those backends."""
+    if LLM_BACKEND in ("openai", "vllm"):
         return model
     return _OPENAI_TO_OLLAMA.get(model, model)
 
 
-# Ollama model families known to emit <think>...</think> reasoning tokens.
-# When these models are used with response_format=json_object, Ollama's GBNF
-# grammar blocks the leading '<' character and the model returns empty content.
+# Model families known to emit <think>...</think> reasoning tokens.
+# On Ollama: GBNF json_object grammar blocks the leading '<' → empty content.
+# On VLLM:  json_object mode strips special tokens; thinking models may still
+#            embed reasoning tokens in the visible output, so we skip constrained
+#            decoding for them and rely on our robust _extract_json parser.
 _THINKING_MODEL_PATTERNS = (
     "gemma4",       # Google Gemma 4 family (gemma4:12b, gemma4:27b, gemma4:31b)
     "deepseek-r1",  # DeepSeek R1 family
     "qwen3",        # Qwen 3 (thinking by default unless /no_think)
     "qwq",          # Qwen QwQ reasoning models
+    "llama-3.3",    # Llama 3.3 instruct (sometimes emits chain-of-thought preamble)
 )
 
 
@@ -332,7 +372,7 @@ def _unwrap_json_mode_array(result: Any) -> Any:
 
 def chat_completion(
     messages: List[Dict[str, str]],
-    model: str = "gemma4:31b",
+    model: str = DEFAULT_CHAT_MODEL,
     temperature: float = 0.2,
     max_tokens: Optional[int] = None,
     **kwargs: Any,
@@ -344,6 +384,7 @@ def chat_completion(
     resolved_model = _resolve_model(model)
 
     # GPT-5 / o-series reasoning models reject `max_tokens` and non-default `temperature`.
+    # VLLM-hosted models always accept the standard parameters.
     is_reasoning = LLM_BACKEND == "openai" and (
         resolved_model.startswith("gpt-5")
         or resolved_model.startswith("o1")
@@ -365,10 +406,11 @@ def chat_completion(
             params["max_completion_tokens"] = max(max_tokens * 4, 16384)
             # Keep reasoning lightweight so cost stays bounded for extraction tasks.
             params["reasoning_effort"] = os.getenv("OPENAI_REASONING_EFFORT", "minimal")
-        elif _model_is_thinking(resolved_model) and LLM_BACKEND != "openai":
-            # Ollama thinking models (gemma4, deepseek-r1, qwen3) burn completion
+        elif _model_is_thinking(resolved_model) and LLM_BACKEND not in ("openai",):
+            # Thinking models (gemma4, deepseek-r1, qwen3, etc.) burn completion
             # tokens on hidden <think> blocks. Inflate max_tokens so the visible
             # JSON output isn't truncated after reasoning consumes the budget.
+            # This applies to both Ollama and VLLM backends.
             params["max_tokens"] = max(max_tokens * 3, 8192)
         else:
             params["max_tokens"] = max_tokens
@@ -430,16 +472,17 @@ def chat_completion(
                     m in err_lower for m in ("connection", "refused", "reset", "eof", "server disconnected")
                 )
                 if connection_like and LLM_BACKEND != "openai":
+                    _backend_label = "VLLM" if LLM_BACKEND == "vllm" else "Ollama"
                     print(
-                        f"  WARNING: Ollama appears unreachable on attempt {attempt}/{_MAX_RETRIES}; "
-                        f"polling /api/tags for up to {_HEALTHCHECK_TIMEOUT:.0f}s before retrying"
+                        f"  WARNING: {_backend_label} appears unreachable on attempt {attempt}/{_MAX_RETRIES}; "
+                        f"polling health endpoint for up to {_HEALTHCHECK_TIMEOUT:.0f}s before retrying"
                     )
                     deadline = time.time() + _HEALTHCHECK_TIMEOUT
                     recovered = _wait_for_ollama(deadline)
                     if recovered:
-                        print(f"  Ollama came back up — retrying call")
+                        print(f"  {_backend_label} came back up — retrying call")
                         continue
-                    print(f"  Ollama still down after {_HEALTHCHECK_TIMEOUT:.0f}s; falling back to backoff sleep")
+                    print(f"  {_backend_label} still down after {_HEALTHCHECK_TIMEOUT:.0f}s; falling back to backoff sleep")
                 print(
                     f"  WARNING: transient LLM failure on attempt {attempt}/{_MAX_RETRIES} "
                     f"for {resolved_model}; retrying in {base_sleep:.1f}s"
@@ -460,7 +503,7 @@ def chat_completion(
 
 def chat_completion_json(
     messages: List[Dict[str, str]],
-    model: str = "gemma4:31b",
+    model: str = DEFAULT_CHAT_MODEL,
     temperature: float = 0.2,
     max_tokens: Optional[int] = None,
     unwrap_array: bool = False,
@@ -502,9 +545,9 @@ def chat_completion_json(
     resolved_model = _resolve_model(model)
 
     # Detect thinking models that emit <think>...</think> before the answer.
-    # Ollama's GBNF json_object grammar expects '{' as the first token, which
-    # blocks the '<' that starts a think tag → model returns empty content.
-    # Skip json_object mode entirely for these models to avoid a wasted call.
+    # On Ollama: GBNF json_object grammar blocks <think> tokens → empty content.
+    # On VLLM:  json_object mode is generally safe, but thinking models may still
+    #           embed reasoning in visible output; skip constrained decoding to be safe.
     _is_thinking_model = _model_is_thinking(resolved_model)
 
     max_retries = 3
@@ -512,9 +555,9 @@ def chat_completion_json(
 
     for attempt in range(1, max_retries + 1):
         # Use json_object mode only when it won't conflict with model behavior:
-        # - Never for thinking models on Ollama (GBNF blocks <think> tokens)
-        # - Always for OpenAI (native support, no GBNF issue)
-        # - Only on first attempt for non-thinking Ollama models (fallback on retry)
+        # - Always for OpenAI (native support)
+        # - Never for thinking models on Ollama or VLLM (may conflict with reasoning tokens)
+        # - Only on first attempt for non-thinking Ollama/VLLM models (fallback on retry)
         if LLM_BACKEND == "openai":
             use_json_mode = True
         elif _is_thinking_model:
@@ -563,14 +606,82 @@ def chat_completion_json(
         return {}
 
 
-def get_embedding(text: str, model: str = "text-embedding-ada-002") -> List[float]:
+# ── Embeddings ────────────────────────────────────────────────────────
+# Backend-aware default embedding model. mxbai-embed-large is asymmetric:
+# retrieval queries must be prefixed, passages are embedded raw.
+# VLLM: set EMBEDDING_MODEL to the embedding model served by your VLLM instance
+# (e.g. "intfloat/e5-mistral-7b-instruct" or "BAAI/bge-large-en-v1.5").
+# Embeddings run on OpenAI only when LLM_BACKEND=openai AND no separate
+# EMBEDDING_BASE_URL is set; otherwise they hit Ollama/vLLM (mxbai default).
+_EMBED_ON_OPENAI = LLM_BACKEND == "openai" and not EMBEDDING_BASE_URL
+DEFAULT_EMBEDDING_MODEL = os.getenv(
+    "EMBEDDING_MODEL",
+    "text-embedding-3-small" if _EMBED_ON_OPENAI
+    else "mxbai-embed-large",
+)
+
+_MXBAI_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
+
+# mxbai-embed-large has a 512-token context window; truncate conservatively.
+# For VLLM-served models with larger windows, increase EMBEDDING_MAX_CHARS.
+_EMBED_MAX_CHARS = int(os.getenv("EMBEDDING_MAX_CHARS", "1800"))
+# GPU batching (embeddings served by vLLM) is much faster than Ollama CPU; bump
+# default batch size only when embeddings actually run on vLLM. When embeddings
+# are routed to a separate server (EMBEDDING_BASE_URL, e.g. Ollama), stay small.
+_EMBED_ON_VLLM = LLM_BACKEND == "vllm" and not EMBEDDING_BASE_URL
+_EMBED_BATCH_SIZE = int(os.getenv("EMBEDDING_BATCH_SIZE", "256" if _EMBED_ON_VLLM else "64"))
+
+
+def _truncate_for_embedding(text: str) -> str:
+    text = text.strip()
+    if len(text) > _EMBED_MAX_CHARS:
+        return text[:_EMBED_MAX_CHARS]
+    return text
+
+
+def get_embedding(text: str, model: Optional[str] = None) -> List[float]:
     """Get an embedding vector for the given text."""
-    try:
-        response = client.embeddings.create(model=model, input=text)
-        return response.data[0].embedding
-    except Exception as e:
-        if LLM_BACKEND != "openai":
-            import hashlib
-            h = hashlib.sha256(text.encode()).hexdigest()
-            return [int(h[i:i+2], 16) / 255.0 for i in range(0, min(len(h), 512), 2)]
-        raise Exception(f"Embedding API call failed: {str(e)}")
+    return get_embeddings([text], model=model)[0]
+
+
+def get_embeddings(texts: List[str], model: Optional[str] = None) -> List[List[float]]:
+    """Get embedding vectors for a batch of texts (order preserved)."""
+    model = model or DEFAULT_EMBEDDING_MODEL
+    cleaned = [_truncate_for_embedding(t) or " " for t in texts]
+    vectors: List[List[float]] = []
+    for start in range(0, len(cleaned), _EMBED_BATCH_SIZE):
+        batch = cleaned[start:start + _EMBED_BATCH_SIZE]
+        last_error: Optional[Exception] = None
+        for attempt in range(1, _MAX_RETRIES + 1):
+            try:
+                response = embed_client.embeddings.create(model=model, input=batch)
+                # API may return items out of order; sort by index.
+                items = sorted(response.data, key=lambda item: item.index)
+                vectors.extend([item.embedding for item in items])
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                if attempt < _MAX_RETRIES:
+                    delay = min(_RETRY_BACKOFF * attempt, _RETRY_BACKOFF_CAP)
+                    print(
+                        f"  WARNING: Embedding call failed (attempt {attempt}/{_MAX_RETRIES}): "
+                        f"{exc}; retrying in {delay:.0f}s..."
+                    )
+                    time.sleep(delay)
+        if last_error is not None:
+            raise Exception(f"Embedding API call failed: {last_error}")
+    return vectors
+
+
+def embed_query(text: str, model: Optional[str] = None) -> List[float]:
+    """Embed a retrieval query (applies the mxbai query prefix when needed)."""
+    model = model or DEFAULT_EMBEDDING_MODEL
+    if "mxbai" in model:
+        text = _MXBAI_QUERY_PREFIX + text
+    return get_embedding(text, model=model)
+
+
+def embed_passages(texts: List[str], model: Optional[str] = None) -> List[List[float]]:
+    """Embed passages/documents for indexing (no query prefix)."""
+    return get_embeddings(texts, model=model)

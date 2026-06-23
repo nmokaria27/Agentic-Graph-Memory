@@ -120,6 +120,7 @@ def build_qa_system(
     llm_config: LLMConfig,
     config: ExperimentConfig,
     org_chart_path: Optional[str] = None,
+    retrieval_mode: Optional[str] = None,
 ):
     if org_chart_path and config.num_domains is None and os.path.exists(org_chart_path):
         org_chart = load_org_chart(org_chart_path, kg)
@@ -137,6 +138,28 @@ def build_qa_system(
         )
         return baseline.qa_system
 
+    from multi_agent_kg.core.config import RetrievalConfig
+
+    retrieval_config = (
+        RetrievalConfig(retrieval_mode=retrieval_mode)
+        if retrieval_mode
+        else RetrievalConfig()
+    )
+    vector_store = None
+    if retrieval_config.use_vectors:
+        try:
+            from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
+            from multi_agent_kg.core.vector_index import KGVectorStore
+
+            wrapper = GovernedKnowledgeGraph(
+                kg=kg, org_chart=org_chart, governance_mode="audit_only"
+            )
+            vector_store = KGVectorStore(model=retrieval_config.embedding_model)
+            vector_store.build(wrapper)
+        except Exception as exc:
+            print(f"WARNING: vector store unavailable, lexical retrieval only ({exc})")
+            vector_store = None
+
     if config.orchestrator == "advanced":
         return AdvancedQAOrchestrator(
             org_chart=org_chart,
@@ -145,9 +168,17 @@ def build_qa_system(
             max_exploration_rounds=config.max_exploration_rounds,
             enable_debate=config.enable_debate,
             enable_critic=config.enable_critic,
+            vector_store=vector_store,
+            retrieval_config=retrieval_config,
         )
 
-    return QAOrchestrator(org_chart=org_chart, full_kg=kg, llm_config=llm_config)
+    return QAOrchestrator(
+        org_chart=org_chart,
+        full_kg=kg,
+        llm_config=llm_config,
+        vector_store=vector_store,
+        retrieval_config=retrieval_config,
+    )
 
 
 def summarize_comparison(results_by_config: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:

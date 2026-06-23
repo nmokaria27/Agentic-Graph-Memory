@@ -68,3 +68,6 @@ checkpoints/
 evaluation/datasets/scierc/raw_data/
 evaluation/datasets/scierc/processed_data/
 evaluation/results/
+
+# Claude Code local worktrees & settings
+.claude/

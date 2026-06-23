@@ -2,7 +2,7 @@ from multi_agent_kg.agents.knowledge_organizer import KnowledgeOrganizer
 from multi_agent_kg.core import Domain, GovernedKnowledgeGraph, KnowledgeGraph, LLMConfig, OrgChart
 
 
-def _governed_graph() -> GovernedKnowledgeGraph:
+def _governed_graph(governance_mode: str = "audit_only") -> GovernedKnowledgeGraph:
     kg = KnowledgeGraph()
     domain = Domain(
         domain_id="science",
@@ -12,7 +12,7 @@ def _governed_graph() -> GovernedKnowledgeGraph:
         relation_schema={"Used-for": "", "Compare": ""},
         metadata={"seed_relation_types": ["Used-for", "Compare"]},
     )
-    return GovernedKnowledgeGraph(kg=kg, org_chart=OrgChart(domains=[domain]), governance_mode="audit_only")
+    return GovernedKnowledgeGraph(kg=kg, org_chart=OrgChart(domains=[domain]), governance_mode=governance_mode)
 
 
 def test_schema_enforcement_maps_canonical_relation() -> None:
@@ -29,15 +29,33 @@ def test_schema_enforcement_maps_canonical_relation() -> None:
 
 
 def test_schema_enforcement_rejects_unknown_relation() -> None:
+    # Rejection of out-of-schema relations only applies in gating modes
+    # (strict / triage). Permissive and audit_only deliberately admit
+    # open-world relations and record them via the audit trail instead.
     organizer = KnowledgeOrganizer(
         knowledge_graph=KnowledgeGraph(),
-        governed_kg=_governed_graph(),
+        governed_kg=_governed_graph(governance_mode="strict"),
         llm_config=LLMConfig(model="test-model"),
     )
 
     relation, allowed = organizer._enforce_relation_schema("CAUSES", {"Used-for", "Compare"})
 
     assert allowed is False
+    assert relation == "CAUSES"
+
+
+def test_schema_enforcement_admits_open_world_relation_in_audit_mode() -> None:
+    # audit_only/permissive modes admit unknown relations (open-world) rather
+    # than rejecting them at integration; governance logs them downstream.
+    organizer = KnowledgeOrganizer(
+        knowledge_graph=KnowledgeGraph(),
+        governed_kg=_governed_graph(governance_mode="audit_only"),
+        llm_config=LLMConfig(model="test-model"),
+    )
+
+    relation, allowed = organizer._enforce_relation_schema("CAUSES", {"Used-for", "Compare"})
+
+    assert allowed is True
     assert relation == "CAUSES"
 
 

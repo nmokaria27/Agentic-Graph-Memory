@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 import json
 import os
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from multi_agent_kg.agents.base import (
     BaseAgent,
@@ -216,6 +218,7 @@ For each relation occurrence, identify what entity is the SUBJECT (head) of that
 
 CRITICAL RULES:
 - The subject must be copied VERBATIM from the ENTITIES list.
+- Copy "head_entity_id" EXACTLY from the "id" field of the matching entity in ENTITIES.
 - Never output a generic paraphrase when a concrete entity exists in ENTITIES.
 - If no exact entity from ENTITIES expresses the subject, SKIP that occurrence.
 - Respect the HEAD -> TAIL direction for each relation type defined above.
@@ -271,6 +274,7 @@ For each head binding, identify what entity is the OBJECT (tail) of that relatio
 CRITICAL RULES:
 - The OBJECT must be a DIFFERENT entity from the SUBJECT. A triple like (X, relation, X) is INVALID.
 - The object must be an entity from the ENTITIES list or clearly mentioned in the text.
+- Copy "subject_id" and "object_id" EXACTLY from the "id" field of the matching entity in ENTITIES whenever the entity appears in the list.
 - In benchmark / fixed-schema settings, SUBJECT and OBJECT must be copied VERBATIM from the ENTITIES list. Do not paraphrase entity names.
 - If you cannot find a valid, distinct object entity, SKIP that head binding entirely.
 - Focus on what the subject ACTS ON, RELATES TO, or AFFECTS — that target is the object.
@@ -917,179 +921,102 @@ class RelationExtractor(BaseAgent):
             texts_to_process = [(s.get("text", ""), s.get("segment_id")) for s in segments]
         elif context.text:
             texts_to_process = [(context.text, f"{context.document_id}_full")]
-        
-        for text, segment_id in texts_to_process:
-            if not text or len(text) < 20:
-                continue
-            text_lower = text.lower()
 
-            # Filter entities to those relevant to this segment
-            segment_entities = [
-                e for e in entities
+        # --- Parallel segment extraction -----------------------------------
+        _print_lock = threading.Lock()
+        max_workers = int(os.getenv("RELATION_EXTRACT_WORKERS", "8"))
+        _single_doc = len(texts_to_process) == 1
+        _all_entities = entities  # closure reference
+
+        def _extract_segment_relations(item):
+            idx, text, segment_id = item
+            if not text or len(text) < 20:
+                return idx, segment_id, [], [], [], {"pairwise_pairs_considered": 0, "pairwise_positive_predictions": 0, "pairwise_triples_added": 0}, None
+
+            text_lower = text.lower()
+            seg_entities = [
+                e for e in _all_entities
                 if e.get("source_segment") == segment_id
                 or segment_id in (e.get("source_segments") or [])
                 or self._entity_has_surface_in_text(e, text_lower)
             ]
-            # Fallback: if no segment match, use entities whose text appears in segment
-            if not segment_entities:
-                segment_entities = [
-                    e for e in entities
-                    if self._entity_has_surface_in_text(e, text_lower)
-                ]
-            # Coreference can canonicalize entity text away from the literal
-            # surface form in a single-segment document. In that case, using
-            # all entities is safer than dropping the entire relation stage.
-            if len(texts_to_process) == 1 and len(segment_entities) < 2 and len(entities) >= 2:
-                segment_entities = entities
+            if not seg_entities:
+                seg_entities = [e for e in _all_entities if self._entity_has_surface_in_text(e, text_lower)]
+            if _single_doc and len(seg_entities) < 2 and len(_all_entities) >= 2:
+                seg_entities = _all_entities
 
-            # RHF Pipeline
             # Stage 1: Relation Identification
-            relations_found = self._stage1_identify_relations(
-                text,
-                segment_entities,
-                suggested_types,
-                context.domain,
-            )
-            relations_found = [
-                relation
-                for relation in relations_found
-                if isinstance(relation, dict) and relation.get("relation_type")
-            ]
+            rels_found = self._stage1_identify_relations(text, seg_entities, suggested_types, context.domain)
+            rels_found = [r for r in rels_found if isinstance(r, dict) and r.get("relation_type")]
 
-            # Track new relation types
-            for rel in relations_found:
-                if rel.get("is_new_type"):
-                    new_relations_discovered.append(rel)
-                    self._register_new_relation(rel, context.document_id)
+            local_new_relations = [r for r in rels_found if r.get("is_new_type")]
+            rel_types = [r["relation_type"] for r in rels_found]
 
-            relation_types = [r["relation_type"] for r in relations_found]
-            identified_relation_types.extend(
-                relation_type for relation_type in relation_types if relation_type
-            )
-            deterministic_value_triples = []
+            det_value_triples: List[Dict[str, Any]] = []
             if self.enable_open_world and self.enable_deterministic_attribute_binding:
-                deterministic_value_triples = self._extract_answer_bearing_value_triples(
-                    text=text,
-                    entities=segment_entities,
-                )
-                deterministic_value_triples.extend(
-                    self._extract_typed_attribute_facts(
-                        text=text,
-                        entities=segment_entities,
-                    )
-                )
+                det_value_triples = self._extract_answer_bearing_value_triples(text=text, entities=seg_entities)
+                det_value_triples.extend(self._extract_typed_attribute_facts(text=text, entities=seg_entities))
 
             fixed_schema_mode = self._is_fixed_schema_mode(suggested_types, domain_config)
-            relation_types_for_recovery = relation_types or (
-                suggested_types if fixed_schema_mode else []
-            )
-            if not relation_types_for_recovery and not deterministic_value_triples:
-                self._record_funnel_segment(
-                    funnel_diagnostics,
-                    segment_id=segment_id,
-                    entities_seen=len(segment_entities),
-                    relations_found=0,
-                    head_bindings=0,
-                    tail_triples=0,
-                    pairwise_pairs=0,
-                    pairwise_positives=0,
-                    pairwise_triples=0,
-                    gleaned_triples=0,
-                    invalid_self_refs=0,
-                    post_align_triples=0,
-                    post_dedupe_triples=0,
-                )
-                continue
-            if deterministic_value_triples:
-                if "ANSWER_BEARING_VALUE" not in identified_relation_types:
-                    identified_relation_types.append("ANSWER_BEARING_VALUE")
+            rel_types_for_recovery = rel_types or (suggested_types if fixed_schema_mode else [])
 
-            pairwise_triples: List[Dict[str, Any]] = []
-            pairwise_stats = {
-                "pairwise_pairs_considered": 0,
-                "pairwise_positive_predictions": 0,
-                "pairwise_triples_added": 0,
-            }
-            # NOTE: Pairwise relation scoring is gated on fixed_schema_mode.
-            # In open-world mode (enable_open_world=True), fixed_schema_mode is
-            # always False, so pairwise produces 0 triples. This is by design
-            # but means open-world runs rely entirely on RHF head/tail binding.
-            if (
-                self.enable_fixed_schema_pairwise
-                and fixed_schema_mode
-            ):
-                pairwise_triples, pairwise_stats = self._stage_pairwise_relation_scoring(
-                    text=text,
-                    entities=segment_entities,
+            _empty_funnel = dict(
+                segment_id=segment_id, entities_seen=len(seg_entities),
+                relations_found=0, head_bindings=0, tail_triples=0,
+                pairwise_pairs=0, pairwise_positives=0, pairwise_triples=0,
+                gleaned_triples=0, invalid_self_refs=0, post_align_triples=0, post_dedupe_triples=0,
+            )
+            if not rel_types_for_recovery and not det_value_triples:
+                return idx, segment_id, [], local_new_relations, rel_types, {"pairwise_pairs_considered": 0, "pairwise_positive_predictions": 0, "pairwise_triples_added": 0}, _empty_funnel
+
+            pw_triples: List[Dict[str, Any]] = []
+            pw_stats = {"pairwise_pairs_considered": 0, "pairwise_positive_predictions": 0, "pairwise_triples_added": 0}
+            if self.enable_fixed_schema_pairwise and fixed_schema_mode:
+                pw_triples, pw_stats = self._stage_pairwise_relation_scoring(
+                    text=text, entities=seg_entities,
                     allowed_relation_types=suggested_types,
-                    stage1_relation_types=relation_types_for_recovery,
+                    stage1_relation_types=rel_types_for_recovery,
                 )
-                pairwise_pairs_considered += pairwise_stats["pairwise_pairs_considered"]
-                pairwise_positive_predictions += pairwise_stats["pairwise_positive_predictions"]
-                pairwise_triples_added += pairwise_stats["pairwise_triples_added"]
-                print(f"  Segment {segment_id}: Pairwise pairs considered = {pairwise_stats['pairwise_pairs_considered']}")
+                with _print_lock:
+                    print(f"  Segment {segment_id}: Pairwise pairs considered = {pw_stats['pairwise_pairs_considered']}")
 
-            # Stage 2: Head Entity Binding
-            head_bindings = self._stage2_head_binding(
-                text,
-                segment_entities,
-                relation_types,
-            )
-
-            triples = []
+            head_bindings = self._stage2_head_binding(text, seg_entities, rel_types)
+            triples: List[Dict[str, Any]] = []
             if head_bindings:
-                # Stage 3: Tail Entity Binding
-                triples = self._stage3_tail_binding(
-                    text,
-                    segment_entities,
-                    head_bindings,
-                )
+                triples = self._stage3_tail_binding(text, seg_entities, head_bindings)
             tail_triple_count = len(triples)
-            triples.extend(pairwise_triples)
-            triples.extend(deterministic_value_triples)
+            triples.extend(pw_triples)
+            triples.extend(det_value_triples)
 
-            gleaned_triples = self._stage4_glean_missing_triples(
-                text=text,
-                entities=segment_entities,
-                relation_types=(
-                    suggested_types
-                    if fixed_schema_mode
-                    else list(dict.fromkeys(relation_types_for_recovery + suggested_types))
-                ),
+            gleaned = self._stage4_glean_missing_triples(
+                text=text, entities=seg_entities,
+                relation_types=(suggested_types if fixed_schema_mode else list(dict.fromkeys(rel_types_for_recovery + suggested_types))),
                 existing_triples=triples,
             )
-            gleaned_triples_added += len(gleaned_triples)
-            triples.extend(gleaned_triples)
+            triples.extend(gleaned)
 
             if not triples:
-                self._record_funnel_segment(
-                    funnel_diagnostics,
-                    segment_id=segment_id,
-                    entities_seen=len(segment_entities),
-                    relations_found=len(relation_types),
-                    head_bindings=len(head_bindings),
+                _empty_funnel.update(
+                    relations_found=len(rel_types), head_bindings=len(head_bindings),
                     tail_triples=tail_triple_count,
-                    pairwise_pairs=pairwise_stats["pairwise_pairs_considered"],
-                    pairwise_positives=pairwise_stats["pairwise_positive_predictions"],
-                    pairwise_triples=pairwise_stats["pairwise_triples_added"],
-                    gleaned_triples=len(gleaned_triples) + len(deterministic_value_triples),
-                    invalid_self_refs=0,
-                    post_align_triples=0,
-                    post_dedupe_triples=0,
+                    pairwise_pairs=pw_stats["pairwise_pairs_considered"],
+                    pairwise_positives=pw_stats["pairwise_positive_predictions"],
+                    pairwise_triples=pw_stats["pairwise_triples_added"],
+                    gleaned_triples=len(gleaned) + len(det_value_triples),
                 )
-                continue
+                return idx, segment_id, [], local_new_relations, rel_types, pw_stats, _empty_funnel
 
             if not self.enable_open_world:
                 triples = self._enforce_fixed_schema_relations(triples, suggested_types)
-                triples = self._align_triples_to_known_entities(triples, segment_entities)
+                triples = self._align_triples_to_known_entities(triples, seg_entities)
+            triples = self._bind_ids_to_entities(triples, seg_entities)
             post_align_count = len(triples)
             triples = self._dedupe_triples(triples)
             post_dedupe_count = len(triples)
-            
-            # Include ALL triples in output; filter self-referencing and track low-confidence
+
             invalid_self_refs = 0
+            final_triples: List[Dict[str, Any]] = []
             for triple in triples:
-                # Filter self-referencing triples (subject == object)
                 subj = (triple.get("subject") or "").strip().lower()
                 obj = (triple.get("object") or "").strip().lower()
                 subj_id = (triple.get("subject_id") or "").strip().lower()
@@ -1103,24 +1030,57 @@ class RelationExtractor(BaseAgent):
                     triple["confidence"] = float(triple.get("confidence", 0) or 0)
                 except (TypeError, ValueError):
                     triple["confidence"] = 0.0
-                all_triples.append(triple)
-                if triple["confidence"] < self.quality_threshold:
-                    low_confidence_triples.append(triple)
-            self._record_funnel_segment(
-                funnel_diagnostics,
-                segment_id=segment_id,
-                entities_seen=len(segment_entities),
-                relations_found=len(relation_types),
-                head_bindings=len(head_bindings),
+                final_triples.append(triple)
+
+            funnel = dict(
+                segment_id=segment_id, entities_seen=len(seg_entities),
+                relations_found=len(rel_types), head_bindings=len(head_bindings),
                 tail_triples=tail_triple_count,
-                pairwise_pairs=pairwise_stats["pairwise_pairs_considered"],
-                pairwise_positives=pairwise_stats["pairwise_positive_predictions"],
-                pairwise_triples=pairwise_stats["pairwise_triples_added"],
-                gleaned_triples=len(gleaned_triples) + len(deterministic_value_triples),
+                pairwise_pairs=pw_stats["pairwise_pairs_considered"],
+                pairwise_positives=pw_stats["pairwise_positive_predictions"],
+                pairwise_triples=pw_stats["pairwise_triples_added"],
+                gleaned_triples=len(gleaned) + len(det_value_triples),
                 invalid_self_refs=invalid_self_refs,
                 post_align_triples=post_align_count,
                 post_dedupe_triples=post_dedupe_count,
             )
+            return idx, segment_id, final_triples, local_new_relations, rel_types, pw_stats, funnel
+
+        indexed_segs = [(i, text, sid) for i, (text, sid) in enumerate(texts_to_process)]
+        seg_rel_results = [None] * len(indexed_segs)  # type: ignore[assignment]
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_idx = {executor.submit(_extract_segment_relations, item): item[0] for item in indexed_segs}
+            for future in as_completed(future_to_idx):
+                raw_idx = future_to_idx[future]
+                try:
+                    seg_rel_results[raw_idx] = future.result()
+                except Exception as exc:
+                    _, _, sid = indexed_segs[raw_idx]
+                    print(f"    ERROR: relation extraction for segment {sid} raised {exc}")
+                    seg_rel_results[raw_idx] = (raw_idx, sid, [], [], [], {"pairwise_pairs_considered": 0, "pairwise_positive_predictions": 0, "pairwise_triples_added": 0}, None)
+
+        for result in seg_rel_results:
+            if result is None:
+                continue
+            _idx, segment_id, seg_triples, seg_new_rels, seg_rel_types, pw_stats, funnel = result
+            identified_relation_types.extend(rt for rt in seg_rel_types if rt)
+            for rel in seg_new_rels:
+                new_relations_discovered.append(rel)
+                self._register_new_relation(rel, context.document_id)
+            if funnel is None:
+                continue
+            pairwise_pairs_considered += pw_stats.get("pairwise_pairs_considered", 0)
+            pairwise_positive_predictions += pw_stats.get("pairwise_positive_predictions", 0)
+            pairwise_triples_added += pw_stats.get("pairwise_triples_added", 0)
+            for det_val in seg_new_rels:
+                if det_val.get("relation_type") == "ANSWER_BEARING_VALUE" and "ANSWER_BEARING_VALUE" not in identified_relation_types:
+                    identified_relation_types.append("ANSWER_BEARING_VALUE")
+            gleaned_triples_added += funnel.get("gleaned_triples", 0)
+            self._record_funnel_segment(funnel_diagnostics, **funnel)
+            for triple in seg_triples:
+                all_triples.append(triple)
+                if triple.get("confidence", 0.0) < self.quality_threshold:
+                    low_confidence_triples.append(triple)
         
         # Handle low confidence triples
         print(f"\n[RELATION EXTRACTOR DEBUG]")
@@ -1580,6 +1540,60 @@ class RelationExtractor(BaseAgent):
             return result
         return result.get("relations_found", [])
 
+    @staticmethod
+    def _entity_catalog_for_prompt(entities: List[Dict[str, Any]]) -> str:
+        """Compact id/text/type catalog for binding prompts.
+
+        Keeps prompts small and pushes the model to copy canonical entity ids,
+        so triples land on catalog entities instead of free-text paraphrases.
+        """
+        catalog = [
+            {
+                "id": e.get("id", e.get("text", "")),
+                "text": e.get("text", e.get("id", "")),
+                "type": e.get("type", ""),
+                "mentions": (e.get("mentions") or [])[:4],
+            }
+            for e in entities
+        ]
+        return json.dumps(catalog, indent=2)
+
+    @staticmethod
+    def _bind_ids_to_entities(
+        triples: List[Dict[str, Any]],
+        entities: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """Validate/fill subject_id and object_id against the entity catalog.
+
+        Runs in all modes (open-world included). An invalid id is cleared so
+        downstream resolution doesn't trust a hallucinated id; a missing id is
+        filled when the surface text matches an entity's text/id/mentions.
+        """
+        valid_ids = {str(e.get("id", "")) for e in entities if e.get("id")}
+        name_to_id: Dict[str, str] = {}
+        for entity in entities:
+            eid = str(entity.get("id") or "")
+            if not eid:
+                continue
+            name_to_id[eid.lower().strip()] = eid
+            text = str(entity.get("text", "")).lower().strip()
+            if text:
+                name_to_id[text] = eid
+            for mention in entity.get("mentions") or []:
+                name_to_id[str(mention).lower().strip()] = eid
+
+        for triple in triples:
+            for text_key, id_key in (("subject", "subject_id"), ("object", "object_id")):
+                given_id = str(triple.get(id_key) or "").strip()
+                if given_id and given_id in valid_ids:
+                    continue
+                resolved = name_to_id.get(given_id.lower()) if given_id else None
+                if resolved is None:
+                    surface = str(triple.get(text_key) or "").lower().strip()
+                    resolved = name_to_id.get(surface)
+                triple[id_key] = resolved or ""
+        return triples
+
     def _stage2_head_binding(
         self,
         text: str,
@@ -1589,8 +1603,8 @@ class RelationExtractor(BaseAgent):
         """Stage 2: Bind relations to head (subject) entities."""
         if not relation_types:
             return []
-        
-        entities_json = json.dumps(entities, indent=2)
+
+        entities_json = self._entity_catalog_for_prompt(entities)
         
         direction_guide = SCIERC_DIRECTION_HINT if not self.enable_open_world else ""
         prompt = HEAD_BINDING_PROMPT.format(
@@ -1624,8 +1638,8 @@ class RelationExtractor(BaseAgent):
         # Process head_bindings in batches to avoid JSON truncation
         batch_size = 15  # Conservative batch size for relation completion
         all_triples = []
-        
-        entities_json = json.dumps(entities, indent=2)
+
+        entities_json = self._entity_catalog_for_prompt(entities)
         
         for i in range(0, len(head_bindings), batch_size):
             batch = head_bindings[i:i+batch_size]
@@ -1680,7 +1694,7 @@ class RelationExtractor(BaseAgent):
 
         prompt = RELATION_GLEANING_PROMPT.format(
             text=text,
-            entities=json.dumps(entities, indent=2),
+            entities=self._entity_catalog_for_prompt(entities),
             relation_types=", ".join(relation_types),
             direction_guide=SCIERC_DIRECTION_HINT if not self.enable_open_world else "",
             existing_triples=json.dumps(existing_triples[:40], indent=2),

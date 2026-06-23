@@ -8,7 +8,7 @@ import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
 from multi_agent_kg.core._qa_commit import ANTI_HEDGE_RIDER
-from multi_agent_kg.core.config import LLMConfig
+from multi_agent_kg.core.config import LLMConfig, RetrievalConfig
 from multi_agent_kg.core.governance import Domain, OrgChart, TopicSubAgent
 from multi_agent_kg.core.graph_traversal import find_paths, neighbourhood, paths_to_text
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
@@ -115,10 +115,32 @@ class DomainExpertAgent:
         domain: Domain,
         full_kg: KnowledgeGraph,
         llm_config: LLMConfig,
+        vector_store: Optional[Any] = None,
+        retrieval_config: Optional[RetrievalConfig] = None,
     ):
         self.domain = domain
         self.full_kg = full_kg
         self.llm_config = llm_config
+        self.vector_store = vector_store
+        self.retrieval_config = retrieval_config or RetrievalConfig()
+
+    @property
+    def _vectors_on(self) -> bool:
+        return self.vector_store is not None and self.retrieval_config.use_vectors
+
+    def _vector_entity_candidates(self, query: str, top_k: Optional[int] = None) -> List[str]:
+        """Semantic entity candidates from the vector index (empty on failure)."""
+        if not self._vectors_on:
+            return []
+        try:
+            hits = self.vector_store.entity_index.search(
+                query,
+                top_k=top_k or self.retrieval_config.entity_top_k,
+                min_score=self.retrieval_config.entity_min_score,
+            )
+        except Exception:
+            return []
+        return [entity_id for entity_id, _score in hits if entity_id in self.full_kg.entities]
 
     def answer(self, query: str, context: str = "") -> Dict[str, Any]:
         subgraph_text = self._query_focused_domain_summary(query)
@@ -291,6 +313,27 @@ Return ONLY the JSON."""
             score += int(min(float(triple.confidence), 1.0) * 2)
         return score
 
+    def _vector_seed_triples(
+        self,
+        query: str,
+        candidates: List[Any],
+        top_k: Optional[int] = None,
+    ) -> List[Any]:
+        """Seed triples from the triple vector index, restricted to candidates."""
+        if not self._vectors_on:
+            return []
+        try:
+            from multi_agent_kg.core.vector_index import triple_key
+
+            hits = self.vector_store.triple_index.search(
+                query,
+                top_k=top_k or self.retrieval_config.triple_top_k,
+            )
+        except Exception:
+            return []
+        candidate_by_key = {triple_key(triple): triple for triple in candidates}
+        return [candidate_by_key[key] for key, _score in hits if key in candidate_by_key]
+
     def _query_focused_triples(
         self,
         query: str,
@@ -299,11 +342,25 @@ Return ONLY the JSON."""
         limit: int = 40,
     ) -> List[Any]:
         candidates = candidates if candidates is not None else self.full_kg.triples
-        scored = [
-            (self._score_triple_for_query(triple, query), index, triple)
-            for index, triple in enumerate(candidates)
+        lexical_seeds: List[Any] = []
+        if self.retrieval_config.use_lexical:
+            scored = [
+                (self._score_triple_for_query(triple, query), index, triple)
+                for index, triple in enumerate(candidates)
+            ]
+            lexical_seeds = [
+                triple
+                for score, _, triple in sorted(scored, key=lambda item: item[0], reverse=True)[:20]
+                if score > 0
+            ]
+        dense_seeds = self._vector_seed_triples(query, candidates)
+        # Union, dense first only where lexical missed (lexical keeps precision,
+        # dense adds paraphrase recall); graph expansion below is unchanged.
+        seen_keys = {(t.subject, t.relation, t.object) for t in lexical_seeds}
+        seeds = lexical_seeds + [
+            t for t in dense_seeds if (t.subject, t.relation, t.object) not in seen_keys
         ]
-        seeds = [triple for score, _, triple in sorted(scored, key=lambda item: item[0], reverse=True)[:20] if score > 0]
+        seeds = seeds[:20]
         seed_entities = {triple.subject for triple in seeds} | {triple.object for triple in seeds}
         expanded = {
             (triple.subject, triple.relation, triple.object): triple
@@ -359,7 +416,7 @@ Return ONLY the JSON."""
             "confidence": round(confidence, 3),
         }
 
-    def _extract_query_entities(self, query: str) -> List[str]:
+    def _lexical_query_entities(self, query: str) -> List[str]:
         query_lower = query.lower()
         matched = []
         for entity_id, entity in self.full_kg.entities.items():
@@ -372,12 +429,32 @@ Return ONLY the JSON."""
                 if re.search(pattern, query_lower):
                     matched.append(entity_id)
                     break
-        ranked = sorted(
+        return sorted(
             set(matched),
             key=lambda entity_id: self._score_entity_for_query(entity_id, query),
             reverse=True,
         )
-        return ranked[:12]
+
+    def _extract_query_entities(self, query: str) -> List[str]:
+        """Hybrid entity linking: exact lexical matches fused with vector hits.
+
+        Exact matches are weighted higher in the RRF fusion so a literal
+        entity mention never loses to a fuzzy semantic neighbour; the vector
+        ranking adds paraphrase recall ("biggest city" -> largest_city).
+        """
+        lexical = (
+            self._lexical_query_entities(query)
+            if self.retrieval_config.use_lexical
+            else []
+        )
+        dense = self._vector_entity_candidates(query)
+        if not dense:
+            return lexical[:12]
+        if not lexical:
+            return dense[:12]
+        from multi_agent_kg.core.vector_index import rrf_fuse
+
+        return rrf_fuse([lexical, dense], weights=[2.0, 1.0])[:12]
 
     def _route_to_topics(self, query: str) -> List[TopicSubAgent]:
         query_lower = query.lower()
@@ -503,6 +580,8 @@ class QAOrchestrator:
         full_kg: Optional[KnowledgeGraph] = None,
         llm_config: Optional[LLMConfig] = None,
         governed_kg: Optional["GovernedKnowledgeGraph"] = None,
+        vector_store: Optional[Any] = None,
+        retrieval_config: Optional[RetrievalConfig] = None,
     ):
         if governed_kg is not None:
             org_chart = governed_kg.org_chart
@@ -513,10 +592,33 @@ class QAOrchestrator:
         self.org_chart = org_chart
         self.full_kg = full_kg
         self.llm_config = llm_config or LLMConfig()
+        self.retrieval_config = retrieval_config or RetrievalConfig()
         self.max_routed_domains = min(4, max(1, len(org_chart.domains)))
 
+        # Build the vector store once for the whole QA session when hybrid
+        # retrieval is on and no pre-built store was supplied. Failure (e.g.
+        # embedding server down) degrades to lexical retrieval.
+        self.vector_store = vector_store
+        if self.vector_store is None and self.retrieval_config.use_vectors and governed_kg is not None:
+            try:
+                from multi_agent_kg.core.vector_index import KGVectorStore
+
+                store = KGVectorStore(model=self.retrieval_config.embedding_model)
+                store.build(governed_kg)
+                self.vector_store = store
+                governed_kg.vector_store = store
+            except Exception as exc:
+                print(f"  WARNING: vector store unavailable, using lexical retrieval ({exc})")
+                self.vector_store = None
+
         self.experts: Dict[str, DomainExpertAgent] = {
-            domain.domain_id: DomainExpertAgent(domain=domain, full_kg=full_kg, llm_config=self.llm_config)
+            domain.domain_id: DomainExpertAgent(
+                domain=domain,
+                full_kg=full_kg,
+                llm_config=self.llm_config,
+                vector_store=self.vector_store,
+                retrieval_config=self.retrieval_config,
+            )
             for domain in org_chart.domains
         }
 
@@ -532,17 +634,35 @@ class QAOrchestrator:
             domain=global_domain,
             full_kg=full_kg,
             llm_config=self.llm_config,
+            vector_store=self.vector_store,
+            retrieval_config=self.retrieval_config,
         )
+
+        # Optional hook: called as progress_callback(stage: str, info: dict)
+        # at each pipeline stage. Used by streaming API endpoints.
+        self.progress_callback = None
+
+    def _emit_progress(self, stage: str, **info: Any) -> None:
+        if self.progress_callback is not None:
+            try:
+                self.progress_callback(stage, info)
+            except Exception:
+                pass
 
     def query(self, question: str) -> Dict[str, Any]:
         print(f"\n{'='*70}")
         print("QA ORCHESTRATOR: Processing query")
         print(f"{'='*70}")
         print(f"Q: {question}\n")
+        self._emit_progress("routing", question=question)
 
         routing = self._decompose_and_route(question)
         sub_questions = routing.get("sub_questions", [])
         print(f"  Decomposed into {len(sub_questions)} sub-questions")
+        self._emit_progress(
+            "decomposed",
+            sub_questions=[sq.get("question", "") for sq in sub_questions],
+        )
 
         domain_responses: List[Dict[str, Any]] = []
         called_domains: Set[str] = set()
@@ -568,6 +688,12 @@ class QAOrchestrator:
                 response["sub_question"] = question_text
                 domain_responses.append(response)
                 called_domains.add(domain_id)
+                self._emit_progress(
+                    "domain_answered",
+                    domain_id=domain_id,
+                    coverage=response.get("coverage", 0),
+                    confidence=response.get("confidence", 0),
+                )
                 print(
                     f"    [{domain_id}] coverage={response.get('coverage', 0):.2f}, "
                     f"confidence={response.get('confidence', 0):.2f}"
@@ -576,6 +702,7 @@ class QAOrchestrator:
         fallback_context = self._build_global_fallback_context(question, domain_responses, called_domains)
         if fallback_context:
             print("\n  → Triggering global fallback")
+            self._emit_progress("fallback")
             fallback_response = self.global_fallback_expert.answer(question, context=fallback_context)
             if (
                 fallback_response.get("answer")
@@ -596,6 +723,7 @@ class QAOrchestrator:
             print(f"  → Bridge expansion: {bridge_entities[:4]}")
         combined_context = "\n\n".join(part for part in [cross_domain_context, bridge_context] if part)
         print(f"\n  Synthesizing final answer from {len(domain_responses)} responses...")
+        self._emit_progress("synthesizing", num_responses=len(domain_responses))
         final = self._synthesize(question, domain_responses, combined_context)
 
         result = {
@@ -617,6 +745,10 @@ class QAOrchestrator:
         return result
 
     def _extract_query_entities(self, text: str) -> List[str]:
+        probe_expert = getattr(self, "global_fallback_expert", None)
+        if probe_expert is not None and hasattr(probe_expert, "_extract_query_entities"):
+            # Hybrid lexical + vector linking shared with the experts.
+            return probe_expert._extract_query_entities(text)
         query_lower = text.lower()
         matched = []
         for entity_id, entity in self.full_kg.entities.items():
@@ -628,16 +760,7 @@ class QAOrchestrator:
                 if re.search(r"\b" + re.escape(name_lower) + r"\b", query_lower):
                     matched.append(entity_id)
                     break
-        if not matched:
-            return []
-        probe_expert = self.global_fallback_expert if hasattr(self, "global_fallback_expert") else None
-        if probe_expert is None:
-            return list(dict.fromkeys(matched))[:12]
-        return sorted(
-            set(matched),
-            key=lambda entity_id: probe_expert._score_entity_for_query(entity_id, text),
-            reverse=True,
-        )[:12]
+        return list(dict.fromkeys(matched))[:12]
 
     def _extract_bridge_entities(
         self, question: str, domain_responses: List[Dict[str, Any]]
@@ -678,6 +801,30 @@ class QAOrchestrator:
                         break
                 if len(bridge) >= 4:
                     break
+            # Vector fallback: answers often paraphrase entity names, which
+            # the exact scan above misses.
+            if (
+                len(bridge) < 4
+                and self.vector_store is not None
+                and self.retrieval_config.use_vectors
+            ):
+                try:
+                    hits = self.vector_store.entity_index.search(
+                        text_blob,
+                        top_k=6,
+                        min_score=self.retrieval_config.entity_min_score,
+                    )
+                except Exception:
+                    hits = []
+                for entity_id, _score in hits:
+                    if entity_id in query_entities or entity_id in seen:
+                        continue
+                    if entity_id not in self.full_kg.entities:
+                        continue
+                    bridge.append(entity_id)
+                    seen.add(entity_id)
+                    if len(bridge) >= 4:
+                        break
             if len(bridge) >= 4:
                 break
         return bridge[:4]
@@ -718,6 +865,17 @@ class QAOrchestrator:
         """
         entity_map = self.org_chart.entity_domain_map()
         counts: Dict[str, int] = {}
+        # Vector domain routing: domain descriptions/schemas are embedded, so
+        # this matches question semantics even when no entity name overlaps.
+        if self.vector_store is not None and self.retrieval_config.use_vectors:
+            try:
+                domain_hits = self.vector_store.domain_index.search(
+                    question, top_k=self.retrieval_config.domain_top_k
+                )
+            except Exception:
+                domain_hits = []
+            for rank, (domain_id, _score) in enumerate(domain_hits):
+                counts[domain_id] = counts.get(domain_id, 0) + max(1, 12 - 2 * rank)
         for rank, triple in enumerate(self.global_fallback_expert._query_focused_triples(question, limit=12)):
             weight = max(1, 12 - rank)
             for entity_id in (triple.subject, triple.object):
@@ -940,7 +1098,8 @@ Return ONLY the JSON."""
                         lines.append(f"\nMulti-hop paths ({matched_entities[index]} → {matched_entities[other]}):")
                         lines.append(paths_to_text(paths))
 
-        focused_triples = self.global_fallback_expert._query_focused_triples(question, limit=40)
+        focused_fn = getattr(self.global_fallback_expert, "_query_focused_triples", None)
+        focused_triples = focused_fn(question, limit=40) if callable(focused_fn) else []
         if focused_triples:
             lines.append("\nQuery-focused graph evidence:")
             for triple in focused_triples:

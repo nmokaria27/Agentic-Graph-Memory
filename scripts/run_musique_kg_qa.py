@@ -113,6 +113,12 @@ def main() -> None:
         choices=sorted(EXPERIMENTS),
     )
     parser.add_argument("--model", default="gemma4:31b")
+    parser.add_argument(
+        "--retrieval",
+        choices=["lexical", "dense", "hybrid"],
+        default=None,
+        help="Retrieval mode for domain QA systems (default: RETRIEVAL_MODE env or hybrid).",
+    )
     parser.add_argument("--output", default="evaluation/results/musique_kg_qa_20.json")
     parser.add_argument(
         "--allow-unsupported-answers",
@@ -136,6 +142,7 @@ def main() -> None:
             llm_config=llm_config,
             config=config,
             org_chart_path=args.org_chart,
+            retrieval_mode=args.retrieval,
         )
         for index, example in enumerate(examples, start=1):
             if example.question_id in completed:
@@ -158,10 +165,17 @@ def main() -> None:
                     "abstained": True,
                     "abstention_reason": "No retrieved graph/domain evidence.",
                 }
+            try:
+                linked_entities = list(
+                    getattr(qa_system, "_extract_query_entities", lambda q: [])(example.question)
+                )
+            except Exception:
+                linked_entities = []
             row = {
                 "question_id": example.question_id,
                 "question": example.question,
                 "gold_answer": example.answer,
+                "linked_entities": linked_entities,
                 "answer": long_answer,
                 "short_answer": short_answer,
                 "scored_answer": clean_prediction_for_scoring(short_answer, example.answer),

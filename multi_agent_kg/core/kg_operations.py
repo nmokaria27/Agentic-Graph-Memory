@@ -98,6 +98,8 @@ def find_entity_matches(
     source_entities: Dict[str, Entity],
     target_entities: Dict[str, Entity],
     threshold: float = 0.80,
+    use_embeddings: bool = False,
+    embedding_threshold: float = 0.75,
 ) -> Dict[str, str]:
     """
     Build a mapping {source_id -> target_id} for entities that likely
@@ -107,6 +109,8 @@ def find_entity_matches(
     1. Exact id match
     2. Label overlap
     3. Fuzzy name similarity (SequenceMatcher)
+    4. Embedding similarity (optional; catches synonyms/abbreviations the
+       lexical tiers miss, e.g. "NYC" vs "New York City")
     """
     mapping: Dict[str, str] = {}
     target_name_index: Dict[str, str] = {}
@@ -116,6 +120,16 @@ def find_entity_matches(
         target_name_index[_normalize(tid)] = tid
         for label in tentity.labels:
             target_name_index[_normalize(label)] = tid
+
+    embedding_index = None
+    if use_embeddings and target_name_index:
+        try:
+            from multi_agent_kg.core.vector_index import VectorIndex
+
+            embedding_index = VectorIndex()
+            embedding_index.upsert({name: name for name in target_name_index})
+        except Exception:
+            embedding_index = None
 
     for sid, sentity in source_entities.items():
         # 1. Exact id match
@@ -147,6 +161,19 @@ def find_entity_matches(
                 best_score, best_tid = score, tid
         if best_tid:
             mapping[sid] = best_tid
+            continue
+
+        # 4. Embedding similarity
+        if embedding_index is not None:
+            try:
+                hits = embedding_index.search(
+                    norm_sid, top_k=1, min_score=embedding_threshold
+                )
+            except Exception:
+                embedding_index = None
+                hits = []
+            if hits:
+                mapping[sid] = target_name_index[hits[0][0]]
 
     return mapping
 

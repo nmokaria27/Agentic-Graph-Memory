@@ -103,6 +103,11 @@ parser.add_argument(
     action="store_true",
     help="Disable checkpointing entirely (overrides --checkpoint-dir).",
 )
+parser.add_argument(
+    "--skip-relink",
+    action="store_true",
+    help="Skip the orphan relink pass and value-orphan attribute folding.",
+)
 args = parser.parse_args()
 CHECKPOINT_DIR = None if args.no_checkpoint else args.checkpoint_dir
 
@@ -245,8 +250,73 @@ try:
     print(f"  Total Triples: {kg_stats.get('total_triples', 0)}")
     print(f"  Unique Relations: {kg_stats.get('unique_relations', 0)}")
 
+    # ── Orphan relink pass + value-orphan folding (B3/B4) ────────────
+    if not args.skip_relink:
+        from multi_agent_kg.core.config import RetrievalConfig
+        from multi_agent_kg.core.orphan_relink import fold_value_orphans, relink_orphans
+        from multi_agent_kg.core.vector_index import KGVectorStore
+
+        retrieval_config = RetrievalConfig()
+        vector_store = None
+        VECTOR_CACHE_DIR = os.getenv("VECTOR_CACHE_DIR", "governed_kg_export.vectors")
+        if retrieval_config.use_vectors:
+            try:
+                from multi_agent_kg.core.vector_index import KGVectorStore
+                # Try loading cached index first — saves all embedding calls when
+                # the KG content hasn't changed (hash-verified).
+                vector_store = KGVectorStore.load_dir(
+                    VECTOR_CACHE_DIR,
+                    orchestrator.governed_kg,
+                    model=retrieval_config.embedding_model,
+                )
+                if vector_store is not None:
+                    print(f"  Loaded vector index from cache: {VECTOR_CACHE_DIR}")
+                else:
+                    vector_store = KGVectorStore(model=retrieval_config.embedding_model)
+                    vector_store.build(orchestrator.governed_kg)
+                    vector_store.save_dir(VECTOR_CACHE_DIR)
+                    print(f"  Built and cached vector index: {VECTOR_CACHE_DIR}")
+            except Exception as exc:
+                print(f"WARNING: vector store unavailable for relink ({exc})")
+                vector_store = None
+
+        print("\n" + "=" * 70)
+        print("ORPHAN RELINK PASS")
+        print("=" * 70)
+        relink_stats = relink_orphans(
+            orchestrator.governed_kg,
+            llm_config=llm_config,
+            retrieval_config=retrieval_config,
+            vector_store=vector_store,
+        )
+        print(f"  Orphans before: {relink_stats['orphans_before']}")
+        print(f"  LLM calls: {relink_stats['llm_calls']}")
+        print(f"  Triples proposed: {relink_stats['triples_proposed']}")
+        print(f"  Triples committed: {relink_stats['triples_committed']}")
+        print(f"  Orphans after relink: {relink_stats['orphans_after']}")
+
+        fold_stats = fold_value_orphans(orchestrator.governed_kg)
+        print(f"  Value-orphans folded into hosts: {fold_stats['folded']} "
+              f"(no host found: {fold_stats['no_host']})")
+
+        # Relink + fold commit new triples and may drop value-orphans, so the
+        # cached index saved earlier no longer matches the KG content hash.
+        # Refresh and re-save so the next run/QA server loads from cache instead
+        # of re-embedding the whole graph.
+        if vector_store is not None and (
+            relink_stats.get("triples_committed") or fold_stats.get("folded")
+        ):
+            try:
+                vector_store.build(orchestrator.governed_kg)
+                vector_store.save_dir(VECTOR_CACHE_DIR)
+                print(f"  Refreshed vector index cache after relink/fold: {VECTOR_CACHE_DIR}")
+            except Exception as exc:
+                print(f"WARNING: failed to refresh vector index cache ({exc})")
+
     print(f"\nGoverned KG:")
     governed_stats = orchestrator.governed_kg.get_stats()
+    print(f"  Orphan Entities: {governed_stats.get('orphan_entities', 0)} "
+          f"of {governed_stats.get('entities', 0)}")
     print(f"  Domains: {governed_stats.get('domains', 0)}")
     print(f"  Cross-domain Relations: {governed_stats.get('cross_domain_relations', 0)}")
     print(f"  Assignment Counts: {governed_stats.get('assignment_counts', {})}")
