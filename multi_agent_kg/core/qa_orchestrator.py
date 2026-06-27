@@ -452,23 +452,17 @@ Return ONLY the JSON."""
     ) -> tuple:
         """Mode-aware evidence dispatch shared by every expert (base-class method).
 
-        Returns ``(focused_triples, summary_text_or_None)``. The historical modes
+        Returns ``(focused_triples, summary_text_or_None)``. Dispatch is delegated
+        to the BaseRetriever factory (``core.retrievers``): the historical modes
         (hybrid/lexical/dense) and graph_completion return the seed+expansion triples
         unchanged; chunk bypasses expansion; graph_summary additionally LLM-summarizes
         a large subgraph. Placed on DomainExpertAgent so FallbackGraphExpert and
         ActiveExplorerExpert inherit one consistent dispatch.
         """
-        mode = self.retrieval_config.retrieval_mode
-        if mode == "chunk":
-            triples = self._chunk_select_triples(query, candidates)
-        else:
-            triples = self._query_focused_triples(
-                query, candidates=candidates, limit=self.retrieval_config.focused_limit
-            )
-        summary = None
-        if mode == "graph_summary" and len(triples) > self.retrieval_config.summary_trigger:
-            summary = self._summarize_subgraph(query, triples)
-        return triples, summary
+        from multi_agent_kg.core.retrievers import get_retriever
+
+        retriever = get_retriever(self.retrieval_config.retrieval_mode, self)
+        return retriever.select_evidence(query, candidates)
 
     def _compute_coverage_confidence(
         self,
