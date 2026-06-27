@@ -607,14 +607,26 @@ class EntityExtractor(BaseAgent):
                 max_tokens=4096,
             )
             
-            # Convert groups back to entity format
-            groups = result if isinstance(result, list) else result.get("entity_groups", [])
+            # Convert groups back to entity format. ``result`` is normally a list
+            # of group dicts or a dict with "entity_groups"; thinking models that
+            # fall through JSON parsing can hand back a raw string (CoT prose) or a
+            # list of strings. Coerce defensively so a single malformed batch
+            # degrades to "no coref this batch" instead of crashing the whole
+            # document (was: 'str' object has no attribute 'get').
+            if isinstance(result, list):
+                groups = result
+            elif isinstance(result, dict):
+                groups = result.get("entity_groups", [])
+            else:
+                groups = []
             # Pronouns and generic references that should be dropped
             _PRONOUN_PATTERNS = {
                 "it", "its", "they", "them", "their", "this", "that",
                 "these", "those", "we", "our", "he", "she", "his", "her",
             }
             for group in groups:
+                if not isinstance(group, dict):
+                    continue  # skip stray strings/None from a malformed parse
                 raw_id = group.get("canonical_id", "")
                 canonical_name = group.get("canonical_name", "")
                 mentions = group.get("mentions", [])

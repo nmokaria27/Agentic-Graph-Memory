@@ -201,3 +201,46 @@ def test_coreference_preserves_source_segments_through_public_run(monkeypatch) -
     assert resolved["source_segment"] == "doc1_s0"
     assert resolved["source_segments"] == ["doc1_s0", "doc1_s1"]
     assert resolved["source_document_id"] == "doc1"
+
+
+def test_coref_resolution_survives_string_llm_response(monkeypatch) -> None:
+    # Regression: deepseek-v4-flash returned CoT prose (a str) after JSON parse
+    # failed, and _stage4_coreference_resolution crashed with
+    # "'str' object has no attribute 'get'", nuking the whole document.
+    # A malformed batch must now degrade gracefully (return [] for that batch).
+    extractor = EntityExtractor(
+        knowledge_graph=KnowledgeGraph(),
+        llm_config=LLMConfig(model="test-model"),
+        use_self_consistency=False,
+    )
+
+    monkeypatch.setattr(
+        extractor, "call_llm",
+        lambda **kwargs: "We are given a conversation... let's reason without JSON.",
+    )
+
+    entities = [
+        {"id": "caroline", "text": "Caroline", "type": "PERSON", "confidence": 0.9},
+        {"id": "mel", "text": "Mel", "type": "PERSON", "confidence": 0.9},
+    ]
+    # Must not raise; a string response yields no coref groups for the batch.
+    resolved = extractor._stage4_coreference_resolution(
+        text="Caroline talked to Mel.", entities=entities, known_entities=[],
+    )
+    assert isinstance(resolved, list)
+
+
+def test_coref_resolution_skips_non_dict_group_entries(monkeypatch) -> None:
+    # A list-of-strings response (another malformed shape) must be skipped, not crash.
+    extractor = EntityExtractor(
+        knowledge_graph=KnowledgeGraph(),
+        llm_config=LLMConfig(model="test-model"),
+        use_self_consistency=False,
+    )
+    monkeypatch.setattr(extractor, "call_llm", lambda **kwargs: ["caroline", "mel"])
+    resolved = extractor._stage4_coreference_resolution(
+        text="Caroline talked to Mel.",
+        entities=[{"id": "caroline", "text": "Caroline", "type": "PERSON", "confidence": 0.9}],
+        known_entities=[],
+    )
+    assert isinstance(resolved, list)

@@ -155,6 +155,8 @@ def _resolve_model(model: str) -> str:
 _THINKING_MODEL_PATTERNS = (
     "gemma4",       # Google Gemma 4 family (gemma4:12b, gemma4:27b, gemma4:31b)
     "deepseek-r1",  # DeepSeek R1 family
+    "deepseek-v4",  # DeepSeek V4 family (v4-flash emits CoT prose before JSON;
+                    # disable json_object mode and let _extract_json dig out the JSON)
     "qwen3",        # Qwen 3 (thinking by default unless /no_think)
     "qwq",          # Qwen QwQ reasoning models
     "llama-3.3",    # Llama 3.3 instruct (sometimes emits chain-of-thought preamble)
