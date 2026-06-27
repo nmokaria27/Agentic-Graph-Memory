@@ -155,11 +155,17 @@ def _resolve_model(model: str) -> str:
 _THINKING_MODEL_PATTERNS = (
     "gemma4",       # Google Gemma 4 family (gemma4:12b, gemma4:27b, gemma4:31b)
     "deepseek-r1",  # DeepSeek R1 family
-    "deepseek-v4",  # DeepSeek V4 family (v4-flash emits CoT prose before JSON;
-                    # disable json_object mode and let _extract_json dig out the JSON)
-    "qwen3",        # Qwen 3 (thinking by default unless /no_think)
+    "deepseek-v4",  # DeepSeek V4 family (v4-pro, v4-flash) — CoT prose before JSON;
+                    # disable json_object mode and let _extract_json dig out the JSON
+    "qwen3",        # Qwen 3.x (qwen3, qwen3p6/3p7-plus) — thinking by default
     "qwq",          # Qwen QwQ reasoning models
+    "gpt-oss",      # OpenAI gpt-oss-120b/20b — harmony reasoning channel
+    "minimax-m",    # MiniMax M2.x / M3 — reasoning models (verbose CoT output)
+    "nemotron",     # NVIDIA Nemotron (3 Ultra etc.) — reasoning-capable
     "llama-3.3",    # Llama 3.3 instruct (sometimes emits chain-of-thought preamble)
+    # NOTE: GLM-5 (glm-5p2) and Kimi K2 are intentionally NOT here — GLM json_object
+    # mode is verified working in this project, and Kimi K2 is a non-thinking
+    # instruct model. Add "glm-5"/"kimi-k2-thinking" only if a switch starts failing.
 )
 
 
