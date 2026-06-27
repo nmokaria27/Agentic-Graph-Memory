@@ -263,7 +263,19 @@ class AgentGraphMemoryWrapper:
             org_chart = builder.build(governed_kg._kg)
         except Exception as exc:
             logger.warning("DomainBuilder failed (%s); single-domain fallback.", exc)
-            org_chart = OrgChart.single_domain(governed_kg._kg)
+            # Non-LLM fallback: one domain owning every entity. OrgChart has no
+            # single_domain() factory, so build it directly (must not itself raise).
+            from multi_agent_kg.core.governance import Domain
+
+            kg = governed_kg._kg
+            fallback_domain = Domain(
+                domain_id="general",
+                label="General",
+                description="All entities (single-domain fallback).",
+                entity_ids=set(kg.entities.keys()),
+                relation_schema={},
+            )
+            org_chart = OrgChart(domains=[fallback_domain])
 
         if self.use_advanced_qa:
             return AdvancedQAOrchestrator(
