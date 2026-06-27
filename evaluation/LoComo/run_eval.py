@@ -269,8 +269,20 @@ def build_qa_system(
         org_chart = builder.build(governed_kg._kg)
     except Exception as exc:
         logger.warning("DomainBuilder failed; single-domain fallback: %s", exc, exc_info=True)
+        # Non-LLM fallback: one domain owning every entity. OrgChart has no
+        # single_domain() factory, so build it directly (must not itself raise).
         from multi_agent_kg.core.domain_experts import OrgChart
-        org_chart = OrgChart.single_domain(governed_kg._kg)
+        from multi_agent_kg.core.governance import Domain
+
+        kg = governed_kg._kg
+        fallback_domain = Domain(
+            domain_id="general",
+            label="General",
+            description="All entities (single-domain fallback).",
+            entity_ids=set(kg.entities.keys()),
+            relation_schema={},
+        )
+        org_chart = OrgChart(domains=[fallback_domain])
 
     return AdvancedQAOrchestrator(
         org_chart=org_chart,
