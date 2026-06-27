@@ -27,6 +27,13 @@ def suggest(trial: Any) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         "seed_cap": trial.suggest_int("seed_cap", 10, 60),
         "focused_limit": trial.suggest_int("focused_limit", 20, 80),
         "max_hops": trial.suggest_int("max_hops", 2, 4),
+        # graph_completion (Phase 2) k-hop seeding knobs. Sampled for every mode
+        # but only consulted when retrieval_mode == "graph_completion"; harmless
+        # (unused config fields) otherwise.
+        "neighbourhood_hops": trial.suggest_int("neighbourhood_hops", 1, 3),
+        "neighbourhood_seed_top_k": trial.suggest_int("neighbourhood_seed_top_k", 4, 20),
+        "seed_weight_triple": trial.suggest_float("seed_weight_triple", 0.5, 2.0),
+        "seed_weight_entity": trial.suggest_float("seed_weight_entity", 0.5, 2.0),
     }
     answer_format = {
         "max_sentences": trial.suggest_int("max_sentences", 1, 4),

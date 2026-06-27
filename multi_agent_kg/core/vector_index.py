@@ -419,10 +419,32 @@ def rrf_fuse(
     return sorted(scores, key=lambda item_id: scores[item_id], reverse=True)
 
 
+def normalize_scores(
+    hits: List[Tuple[str, float]],
+) -> List[Tuple[str, float]]:
+    """Min-max normalize a single collection's (id, score) hits into [0, 1].
+
+    Cosine scores across different collections (entities vs triples vs domains)
+    occupy different ranges; merging them by raw score lets whichever collection
+    happens to score higher dominate. Normalizing each collection's hit list to a
+    common [0, 1] scale before fusion removes that bias (Cognee distance-norm idea).
+    A degenerate list (all-equal or single hit) maps every item to 1.0.
+    """
+    if not hits:
+        return []
+    scores = [score for _, score in hits]
+    lo, hi = min(scores), max(scores)
+    span = hi - lo
+    if span < 1e-9:
+        return [(item_id, 1.0) for item_id, _ in hits]
+    return [(item_id, (score - lo) / span) for item_id, score in hits]
+
+
 __all__ = [
     "VectorIndex",
     "KGVectorStore",
     "rrf_fuse",
+    "normalize_scores",
     "triple_key",
     "verbalize_triple",
 ]

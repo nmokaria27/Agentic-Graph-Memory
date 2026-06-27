@@ -214,6 +214,13 @@ class RetrievalConfig:
     neighbourhood_display: int = 50  # max neighbourhood triples rendered into context
     summary_trigger: int = 40  # subgraph size above which graph_summary mode summarizes
 
+    # graph_completion retriever (Phase 2): vector-seeded k-hop expansion knobs.
+    # Only consulted when retrieval_mode == "graph_completion"; defaults leave every
+    # other mode's behaviour untouched.
+    neighbourhood_seed_top_k: int = 10  # max vector-seed entities expanded to k-hop
+    seed_weight_triple: float = 1.0  # fusion weight for triple-collection seeds
+    seed_weight_entity: float = 1.0  # fusion weight for entity-collection seeds
+
     # Retrieval strategies that branch the evidence-assembly path. lexical/dense/hybrid
     # are the historical fused modes; graph_completion/graph_summary/chunk are explicit
     # retriever switches (see DomainExpertAgent._select_evidence).
