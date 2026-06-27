@@ -458,6 +458,16 @@ def chat_completion(
                 "502",
                 "503",
                 "504",
+                # Rate limiting / capacity — hosted backends (Fireworks, OpenAI)
+                # return these under the rapid serial calls the extraction pipeline
+                # makes. Without retry, the call raises and upstream agents swallow
+                # it into an empty fallback (silent zero-scored run).
+                "429",
+                "rate limit",
+                "rate_limit",
+                "too many requests",
+                "overloaded",
+                "capacity",
             ]
             err_lower = err.lower()
             is_transient = any(marker.lower() in err_lower for marker in transient_markers)
@@ -622,9 +632,33 @@ DEFAULT_EMBEDDING_MODEL = os.getenv(
 
 _MXBAI_QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 
-# mxbai-embed-large has a 512-token context window; truncate conservatively.
-# For VLLM-served models with larger windows, increase EMBEDDING_MAX_CHARS.
-_EMBED_MAX_CHARS = int(os.getenv("EMBEDDING_MAX_CHARS", "1800"))
+# nomic-embed-text is asymmetric: queries and passages take distinct task
+# prefixes (Nomic spec). Skipping them costs retrieval recall.
+_NOMIC_QUERY_PREFIX = "search_query: "
+_NOMIC_DOC_PREFIX = "search_document: "
+_QWEN_EMBED_QUERY_PREFIX = "query: "
+_QWEN_EMBED_DOC_PREFIX = "passage: "
+
+
+def _default_embed_max_chars(model: str) -> int:
+    """Truncation cap keyed to the model's context window.
+
+    mxbai-embed-large is 512 tokens (~1800 chars). nomic/e5/bge serve 8k windows.
+    Qwen3-Embedding serves 32k tokens — cap conservatively at 24k chars.
+    Override with EMBEDDING_MAX_CHARS for exact control.
+    """
+    m = (model or "").lower()
+    if "mxbai" in m:
+        return 1800
+    if "qwen" in m and "embed" in m:
+        return 24000
+    return 8000
+
+
+# Truncate conservatively to the model's window. Honor EMBEDDING_MAX_CHARS override.
+_EMBED_MAX_CHARS = int(
+    os.getenv("EMBEDDING_MAX_CHARS", str(_default_embed_max_chars(DEFAULT_EMBEDDING_MODEL)))
+)
 # GPU batching (embeddings served by vLLM) is much faster than Ollama CPU; bump
 # default batch size only when embeddings actually run on vLLM. When embeddings
 # are routed to a separate server (EMBEDDING_BASE_URL, e.g. Ollama), stay small.
@@ -675,13 +709,24 @@ def get_embeddings(texts: List[str], model: Optional[str] = None) -> List[List[f
 
 
 def embed_query(text: str, model: Optional[str] = None) -> List[float]:
-    """Embed a retrieval query (applies the mxbai query prefix when needed)."""
+    """Embed a retrieval query (applies the asymmetric query prefix when needed)."""
     model = model or DEFAULT_EMBEDDING_MODEL
-    if "mxbai" in model:
+    m = model.lower()
+    if "mxbai" in m:
         text = _MXBAI_QUERY_PREFIX + text
+    elif "nomic" in m:
+        text = _NOMIC_QUERY_PREFIX + text
+    elif "qwen" in m and "embed" in m:
+        text = _QWEN_EMBED_QUERY_PREFIX + text
     return get_embedding(text, model=model)
 
 
 def embed_passages(texts: List[str], model: Optional[str] = None) -> List[List[float]]:
-    """Embed passages/documents for indexing (no query prefix)."""
+    """Embed passages/documents for indexing (applies the asymmetric doc prefix when needed)."""
+    model = model or DEFAULT_EMBEDDING_MODEL
+    m = model.lower()
+    if "nomic" in m:
+        texts = [_NOMIC_DOC_PREFIX + t for t in texts]
+    elif "qwen" in m and "embed" in m:
+        texts = [_QWEN_EMBED_DOC_PREFIX + t for t in texts]
     return get_embeddings(texts, model=model)

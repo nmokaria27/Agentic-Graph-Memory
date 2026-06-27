@@ -409,7 +409,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--model",
-        default=os.environ.get("LLM_MODEL", "gemma4:31b"),
+        default=os.environ.get("LLM_DEFAULT_MODEL", os.environ.get("LLM_MODEL", "gemma4:31b")),
         help="LLM model name (default: gemma4:31b)",
     )
     parser.add_argument(
@@ -419,9 +419,15 @@ def main() -> None:
     )
     parser.add_argument(
         "--retrieval",
-        choices=["lexical", "dense", "hybrid"],
+        choices=["lexical", "dense", "hybrid", "graph_completion", "graph_summary", "chunk"],
         default="hybrid",
         help="Retrieval mode (default: hybrid)",
+    )
+    parser.add_argument(
+        "--answer-format",
+        default="mab_substring",
+        help="Answer-format profile (default: mab_substring). "
+             "See evaluation/answer_format_profiles.py",
     )
     parser.add_argument(
         "--no-advanced-qa",
@@ -477,6 +483,7 @@ def main() -> None:
             embedding_model=args.embedding_model,
             retrieval_mode=args.retrieval,
             use_advanced_qa=not args.no_advanced_qa,
+            answer_format=args.answer_format,
             verbose=True,
         )
         result = run_dataset_eval(

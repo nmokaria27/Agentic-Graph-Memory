@@ -63,9 +63,9 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
-from multi_agent_kg.core._qa_commit import ANTI_HEDGE_RIDER
+from multi_agent_kg.core._qa_commit import ANTI_HEDGE_RIDER, build_rider
 from multi_agent_kg.core.knowledge_graph import Entity, KnowledgeGraph, Triple
-from multi_agent_kg.core.config import LLMConfig
+from multi_agent_kg.core.config import AnswerFormatConfig, LLMConfig
 from multi_agent_kg.core.domain_experts import (
     Domain,
     DomainBuilder,
@@ -281,6 +281,7 @@ class ActiveExplorerExpert(DomainExpertAgent):
         confidence_threshold: float = 0.7,
         vector_store: Optional[Any] = None,
         retrieval_config: Optional[Any] = None,
+        answer_format: Optional[Any] = None,
     ):
         super().__init__(
             domain,
@@ -288,6 +289,7 @@ class ActiveExplorerExpert(DomainExpertAgent):
             llm_config,
             vector_store=vector_store,
             retrieval_config=retrieval_config,
+            answer_format=answer_format,
         )
         self.max_exploration_rounds = max_exploration_rounds
         self.confidence_threshold = confidence_threshold
@@ -311,9 +313,27 @@ class ActiveExplorerExpert(DomainExpertAgent):
         # Build initial multi-hop context
         multi_hop_text = self._build_multi_hop_context(query_entities)
 
+        # Mode-aware evidence (item ⑤): hybrid/lexical/dense keep the historical broad
+        # domain dump; chunk narrows to dense-ranked triples; graph_summary appends an
+        # LLM subgraph summary (item ④). graph_completion adds the focused triples.
+        extra_evidence = ""
+        mode = self.retrieval_config.retrieval_mode
+        if mode in {"chunk", "graph_summary", "graph_completion"}:
+            focused, summary = self._select_evidence(query)
+            if mode == "chunk" and focused:
+                subgraph_text = "RELEVANT TRIPLES:\n" + "\n".join(
+                    f"  ({t.subject}) -[{t.relation}]-> ({t.object})" for t in focused
+                )
+            elif mode == "graph_completion" and focused:
+                extra_evidence += "\n\nQUERY-FOCUSED TRIPLES:\n" + "\n".join(
+                    f"  ({t.subject}) -[{t.relation}]-> ({t.object})" for t in focused
+                )
+            if summary:
+                extra_evidence += "\n\nSUMMARY OF RELEVANT SUBGRAPH:\n" + summary
+
         # Track what we've explored
         explored_entities: Set[str] = set(query_entities)
-        all_evidence = subgraph_text + multi_hop_text
+        all_evidence = subgraph_text + multi_hop_text + extra_evidence
         exploration_trace: List[Dict[str, Any]] = []
 
         current_answer = ""
@@ -386,7 +406,10 @@ class ActiveExplorerExpert(DomainExpertAgent):
             for i in range(len(query_entities)):
                 for j in range(i + 1, len(query_entities)):
                     pths = find_paths(
-                        self.full_kg, query_entities[i], query_entities[j], max_hops=3
+                        self.full_kg,
+                        query_entities[i],
+                        query_entities[j],
+                        max_hops=self.retrieval_config.max_hops,
                     )
                     all_paths.extend(pths)
             if all_paths:
@@ -395,9 +418,14 @@ class ActiveExplorerExpert(DomainExpertAgent):
                     + paths_to_text(all_paths)
                 )
         elif len(query_entities) == 1:
-            nbr = neighbourhood(self.full_kg, query_entities[0], hops=2)
+            nbr = neighbourhood(
+                self.full_kg, query_entities[0], hops=self.retrieval_config.neighbourhood_hops
+            )
             if nbr:
-                nbr_lines = [f"  ({t.subject}) -[{t.relation}]-> ({t.object})" for t in nbr[:30]]
+                nbr_lines = [
+                    f"  ({t.subject}) -[{t.relation}]-> ({t.object})"
+                    for t in nbr[: self.retrieval_config.neighbourhood_display]
+                ]
                 multi_hop_text = (
                     f"\n\nNEIGHBOURHOOD of '{query_entities[0]}':\n"
                     + "\n".join(nbr_lines)
@@ -425,10 +453,10 @@ EVIDENCE FROM KNOWLEDGE GRAPH:
 {round_note}
 
 QUERY: {query}
-{ANTI_HEDGE_RIDER}
+{build_rider(self.answer_format)}
 Based ONLY on the evidence above, provide:
 1. A concise answer using only claims directly supported by the evidence above.
-   Prefer 1-3 sentences and at most 80 words.
+   Prefer 1-{self.answer_format.max_sentences} sentences and at most 80 words.
 2. If the evidence is incomplete, answer only the supported part and note the gap briefly.
 3. Do NOT mention expert agents, domains, routing, or the phrase "knowledge graph".
 4. Do NOT speculate or add background knowledge.
@@ -839,9 +867,15 @@ class DebateArena:
     Inspired by KARMA's Conflict Resolution Agent.
     """
 
-    def __init__(self, llm_config: LLMConfig, max_rounds: int = 2):
+    def __init__(
+        self,
+        llm_config: LLMConfig,
+        max_rounds: int = 2,
+        answer_format: Optional[AnswerFormatConfig] = None,
+    ):
         self.llm_config = llm_config
         self.max_rounds = max_rounds
+        self.answer_format = answer_format or AnswerFormatConfig()
 
     def detect_conflicts(
         self, domain_responses: List[Dict[str, Any]],
@@ -997,7 +1031,7 @@ YOUR EVIDENCE: {my_evidence}
 OPPOSING POSITION ({their_domain}): {their_claim}
 OPPOSING EVIDENCE: {their_evidence}
 
-Provide a brief counter-argument (2-3 sentences) that:
+Provide a brief counter-argument (2-{self.answer_format.max_sentences} sentences) that:
 1. Points out weaknesses in the opposing evidence
 2. Strengthens your position with additional reasoning
 3. Cites your evidence specifically
@@ -1124,6 +1158,7 @@ class AdvancedQAOrchestrator:
         max_critic_revisions: int = 2,
         vector_store: Optional[Any] = None,
         retrieval_config: Optional[Any] = None,
+        answer_format: Optional[AnswerFormatConfig] = None,
     ):
         if governed_kg is not None:
             org_chart = governed_kg.org_chart
@@ -1135,6 +1170,7 @@ class AdvancedQAOrchestrator:
         self.org_chart = org_chart
         self.full_kg = full_kg
         self.llm_config = llm_config or LLMConfig()
+        self.answer_format = answer_format or AnswerFormatConfig()
         self.enable_debate = enable_debate
         self.enable_critic = enable_critic
         self.max_critic_revisions = max_critic_revisions
@@ -1166,6 +1202,7 @@ class AdvancedQAOrchestrator:
                 max_exploration_rounds=max_exploration_rounds,
                 vector_store=self.vector_store,
                 retrieval_config=self.retrieval_config,
+                answer_format=self.answer_format,
             )
 
         global_domain = Domain(
@@ -1182,11 +1219,16 @@ class AdvancedQAOrchestrator:
             llm_config=self.llm_config,
             vector_store=self.vector_store,
             retrieval_config=self.retrieval_config,
+            answer_format=self.answer_format,
         )
 
         # Initialize components for improvements #2-5
         self.critic = CriticAgent(full_kg, self.llm_config) if enable_critic else None
-        self.debate_arena = DebateArena(self.llm_config) if enable_debate else None
+        self.debate_arena = (
+            DebateArena(self.llm_config, answer_format=self.answer_format)
+            if enable_debate
+            else None
+        )
         self.session_memory = SessionMemory()
         self.provenance_tracker = ProvenanceChain()
 
@@ -1612,7 +1654,12 @@ Return ONLY the JSON."""
         if len(matched_entities) >= 2:
             for i in range(len(matched_entities)):
                 for j in range(i + 1, len(matched_entities)):
-                    pths = find_paths(self.full_kg, matched_entities[i], matched_entities[j], max_hops=3)
+                    pths = find_paths(
+                        self.full_kg,
+                        matched_entities[i],
+                        matched_entities[j],
+                        max_hops=self.retrieval_config.max_hops,
+                    )
                     if pths:
                         lines.append(f"\nPaths ({matched_entities[i]} → {matched_entities[j]}):")
                         lines.append(paths_to_text(pths))
@@ -1672,7 +1719,7 @@ DOMAIN EXPERT RESPONSES:
 
 {f"CROSS-DOMAIN CONTEXT:{chr(10)}{cross_domain_context}" if cross_domain_context else ""}
 {f"{chr(10)}{debate_context}" if debate_context else ""}
-{ANTI_HEDGE_RIDER}
+{build_rider(self.answer_format)}
 RULES:
 1. ONLY include claims that are supported by expert responses
 2. If a conflict was resolved in debate, use the RESOLVED version
@@ -1681,11 +1728,11 @@ RULES:
 5. Keep the final answer concise and avoid meta-commentary
 6. Do NOT mention experts, routing, or internal system behavior in the answer text
 7. Do NOT define entities or add background explanations unless explicitly supported by expert evidence
-8. Limit the answer to at most 4 sentences
+8. Limit the answer to at most {self.answer_format.max_sentences} sentences
 9. For each major claim, include the supporting KG triple(s)
 10. Provide TWO answer forms:
-    * "answer": evidence-grounded prose response (1-4 sentences)
-    * "short_answer": the MINIMAL span (1-5 words) that directly answers the question. For a person, the name only. For a place, the place name only. For a date, the date only. For yes/no questions, "yes" or "no". If evidence does not support an answer, set short_answer to "".
+    * "answer": evidence-grounded prose response (1-{self.answer_format.max_sentences} sentences)
+    * "short_answer": {self.answer_format.short_answer_instruction()} If evidence does not support an answer, set short_answer to "".
 
 Examples of short_answer form:
 - Q: "In which county is X located?" → short_answer: "Randall County"

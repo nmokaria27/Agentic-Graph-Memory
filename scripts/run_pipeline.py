@@ -108,6 +108,19 @@ parser.add_argument(
     action="store_true",
     help="Skip the orphan relink pass and value-orphan attribute folding.",
 )
+parser.add_argument(
+    "--chunk-size",
+    type=int,
+    default=None,
+    help="Document chunk size in CHARACTERS (drives segmentation; default keeps "
+         "the built-in 1500/2000 min/max). Sweep 200-2000 for tuning.",
+)
+parser.add_argument(
+    "--chunk-overlap",
+    type=int,
+    default=150,
+    help="Character overlap between chunks (default: 150). Only used with --chunk-size.",
+)
 args = parser.parse_args()
 CHECKPOINT_DIR = None if args.no_checkpoint else args.checkpoint_dir
 
@@ -220,6 +233,8 @@ orchestrator = DeliberativeOrchestrator(
     debug_logger=debug_logger,
     checkpoint_dir=CHECKPOINT_DIR,
     resume=args.resume,
+    chunk_size=args.chunk_size,
+    chunk_overlap=args.chunk_overlap,
 )
 if args.governance_mode == "strict":
     print("Strict governance enabled: creation will request explicit review before committing triples.")

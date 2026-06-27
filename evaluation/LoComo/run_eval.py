@@ -191,6 +191,8 @@ def build_kg_from_conversation(
     retrieval_config: RetrievalConfig,
     governance_mode: str = "permissive",
     max_context_chars: Optional[int] = None,
+    chunk_size: Optional[int] = None,
+    chunk_overlap: int = 150,
 ) -> GovernedKnowledgeGraph:
     from multi_agent_kg.core import DeliberativeOrchestrator
     from multi_agent_kg.agents.base import ModelTier
@@ -217,6 +219,8 @@ def build_kg_from_conversation(
         enable_open_world=True,
         enable_cross_document=False,
         model_tiers=model_tiers,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
     )
     orchestrator.process_corpus([document])
     governed_kg = orchestrator.governed_kg
@@ -240,7 +244,12 @@ def build_kg_from_conversation(
     return governed_kg
 
 
-def build_qa_system(governed_kg: GovernedKnowledgeGraph, llm_config: LLMConfig, retrieval_config: RetrievalConfig):
+def build_qa_system(
+    governed_kg: GovernedKnowledgeGraph,
+    llm_config: LLMConfig,
+    retrieval_config: RetrievalConfig,
+    answer_format=None,
+):
     from multi_agent_kg.core.advanced_qa import AdvancedQAOrchestrator
     from multi_agent_kg.core.domain_experts import DomainBuilder, QAOrchestrator
     from multi_agent_kg.core.vector_index import KGVectorStore
@@ -269,6 +278,7 @@ def build_qa_system(governed_kg: GovernedKnowledgeGraph, llm_config: LLMConfig, 
         llm_config=llm_config,
         vector_store=vector_store,
         retrieval_config=retrieval_config,
+        answer_format=answer_format,
         enable_debate=True,
         enable_critic=True,
         max_exploration_rounds=3,
@@ -284,15 +294,25 @@ def get_answer(qa_system, question: str, category: int) -> str:
 
     try:
         result = qa_system.query(question)
-        answer = (
+        verbose = (
             result.get("final_answer")
             or result.get("answer")
             or result.get("output")
             or ""
         )
-        if isinstance(answer, dict):
-            answer = answer.get("answer", "")
-        return str(answer).strip()
+        if isinstance(verbose, dict):
+            verbose = verbose.get("answer", "")
+        verbose = str(verbose).strip()
+
+        # LoComo F1 is span-overlap: gold answers are minimal spans (a name, a
+        # date, a place). The QA orchestrator emits a "final_answer_short" minimal
+        # span alongside the verbose prose — score that for cats 1-4 so a correct
+        # answer wrapped in explanation isn't penalised. Category 5 (adversarial)
+        # needs the verbose text because abstention is detected by phrase match.
+        short = str(result.get("final_answer_short") or "").strip()
+        if category != 5 and short:
+            return short
+        return verbose
     except Exception as exc:
         logger.error("QA query FAILED (scored as empty pred) for %r: %s", question[:60], exc, exc_info=True)
         return ""
@@ -312,6 +332,9 @@ def run_locomo_eval(
     output_path: Optional[Path] = None,
     save_kg_dir: Optional[Path] = None,
     load_kg_dir: Optional[Path] = None,
+    answer_format=None,
+    chunk_size: Optional[int] = None,
+    chunk_overlap: int = 150,
 ) -> Dict[str, Any]:
 
     all_rows: List[Dict] = []
@@ -335,7 +358,7 @@ def run_locomo_eval(
             print(f"Loading KG from cache: {kg_cache_path}")
             governed_kg = load_governed_kg(str(kg_cache_path))
             stats = governed_kg.get_stats()
-            print(f"  Loaded: {stats.get('total_entities',0)} entities, {stats.get('total_triples',0)} triples")
+            print(f"  Loaded: {stats.get('entities',0)} entities, {stats.get('triples',0)} triples")
         else:
             n_sessions = sum(1 for k in data["conversation"] if k.startswith("session_") and not k.endswith("_date_time"))
             conv_len = len(format_conversation(data))
@@ -344,10 +367,11 @@ def run_locomo_eval(
                 print(f"  [truncated to {max_context_chars:,} chars]")
 
             governed_kg = build_kg_from_conversation(
-                data, llm_config, retrieval_config, governance_mode, max_context_chars
+                data, llm_config, retrieval_config, governance_mode, max_context_chars,
+                chunk_size=chunk_size, chunk_overlap=chunk_overlap,
             )
             stats = governed_kg.get_stats()
-            print(f"  Built: {stats.get('total_entities',0)} entities, {stats.get('total_triples',0)} triples "
+            print(f"  Built: {stats.get('entities',0)} entities, {stats.get('triples',0)} triples "
                   f"in {time.time()-t0:.0f}s")
 
             if kg_save_path:
@@ -358,7 +382,7 @@ def run_locomo_eval(
         build_time = time.time() - t0
 
         # --- QA system ---
-        qa_system = build_qa_system(governed_kg, llm_config, retrieval_config)
+        qa_system = build_qa_system(governed_kg, llm_config, retrieval_config, answer_format)
 
         # --- Questions ---
         sample_rows: List[Dict] = []
@@ -419,9 +443,25 @@ def main() -> None:
     parser.add_argument("--max-questions", type=int, default=-1, help="Max QA per conversation (default: all)")
     parser.add_argument("--max-context-chars", type=int, default=None,
                         help="Truncate conversation to N chars before pipeline (smoke test: 20000)")
-    parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "gemma4:31b"))
+    parser.add_argument("--model", default=os.environ.get("LLM_DEFAULT_MODEL", os.environ.get("LLM_MODEL", "gemma4:31b")))
     parser.add_argument("--embedding-model", default=os.environ.get("EMBEDDING_MODEL", "mxbai-embed-large"))
-    parser.add_argument("--retrieval", choices=["lexical", "dense", "hybrid"], default="hybrid")
+    parser.add_argument(
+        "--retrieval",
+        choices=["lexical", "dense", "hybrid", "graph_completion", "graph_summary", "chunk"],
+        default="hybrid",
+    )
+    parser.add_argument(
+        "--answer-format", default="locomo",
+        help="Answer-format profile (default: locomo). See evaluation/answer_format_profiles.py",
+    )
+    parser.add_argument(
+        "--chunk-size", type=int, default=None,
+        help="Document chunk size in CHARACTERS at build time (default: built-in 1500/2000).",
+    )
+    parser.add_argument(
+        "--chunk-overlap", type=int, default=150,
+        help="Character overlap between chunks (default: 150; only used with --chunk-size).",
+    )
     parser.add_argument("--governance-mode", default="permissive",
                         choices=["permissive", "strict", "triage", "audit_only"])
     parser.add_argument("--save-kg-dir", default=None,
@@ -441,8 +481,11 @@ def main() -> None:
     if args.max_samples > 0:
         samples = samples[:args.max_samples]
 
+    from evaluation.answer_format_profiles import get_answer_format
+
     llm_config       = LLMConfig(model=args.model)
     retrieval_config = RetrievalConfig(retrieval_mode=args.retrieval, embedding_model=args.embedding_model)
+    answer_format    = get_answer_format(args.answer_format)
     save_kg_dir      = Path(args.save_kg_dir) if args.save_kg_dir else None
     load_kg_dir      = Path(args.load_kg_dir) if args.load_kg_dir else None
     output_path      = Path(args.output)
@@ -469,6 +512,9 @@ def main() -> None:
         output_path=output_path,
         save_kg_dir=save_kg_dir,
         load_kg_dir=load_kg_dir,
+        answer_format=answer_format,
+        chunk_size=args.chunk_size,
+        chunk_overlap=args.chunk_overlap,
     )
 
     print(f"\n{'='*60}")

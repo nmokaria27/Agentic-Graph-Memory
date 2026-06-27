@@ -125,6 +125,8 @@ class DeliberativeOrchestrator:
         schema_override: Optional[Dict[str, Any]] = None,
         checkpoint_dir: Optional[str] = None,
         resume: bool = False,
+        chunk_size: Optional[int] = None,
+        chunk_overlap: int = 150,
     ):
         """
         Initialize the deliberative orchestrator.
@@ -160,6 +162,11 @@ class DeliberativeOrchestrator:
                  "relation_types": [{"type": "...", "description": "..."}]}
         """
         self.llm_config = llm_config or LLMConfig()
+        # Chunking knob (item ③): one char-based size drives segmentation. None keeps
+        # the historical 1500/2000 min/max defaults; a value sets max=chunk_size and
+        # min≈0.75*chunk_size so a single number can be swept by the tuner.
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
         self.enable_governance = enable_governance or governed_kg is not None
         if governed_kg is not None:
             self.governed_kg = governed_kg
@@ -259,11 +266,17 @@ class DeliberativeOrchestrator:
         """Initialize all agents with shared infrastructure."""
         
         # Worker Agents
+        doc_kwargs: Dict[str, Any] = {}
+        if self.chunk_size is not None:
+            doc_kwargs["max_segment_length"] = self.chunk_size
+            doc_kwargs["min_segment_length"] = max(1, int(self.chunk_size * 0.75))
+            doc_kwargs["overlap"] = self.chunk_overlap
         self.document_processor = DocumentProcessor(
             knowledge_graph=self.knowledge_graph,
             shared_memory=self.shared_memory,
             message_bus=self.message_bus,
             llm_config=self.llm_config,
+            **doc_kwargs,
         )
         
         self.domain_classifier = DomainClassifier(

@@ -88,6 +88,8 @@ class AgentGraphMemoryWrapper:
         save_dir: Optional[str] = None,
         temperature: float = 0.0,
         verbose: bool = False,
+        answer_format: Any = "mab_substring",
+        retrieval_config: Optional[RetrievalConfig] = None,
     ) -> None:
         self.model = model
         self.embedding_model = embedding_model or os.environ.get(
@@ -101,9 +103,22 @@ class AgentGraphMemoryWrapper:
         self.verbose = verbose
 
         self.llm_config = LLMConfig(model=model, temperature=temperature)
-        self.retrieval_config = RetrievalConfig(
+        # A pre-built RetrievalConfig (e.g. from the tuner) wins; otherwise build one
+        # from the simple retrieval_mode flag.
+        self.retrieval_config = retrieval_config or RetrievalConfig(
             retrieval_mode=retrieval_mode,
             embedding_model=self.embedding_model,
+        )
+        # Benchmark-specific answer shaping stays in the eval layer; core only sees the
+        # generic AnswerFormatConfig object. Accept either a profile name or a ready
+        # AnswerFormatConfig (the tuner injects an object).
+        from evaluation.answer_format_profiles import get_answer_format
+        from multi_agent_kg.core.config import AnswerFormatConfig
+
+        self.answer_format = (
+            answer_format
+            if isinstance(answer_format, AnswerFormatConfig)
+            else get_answer_format(answer_format)
         )
 
         # State reset per context
@@ -257,6 +272,7 @@ class AgentGraphMemoryWrapper:
                 llm_config=self.llm_config,
                 vector_store=vector_store,
                 retrieval_config=self.retrieval_config,
+                answer_format=self.answer_format,
                 enable_debate=True,
                 enable_critic=True,
                 max_exploration_rounds=3,
@@ -267,6 +283,7 @@ class AgentGraphMemoryWrapper:
             llm_config=self.llm_config,
             vector_store=vector_store,
             retrieval_config=self.retrieval_config,
+            answer_format=self.answer_format,
         )
 
     # ------------------------------------------------------------------

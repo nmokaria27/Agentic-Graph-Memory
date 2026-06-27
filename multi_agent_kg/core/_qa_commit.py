@@ -6,10 +6,14 @@ those as 0.0 even when the KG contains the answer entity. This rider forces a co
 short_answer span derived from the best evidence available.
 """
 import os
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from multi_agent_kg.core.config import AnswerFormatConfig
 
 COMMIT_MODE = os.getenv("KGQA_COMMIT_MODE") == "1"
 
-ANTI_HEDGE_RIDER = """
+_RIDER_BODY = """
 
 ==== COMMIT-OR-INFER MODE — DO NOT HEDGE ====
 QA SCORING IS BASED ON EXACT/F1 MATCH OF A SHORT ANSWER SPAN. Hedged prose like
@@ -34,7 +38,7 @@ RULES:
 3. NEVER respond with "insufficient evidence", "cannot be determined", "no information
    provided", "the answer cannot be determined", or similar refusal phrases. If the
    evidence contains ANY plausible candidate of the right type, commit to it.
-4. The short_answer must be the MINIMAL surface form (1-5 words):
+4. The short_answer must be the MINIMAL surface form (1-{words} words):
    - Person → just the name ("Mike Medavoy", not "The founder is Mike Medavoy")
    - Place → just the place ("Cologne", not "headquartered in Cologne")
    - Date → just the date ("1969")
@@ -48,7 +52,30 @@ RULES:
    -[FOUNDED_BY]-> (mike_medavoy)
    → short_answer: "Mike Medavoy"
 ==== END COMMIT-OR-INFER MODE ====
-""" if COMMIT_MODE else ""
+"""
 
 
-__all__ = ["COMMIT_MODE", "ANTI_HEDGE_RIDER"]
+def build_rider(fmt: "Optional[AnswerFormatConfig]" = None) -> str:
+    """Return the anti-hedge rider sized by an AnswerFormatConfig.
+
+    Gated on the config's ``commit_mode`` (which itself defaults to the legacy
+    ``KGQA_COMMIT_MODE`` env). Returns "" when commit mode is off, preserving the
+    historical behaviour where the rider only appears under KGQA_COMMIT_MODE=1.
+    """
+    if fmt is None:
+        commit = COMMIT_MODE
+        words = 5
+    else:
+        commit = fmt.commit_mode
+        words = fmt.short_answer_words
+    if not commit:
+        return ""
+    return _RIDER_BODY.format(words=words)
+
+
+# Back-compat module-level constant: same value as the old ANTI_HEDGE_RIDER
+# (env-gated, 1-5 words). Existing imports keep working unchanged.
+ANTI_HEDGE_RIDER = build_rider(None)
+
+
+__all__ = ["COMMIT_MODE", "ANTI_HEDGE_RIDER", "build_rider"]

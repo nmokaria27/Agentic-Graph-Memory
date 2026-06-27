@@ -7,10 +7,15 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set
 
-from multi_agent_kg.core._qa_commit import ANTI_HEDGE_RIDER
-from multi_agent_kg.core.config import LLMConfig, RetrievalConfig
+from multi_agent_kg.core._qa_commit import ANTI_HEDGE_RIDER, build_rider
+from multi_agent_kg.core.config import AnswerFormatConfig, LLMConfig, RetrievalConfig
 from multi_agent_kg.core.governance import Domain, OrgChart, TopicSubAgent
-from multi_agent_kg.core.graph_traversal import find_paths, neighbourhood, paths_to_text
+from multi_agent_kg.core.graph_traversal import (
+    find_paths,
+    neighbourhood,
+    paths_to_text,
+    summarize_subgraph,
+)
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.llm.openai_client import chat_completion_json
 
@@ -25,7 +30,6 @@ _QUERY_STOPWORDS = {
     "with",
     "who",
     "what",
-    "when",
     "where",
     "which",
     "whose",
@@ -83,6 +87,8 @@ def _question_relation_hints(query: str) -> Set[str]:
         hints.update({"owner", "owned", "administrative", "territorial", "municipality", "province", "state"})
     if terms & {"born", "birthplace", "birth"}:
         hints.update({"born", "birthplace", "birth", "place"})
+    if terms & {"when", "date", "year", "time", "temporal"}:
+        hints.update({"date", "when", "time", "year", "session", "temporal", "conversation"})
     return hints
 
 
@@ -91,7 +97,14 @@ def _triple_text(triple: Any) -> str:
 
 
 def _format_triple(triple: Any) -> str:
-    return f"({triple.subject}) -[{triple.relation}]-> ({triple.object})"
+    base = f"({triple.subject}) -[{triple.relation}]-> ({triple.object})"
+    # Surface the session date stamped at build time (Fix A) so temporal questions
+    # can be answered from the fact itself instead of a disconnected DATE triple.
+    meta = getattr(triple, "metadata", None) or {}
+    session_date = meta.get("session_date") if isinstance(meta, dict) else None
+    if session_date:
+        base += f" [on {session_date}]"
+    return base
 
 
 def _chat_completion_json(*args, **kwargs):
@@ -117,12 +130,14 @@ class DomainExpertAgent:
         llm_config: LLMConfig,
         vector_store: Optional[Any] = None,
         retrieval_config: Optional[RetrievalConfig] = None,
+        answer_format: Optional[AnswerFormatConfig] = None,
     ):
         self.domain = domain
         self.full_kg = full_kg
         self.llm_config = llm_config
         self.vector_store = vector_store
         self.retrieval_config = retrieval_config or RetrievalConfig()
+        self.answer_format = answer_format or AnswerFormatConfig()
 
     @property
     def _vectors_on(self) -> bool:
@@ -143,18 +158,30 @@ class DomainExpertAgent:
         return [entity_id for entity_id, _score in hits if entity_id in self.full_kg.entities]
 
     def answer(self, query: str, context: str = "") -> Dict[str, Any]:
-        subgraph_text = self._query_focused_domain_summary(query)
+        entities, domain_triples = self.domain.get_subgraph(self.full_kg)
+        focused_triples, subgraph_summary = self._select_evidence(
+            query, candidates=domain_triples
+        )
+        subgraph_text = self._query_focused_domain_summary(query, focused=focused_triples)
+        if subgraph_summary:
+            subgraph_text += "\n\nSUMMARY OF RELEVANT SUBGRAPH:\n" + subgraph_summary
         relevant_topics = self._route_to_topics(query)
         topic_names = [topic.label for topic in relevant_topics]
 
         multi_hop_text = ""
         query_entities = self._extract_query_entities(query)
+        max_hops = self.retrieval_config.max_hops
         if len(query_entities) >= 2:
             all_paths = []
             for index in range(len(query_entities)):
                 for other in range(index + 1, len(query_entities)):
                     all_paths.extend(
-                        find_paths(self.full_kg, query_entities[index], query_entities[other], max_hops=3)
+                        find_paths(
+                            self.full_kg,
+                            query_entities[index],
+                            query_entities[other],
+                            max_hops=max_hops,
+                        )
                     )
             if all_paths:
                 multi_hop_text = (
@@ -162,17 +189,20 @@ class DomainExpertAgent:
                     + paths_to_text(all_paths)
                 )
         elif len(query_entities) == 1:
-            triples = neighbourhood(self.full_kg, query_entities[0], hops=2)
+            hops = self.retrieval_config.neighbourhood_hops
+            triples = neighbourhood(self.full_kg, query_entities[0], hops=hops)
             if triples:
                 lines = [
-                    f"  ({triple.subject}) -[{triple.relation}]-> ({triple.object})"
-                    for triple in triples[:30]
+                    f"  {_format_triple(triple)}"
+                    for triple in triples[: self.retrieval_config.neighbourhood_display]
                 ]
                 multi_hop_text = (
-                    f"\n\nNEIGHBOURHOOD (2-hop) of '{query_entities[0]}':\n"
+                    f"\n\nNEIGHBOURHOOD ({hops}-hop) of '{query_entities[0]}':\n"
                     + "\n".join(lines)
                 )
 
+        rider = build_rider(self.answer_format)
+        max_sentences = self.answer_format.max_sentences
         prompt = f"""You are a domain expert for: {self.domain.label}
 Domain description: {self.domain.description}
 
@@ -183,10 +213,10 @@ You have access to the following knowledge from a knowledge graph:
 {f"Additional context: {context}" if context else ""}
 
 QUERY: {query}
-{ANTI_HEDGE_RIDER}
+{rider}
 Based ONLY on the knowledge graph data above, provide:
 1. A concise answer to the query using only claims that are directly supported by
-   the evidence above. Prefer 1-3 sentences.
+   the evidence above. Prefer 1-{max_sentences} sentences.
 2. If the evidence is incomplete, answer only the supported part and explicitly
    note the gap in a short neutral phrase.
 3. Do NOT mention domain IDs, expert agents, routing, or the phrase "knowledge graph".
@@ -237,15 +267,16 @@ Return ONLY the JSON."""
         result["topics_used"] = topic_names
         result["multi_hop_paths"] = multi_hop_text if multi_hop_text else "none"
 
-        computed = self._compute_coverage_confidence(query, query_entities)
+        computed = self._compute_coverage_confidence(query, query_entities, focused_triples=focused_triples)
         if computed["entity_coverage"] > 0 or computed["triple_coverage"] > 0:
             result["coverage"] = computed["coverage"]
             result["confidence"] = computed["confidence"]
         return result
 
-    def _query_focused_domain_summary(self, query: str, *, limit: int = 60) -> str:
+    def _query_focused_domain_summary(self, query: str, *, limit: Optional[int] = None, focused: Optional[List[Any]] = None) -> str:
         entities, domain_triples = self.domain.get_subgraph(self.full_kg)
-        focused = self._query_focused_triples(query, candidates=domain_triples, limit=limit)
+        if focused is None:
+            focused = self._query_focused_triples(query, candidates=domain_triples, limit=limit)
         lines = [f"Domain: {self.domain.label}", f"Description: {self.domain.description}", ""]
         memory_card = self.domain.memory_card_summary()
         if memory_card:
@@ -339,8 +370,12 @@ Return ONLY the JSON."""
         query: str,
         *,
         candidates: Optional[List[Any]] = None,
-        limit: int = 40,
+        limit: Optional[int] = None,
     ) -> List[Any]:
+        # None resolves to the tunable config value; direct callers (tests, fallback
+        # path) honour focused_limit instead of a silent hardcoded 60.
+        if limit is None:
+            limit = self.retrieval_config.focused_limit
         candidates = candidates if candidates is not None else self.full_kg.triples
         lexical_seeds: List[Any] = []
         if self.retrieval_config.use_lexical:
@@ -350,7 +385,9 @@ Return ONLY the JSON."""
             ]
             lexical_seeds = [
                 triple
-                for score, _, triple in sorted(scored, key=lambda item: item[0], reverse=True)[:20]
+                for score, _, triple in sorted(scored, key=lambda item: item[0], reverse=True)[
+                    : self.retrieval_config.lexical_seed_k
+                ]
                 if score > 0
             ]
         dense_seeds = self._vector_seed_triples(query, candidates)
@@ -360,7 +397,7 @@ Return ONLY the JSON."""
         seeds = lexical_seeds + [
             t for t in dense_seeds if (t.subject, t.relation, t.object) not in seen_keys
         ]
-        seeds = seeds[:20]
+        seeds = seeds[: self.retrieval_config.seed_cap]
         seed_entities = {triple.subject for triple in seeds} | {triple.object for triple in seeds}
         expanded = {
             (triple.subject, triple.relation, triple.object): triple
@@ -369,7 +406,7 @@ Return ONLY the JSON."""
         for triple in self.full_kg.triples:
             if triple.subject in seed_entities or triple.object in seed_entities:
                 score = self._score_triple_for_query(triple, query, seed_entities)
-                if score > 2:
+                if score > 0:
                     expanded[(triple.subject, triple.relation, triple.object)] = triple
         ranked = sorted(
             expanded.values(),
@@ -378,36 +415,127 @@ Return ONLY the JSON."""
         )
         return ranked[:limit]
 
+    def _chunk_select_triples(
+        self, query: str, candidates: Optional[List[Any]] = None
+    ) -> List[Any]:
+        """`chunk` mode: top-k triples ranked by dense similarity, NO graph expansion.
+
+        Ablation baseline analogous to Cognee's chunk-level retriever. Falls back to
+        lexical scoring when the vector index is unavailable.
+        """
+        candidates = candidates if candidates is not None else self.full_kg.triples
+        dense = self._vector_seed_triples(query, candidates, top_k=self.retrieval_config.triple_top_k)
+        if dense:
+            return dense[: self.retrieval_config.focused_limit]
+        scored = sorted(
+            ((self._score_triple_for_query(t, query), t) for t in candidates),
+            key=lambda item: item[0],
+            reverse=True,
+        )
+        return [t for score, t in scored[: self.retrieval_config.focused_limit] if score > 0]
+
+    def _summarize_subgraph(self, query: str, triples: List[Any]) -> str:
+        """Cached LLM summary of a focused subgraph (Graph-Summary mode, item ④)."""
+        cache = getattr(self, "_summary_cache", None)
+        if cache is None:
+            cache = {}
+            self._summary_cache = cache
+        key = (self.domain.domain_id, hash((query, tuple(
+            (t.subject, t.relation, t.object) for t in triples
+        ))))
+        if key not in cache:
+            cache[key] = summarize_subgraph(triples, query, self.llm_config)
+        return cache[key]
+
+    def _select_evidence(
+        self, query: str, candidates: Optional[List[Any]] = None
+    ) -> tuple:
+        """Mode-aware evidence dispatch shared by every expert (base-class method).
+
+        Returns ``(focused_triples, summary_text_or_None)``. The historical modes
+        (hybrid/lexical/dense) and graph_completion return the seed+expansion triples
+        unchanged; chunk bypasses expansion; graph_summary additionally LLM-summarizes
+        a large subgraph. Placed on DomainExpertAgent so FallbackGraphExpert and
+        ActiveExplorerExpert inherit one consistent dispatch.
+        """
+        mode = self.retrieval_config.retrieval_mode
+        if mode == "chunk":
+            triples = self._chunk_select_triples(query, candidates)
+        else:
+            triples = self._query_focused_triples(
+                query, candidates=candidates, limit=self.retrieval_config.focused_limit
+            )
+        summary = None
+        if mode == "graph_summary" and len(triples) > self.retrieval_config.summary_trigger:
+            summary = self._summarize_subgraph(query, triples)
+        return triples, summary
+
     def _compute_coverage_confidence(
         self,
         query: str,
         query_entities: List[str],
+        focused_triples: Optional[List[Any]] = None,
     ) -> Dict[str, float]:
-        entities_in_domain = self.domain.entity_ids
         if not query_entities:
             query_entities = self._extract_query_entities(query)
-        found = sum(1 for entity_id in query_entities if entity_id in entities_in_domain)
-        entity_coverage = found / max(len(query_entities), 1)
 
-        _, domain_triples = self.domain.get_subgraph(self.full_kg)
-        relevant_triples = [
-            triple
-            for triple in domain_triples
-            if any(
-                entity_id.lower() in triple.subject.lower() or entity_id.lower() in triple.object.lower()
-                for entity_id in query_entities
+        if focused_triples is not None:
+            # Coverage based on actually retrieved evidence, not domain connectivity
+            found = sum(
+                1 for entity_id in query_entities
+                if any(
+                    entity_id.lower() in triple.subject.lower()
+                    or entity_id.lower() in triple.object.lower()
+                    for triple in focused_triples
+                )
             )
-        ] if query_entities else domain_triples
-        triple_coverage = min(1.0, len(relevant_triples) / max(len(query_entities), 1))
-        coverage = (entity_coverage + triple_coverage) / 2.0
+            entity_coverage = found / max(len(query_entities), 1)
 
-        if relevant_triples:
-            avg_conf = sum(
-                triple.confidence for triple in relevant_triples if triple.confidence
-            ) / len(relevant_triples)
+            relevant_focused = [
+                triple
+                for triple in focused_triples
+                if any(
+                    entity_id.lower() in triple.subject.lower()
+                    or entity_id.lower() in triple.object.lower()
+                    for entity_id in query_entities
+                )
+            ]
+            triple_coverage = min(1.0, len(relevant_focused) / max(len(query_entities) * 2, 1))
+            coverage = (entity_coverage + triple_coverage) / 2.0
+
+            if relevant_focused:
+                avg_conf = sum(
+                    triple.confidence for triple in relevant_focused if triple.confidence
+                ) / len(relevant_focused)
+            else:
+                avg_conf = 0.0
+            confidence = avg_conf * coverage
         else:
-            avg_conf = 0.0
-        confidence = avg_conf * coverage
+            # Fallback to legacy domain-connectivity metric
+            entities_in_domain = self.domain.entity_ids
+            found = sum(1 for entity_id in query_entities if entity_id in entities_in_domain)
+            entity_coverage = found / max(len(query_entities), 1)
+
+            _, domain_triples = self.domain.get_subgraph(self.full_kg)
+            relevant_triples = [
+                triple
+                for triple in domain_triples
+                if any(
+                    entity_id.lower() in triple.subject.lower()
+                    or entity_id.lower() in triple.object.lower()
+                    for entity_id in query_entities
+                )
+            ] if query_entities else domain_triples
+            triple_coverage = min(1.0, len(relevant_triples) / max(len(query_entities), 1))
+            coverage = (entity_coverage + triple_coverage) / 2.0
+
+            if relevant_triples:
+                avg_conf = sum(
+                    triple.confidence for triple in relevant_triples if triple.confidence
+                ) / len(relevant_triples)
+            else:
+                avg_conf = 0.0
+            confidence = avg_conf * coverage
 
         return {
             "entity_coverage": entity_coverage,
@@ -475,19 +603,28 @@ class FallbackGraphExpert(DomainExpertAgent):
     def answer(self, query: str, context: str = "") -> Dict[str, Any]:
         query_entities = self._extract_query_entities(query)
         evidence_blocks: List[str] = []
+        max_hops = self.retrieval_config.max_hops
 
-        focused_triples = self._query_focused_triples(query, limit=50)
+        focused_triples, subgraph_summary = self._select_evidence(query)
         if focused_triples:
             evidence_blocks.append("QUERY-FOCUSED GRAPH EVIDENCE:")
             for triple in focused_triples:
                 evidence_blocks.append(_format_triple(triple))
+        if subgraph_summary:
+            evidence_blocks.append("SUMMARY OF RELEVANT SUBGRAPH:")
+            evidence_blocks.append(subgraph_summary)
 
         if len(query_entities) >= 2:
             all_paths = []
             for index in range(len(query_entities)):
                 for other in range(index + 1, len(query_entities)):
                     all_paths.extend(
-                        find_paths(self.full_kg, query_entities[index], query_entities[other], max_hops=3)
+                        find_paths(
+                            self.full_kg,
+                            query_entities[index],
+                            query_entities[other],
+                            max_hops=max_hops,
+                        )
                     )
             if all_paths:
                 evidence_blocks.append("QUERY-SPECIFIC PATHS:")
@@ -499,10 +636,12 @@ class FallbackGraphExpert(DomainExpertAgent):
                     evidence_blocks.append("---")
 
         for entity_id in query_entities[:4]:
-            triples = neighbourhood(self.full_kg, entity_id, hops=2)
+            triples = neighbourhood(
+                self.full_kg, entity_id, hops=self.retrieval_config.neighbourhood_hops
+            )
             if triples:
                 evidence_blocks.append(f"LOCAL NEIGHBOURHOOD OF {entity_id}:")
-                for triple in triples[:20]:
+                for triple in triples[: self.retrieval_config.neighbourhood_display]:
                     evidence_blocks.append(
                         f"({triple.subject}) -[{triple.relation}]-> ({triple.object})"
                     )
@@ -517,7 +656,7 @@ GRAPH EVIDENCE:
 {f"Additional context: {context}" if context else ""}
 
 QUERY: {query}
-{ANTI_HEDGE_RIDER}
+{build_rider(self.answer_format)}
 Return JSON:
 {{
     "answer": "Short evidence-grounded answer.",
@@ -564,7 +703,7 @@ Return ONLY the JSON."""
         result["topics_used"] = []
         result["multi_hop_paths"] = "fallback-focused"
 
-        computed = self._compute_coverage_confidence(query, query_entities)
+        computed = self._compute_coverage_confidence(query, query_entities, focused_triples=focused_triples)
         if computed["entity_coverage"] > 0 or computed["triple_coverage"] > 0:
             result["coverage"] = computed["coverage"]
             result["confidence"] = max(result.get("confidence", 0.0), computed["confidence"])
@@ -582,6 +721,7 @@ class QAOrchestrator:
         governed_kg: Optional["GovernedKnowledgeGraph"] = None,
         vector_store: Optional[Any] = None,
         retrieval_config: Optional[RetrievalConfig] = None,
+        answer_format: Optional[AnswerFormatConfig] = None,
     ):
         if governed_kg is not None:
             org_chart = governed_kg.org_chart
@@ -593,6 +733,7 @@ class QAOrchestrator:
         self.full_kg = full_kg
         self.llm_config = llm_config or LLMConfig()
         self.retrieval_config = retrieval_config or RetrievalConfig()
+        self.answer_format = answer_format or AnswerFormatConfig()
         self.max_routed_domains = min(4, max(1, len(org_chart.domains)))
 
         # Build the vector store once for the whole QA session when hybrid
@@ -618,6 +759,7 @@ class QAOrchestrator:
                 llm_config=self.llm_config,
                 vector_store=self.vector_store,
                 retrieval_config=self.retrieval_config,
+                answer_format=self.answer_format,
             )
             for domain in org_chart.domains
         }
@@ -636,6 +778,7 @@ class QAOrchestrator:
             llm_config=self.llm_config,
             vector_store=self.vector_store,
             retrieval_config=self.retrieval_config,
+            answer_format=self.answer_format,
         )
 
         # Optional hook: called as progress_callback(stage: str, info: dict)
@@ -1140,7 +1283,7 @@ DOMAIN EXPERT RESPONSES:
 {chr(10).join(response_texts)}
 
 {f"ADDITIONAL GRAPH CONTEXT (treat triples here as primary evidence — they are graph facts retrieved for this question, equal in authority to the domain experts above):{chr(10)}{cross_domain_context}" if cross_domain_context else ""}
-{ANTI_HEDGE_RIDER}
+{build_rider(self.answer_format)}
 RULES:
 - Do NOT mention domain experts, routing, confidence scores, or out-of-scope notes in the answer text.
 - Do NOT say "the knowledge graph says" or similar meta-commentary.
@@ -1157,8 +1300,8 @@ RULES:
 - Prefer the shortest answer that fully covers the supported facts.
 - If evidence is genuinely missing (no expert evidence AND no relevant triple in additional graph context), state the limitation briefly and stop.
 - Provide TWO answer forms:
-  * "answer": evidence-grounded prose response (1-3 sentences max)
-  * "short_answer": the MINIMAL span (1-5 words) that directly answers the question. For a person, the name only. For a place, the place name only. For a date, the date only. For yes/no questions, "yes" or "no". If the evidence does not support an answer, set short_answer to "".
+  * "answer": evidence-grounded prose response (1-{self.answer_format.max_sentences} sentences max)
+  * "short_answer": {self.answer_format.short_answer_instruction()} If the evidence does not support an answer, set short_answer to "".
 
 Examples of short_answer form:
 - Q: "In which county is X located?" → short_answer: "Randall County"

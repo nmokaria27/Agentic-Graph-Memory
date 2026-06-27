@@ -120,6 +120,67 @@ class LLMConfig:
 
 
 @dataclass
+class AnswerFormatConfig:
+    """
+    Controls answer verbosity / short-answer span shape during QA synthesis.
+
+    This is deliberately GENERIC — it carries no benchmark identity. Named,
+    benchmark-specific profiles (e.g. terse-for-LoComo, exact-span-for-MAB) live in
+    the evaluation layer (evaluation/answer_format_profiles.py) and are injected as an
+    AnswerFormatConfig instance. Core QA code only ever consumes this object, never a
+    benchmark name. Defaults reproduce the historical prompt wording.
+
+    Attributes:
+        max_sentences: cap on the prose answer length.
+        short_answer_words: cap on the minimal short-answer span.
+        style: shape of the short answer — "minimal_span" (name/place/date only),
+            "short_dry" (terse phrase), or "verbose" (full sentence allowed).
+        commit_mode: when True, inject the anti-hedge rider so the model commits to a
+            best-effort span instead of refusing. Defaults to the KGQA_COMMIT_MODE env.
+    """
+
+    max_sentences: int = 3
+    short_answer_words: int = 5
+    style: str = "minimal_span"
+    commit_mode: bool = field(
+        default_factory=lambda: os.getenv("KGQA_COMMIT_MODE") == "1"
+    )
+
+    _VALID_STYLES = {"minimal_span", "short_dry", "verbose"}
+
+    def __post_init__(self) -> None:
+        if self.style not in self._VALID_STYLES:
+            raise ValueError(
+                f"Unknown answer style {self.style!r}; expected one of "
+                f"{sorted(self._VALID_STYLES)}"
+            )
+
+    def short_answer_instruction(self) -> str:
+        """Style-specific wording for the short_answer span, sized by short_answer_words.
+
+        Consumed by the QA synthesis prompts so `style` actually changes prompt shape
+        (minimal_span ≠ short_dry ≠ verbose), instead of being an inert field.
+        """
+        words = self.short_answer_words
+        if self.style == "minimal_span":
+            return (
+                f"the MINIMAL span (1-{words} words) that directly answers the question. "
+                "For a person, the name only. For a place, the place name only. For a "
+                'date, the date only. For yes/no questions, "yes" or "no".'
+            )
+        if self.style == "short_dry":
+            return (
+                f"a short, dry phrase (1-{words} words) — terse, no full sentence and "
+                'no surrounding words. For yes/no questions, "yes" or "no".'
+            )
+        # verbose
+        return (
+            f"a concise answer (up to {words} words); a short sentence is acceptable if "
+            'it stays under the word limit. For yes/no questions, "yes" or "no".'
+        )
+
+
+@dataclass
 class RetrievalConfig:
     """
     Configuration for hybrid (graph + vector) retrieval.
@@ -143,10 +204,42 @@ class RetrievalConfig:
     resolution_min_score: float = 0.75
     relation_schema_min_score: float = 0.85
 
+    # Retrieval shaping knobs (promoted from hardcoded literals so they can be tuned).
+    # Defaults reproduce the previous in-code constants exactly — zero behaviour change.
+    seed_cap: int = 40  # max seed triples before graph expansion
+    lexical_seed_k: int = 40  # top lexical-scored triples kept as seeds
+    focused_limit: int = 60  # final query-focused triples returned to the prompt
+    max_hops: int = 3  # BFS depth for multi-hop path finding
+    neighbourhood_hops: int = 3  # hops for single-entity neighbourhood expansion
+    neighbourhood_display: int = 50  # max neighbourhood triples rendered into context
+    summary_trigger: int = 40  # subgraph size above which graph_summary mode summarizes
+
+    # Retrieval strategies that branch the evidence-assembly path. lexical/dense/hybrid
+    # are the historical fused modes; graph_completion/graph_summary/chunk are explicit
+    # retriever switches (see DomainExpertAgent._select_evidence).
+    _VALID_MODES = {
+        "lexical",
+        "dense",
+        "hybrid",
+        "graph_completion",
+        "graph_summary",
+        "chunk",
+    }
+
+    def __post_init__(self) -> None:
+        self.retrieval_mode = (self.retrieval_mode or "hybrid").lower()
+        if self.retrieval_mode not in self._VALID_MODES:
+            raise ValueError(
+                f"Unknown retrieval_mode {self.retrieval_mode!r}; "
+                f"expected one of {sorted(self._VALID_MODES)}"
+            )
+
     @property
     def use_vectors(self) -> bool:
-        return self.retrieval_mode in {"dense", "hybrid"}
+        # All modes except pure lexical rely on the vector index.
+        return self.retrieval_mode != "lexical"
 
     @property
     def use_lexical(self) -> bool:
-        return self.retrieval_mode in {"lexical", "hybrid"}
+        # Pure dense skips lexical seeding; every other mode keeps a hybrid lexical base.
+        return self.retrieval_mode != "dense"

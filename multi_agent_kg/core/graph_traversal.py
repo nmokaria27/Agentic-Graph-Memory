@@ -110,8 +110,56 @@ def neighbourhood(kg: KnowledgeGraph, entity_id: str, hops: int = 2) -> List[Tri
     return collected
 
 
+def summarize_subgraph(triples, query, llm_config) -> str:
+    """LLM-compress a list of triples into query-relevant facts (Graph-Summary mode).
+
+    Used by the ``graph_summary`` retriever when a focused subgraph is large: the
+    summary replaces the raw triple dump in the prompt, cutting tokens while keeping
+    the multi-hop facts that matter for ``query``. On any failure (e.g. LLM down) it
+    falls back to a plain rendering so retrieval never hard-fails.
+    """
+    rendered = "\n".join(
+        f"({t.subject}) -[{t.relation}]-> ({t.object})" for t in triples
+    )
+    if not rendered:
+        return ""
+
+    from multi_agent_kg.llm.openai_client import chat_completion_json
+
+    prompt = (
+        "Compress the following knowledge-graph triples into a short, dense list of "
+        "facts that are relevant to the QUESTION. Preserve entity names and relations "
+        "verbatim. Keep any fact that could be a step in a multi-hop chain answering "
+        "the question. Drop irrelevant triples. Do not add information.\n\n"
+        f"QUESTION: {query}\n\nTRIPLES:\n{rendered}\n\n"
+        'Return JSON: {"facts": ["fact 1", "fact 2", ...]}'
+    )
+    try:
+        result = chat_completion_json(
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You compress knowledge-graph evidence for question answering. "
+                        "Return only valid JSON."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            model=llm_config.model,
+            temperature=0.1,
+        )
+        facts = result.get("facts") if isinstance(result, dict) else None
+        if facts:
+            return "\n".join(f"- {fact}" for fact in facts)
+    except Exception:
+        pass
+    return rendered
+
+
 __all__ = [
     "find_paths",
     "paths_to_text",
     "neighbourhood",
+    "summarize_subgraph",
 ]

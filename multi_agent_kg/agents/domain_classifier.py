@@ -94,7 +94,6 @@ Respond with JSON:
     "extraction_parameters": {{
         "complexity": "<low|medium|high>",
         "knowledge_density": "<sparse|moderate|dense>",
-        "recommended_chunk_size": <number of tokens>,
         "requires_coreference": <true|false>,
         "has_temporal_relations": <true|false>,
         "has_hierarchical_entities": <true|false>
@@ -423,7 +422,6 @@ class DomainClassifier(BaseAgent):
             analysis["extraction_parameters"] = {
                 "complexity": "medium",
                 "knowledge_density": "moderate",
-                "recommended_chunk_size": 512,
                 "requires_coreference": True,
                 "has_temporal_relations": False,
                 "has_hierarchical_entities": False,
@@ -543,7 +541,6 @@ class DomainClassifier(BaseAgent):
             "extraction_parameters": {
                 "complexity": "medium",
                 "knowledge_density": "moderate",
-                "recommended_chunk_size": 512,
                 "requires_coreference": True,
                 "has_temporal_relations": False,
                 "has_hierarchical_entities": False,
@@ -633,7 +630,6 @@ class DomainClassifier(BaseAgent):
             "extraction_parameters": {
                 "complexity": "medium",
                 "knowledge_density": "moderate",
-                "recommended_chunk_size": 512,
                 "requires_coreference": True,
                 "has_temporal_relations": False,
                 "has_hierarchical_entities": False,
