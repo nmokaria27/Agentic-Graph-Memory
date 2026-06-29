@@ -255,12 +255,14 @@ class EvidenceLinker(BaseAgent):
         avg_triple_size = 100  # Approximate tokens per triple with evidence
         prompt_overhead = 500  # Base prompt tokens
         model_input_limit = 16000  # Conservative context window estimate
-        model_output_limit = 4096  # max_tokens for response
+        text_token_budget = min(len(text), 4000) // 4  # Only text[:4000] is sent
         
         # Calculate how many triples can fit while leaving room for output
-        available_for_data = model_input_limit - prompt_overhead - len(text) // 4
-        # INCREASED MAX BATCH SIZE to 100 for better throughput with large models
-        batch_size = max(3, min(100, available_for_data // avg_triple_size))
+        available_for_data = model_input_limit - prompt_overhead - text_token_budget
+        # Cap at 50: larger batches mean fewer API calls, but output must fit
+        # in max_tokens. Each linked triple response is ~200-300 tokens, so
+        # 50 triples × 250 tokens = 12,500 tokens (within inflated thinking-model budget).
+        batch_size = max(3, min(50, available_for_data // avg_triple_size))
         all_linked = []
         
         total_batches = (len(triples) + batch_size - 1) // batch_size
@@ -292,7 +294,7 @@ class EvidenceLinker(BaseAgent):
                 prompt=prompt,
                 system_prompt="You are an expert at finding evidence for claims. Be precise about source sentences.",
                 tier=ModelTier.MEDIUM,
-                max_tokens=4096,
+                max_tokens=8192,
             )
             
             linked = (

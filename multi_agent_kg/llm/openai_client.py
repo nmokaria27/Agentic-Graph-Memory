@@ -154,6 +154,7 @@ def _resolve_model(model: str) -> str:
 #            decoding for them and rely on our robust _extract_json parser.
 _THINKING_MODEL_PATTERNS = (
     "gemma4",       # Google Gemma 4 family (gemma4:12b, gemma4:27b, gemma4:31b)
+    "gemma-4",      # vLLM HuggingFace naming (google/gemma-4-31B-it)
     "deepseek-r1",  # DeepSeek R1 family
     "deepseek-v4",  # DeepSeek V4 family (v4-pro, v4-flash) — CoT prose before JSON;
                     # disable json_object mode and let _extract_json dig out the JSON
@@ -574,12 +575,15 @@ def chat_completion_json(
     for attempt in range(1, max_retries + 1):
         # Use json_object mode only when it won't conflict with model behavior:
         # - Always for OpenAI (native support)
-        # - Never for thinking models on Ollama or VLLM (may conflict with reasoning tokens)
-        # - Only on first attempt for non-thinking Ollama/VLLM models (fallback on retry)
+        # - For thinking models on VLLM: try on first attempt, fall back if empty
+        # - Never for thinking models on Ollama (GBNF blocks thinking tokens)
+        # - First attempt only for non-thinking Ollama/VLLM models
         if LLM_BACKEND == "openai":
             use_json_mode = True
-        elif _is_thinking_model:
+        elif _is_thinking_model and LLM_BACKEND == "ollama":
             use_json_mode = False
+        elif _is_thinking_model and LLM_BACKEND == "vllm":
+            use_json_mode = (attempt == 1)
         else:
             use_json_mode = (attempt == 1)
 

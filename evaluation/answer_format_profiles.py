@@ -33,11 +33,25 @@ def _mab_substring() -> AnswerFormatConfig:
     )
 
 
+def _beam() -> AnswerFormatConfig:
+    # BEAM uses LLM-as-judge with a rubric — answers are scored for semantic
+    # compliance, not token F1. Allow fuller prose so the judge has enough
+    # content to evaluate against each rubric criterion. Avoid bullet lists
+    # which can fragment reasoning that the judge needs to read holistically.
+    return AnswerFormatConfig(
+        max_sentences=5,
+        short_answer_words=30,
+        style="verbose",
+        commit_mode=False,
+    )
+
+
 # Factories (not instances) so each call re-reads env defaults and stays independent.
 PROFILES = {
     "default": _default,
     "locomo": _locomo,
     "mab_substring": _mab_substring,
+    "beam": _beam,
 }
 
 

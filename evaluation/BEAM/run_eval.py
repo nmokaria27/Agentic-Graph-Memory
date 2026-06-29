@@ -174,6 +174,8 @@ def build_kg(
     max_context_chars: Optional[int] = None,
     chunk_size: Optional[int] = None,
     chunk_overlap: int = 150,
+    checkpoint_dir: Optional[str] = None,
+    resume: bool = False,
 ) -> GovernedKnowledgeGraph:
     from multi_agent_kg.core import DeliberativeOrchestrator
     from multi_agent_kg.agents.base import ModelTier
@@ -202,6 +204,8 @@ def build_kg(
         model_tiers=model_tiers,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
+        checkpoint_dir=checkpoint_dir,
+        resume=resume,
     )
     orchestrator.process_corpus([document])
     governed_kg = orchestrator.governed_kg
@@ -315,6 +319,8 @@ def run_beam_eval(
     save_kg_dir: Optional[Path] = None,
     load_kg_dir: Optional[Path] = None,
     answer_format=None,
+    checkpoint_dir: Optional[str] = None,
+    resume: bool = False,
 ) -> Dict[str, Any]:
     """
     Run the BEAM answer-generation phase.
@@ -346,6 +352,7 @@ def run_beam_eval(
                 row, conv_id, llm_config, retrieval_config, governance_mode,
                 max_questions, max_context_chars, chunk_size, chunk_overlap,
                 save_kg_dir, load_kg_dir, answer_format,
+                checkpoint_dir=checkpoint_dir, resume=resume,
             )
         except Exception as exc:
             # One bad conversation must not abort an overnight run; log, record a
@@ -395,6 +402,8 @@ def _process_chat(
     save_kg_dir: Optional[Path],
     load_kg_dir: Optional[Path],
     answer_format,
+    checkpoint_dir: Optional[str] = None,
+    resume: bool = False,
 ) -> Dict[str, Any]:
     """Build (or load) one chat's KG and answer its probing questions."""
     # --- KG build or load ---
@@ -410,6 +419,7 @@ def _process_chat(
         governed_kg = build_kg(
             row, llm_config, retrieval_config, governance_mode,
             max_context_chars, chunk_size, chunk_overlap,
+            checkpoint_dir=checkpoint_dir, resume=resume,
         )
         stats = governed_kg.get_stats()
         logger.info("  Built: %d entities, %d triples in %.0fs",
@@ -557,6 +567,14 @@ def main() -> None:
         default=None,
         help="Output JSON path for responses (default: evaluation/results/beam_{tier}_responses.json)"
     )
+    parser.add_argument(
+        "--checkpoint-dir", default=None,
+        help="Directory for per-stage pipeline checkpoints (enables resume)"
+    )
+    parser.add_argument(
+        "--resume", action="store_true", default=False,
+        help="Resume from checkpoints if available"
+    )
     args = parser.parse_args()
 
     output_path = Path(args.output) if args.output else \
@@ -599,6 +617,8 @@ def main() -> None:
         save_kg_dir=save_kg_dir,
         load_kg_dir=load_kg_dir,
         answer_format=answer_format,
+        checkpoint_dir=args.checkpoint_dir,
+        resume=args.resume,
     )
 
     print(f"\n{'='*60}")
