@@ -67,9 +67,35 @@ class JudgeLLM:
 
     def __init__(self, model: Optional[str] = None):
         from multi_agent_kg.llm.openai_client import client, DEFAULT_CHAT_MODEL
-        self._client = client
         self._model = model or os.environ.get("BEAM_JUDGE_MODEL", DEFAULT_CHAT_MODEL)
         logger.info("Judge model: %s", self._model)
+
+        # If the judge model is on Fireworks, use a Fireworks client instead of
+        # the default vLLM/ollama client.
+        if self._model.startswith("accounts/fireworks/"):
+            fw_key = os.environ.get("EMBEDDING_API_KEY") or os.environ.get("FIREWORKS_API_KEY", "")
+            if not fw_key:
+                # Try reading from ~/.fireworks_api_key
+                import pathlib
+                key_file = pathlib.Path.home() / ".fireworks_api_key"
+                if key_file.exists():
+                    fw_key = key_file.read_text().strip()
+            if not fw_key:
+                raise RuntimeError(
+                    "Judge model is on Fireworks but no API key found. "
+                    "Set EMBEDDING_API_KEY or FIREWORKS_API_KEY in .env, "
+                    "or save key to ~/.fireworks_api_key"
+                )
+            from openai import OpenAI as _OpenAI
+            self._client = _OpenAI(
+                base_url="https://api.fireworks.ai/inference/v1",
+                api_key=fw_key,
+                timeout=120,
+            )
+            logger.info("Judge client: Fireworks (api.fireworks.ai)")
+        else:
+            self._client = client
+            logger.info("Judge client: %s", os.getenv("LLM_BACKEND", "ollama"))
 
     def invoke(self, prompt: str, max_retries: int = 5) -> _FakeContent:
         """Call the judge model with exponential backoff."""
