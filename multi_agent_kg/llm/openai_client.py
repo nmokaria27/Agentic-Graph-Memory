@@ -7,13 +7,16 @@ Backend selection:
 - Default: Ollama at http://localhost:11434 (via SSH tunnel to GPU)
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Type, TypeVar
 from openai import OpenAI
+from pydantic import BaseModel, ValidationError
 import os
 import json
 import re
 import time
 from dotenv import load_dotenv
+
+T = TypeVar("T", bound=BaseModel)
 
 load_dotenv()
 
@@ -420,7 +423,11 @@ def chat_completion(
             # tokens on hidden <think> blocks. Inflate max_tokens so the visible
             # JSON output isn't truncated after reasoning consumes the budget.
             # This applies to both Ollama and VLLM backends.
-            params["max_tokens"] = max(max_tokens * 3, 8192)
+            _max_ctx = int(os.getenv("VLLM_MAX_MODEL_LEN", "32768"))
+            _inflated = max(max_tokens * 3, 8192)
+            # Cap so prompt + max_tokens stays under the context window with a
+            # 2048-token safety margin for tokenization overhead.
+            params["max_tokens"] = min(_inflated, _max_ctx - 2048)
         else:
             params["max_tokens"] = max_tokens
     # Ollama's OpenAI-compatible endpoint supports response_format for JSON
@@ -508,6 +515,16 @@ def chat_completion(
                 )
                 time.sleep(base_sleep)
                 continue
+            if any(marker in err_lower for marker in ("context length", "maximum context", "too long", "reduce the length")):
+                _cur = params.get("max_tokens") or params.get("max_completion_tokens")
+                if _cur and _cur > 1024:
+                    _reduced = max(_cur // 2, 1024)
+                    if "max_tokens" in params:
+                        params["max_tokens"] = _reduced
+                    if "max_completion_tokens" in params:
+                        params["max_completion_tokens"] = _reduced
+                    print(f"  WARNING: context-length overflow ({resolved_model}); reducing max_tokens {_cur} -> {_reduced} and retrying")
+                    continue
             if "response_format" in params and any(
                 marker in err_lower
                 for marker in ("response_format", "unsupported", "unknown field", "invalid parameter")
@@ -626,6 +643,67 @@ def chat_completion_json(
         return {"entity_groups": []}
     else:
         return {}
+
+
+def chat_completion_typed(
+    messages: List[Dict[str, str]],
+    schema: Type[T],
+    *,
+    max_validation_retries: int = 2,
+    model: str = DEFAULT_CHAT_MODEL,
+    temperature: float = 0.2,
+    max_tokens: Optional[int] = None,
+    **kwargs: Any,
+) -> T:
+    """Call the LLM, parse JSON, and validate it against a Pydantic ``schema``.
+
+    Sits on top of :func:`chat_completion_json` (keeping all of its robust
+    ``_extract_json`` / json_object / thinking-model handling) and adds schema
+    validation. Lenient policy: on a :class:`ValidationError`, re-prompt the
+    model with the error text and retry up to ``max_validation_retries`` times,
+    then fall back to an empty, well-typed ``schema()`` instance — mirroring the
+    empty-dict fallback that :func:`chat_completion_json` already returns.
+
+    ``response_format`` is intentionally not forced here: several backends
+    (Ollama GBNF, thinking models) break on constrained decoding, and Pydantic
+    is the post-hoc safety net regardless of whether the backend honored a
+    schema. Callers may still pass ``response_format`` through ``kwargs``.
+    """
+    convo: List[Dict[str, str]] = list(messages)
+    last_error: Optional[ValidationError] = None
+
+    for attempt in range(1, max_validation_retries + 2):
+        raw = chat_completion_json(
+            convo,
+            model=model,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            **kwargs,
+        )
+        try:
+            return schema.model_validate(raw)
+        except ValidationError as err:
+            last_error = err
+            if attempt <= max_validation_retries:
+                print(
+                    f"  WARNING: {schema.__name__} validation failed "
+                    f"(attempt {attempt}/{max_validation_retries}); re-prompting..."
+                )
+                convo = convo + [
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Your previous JSON failed validation: {err}. "
+                            "Resend ONLY corrected JSON matching the requested schema."
+                        ),
+                    }
+                ]
+
+    print(
+        f"  WARNING: {schema.__name__} validation failed after retries; "
+        f"returning empty result. Last error: {last_error}"
+    )
+    return schema()
 
 
 # ── Embeddings ────────────────────────────────────────────────────────

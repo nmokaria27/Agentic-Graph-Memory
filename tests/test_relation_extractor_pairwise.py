@@ -62,6 +62,33 @@ def test_dedupe_triples_prefers_higher_confidence() -> None:
     assert deduped[0]["confidence"] == 0.9
 
 
+def test_dedupe_triples_drops_degenerate_endpoint_pairs() -> None:
+    extractor = _make_extractor(enable_open_world=True)
+    triples = [
+        {
+            "subject": "Apple Watch",
+            "subject_id": "apple_watch",
+            "relation": "RELATED_TO",
+            "object": "Apple Watch Series",
+            "object_id": "apple_watch_series",
+            "confidence": 0.9,
+        },
+        {
+            "subject": "Apple Watch Series",
+            "subject_id": "apple_watch_series",
+            "relation": "PART_OF",
+            "object": "Apple Watch",
+            "object_id": "apple_watch",
+            "confidence": 0.9,
+        },
+    ]
+
+    deduped = extractor._dedupe_triples(triples)
+
+    assert len(deduped) == 1
+    assert deduped[0]["relation"] == "PART_OF"
+
+
 def test_fixed_schema_confidence_floor_filters_weak_triples() -> None:
     extractor = _make_extractor(
         enable_open_world=False,
@@ -591,3 +618,42 @@ def test_gleaning_pass_filters_to_allowed_fixed_schema_relations(monkeypatch) ->
     assert len(triples) == 1
     assert triples[0]["relation"] == "Used-for"
     assert triples[0]["metadata"]["gleaned"] is True
+
+
+def test_coerce_llm_items_with_model_preserves_yield_and_extras() -> None:
+    # The yield guarantee: routing items through PredictionOut/TripleOut must
+    # never drop a dict item the pipeline previously kept, and must preserve
+    # any extra keys (e.g. metadata, sentence_index) read downstream.
+    from multi_agent_kg.agents.relation_extractor import _coerce_llm_items
+    from multi_agent_kg.schemas_llm import PredictionOut, TripleOut
+
+    raw = {
+        "predictions": [
+            {"pair_index": 0, "relation": "USED-FOR", "confidence": "0.8", "x": 1},
+            {"pair_index": "1", "relation": "NONE"},          # NONE kept, not dropped
+            {"relation": "PART-OF", "sentence_index": 9},     # extra preserved
+        ]
+    }
+    out = _coerce_llm_items(raw, ("predictions",), PredictionOut)
+    assert len(out) == 3                       # no item dropped
+    assert out[0]["confidence"] == 0.8         # coerced
+    assert out[0]["x"] == 1                     # extra kept
+    assert out[1]["relation"] == "NONE"        # business filter is downstream
+    assert out[2]["sentence_index"] == 9
+
+    triples_raw = [{"subject": "a", "object": "b", "relation_type": "treats"}]
+    tout = _coerce_llm_items({"triples": triples_raw}, ("triples",), TripleOut)
+    assert len(tout) == 1
+    assert tout[0]["relation_type"] == "treats"  # alias survives for line-1923 fallback
+
+
+def test_coerce_llm_items_list_crash_path_safe_with_model() -> None:
+    # The original line-364 crash: LLM returns a bare list. Must still flatten.
+    from multi_agent_kg.agents.relation_extractor import _coerce_llm_items
+    from multi_agent_kg.schemas_llm import PredictionOut
+
+    out = _coerce_llm_items(
+        [{"relation": "USED-FOR", "confidence": 0.7}], ("predictions",), PredictionOut
+    )
+    assert len(out) == 1
+    assert out[0]["relation"] == "USED-FOR"

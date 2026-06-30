@@ -549,6 +549,113 @@ def evaluate_triples_fuzzy(
     return prf, halluc
 
 
+GENERIC_ENTITY_SURFACES = {
+    "the study", "this study", "the results", "results", "the method",
+    "this method", "the system", "this system", "the approach", "this approach",
+    "the data", "data", "analysis", "relationship", "association", "support",
+    "community", "love", "acceptance", "understanding", "change", "challenges",
+}
+
+
+def _surface_contains(left: str, right: str) -> bool:
+    left_norm = _normalise_text(left).replace("_", " ").replace("-", " ")
+    right_norm = _normalise_text(right).replace("_", " ").replace("-", " ")
+    left_norm = " ".join(left_norm.split())
+    right_norm = " ".join(right_norm.split())
+    if not left_norm or not right_norm or left_norm == right_norm:
+        return False
+    shorter, longer = (left_norm, right_norm) if len(left_norm.split()) <= len(right_norm.split()) else (right_norm, left_norm)
+    if len(shorter.split()) < 2:
+        return False
+    return re.search(rf"(?<!\w){re.escape(shorter)}(?!\w)", longer) is not None
+
+
+def compute_degeneracy_rate(triples: List[Dict[str, Any]]) -> Dict[str, Any]:
+    by_type: Dict[str, int] = defaultdict(int)
+    examples: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    degenerate_count = 0
+    for triple in triples:
+        relation = _normalise_text(str(triple.get("relation", ""))).replace("-", "_").replace(" ", "_")
+        variants = _triple_surface_variants(triple)
+        flags: List[str] = []
+        for subject, obj in variants:
+            subj = _normalise_text(str(subject))
+            obj_norm = _normalise_text(str(obj))
+            if subj and obj_norm and subj == obj_norm:
+                flags.append("SELF_REF")
+            elif _surface_contains(subj, obj_norm):
+                flags.append("CONTAINMENT")
+            if subj in GENERIC_ENTITY_SURFACES or obj_norm in GENERIC_ENTITY_SURFACES:
+                flags.append("GENERIC_NODE")
+            if relation and (
+                relation.replace("_", " ") == subj
+                or relation.replace("_", " ") == obj_norm
+            ):
+                flags.append("TAUTOLOGY")
+        unique_flags = sorted(set(flags))
+        if unique_flags:
+            degenerate_count += 1
+        for flag in unique_flags:
+            by_type[flag] += 1
+            if len(examples[flag]) < 5:
+                examples[flag].append(triple)
+    return {
+        "degeneracy_rate": degenerate_count / len(triples) if triples else 0.0,
+        "degenerate_count": degenerate_count,
+        "by_type": dict(by_type),
+        "examples": dict(examples),
+    }
+
+
+def compute_rogue_entity_stats(
+    entities: List[Dict[str, Any]],
+    triples: Optional[List[Dict[str, Any]]] = None,
+) -> Dict[str, Any]:
+    connected: Set[str] = set()
+    for triple in triples or []:
+        metadata = triple.get("metadata", {}) or {}
+        for value in (
+            triple.get("subject", ""),
+            triple.get("object", ""),
+            metadata.get("original_subject", ""),
+            metadata.get("original_object", ""),
+        ):
+            if value:
+                connected.add(str(value))
+                connected.add(_normalise_text(str(value)))
+    by_type: Dict[str, int] = defaultdict(int)
+    examples: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
+    rogue_count = 0
+    for entity in entities:
+        surface = _normalise_text(_entity_surface_text(entity))
+        entity_id = str(entity.get("id", ""))
+        entity_keys = {entity_id, _normalise_text(entity_id), surface}
+        for label in entity.get("labels", []) or []:
+            entity_keys.add(str(label))
+            entity_keys.add(_normalise_text(str(label)))
+        etype = str(entity.get("type", "")).upper()
+        metadata = entity.get("metadata", {}) or {}
+        flags: List[str] = []
+        if etype == "UNRESOLVED" or metadata.get("auto_created"):
+            flags.append("UNRESOLVED")
+        if surface in GENERIC_ENTITY_SURFACES:
+            flags.append("GENERIC_ENTITY")
+        if triples is not None and not (entity_keys & connected):
+            flags.append("ORPHAN_ENTITY")
+        if flags:
+            rogue_count += 1
+        for flag in flags:
+            by_type[flag] += 1
+            if len(examples[flag]) < 5:
+                examples[flag].append(entity)
+    return {
+        "rogue_entity_rate": rogue_count / len(entities) if entities else 0.0,
+        "rogue_entity_count": rogue_count,
+        "by_type": dict(by_type),
+        "examples": dict(examples),
+    }
+
+
 def evaluate_triples_mapped(
     gold_triples: List[Dict[str, Any]],
     pred_triples: List[Dict[str, Any]],
@@ -630,6 +737,8 @@ def evaluate_corpus(
     tri_halluc_count = 0
     docs_evaluated = 0
     docs_missing = 0
+    all_pred_entities: List[Dict[str, Any]] = []
+    all_pred_triples: List[Dict[str, Any]] = []
 
     for gdoc in gold_docs:
         doc_key = gdoc["doc_key"]
@@ -656,6 +765,8 @@ def evaluate_corpus(
         p_trips = pred.get("triples", [])
         total_pred_ents += len(p_ents)
         total_pred_trips += len(p_trips)
+        all_pred_entities.extend(p_ents)
+        all_pred_triples.extend(p_trips)
 
         # Entity strict (raw types)
         es, es_pt, ta, eh = evaluate_entities_strict(g_ents, p_ents)
@@ -731,6 +842,8 @@ def evaluate_corpus(
         "triple_hallucination_rate": (
             tri_halluc_count / total_pred_trips if total_pred_trips else 0.0
         ),
+        "triple_degeneracy": compute_degeneracy_rate(all_pred_triples),
+        "rogue_entities": compute_rogue_entity_stats(all_pred_entities, all_pred_triples),
     }
 
 
@@ -766,6 +879,11 @@ def print_report(metrics: Dict[str, Any]) -> None:
         print(f"  Strict (mapped types):  {esm}")
         print(f"  Type accuracy (mapped): {metrics.get('entity_type_accuracy_mapped', 0):.3f}")
     print(f"  Halluc. rate:   {metrics['entity_hallucination_rate']:.3f}")
+    if "rogue_entities" in metrics:
+        rogue = metrics["rogue_entities"]
+        print(f"  Rogue rate:     {rogue.get('rogue_entity_rate', 0):.3f}")
+        if rogue.get("by_type"):
+            print(f"  Rogue types:    {rogue['by_type']}")
     print()
 
     per_type = metrics["entity_per_type"]
@@ -788,6 +906,11 @@ def print_report(metrics: Dict[str, Any]) -> None:
         tm: PRF = metrics["triple_mapped"]
         print(f"  Mapped match:   {tm}")
     print(f"  Halluc. rate:   {metrics['triple_hallucination_rate']:.3f}")
+    if "triple_degeneracy" in metrics:
+        degeneracy = metrics["triple_degeneracy"]
+        print(f"  Degenerate rate:{degeneracy.get('degeneracy_rate', 0):.3f}")
+        if degeneracy.get("by_type"):
+            print(f"  Degenerate types: {degeneracy['by_type']}")
     print()
 
     per_rel = metrics["triple_per_relation"]

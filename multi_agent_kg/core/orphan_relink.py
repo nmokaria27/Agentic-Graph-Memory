@@ -15,6 +15,7 @@ governance routing, confidence policies, and the audit log apply unchanged.
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Set
+import re
 
 from multi_agent_kg.core.config import LLMConfig, RetrievalConfig
 from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
@@ -101,6 +102,47 @@ def _catalog(entities: List[Entity]) -> str:
     )
 
 
+def _normalize_surface(text: str) -> str:
+    return " ".join(
+        str(text)
+        .strip()
+        .lower()
+        .replace("_", " ")
+        .replace("-", " ")
+        .split()
+    )
+
+
+def _degenerate_pair(subject: str, obj: str, relation: str) -> bool:
+    subj = _normalize_surface(subject)
+    obj_norm = _normalize_surface(obj)
+    if not subj or not obj_norm:
+        return True
+    if subj == obj_norm:
+        return True
+    subj_tokens = subj.split()
+    obj_tokens = obj_norm.split()
+    shorter, longer = (subj, obj_norm) if len(subj_tokens) <= len(obj_tokens) else (obj_norm, subj)
+    if len(shorter.split()) < 2:
+        return False
+    relation_norm = relation.strip().upper().replace("-", "_").replace(" ", "_")
+    if relation_norm in {"HYPONYM_OF", "SUBTYPE_OF", "TYPE_OF", "INSTANCE_OF", "PART_OF", "IS_PART_OF", "COMPONENT_OF"}:
+        return False
+    return re.search(rf"(?<!\w){re.escape(shorter)}(?!\w)", longer) is not None
+
+
+def _degenerate_triple(triple: Dict[str, Any], kg_entities: Dict[str, Entity]) -> bool:
+    subject = str(triple.get("subject_id") or "").strip()
+    obj = str(triple.get("object_id") or "").strip()
+    if subject == obj:
+        return True
+    subject_entity = kg_entities.get(subject)
+    object_entity = kg_entities.get(obj)
+    subject_text = subject_entity.labels[0] if subject_entity and subject_entity.labels else subject
+    object_text = object_entity.labels[0] if object_entity and object_entity.labels else obj
+    return _degenerate_pair(subject_text, object_text, str(triple.get("relation") or ""))
+
+
 def _candidate_partners(
     orphan: Entity,
     governed_kg: GovernedKnowledgeGraph,
@@ -172,20 +214,25 @@ def relink_orphans(
     orphans = kg.get_orphan_entities()
     if max_orphans is not None:
         orphans = orphans[:max_orphans]
+    relinkable_orphans = [
+        orphan for orphan in orphans
+        if (orphan.type or "").upper() not in VALUE_LIKE_TYPES
+    ]
     stats: Dict[str, Any] = {
         "orphans_before": len(orphans),
         "llm_calls": 0,
         "triples_proposed": 0,
         "triples_committed": 0,
         "orphans_skipped_no_text": 0,
+        "orphans_skipped_value_like": len(orphans) - len(relinkable_orphans),
     }
-    if not orphans:
-        stats["orphans_after"] = 0
+    if not relinkable_orphans:
+        stats["orphans_after"] = len(kg.get_orphan_entities())
         return stats
 
     # Group orphans by primary source segment (shared context per LLM call).
     groups: Dict[str, List[Entity]] = {}
-    for orphan in orphans:
+    for orphan in relinkable_orphans:
         segments = sorted(_entity_source_segments(orphan))
         key = segments[0] if segments else "__no_segment__"
         groups.setdefault(key, []).append(orphan)
@@ -250,6 +297,8 @@ def relink_orphans(
                 if subject not in allowed_ids or obj not in allowed_ids:
                     continue
                 if subject not in batch_ids and obj not in batch_ids:
+                    continue
+                if _degenerate_triple(triple, kg.entities):
                     continue
                 stats["triples_proposed"] += 1
                 decision = governed_kg.propose_triple(

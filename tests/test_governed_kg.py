@@ -168,6 +168,22 @@ def test_triage_reviews_conflicts_when_callback_available() -> None:
     assert "triage_reason=conflict" in decision.rationale
 
 
+def test_connectivity_stats_report_fragmentation() -> None:
+    kg = KnowledgeGraph()
+    kg.add_entity("a", ["A"], "TYPE")
+    kg.add_entity("b", ["B"], "TYPE")
+    kg.add_entity("orphan", ["Orphan"], "TYPE")
+    kg.add_triple("a", "REL", "b", confidence=0.9)
+    gkg = GovernedKnowledgeGraph(kg=kg, governance_mode="audit_only")
+
+    stats = gkg.get_stats()
+
+    assert stats["connectivity"]["num_components"] == 2
+    assert stats["connectivity"]["orphan_entities"] == 1
+    assert stats["connectivity"]["largest_component_size"] == 2
+    assert stats["connectivity"]["connectivity_ratio"] == 0.6667
+
+
 def test_serialization_round_trip() -> None:
     kg = KnowledgeGraph()
     kg.add_entity("heart", ["Heart"], "ORGAN")

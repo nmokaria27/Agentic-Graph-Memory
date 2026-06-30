@@ -781,6 +781,7 @@ class KnowledgeOrganizer(BaseAgent):
             "schema_rejected": 0,
             "self_reference": 0,
             "duplicate": 0,
+            "unresolved_entity": 0,
             "add_failed": 0,
         }
 
@@ -892,45 +893,10 @@ class KnowledgeOrganizer(BaseAgent):
                 triple.get("object_id", "")
             )
 
-            # If we can't resolve, use the text form as a new entity
-            # (but create it properly with type info, not as a phantom)
-            if not resolved_subj:
-                resolved_subj = raw_subj.lower().replace(" ", "_")
-                if resolved_subj not in self.knowledge_graph.entities:
-                    if self.governed_kg:
-                        self.governed_kg.add_entity(
-                            entity_id=resolved_subj,
-                            labels=[raw_subj],
-                            entity_type="UNRESOLVED",
-                            metadata={"source_document": document_id, "auto_created": True},
-                        )
-                    else:
-                        self.knowledge_graph.add_entity(
-                            entity_id=resolved_subj,
-                            labels=[raw_subj],
-                            entity_type="UNRESOLVED",
-                            metadata={"source_document": document_id, "auto_created": True},
-                        )
-                    name_to_id[raw_subj.lower().strip()] = resolved_subj
-
-            if not resolved_obj:
-                resolved_obj = raw_obj.lower().replace(" ", "_")
-                if resolved_obj not in self.knowledge_graph.entities:
-                    if self.governed_kg:
-                        self.governed_kg.add_entity(
-                            entity_id=resolved_obj,
-                            labels=[raw_obj],
-                            entity_type="UNRESOLVED",
-                            metadata={"source_document": document_id, "auto_created": True},
-                        )
-                    else:
-                        self.knowledge_graph.add_entity(
-                            entity_id=resolved_obj,
-                            labels=[raw_obj],
-                            entity_type="UNRESOLVED",
-                            metadata={"source_document": document_id, "auto_created": True},
-                        )
-                    name_to_id[raw_obj.lower().strip()] = resolved_obj
+            if not resolved_subj or not resolved_obj:
+                skipped_triple_reasons["unresolved_entity"] += 1
+                skipped_triples += 1
+                continue
 
             triple_key = (resolved_subj, relation, resolved_obj)
             if resolved_subj == resolved_obj:

@@ -557,6 +557,36 @@ class GovernedKnowledgeGraph:
         ]
 
     def get_stats(self) -> Dict[str, Any]:
+        adjacency: Dict[str, set] = {entity_id: set() for entity_id in self._kg.entities}
+        for triple in self._kg.triples:
+            adjacency.setdefault(triple.subject, set()).add(triple.object)
+            adjacency.setdefault(triple.object, set()).add(triple.subject)
+        seen = set()
+        component_sizes: List[int] = []
+        for entity_id in adjacency:
+            if entity_id in seen:
+                continue
+            stack = [entity_id]
+            seen.add(entity_id)
+            size = 0
+            while stack:
+                current = stack.pop()
+                size += 1
+                for neighbor in adjacency.get(current, set()):
+                    if neighbor not in seen:
+                        seen.add(neighbor)
+                        stack.append(neighbor)
+            component_sizes.append(size)
+        largest_component_size = max(component_sizes) if component_sizes else 0
+        connectivity_stats = {
+            "num_components": len(component_sizes),
+            "largest_component_size": largest_component_size,
+            "orphan_entities": sum(1 for size in component_sizes if size == 1),
+            "connectivity_ratio": round(
+                largest_component_size / max(len(self._kg.entities), 1),
+                4,
+            ),
+        }
         action_counts: Dict[str, int] = {}
         assignment_counts: Dict[str, int] = {}
         domain_decisions: Dict[str, int] = {}
@@ -572,6 +602,7 @@ class GovernedKnowledgeGraph:
             "entities": len(self._kg.entities),
             "triples": len(self._kg.triples),
             "orphan_entities": len(self._kg.get_orphan_entities()),
+            "connectivity": connectivity_stats,
             "domains": len(self._org_chart.domains),
             "cross_domain_relations": len(self._org_chart.cross_domain_relations),
             "governance_mode": self._governance_mode,

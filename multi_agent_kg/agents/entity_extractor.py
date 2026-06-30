@@ -19,6 +19,9 @@ import re
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from pydantic import ValidationError
+
+from multi_agent_kg.schemas_llm import CoreferenceOut, EntityExtractionOut
 from multi_agent_kg.agents.base import (
     BaseAgent,
     AgentRole,
@@ -555,18 +558,24 @@ class EntityExtractor(BaseAgent):
             )
             confidence = 0.7
 
-        if not isinstance(result, (dict, list)):
-            print(f"  WARNING: LLM returned unexpected type {type(result).__name__} instead of dict/list — treating as 0 entities")
+        # Stamp the call-level confidence onto entities the model emitted without
+        # one (preserves prior behavior), then validate against the Pydantic
+        # schema which coerces types, clamps confidence, and drops broken items.
+        raw_entities = (
+            result
+            if isinstance(result, list)
+            else (result.get("entities") if isinstance(result, dict) else None)
+        )
+        if isinstance(raw_entities, list):
+            for e in raw_entities:
+                if isinstance(e, dict) and "confidence" not in e:
+                    e["confidence"] = confidence
+        try:
+            parsed = EntityExtractionOut.model_validate(result)
+        except ValidationError as exc:
+            print(f"  WARNING: entity extraction output failed validation ({exc}) — treating as 0 entities")
             return []
-        entities = result if isinstance(result, list) else result.get("entities", [])
-        if not isinstance(entities, list):
-            print(f"  WARNING: 'entities' key is {type(entities).__name__}, not list — treating as 0 entities")
-            return []
-        # Ensure each entity has a confidence score
-        for e in entities:
-            if "confidence" not in e:
-                e["confidence"] = confidence
-        return entities
+        return [e.model_dump() for e in parsed.entities]
 
     def _stage4_coreference_resolution(
         self,
@@ -580,8 +589,10 @@ class EntityExtractor(BaseAgent):
         
         import json
         
-        # INCREASED BATCH SIZE: 100 for better performance with large models
-        batch_size = 100
+        # Batch size 50: with thinking-model max_tokens inflation (3x),
+        # 100 entities as JSON (~20K tokens) + 12288 max_tokens overflowed
+        # the 32K context window. 50 entities keeps the prompt ~10K tokens.
+        batch_size = 50
         all_resolved = []
         
         total_batches = (len(entities) + batch_size - 1) // batch_size
@@ -600,24 +611,28 @@ class EntityExtractor(BaseAgent):
                 known_entities=known_json,
             )
             
-            result = self.call_llm(
-                prompt=prompt,
-                system_prompt="You are an expert at coreference resolution. Group mentions accurately.",
-                tier=ModelTier.MEDIUM,
-                max_tokens=4096,
-            )
+            try:
+                result = self.call_llm(
+                    prompt=prompt,
+                    system_prompt="You are an expert at coreference resolution. Group mentions accurately.",
+                    tier=ModelTier.MEDIUM,
+                    max_tokens=4096,
+                )
+            except Exception as e:
+                print(f"  WARNING: Coref batch {batch_num}/{total_batches} failed: {e}; skipping batch")
+                continue
             
-            # Convert groups back to entity format. ``result`` is normally a list
-            # of group dicts or a dict with "entity_groups"; thinking models that
-            # fall through JSON parsing can hand back a raw string (CoT prose) or a
-            # list of strings. Coerce defensively so a single malformed batch
-            # degrades to "no coref this batch" instead of crashing the whole
-            # document (was: 'str' object has no attribute 'get').
-            if isinstance(result, list):
-                groups = result
-            elif isinstance(result, dict):
-                groups = result.get("entity_groups", [])
-            else:
+            # Validate the coreference output against the Pydantic schema, which
+            # tolerates the list / dict-wrapper shapes, drops malformed groups,
+            # and fills defaults. A single bad batch degrades to "no coref this
+            # batch" instead of crashing the document (was: 'str' object has no
+            # attribute 'get' when a thinking model returned raw CoT prose).
+            try:
+                groups = [
+                    g.model_dump()
+                    for g in CoreferenceOut.model_validate(result).entity_groups
+                ]
+            except ValidationError:
                 groups = []
             # Pronouns and generic references that should be dropped
             _PRONOUN_PATTERNS = {
@@ -639,12 +654,17 @@ class EntityExtractor(BaseAgent):
                     continue
                 # Skip if canonical_name is a generic phrase (starts with article + generic noun)
                 cn_lower = canonical_name.lower().strip()
-                if cn_lower.startswith(("our ", "this ", "that ", "these ", "a set of ", "the ")):
-                    # Check if it's truly generic (not a proper name starting with "the")
+                generic_words = {"approach", "method", "system", "technique",
+                                 "model", "information", "results", "study",
+                                 "findings", "data", "analysis", "set of rules",
+                                 "relationship", "association", "support", "community",
+                                 "change", "journey", "experience", "voice",
+                                 "values", "challenges", "understanding"}
+                if cn_lower in generic_words:
+                    continue
+                # Check if it's truly generic (not a proper name starting with "the")
+                if cn_lower.startswith(("our ", "this ", "that ", "these ", "those ", "a set of ", "the ", "a ", "an ")):
                     remaining = cn_lower.split(" ", 1)[-1] if " " in cn_lower else ""
-                    generic_words = {"approach", "method", "system", "technique",
-                                     "model", "information", "results", "study",
-                                     "findings", "data", "analysis", "set of rules"}
                     if remaining in generic_words or any(remaining.startswith(g) for g in generic_words):
                         continue
 

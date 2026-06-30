@@ -278,7 +278,7 @@ def test_resolution_embedding_tier_avoids_unresolved_duplicate(monkeypatch):
     assert organizer.integration_stats["embedding_resolutions"]
 
 
-def test_resolution_still_creates_unresolved_below_threshold(monkeypatch):
+def test_resolution_skips_unresolved_below_threshold(monkeypatch):
     organizer, gkg = _make_organizer(monkeypatch)
     entities = [
         {"id": "apple_inc", "text": "Apple Inc.", "type": "ORG",
@@ -291,5 +291,7 @@ def test_resolution_still_creates_unresolved_below_threshold(monkeypatch):
     organizer._integrate_to_kg(entities, triples, document_id="doc1")
 
     unresolved = [e for e in gkg.entities.values() if e.type == "UNRESOLVED"]
-    assert len(unresolved) == 1
+    assert unresolved == []
+    assert len(gkg.triples) == 0
     assert organizer.integration_stats["resolve_misses"]
+    assert organizer.integration_stats["skipped_triple_reasons"]["unresolved_entity"] == 1

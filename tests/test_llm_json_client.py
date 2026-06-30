@@ -1,8 +1,11 @@
+import multi_agent_kg.llm.openai_client as oc
 from multi_agent_kg.llm.openai_client import (
     _extract_json,
     _model_is_thinking,
     _unwrap_json_mode_array,
+    chat_completion_typed,
 )
+from multi_agent_kg.schemas_llm import EntityExtractionOut
 
 
 def test_deepseek_v4_detected_as_thinking() -> None:
@@ -58,3 +61,50 @@ def test_json_mode_array_wrapper_keeps_regular_objects() -> None:
 def test_json_mode_array_wrapper_keeps_multi_key_objects() -> None:
     payload = {"domains": [], "metadata": {"source": "test"}}
     assert _unwrap_json_mode_array(payload) == payload
+
+
+def _stub_responses(monkeypatch, responses):
+    """Patch chat_completion_json to return queued responses in order."""
+    queue = list(responses)
+    calls = {"n": 0}
+
+    def fake(messages, **kwargs):
+        calls["n"] += 1
+        return queue.pop(0)
+
+    monkeypatch.setattr(oc, "chat_completion_json", fake)
+    return calls
+
+
+def test_typed_validates_valid_response(monkeypatch) -> None:
+    _stub_responses(monkeypatch, [
+        {"entities": [{"text": "Caroline", "type": "PERSON", "confidence": "0.8"}]},
+    ])
+    out = chat_completion_typed([{"role": "user", "content": "x"}], EntityExtractionOut)
+    assert isinstance(out, EntityExtractionOut)
+    assert out.entities[0].text == "Caroline"
+    assert out.entities[0].confidence == 0.8
+
+
+def test_typed_reprompts_then_succeeds(monkeypatch) -> None:
+    # First response wrong shape (entities is a str -> ValidationError), then valid.
+    calls = _stub_responses(monkeypatch, [
+        {"entities": "not-a-list-or-dict-item"},
+        {"entities": [{"text": "Insulin"}]},
+    ])
+    out = chat_completion_typed([{"role": "user", "content": "x"}], EntityExtractionOut)
+    assert calls["n"] == 2
+    assert [e.text for e in out.entities] == ["Insulin"]
+
+
+def test_typed_exhausts_retries_returns_empty(monkeypatch) -> None:
+    bad = {"entities": "still-bad"}
+    calls = _stub_responses(monkeypatch, [bad, bad, bad])
+    out = chat_completion_typed(
+        [{"role": "user", "content": "x"}],
+        EntityExtractionOut,
+        max_validation_retries=2,
+    )
+    assert calls["n"] == 3  # initial + 2 retries
+    assert isinstance(out, EntityExtractionOut)
+    assert out.entities == []

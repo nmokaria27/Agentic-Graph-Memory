@@ -13,7 +13,7 @@ Features:
 - Blackboard voting for novel relations
 """
 
-from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Tuple, Type, TYPE_CHECKING
 from dataclasses import dataclass, field
 import json
 import os
@@ -21,6 +21,9 @@ import re
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from pydantic import BaseModel, ValidationError
+
+from multi_agent_kg.schemas_llm import PredictionOut, TripleOut
 from multi_agent_kg.agents.base import (
     BaseAgent,
     AgentRole,
@@ -273,6 +276,8 @@ For each head binding, identify what entity is the OBJECT (tail) of that relatio
 
 CRITICAL RULES:
 - The OBJECT must be a DIFFERENT entity from the SUBJECT. A triple like (X, relation, X) is INVALID.
+- Containment loops are INVALID: do not connect an entity to a near-duplicate substring/superset of itself unless the text explicitly states a type/subtype relation.
+- The relation must add a real fact, not restate the subject/object name.
 - The object must be an entity from the ENTITIES list or clearly mentioned in the text.
 - Copy "subject_id" and "object_id" EXACTLY from the "id" field of the matching entity in ENTITIES whenever the entity appears in the list.
 - In benchmark / fixed-schema settings, SUBJECT and OBJECT must be copied VERBATIM from the ENTITIES list. Do not paraphrase entity names.
@@ -356,13 +361,52 @@ def _normalize_surface(text: str) -> str:
     )
 
 
-def _coerce_llm_items(result: Any, preferred_keys: Tuple[str, ...]) -> List[Dict[str, Any]]:
+def _is_degenerate_endpoint_pair(
+    subject: Any,
+    obj: Any,
+    relation: Any = "",
+    subject_id: Any = "",
+    object_id: Any = "",
+) -> bool:
+    subj_id = str(subject_id or "").strip().lower()
+    obj_id = str(object_id or "").strip().lower()
+    if subj_id and obj_id and subj_id == obj_id:
+        return True
+    subj = _normalize_surface(str(subject or ""))
+    obj_norm = _normalize_surface(str(obj or ""))
+    if not subj or not obj_norm:
+        return False
+    if subj == obj_norm:
+        return True
+    subj_tokens = subj.split()
+    obj_tokens = obj_norm.split()
+    shorter, longer = (subj, obj_norm) if len(subj_tokens) <= len(obj_tokens) else (obj_norm, subj)
+    shorter_tokens = shorter.split()
+    if len(shorter_tokens) < 2:
+        return False
+    relation_norm = str(relation or "").strip().upper().replace("-", "_").replace(" ", "_")
+    if relation_norm in {"HYPONYM_OF", "SUBTYPE_OF", "TYPE_OF", "INSTANCE_OF", "PART_OF", "IS_PART_OF", "COMPONENT_OF"}:
+        return False
+    return re.search(rf"(?<!\w){re.escape(shorter)}(?!\w)", longer) is not None
+
+
+def _coerce_llm_items(
+    result: Any,
+    preferred_keys: Tuple[str, ...],
+    item_model: Optional[Type[BaseModel]] = None,
+) -> List[Dict[str, Any]]:
     """Coerce a raw LLM response into a flat list of dict items.
 
     The LLM occasionally returns nested lists, the wrong wrapper key, or stringified
     rows instead of a flat list-of-dicts. Without this guard, downstream code that
     calls ``item.get(...)`` crashes with ``'list' object has no attribute 'get'``
     and drops the whole document.
+
+    When ``item_model`` (a Pydantic model) is given, each flattened dict is
+    normalized through it — coercing types and giving every item a consistent
+    shape — for traceability. The relation/triple models are all-optional and
+    ``extra="allow"``, so validation never drops or strips a kept item; it is
+    pure normalization, not a filter. The ``except`` is defensive only.
     """
     if result is None:
         return []
@@ -385,7 +429,17 @@ def _coerce_llm_items(result: Any, preferred_keys: Tuple[str, ...]) -> List[Dict
                 if isinstance(sub, dict):
                     flat.append(sub)
         # strings / numbers / None get dropped silently.
-    return flat
+    if item_model is None:
+        return flat
+    normalized: List[Dict[str, Any]] = []
+    for item in flat:
+        try:
+            normalized.append(item_model.model_validate(item).model_dump())
+        except ValidationError:
+            # All relation/triple fields are optional, so this is unreachable for
+            # dict input; kept so a future stricter model can't crash the batch.
+            normalized.append(item)
+    return normalized
 
 
 CONNECTIVITY_PASS_PROMPT = """You are given a document and a knowledge graph that was extracted from it.
@@ -795,8 +849,10 @@ class RelationExtractor(BaseAgent):
             return [], stats
 
         triples: List[Dict[str, Any]] = []
-        # INCREASED BATCH SIZE from 10 to 100 for better performance
-        batch_size = 100
+        # Batch size 50: 100 candidate pairs as JSON + full text can exceed
+        # 20K tokens; with thinking-model max_tokens inflation (3x to 12288)
+        # this overflows the 32K context window.
+        batch_size = 50
         direction_guide = SCIERC_DIRECTION_HINT
 
         total_batches = (len(candidate_pairs) + batch_size - 1) // batch_size
@@ -814,16 +870,20 @@ class RelationExtractor(BaseAgent):
                 text=text,
                 candidate_pairs=json.dumps(batch, indent=2),
             )
-            result = self.call_llm(
-                prompt=prompt,
-                system_prompt=(
-                    "You are an expert at relation classification. "
-                    "Classify each directed entity pair conservatively and return valid JSON."
-                ),
-                tier=ModelTier.MEDIUM,
-                max_tokens=4096,
-            )
-            predictions = _coerce_llm_items(result, ("predictions",))
+            try:
+                result = self.call_llm(
+                    prompt=prompt,
+                    system_prompt=(
+                        "You are an expert at relation classification. "
+                        "Classify each directed entity pair conservatively and return valid JSON."
+                    ),
+                    tier=ModelTier.MEDIUM,
+                    max_tokens=4096,
+                )
+            except Exception as e:
+                print(f"  WARNING: Pairwise batch {batch_num}/{total_batches} failed: {e}; skipping batch")
+                continue
+            predictions = _coerce_llm_items(result, ("predictions",), PredictionOut)
             pair_lookup = {pair["pair_index"]: pair for pair in batch}
             for prediction in predictions:
                 relation = str(prediction.get("relation", "")).strip()
@@ -858,6 +918,14 @@ class RelationExtractor(BaseAgent):
         """Dedupe triples, preferring the higher-confidence version."""
         best: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
         for triple in triples:
+            if _is_degenerate_endpoint_pair(
+                triple.get("subject"),
+                triple.get("object"),
+                triple.get("relation"),
+                triple.get("subject_id"),
+                triple.get("object_id"),
+            ):
+                continue
             key = (
                 str(triple.get("subject_id") or triple.get("subject") or "").strip().lower(),
                 str(triple.get("relation") or "").strip(),
@@ -1021,7 +1089,13 @@ class RelationExtractor(BaseAgent):
                 obj = (triple.get("object") or "").strip().lower()
                 subj_id = (triple.get("subject_id") or "").strip().lower()
                 obj_id = (triple.get("object_id") or "").strip().lower()
-                if subj and obj and (subj == obj or (subj_id and obj_id and subj_id == obj_id)):
+                if _is_degenerate_endpoint_pair(
+                    triple.get("subject"),
+                    triple.get("object"),
+                    triple.get("relation"),
+                    triple.get("subject_id"),
+                    triple.get("object_id"),
+                ):
                     invalid_self_refs += 1
                     continue
                 triple["source_segment"] = segment_id
@@ -1662,7 +1736,7 @@ class RelationExtractor(BaseAgent):
                 )
                 
                 # Adjust confidences based on consistency
-                triples = _coerce_llm_items(result, ("triples",))
+                triples = _coerce_llm_items(result, ("triples",), TripleOut)
                 for t in triples:
                     # Combine LLM confidence with self-consistency
                     t["confidence"] = (t.get("confidence", 0.7) + confidence) / 2
@@ -1674,7 +1748,7 @@ class RelationExtractor(BaseAgent):
                     tier=ModelTier.MEDIUM,
                     max_tokens=4096,
                 )
-                triples = _coerce_llm_items(result, ("triples",))
+                triples = _coerce_llm_items(result, ("triples",), TripleOut)
                 all_triples.extend(triples)
 
         return all_triples
@@ -1708,7 +1782,7 @@ class RelationExtractor(BaseAgent):
             tier=ModelTier.MEDIUM,
             max_tokens=4096,
         )
-        triples = _coerce_llm_items(result, ("missing_triples", "triples"))
+        triples = _coerce_llm_items(result, ("missing_triples", "triples"), TripleOut)
         cleaned: List[Dict[str, Any]] = []
         allowed = set(relation_types)
         for triple in triples:
@@ -1718,6 +1792,14 @@ class RelationExtractor(BaseAgent):
             if not self.enable_open_world and relation not in allowed:
                 continue
             if not triple.get("subject") or not triple.get("object"):
+                continue
+            if _is_degenerate_endpoint_pair(
+                triple.get("subject"),
+                triple.get("object"),
+                relation,
+                triple.get("subject_id"),
+                triple.get("object_id"),
+            ):
                 continue
             triple.setdefault("confidence", 0.65)
             metadata = triple.get("metadata")
@@ -2096,7 +2178,7 @@ class RelationExtractor(BaseAgent):
                 max_tokens=4096,
             )
 
-            new_triples = _coerce_llm_items(result, ("triples",))
+            new_triples = _coerce_llm_items(result, ("triples",), TripleOut)
 
             # Filter self-referencing triples
             for t in new_triples:
@@ -2104,7 +2186,13 @@ class RelationExtractor(BaseAgent):
                 obj = (t.get("object") or "").strip().lower()
                 subj_id = (t.get("subject_id") or "").strip().lower()
                 obj_id = (t.get("object_id") or "").strip().lower()
-                if subj and obj and subj != obj and not (subj_id and obj_id and subj_id == obj_id):
+                if subj and obj and not _is_degenerate_endpoint_pair(
+                    t.get("subject"),
+                    t.get("object"),
+                    t.get("relation"),
+                    t.get("subject_id"),
+                    t.get("object_id"),
+                ):
                     t["source"] = "connectivity_pass"
                     all_new_triples.append(t)
 
