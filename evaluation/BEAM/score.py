@@ -108,9 +108,11 @@ class JudgeLLM:
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0,
                     # Generous budget: a thinking judge (e.g. deepseek-v4) spends
-                    # tokens on CoT before the {"score",...} JSON; 800 could
-                    # truncate it mid-reasoning and silently score 0.0.
-                    max_tokens=2048,
+                    # tokens on CoT before the {"score",...} JSON. 2048 could
+                    # truncate mid-reasoning and silently score 0.0; bumped to
+                    # 4096 so long CoT chains still leave room for the JSON
+                    # verdict ({"score":..., "reasoning":...} is ~200 tokens).
+                    max_tokens=4096,
                 )
                 return _FakeContent(resp.choices[0].message.content or "")
             except Exception as exc:
