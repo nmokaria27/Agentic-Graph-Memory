@@ -1712,7 +1712,14 @@ class DeliberativeOrchestrator:
             print("Cross-Document Entity Resolution")
             print("-" * 50)
             self._resolve_cross_document_entities()
-        
+
+        # Community detection + summaries (GraphRAG-style global layer)
+        if os.getenv("COMMUNITY_SUMMARIES", "1") != "0":
+            print("\n" + "-" * 50)
+            print("Community Detection & Summarization")
+            print("-" * 50)
+            self.build_communities()
+
         # Aggregate stats
         aggregate = {
             "documents_processed": len(documents),
@@ -1736,6 +1743,33 @@ class DeliberativeOrchestrator:
         print("=" * 70 + "\n")
         
         return aggregate
+
+    def build_communities(self, min_entities: int = 10) -> List[Dict[str, Any]]:
+        """Detect entity communities and LLM-summarize them onto governed_kg.
+
+        Skips tiny graphs (below min_entities) where communities add nothing.
+        Safe to call repeatedly; recomputes from the current graph.
+        """
+        if self.governed_kg is None:
+            return []
+        if len(self.knowledge_graph.entities) < min_entities:
+            print(f"  Skipped ({len(self.knowledge_graph.entities)} entities < {min_entities})")
+            return []
+        from multi_agent_kg.core.community import build_community_summaries
+
+        try:
+            communities = build_community_summaries(self.governed_kg)
+        except Exception as exc:
+            print(f"  WARNING: community build failed ({exc})")
+            return []
+        summarized = sum(1 for c in communities if c.get("summary"))
+        print(f"  Communities: {len(communities)} detected, {summarized} summarized")
+        if self.governed_kg.vector_store is not None:
+            try:
+                self.governed_kg.vector_store.refresh_communities()
+            except Exception:
+                pass
+        return communities
 
     def get_relation_funnel_summary(self) -> Dict[str, Any]:
         """Aggregate relation-extraction funnel diagnostics across processed docs."""

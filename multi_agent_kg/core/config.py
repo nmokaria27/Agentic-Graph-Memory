@@ -214,6 +214,18 @@ class RetrievalConfig:
     neighbourhood_display: int = 50  # max neighbourhood triples rendered into context
     summary_trigger: int = 40  # subgraph size above which graph_summary mode summarizes
 
+    # Personalized-PageRank expansion: entities ranked by PPR from the seed
+    # set join the expansion frontier and add a scoring boost. QA_USE_PPR=0
+    # disables (falls back to plain 1-hop seed adjacency).
+    use_ppr: bool = field(
+        default_factory=lambda: os.getenv("QA_USE_PPR", "1") != "0"
+    )
+    ppr_top_k: int = 25  # entities kept from the PPR ranking
+    ppr_boost: float = 3.0  # scoring weight of normalized PPR mass per triple
+
+    # Community summaries (GraphRAG-style global layer) added to QA context.
+    community_top_k: int = 3
+
     # graph_completion retriever (Phase 2): vector-seeded k-hop expansion knobs.
     # Only consulted when retrieval_mode == "graph_completion"; defaults leave every
     # other mode's behaviour untouched.

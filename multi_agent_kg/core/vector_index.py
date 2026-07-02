@@ -232,6 +232,7 @@ class KGVectorStore:
         self.entity_index = VectorIndex(**index_kwargs)
         self.triple_index = VectorIndex(**index_kwargs)
         self.domain_index = VectorIndex(**index_kwargs)
+        self.community_index = VectorIndex(**index_kwargs)
         self._governed_kg: Any = None
         self._dirty_entities: Set[str] = set()
         self._dirty_triples: Set[str] = set()
@@ -301,6 +302,7 @@ class KGVectorStore:
         self.domain_index.upsert(
             {domain.domain_id: self._domain_text(domain) for domain in governed_kg.org_chart.domains}
         )
+        self.refresh_communities()
         self._dirty_entities.clear()
         self._dirty_triples.clear()
         self._domains_dirty = False
@@ -361,6 +363,22 @@ class KGVectorStore:
             self._domains_dirty = False
         return count
 
+    def refresh_communities(self) -> int:
+        """(Re)index community summaries from the governed KG, if any."""
+        if self._governed_kg is None:
+            return 0
+        from multi_agent_kg.core.community import community_text
+
+        communities = getattr(self._governed_kg, "communities", None) or []
+        items = {}
+        for community in communities:
+            text = community_text(community)
+            if text:
+                items[community["community_id"]] = text
+        if not items:
+            return 0
+        return self.community_index.upsert(items)
+
     # -- persistence ---------------------------------------------------------
 
     @staticmethod
@@ -380,6 +398,7 @@ class KGVectorStore:
         self.entity_index.save(os.path.join(directory, "entities.npz"))
         self.triple_index.save(os.path.join(directory, "triples.npz"))
         self.domain_index.save(os.path.join(directory, "domains.npz"))
+        self.community_index.save(os.path.join(directory, "communities.npz"))
         meta = {
             "model": self.entity_index.model,
             "kg_hash": self._kg_content_hash(self._governed_kg) if self._governed_kg else None,
@@ -412,7 +431,15 @@ class KGVectorStore:
         store.entity_index = entity_index
         store.triple_index = triple_index
         store.domain_index = domain_index
+        # Older saves predate the community index; rebuild it from the KG.
+        community_index = VectorIndex.load(
+            os.path.join(directory, "communities.npz"), model=model, **kwargs
+        )
         store._governed_kg = governed_kg
+        if community_index is not None:
+            store.community_index = community_index
+        else:
+            store.refresh_communities()
         return store
 
 

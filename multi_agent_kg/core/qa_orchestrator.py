@@ -376,7 +376,7 @@ Return ONLY the JSON."""
         # path) honour focused_limit instead of a silent hardcoded 60.
         if limit is None:
             limit = self.retrieval_config.focused_limit
-        candidates = candidates if candidates is not None else self.full_kg.triples
+        candidates = candidates if candidates is not None else self.full_kg.get_active_triples()
         lexical_seeds: List[Any] = []
         if self.retrieval_config.use_lexical:
             scored = [
@@ -399,20 +399,36 @@ Return ONLY the JSON."""
         ]
         seeds = seeds[: self.retrieval_config.seed_cap]
         seed_entities = {triple.subject for triple in seeds} | {triple.object for triple in seeds}
+
+        # Personalized PageRank from the seed entities: multi-hop-relevant
+        # entities join the expansion frontier, and their (normalized) PPR
+        # mass boosts triple ranking. Falls back to plain 1-hop adjacency.
+        ppr_scores: Dict[str, float] = {}
+        if self.retrieval_config.use_ppr and seed_entities:
+            from multi_agent_kg.core.graph_traversal import personalized_pagerank
+
+            ranked_ppr = personalized_pagerank(
+                self.full_kg, seed_entities, top_k=self.retrieval_config.ppr_top_k
+            )
+            if ranked_ppr:
+                top_score = ranked_ppr[0][1] or 1.0
+                ppr_scores = {eid: score / top_score for eid, score in ranked_ppr}
+        expansion_ids = seed_entities | set(ppr_scores)
+
+        def _combined_score(triple) -> float:
+            lexical = self._score_triple_for_query(triple, query, seed_entities)
+            ppr_mass = ppr_scores.get(triple.subject, 0.0) + ppr_scores.get(triple.object, 0.0)
+            return lexical + self.retrieval_config.ppr_boost * ppr_mass
+
         expanded = {
             (triple.subject, triple.relation, triple.object): triple
             for triple in seeds
         }
-        for triple in self.full_kg.triples:
-            if triple.subject in seed_entities or triple.object in seed_entities:
-                score = self._score_triple_for_query(triple, query, seed_entities)
-                if score > 0:
+        for triple in self.full_kg.get_active_triples():
+            if triple.subject in expansion_ids or triple.object in expansion_ids:
+                if _combined_score(triple) > 0:
                     expanded[(triple.subject, triple.relation, triple.object)] = triple
-        ranked = sorted(
-            expanded.values(),
-            key=lambda triple: self._score_triple_for_query(triple, query, seed_entities),
-            reverse=True,
-        )
+        ranked = sorted(expanded.values(), key=_combined_score, reverse=True)
         return ranked[:limit]
 
     def _chunk_select_triples(
@@ -725,6 +741,7 @@ class QAOrchestrator:
 
         self.org_chart = org_chart
         self.full_kg = full_kg
+        self.governed_kg = governed_kg
         self.llm_config = llm_config or LLMConfig()
         self.retrieval_config = retrieval_config or RetrievalConfig()
         self.answer_format = answer_format or AnswerFormatConfig()
@@ -1076,6 +1093,19 @@ class QAOrchestrator:
 
         return "\n".join(lines).strip()
 
+    def _community_context(self, question: str) -> str:
+        """Query-relevant community summaries (GraphRAG global layer)."""
+        if self.governed_kg is None or not getattr(self.governed_kg, "communities", None):
+            return ""
+        from multi_agent_kg.core.community import community_context
+
+        return community_context(
+            self.governed_kg,
+            question,
+            top_k=self.retrieval_config.community_top_k,
+            vector_store=self.vector_store,
+        )
+
     def _build_global_fallback_context(
         self,
         question: str,
@@ -1115,6 +1145,9 @@ class QAOrchestrator:
             lines.append(f"Entities not covered by routed domains: {', '.join(uncovered[:6])}")
         if not has_supported_answer:
             lines.append(f"Best routed coverage/confidence was {best_coverage:.2f}/{best_confidence:.2f}.")
+        community_block = self._community_context(question)
+        if community_block:
+            lines.append(community_block)
         return "\n".join(lines)
 
     def _decompose_and_route(self, question: str) -> Dict[str, Any]:

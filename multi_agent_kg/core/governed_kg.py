@@ -153,6 +153,10 @@ class GovernedKnowledgeGraph:
         # Mirrors SharedMemory.entity_aliases so cross-document entity
         # resolution survives across sessions instead of dying with the run.
         self.entity_aliases: Dict[str, str] = {}
+        # GraphRAG-style community summaries (see core/community.py):
+        # [{"community_id", "entity_ids", "size", "triple_count", "title",
+        # "summary"}]. Built post-extraction, serialized with the graph.
+        self.communities: List[Dict[str, Any]] = []
         # Optional KGVectorStore kept in sync with committed updates.
         # None = vector features off; the index is derived state and is
         # always rebuildable from the graph itself.
@@ -782,6 +786,7 @@ class GovernedKnowledgeGraph:
             ],
             "bootstrap_assignment_stats": self._bootstrap_assignment_stats,
             "entity_aliases": self.entity_aliases,
+            "communities": self.communities,
             "triage_stats": self._triage_stats,
             "governance_policy": {
                 "min_admission_confidence": self._min_admission_confidence,
@@ -830,6 +835,7 @@ class GovernedKnowledgeGraph:
         ]
         graph._bootstrap_assignment_stats = data.get("bootstrap_assignment_stats", {})
         graph.entity_aliases = dict(data.get("entity_aliases", {}))
+        graph.communities = list(data.get("communities", []))
         graph._triage_stats = data.get(
             "triage_stats",
             {

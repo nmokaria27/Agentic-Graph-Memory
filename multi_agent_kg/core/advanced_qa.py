@@ -1169,6 +1169,7 @@ class AdvancedQAOrchestrator:
             )
         self.org_chart = org_chart
         self.full_kg = full_kg
+        self.governed_kg = governed_kg
         self.llm_config = llm_config or LLMConfig()
         self.answer_format = answer_format or AnswerFormatConfig()
         self.enable_debate = enable_debate
@@ -1663,6 +1664,20 @@ Return ONLY the JSON."""
                     if pths:
                         lines.append(f"\nPaths ({matched_entities[i]} → {matched_entities[j]}):")
                         lines.append(paths_to_text(pths))
+
+        # GraphRAG-style global layer: thematic community summaries relevant
+        # to the question (helps broad questions entity-local retrieval misses).
+        if self.governed_kg is not None and getattr(self.governed_kg, "communities", None):
+            from multi_agent_kg.core.community import community_context
+
+            community_block = community_context(
+                self.governed_kg,
+                question,
+                top_k=self.retrieval_config.community_top_k,
+                vector_store=self.vector_store,
+            )
+            if community_block:
+                lines.append(community_block)
 
         return "\n".join(lines) if lines else ""
 

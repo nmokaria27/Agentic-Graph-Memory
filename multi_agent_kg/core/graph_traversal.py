@@ -114,6 +114,33 @@ def neighbourhood(kg: KnowledgeGraph, entity_id: str, hops: int = 2) -> List[Tri
     return collected
 
 
+def personalized_pagerank(
+    kg: KnowledgeGraph,
+    seed_entities: Set[str],
+    top_k: int = 25,
+    alpha: float = 0.85,
+) -> List[Tuple[str, float]]:
+    """Rank entities by Personalized PageRank from the seed set.
+
+    Runs over the undirected active-triple graph. Returns up to top_k
+    (entity_id, score) pairs, highest first; [] when no seed is in the graph.
+    """
+    import networkx as nx
+
+    graph = nx.Graph()
+    for triple in kg.get_active_triples():
+        graph.add_edge(triple.subject, triple.object)
+    seeds = {eid: 1.0 for eid in seed_entities if eid in graph}
+    if not seeds:
+        return []
+    try:
+        scores = nx.pagerank(graph, alpha=alpha, personalization=seeds)
+    except Exception:
+        return []
+    ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    return ranked[:top_k]
+
+
 def summarize_subgraph(triples, query, llm_config) -> str:
     """LLM-compress a list of triples into query-relevant facts (Graph-Summary mode).
 
@@ -165,5 +192,6 @@ __all__ = [
     "find_paths",
     "paths_to_text",
     "neighbourhood",
+    "personalized_pagerank",
     "summarize_subgraph",
 ]
