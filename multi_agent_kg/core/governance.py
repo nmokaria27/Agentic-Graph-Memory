@@ -101,7 +101,7 @@ class Domain:
         ]
         triples = [
             triple
-            for triple in full_kg.triples
+            for triple in full_kg.get_active_triples()
             if triple.subject in self.entity_ids or triple.object in self.entity_ids
         ]
         return entities, triples

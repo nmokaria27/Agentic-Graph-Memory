@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Set, Tuple
 
-from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple
+from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Triple, is_superseded
 
 
 def find_paths(
@@ -22,6 +22,8 @@ def find_paths(
 
     adj: Dict[str, List[Triple]] = {}
     for triple in kg.triples:
+        if is_superseded(triple):
+            continue
         adj.setdefault(triple.subject, []).append(triple)
         adj.setdefault(triple.object, []).append(triple)
 
@@ -83,6 +85,8 @@ def neighbourhood(kg: KnowledgeGraph, entity_id: str, hops: int = 2) -> List[Tri
 
     adj: Dict[str, List[Tuple[Triple, str]]] = {}
     for triple in kg.triples:
+        if is_superseded(triple):
+            continue
         subject_norm = normalize_for_matching(triple.subject)
         object_norm = normalize_for_matching(triple.object)
         adj.setdefault(subject_norm, []).append((triple, triple.object))

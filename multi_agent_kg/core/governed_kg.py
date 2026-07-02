@@ -21,7 +21,13 @@ from datetime import UTC, datetime
 from typing import Any, Callable, Dict, List, Optional
 
 from multi_agent_kg.core.governance import GovernanceAssignment, OrgChart, coerce_metadata
-from multi_agent_kg.core.knowledge_graph import Entity, KnowledgeGraph, Triple
+from multi_agent_kg.core.knowledge_graph import (
+    Entity,
+    KnowledgeGraph,
+    Triple,
+    is_superseded,
+    triple_uid,
+)
 
 
 @dataclass
@@ -130,6 +136,9 @@ class GovernedKnowledgeGraph:
         ] = None,
         min_admission_confidence: Optional[float] = None,
         confidence_policy_label: str = "confidence_policy",
+        conflict_resolver: Optional[
+            Callable[[Triple, List[Triple]], Dict[str, Any]]
+        ] = None,
     ):
         self._kg = kg or KnowledgeGraph()
         self._org_chart = org_chart or OrgChart()
@@ -152,6 +161,17 @@ class GovernedKnowledgeGraph:
         # _relation_outside_schema: (frozenset_of_relations, VectorIndex).
         self._relation_schema_index: Optional[Any] = None
         self._relation_schema_index_key: Optional[frozenset] = None
+        # Optional conflict resolver: (new_triple, active_conflicting_triples)
+        # -> {"action": coexist|supersede|discard_new, "superseded_indices",
+        # "reasoning"}. None = conflicts coexist (legacy behavior).
+        self.conflict_resolver = conflict_resolver
+        self._conflict_stats: Dict[str, int] = {
+            "conflicts_checked": 0,
+            "coexist": 0,
+            "supersede": 0,
+            "discard_new": 0,
+            "triples_superseded": 0,
+        }
         self._triage_threshold = 0.7
         self._triage_stats: Dict[str, Any] = {
             "auto_approved_low_risk": 0,
@@ -293,6 +313,11 @@ class GovernedKnowledgeGraph:
             self.commit_decision(policy_decision)
             return policy_decision
 
+        conflict_decision = self._apply_conflict_resolution(triple, assignment)
+        if conflict_decision is not None:
+            self.commit_decision(conflict_decision)
+            return conflict_decision
+
         if self._governance_mode == "audit_only":
             decision = GovernanceDecision(
                 triple=triple,
@@ -417,12 +442,93 @@ class GovernedKnowledgeGraph:
             source=triple.source,
             metadata=triple.metadata,
         )
+        if result is None:
+            # Identical subject/relation/object already stored. If that copy
+            # was superseded earlier, the new evidence reinstates it.
+            existing = self._kg.find_triple(triple.subject, triple.relation, triple.object)
+            if existing is not None and is_superseded(existing):
+                existing.metadata.pop("superseded_by", None)
+                existing.metadata.pop("superseded_at", None)
+                existing.metadata["reinstated_at"] = datetime.now(UTC).isoformat()
+                existing.metadata["supersedes"] = triple.metadata.get("supersedes") or []
+                result = existing
         decision.committed = result is not None
         if result is not None:
+            self._apply_supersedes(result)
             self._org_chart.update_cross_domain_relation(result)
             if self.vector_store is not None:
                 self.vector_store.mark_dirty(triples=[result])
         return result
+
+    def _apply_conflict_resolution(
+        self,
+        triple: Triple,
+        assignment: GovernanceAssignment,
+    ) -> Optional[GovernanceDecision]:
+        """Resolve conflicts with existing active triples before governance.
+
+        Returns a reject decision for discard_new; otherwise annotates the
+        proposal (supersede targets, resolution record) and returns None so
+        normal governance routing proceeds. Supersede marking happens only
+        after the triple actually commits (see _apply_supersedes), so a
+        governance rejection never orphans the old statements.
+        """
+        if self.conflict_resolver is None:
+            return None
+        conflicts = self._kg.find_conflicts([triple])
+        existing = [c.existing_triple for c in conflicts if not is_superseded(c.existing_triple)]
+        # Deduplicate while preserving order (find_conflicts can repeat).
+        seen: set = set()
+        existing = [t for t in existing if not (triple_uid(t) in seen or seen.add(triple_uid(t)))]
+        if not existing:
+            return None
+
+        self._conflict_stats["conflicts_checked"] += 1
+        try:
+            resolution = self.conflict_resolver(triple, existing)
+        except Exception:
+            resolution = None
+        from multi_agent_kg.core.conflict_resolution import normalize_resolution
+
+        resolution = normalize_resolution(resolution, len(existing))
+        action = resolution["action"]
+        self._conflict_stats[action] = self._conflict_stats.get(action, 0) + 1
+        triple.metadata["conflict_resolution"] = {
+            "action": action,
+            "reasoning": resolution.get("reasoning", ""),
+            "conflicting": [triple_uid(t) for t in existing],
+        }
+
+        if action == "discard_new":
+            return GovernanceDecision(
+                triple=triple,
+                action="reject",
+                domain_id=assignment.primary_domain_id,
+                rationale=(
+                    "Conflict resolution discarded the proposal in favor of "
+                    f"existing knowledge: {resolution.get('reasoning', '')}"
+                ),
+                assignment=assignment,
+            )
+
+        if action == "supersede":
+            targets = [existing[i] for i in resolution["superseded_indices"]]
+            triple.metadata["supersedes"] = [triple_uid(t) for t in targets]
+        return None
+
+    def _apply_supersedes(self, committed: Triple) -> None:
+        """Mark the triples listed in metadata['supersedes'] as superseded."""
+        target_uids = set(committed.metadata.get("supersedes") or [])
+        if not target_uids:
+            return
+        for existing in self._kg.triples:
+            if existing is committed or is_superseded(existing):
+                continue
+            if triple_uid(existing) in target_uids:
+                self._kg.mark_superseded(existing, by=committed)
+                self._conflict_stats["triples_superseded"] += 1
+                if self.vector_store is not None:
+                    self.vector_store.mark_dirty(triples=[existing])
 
     def _triage_reason(
         self,
@@ -650,6 +756,7 @@ class GovernedKnowledgeGraph:
             },
             "bootstrap_assignment_stats": self._bootstrap_assignment_stats,
             "triage_stats": self._triage_stats,
+            "conflict_resolution": dict(self._conflict_stats),
             "governance_policy": {
                 "min_admission_confidence": self._min_admission_confidence,
                 "confidence_policy_label": self._confidence_policy_label,

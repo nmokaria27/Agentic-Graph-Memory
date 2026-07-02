@@ -3,8 +3,19 @@ Knowledge graph representation and operations.
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Dict, List, Optional, Set, Any
 import json
+
+
+def triple_uid(triple: "Triple") -> str:
+    """Stable identifier for a triple, used for supersede references."""
+    return f"{triple.subject}|{triple.relation}|{triple.object}"
+
+
+def is_superseded(triple: "Triple") -> bool:
+    """True if this triple has been replaced by a newer statement."""
+    return bool(triple.metadata.get("superseded_by"))
 
 
 @dataclass
@@ -206,6 +217,25 @@ class KnowledgeGraph:
         # the triple but log the gap — callers can audit via
         # ``get_orphan_triples()``.
         return triple
+
+    def find_triple(self, subject: str, relation: str, obj: str) -> Optional[Triple]:
+        """Return the stored triple with this exact subject/relation/object."""
+        probe = Triple(subject=subject, relation=relation, object=obj)
+        if probe not in self._triple_set:
+            return None
+        for triple in self.triples:
+            if triple == probe:
+                return triple
+        return None
+
+    def get_active_triples(self) -> List[Triple]:
+        """Triples that have not been superseded by newer statements."""
+        return [t for t in self.triples if not is_superseded(t)]
+
+    def mark_superseded(self, old: Triple, by: Triple) -> None:
+        """Mark `old` as replaced by `by`. The old triple is kept for audit."""
+        old.metadata["superseded_by"] = triple_uid(by)
+        old.metadata["superseded_at"] = datetime.now().isoformat()
 
     def get_orphan_triples(self) -> List[Triple]:
         """Return triples whose subject or object has no matching entity."""

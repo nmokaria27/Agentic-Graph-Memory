@@ -180,6 +180,16 @@ class DeliberativeOrchestrator:
         else:
             self.knowledge_graph = knowledge_graph or KnowledgeGraph()
             self.governed_kg = None
+        # Mem0-style conflict resolution on admission (CONFLICT_RESOLUTION=0
+        # disables): same subject+relation with a different object routes
+        # through an LLM resolver that picks coexist/supersede/discard_new.
+        self._conflict_resolver = None
+        if self.governed_kg is not None and os.getenv("CONFLICT_RESOLUTION", "1") != "0":
+            from multi_agent_kg.core.conflict_resolution import LLMConflictResolver
+
+            self._conflict_resolver = LLMConflictResolver()
+            if self.governed_kg.conflict_resolver is None:
+                self.governed_kg.conflict_resolver = self._conflict_resolver
         self.governance_mode = (
             self.governed_kg.governance_mode if self.governed_kg is not None else "disabled"
         )
@@ -395,6 +405,9 @@ class DeliberativeOrchestrator:
             self.knowledge_organizer.governed_kg = self.governed_kg
         # Strict-mode review callback closes over old org_chart/kg; rebuild.
         self._configure_governance_review()
+        # Restored snapshots carry no resolver (it isn't serialized); reattach.
+        if self._conflict_resolver is not None and governed_kg.conflict_resolver is None:
+            governed_kg.conflict_resolver = self._conflict_resolver
         # Rehydrate session-scoped alias table from the persisted graph so
         # cross-document entity resolution survives resume/reload.
         for alias, canonical in governed_kg.entity_aliases.items():

@@ -243,6 +243,8 @@ class KGVectorStore:
     def _adjacency(kg: Any) -> Dict[str, List[Any]]:
         adj: Dict[str, List[Any]] = {}
         for triple in kg.triples:
+            if triple.metadata.get("superseded_by"):
+                continue
             adj.setdefault(triple.subject, []).append(triple)
             adj.setdefault(triple.object, []).append(triple)
         return adj
@@ -290,7 +292,11 @@ class KGVectorStore:
             {entity_id: self._entity_text(kg, entity_id, adjacency) for entity_id in kg.entities}
         )
         self.triple_index.upsert(
-            {triple_key(triple): verbalize_triple(triple) for triple in kg.triples}
+            {
+                triple_key(triple): verbalize_triple(triple)
+                for triple in kg.triples
+                if not triple.metadata.get("superseded_by")
+            }
         )
         self.domain_index.upsert(
             {domain.domain_id: self._domain_text(domain) for domain in governed_kg.org_chart.domains}
@@ -333,11 +339,16 @@ class KGVectorStore:
             self._dirty_entities.clear()
         if self._dirty_triples:
             by_key = {triple_key(t): t for t in kg.triples}
-            items = {
-                key: verbalize_triple(by_key[key])
-                for key in self._dirty_triples
-                if key in by_key
-            }
+            items = {}
+            for key in self._dirty_triples:
+                triple = by_key.get(key)
+                if triple is None:
+                    continue
+                if triple.metadata.get("superseded_by"):
+                    # Superseded facts leave the retrieval index entirely.
+                    self.triple_index.remove([key])
+                    continue
+                items[key] = verbalize_triple(triple)
             count += self.triple_index.upsert(items)
             self._dirty_triples.clear()
         if self._domains_dirty:
