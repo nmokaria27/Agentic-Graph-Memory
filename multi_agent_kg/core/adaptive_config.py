@@ -50,6 +50,9 @@ MODEL_SPECS = {
     "mistralai/Mixtral-8x7B-Instruct-v0.1": ModelSpec("mistralai/Mixtral-8x7B-Instruct-v0.1", 32768, 8192),
     "deepseek-ai/DeepSeek-R1-Distill-Llama-8B": ModelSpec("deepseek-ai/DeepSeek-R1-Distill-Llama-8B", 131072, 32768),
     "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B": ModelSpec("deepseek-ai/DeepSeek-R1-Distill-Qwen-14B", 131072, 32768),
+    # Nemotron 3 Nano on gpu02 (2x L40S, FP8). Reasoning model: chain-of-thought
+    # counts against max_tokens, so requests must budget >=1024 output tokens.
+    "nvidia/nemotron-3-nano": ModelSpec("nvidia/nemotron-3-nano", 131072, 32768),
 }
 
 

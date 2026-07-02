@@ -13,7 +13,7 @@ Features:
 - Blackboard voting for novel relations
 """
 
-from typing import Any, Dict, List, Optional, Tuple, Type, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Set, Tuple, Type, TYPE_CHECKING
 from dataclasses import dataclass, field
 import json
 import os
@@ -173,13 +173,7 @@ DOMAIN: {domain}
 
 SUGGESTED TYPES (if any): {suggested_types}
 
-EXAMPLE:
-Text: "Metformin reduces HbA1c in patients with T2D. The WHO recommends metformin as first-line therapy. Side effects include lactic acidosis."
-Relations found:
-- REDUCES_BIOMARKER: "A therapeutic agent reduces a clinical measurement" (e.g., Metformin reduces HbA1c)
-- RECOMMENDED_BY: "A treatment is recommended by an authority" (e.g., Metformin recommended by WHO)
-- TREATS_CONDITION: "A drug treats a disease" (e.g., Metformin treats T2D)
-- HAS_SIDE_EFFECT: "A drug has a known adverse effect" (e.g., Metformin has side effect lactic acidosis)
+{domain_examples}
 
 TEXT:
 {text}
@@ -204,6 +198,40 @@ Return:
         }}
     ]
 }}"""
+
+
+# Neutral fallback example used only when the DomainClassifier provided no
+# document-specific relation examples. Mixed-domain by design.
+DEFAULT_RELATION_EXAMPLES = """EXAMPLE:
+Text: "Marie Curie founded the Radium Institute in Paris in 1914. She had earlier shared the Nobel Prize with Pierre Curie."
+Relations found:
+- FOUNDED: "A person established an organization" (e.g., Marie Curie founded Radium Institute)
+- LOCATED_IN: "An organization is located in a place" (e.g., Radium Institute located in Paris)
+- FOUNDED_IN_YEAR: "An organization was established in a specific year" (e.g., Radium Institute founded in 1914)
+- SHARED_AWARD_WITH: "A person shared an award with another person" (e.g., Marie Curie shared Nobel Prize with Pierre Curie)"""
+
+
+def _format_domain_relation_examples(examples: List[Dict[str, Any]]) -> str:
+    """Render DomainClassifier relation examples into the prompt's example format.
+
+    Each example is {"relation_type", "text_span", "subject", "object", "explanation"}.
+    Returns "" if nothing usable, so the caller can fall back to defaults.
+    """
+    lines: List[str] = []
+    for ex in examples[:6]:
+        if not isinstance(ex, dict):
+            continue
+        rtype = ex.get("relation_type") or ""
+        subj = ex.get("subject") or ""
+        obj = ex.get("object") or ""
+        if not rtype or not subj or not obj:
+            continue
+        expl = ex.get("explanation") or ex.get("text_span") or ""
+        desc = f' "{expl}"' if expl else ""
+        lines.append(f"- {rtype}:{desc} (e.g., {subj} {rtype.lower().replace('_', ' ')} {obj})")
+    if not lines:
+        return ""
+    return "EXAMPLES (relations already observed in this document's domain):\n" + "\n".join(lines)
 
 
 HEAD_BINDING_PROMPT = """For each relation type, identify the HEAD (subject) entities.
@@ -496,13 +524,29 @@ ALLOWED / SUGGESTED RELATION TYPES:
 ALREADY EXTRACTED TRIPLES:
 {existing_triples}
 
+UNCONNECTED ENTITIES (currently have NO relations — prioritize connecting these):
+{unconnected_entities}
+
 Instructions:
 1. Add only facts explicitly supported by the text.
-2. Prefer important facts that connect named entities, dates, values, roles, tasks, datasets, metrics, methods, locations, capacities, or titles.
-3. Do not duplicate an already extracted triple.
-4. In fixed-schema mode, use only the allowed relation labels and copy subject/object from the ENTITIES list.
-5. In open-domain mode, relation names may be concise UPPER_SNAKE_CASE predicates, but subject/object must still be concrete mentions from the text.
-6. If no supported fact is missing, return an empty list.
+2. PRIORITIZE connecting the UNCONNECTED ENTITIES above. Every one of them was
+   mentioned in the text for a reason — find the relation that ties it to another
+   entity. An entity left with no relation is a failure.
+3. LIST & MEMBERSHIP: when the text presents entities as a coordinated list or as
+   items/members/parts of a shared parent (e.g. "the committees: A, B, C", "tribes
+   such as X and Y", "remedies include P, Q, R"), emit a relation from EACH listed
+   item to that shared parent (e.g. MEMBER_OF / PART_OF / HAS_COMMITTEE) — do NOT
+   leave the listed items unconnected just because each lacks its own verb.
+4. TAXONOMY: for "X is a Y", "X, a kind of Y", "Y such as X" or appositive
+   definitions, emit Hyponym-of / IS_A from the specific X to the general Y.
+5. ATTRIBUTES: connect dates, values, roles, titles, locations, and capacities to
+   the entity they describe (e.g. FOUNDED_IN, LOCATED_IN, HELD_POSITION).
+6. Do not duplicate an already extracted triple.
+7. In fixed-schema mode, use only the allowed relation labels and copy subject/object from the ENTITIES list.
+8. In open-domain mode, relation names may be concise UPPER_SNAKE_CASE predicates, but subject/object must still be concrete mentions from the text.
+9. Base every relation on the text — coordination, apposition, and containment are
+   valid textual evidence, but pure topical co-occurrence is not.
+10. If no supported fact is missing, return an empty list.
 
 Return JSON:
 {{
@@ -965,13 +1009,20 @@ class RelationExtractor(BaseAgent):
         
         # Get relation types from domain or discovered
         suggested_types = self._get_suggested_relation_types(domain_config)
-        
+
+        # Domain-specific relation examples from the DomainClassifier
+        self._domain_relation_examples = (
+            (domain_config.get("relation_examples") or []) if domain_config else []
+        )
+
         # Check for domain messages
         if self.message_bus:
             messages = self.receive_messages()
             for msg in messages:
                 if msg.comm_type == CommunicationType.INFORM and "relation_types" in msg.content:
                     suggested_types = self._normalize_relation_types(msg.content["relation_types"])
+                    if msg.content.get("relation_examples"):
+                        self._domain_relation_examples = msg.content["relation_examples"]
         
         # Process segments or full text
         all_triples = []
@@ -1034,7 +1085,12 @@ class RelationExtractor(BaseAgent):
                 pairwise_pairs=0, pairwise_positives=0, pairwise_triples=0,
                 gleaned_triples=0, invalid_self_refs=0, post_align_triples=0, post_dedupe_triples=0,
             )
-            if not rel_types_for_recovery and not det_value_triples:
+            # Do not bail when nothing was pre-identified if this is an open-world
+            # segment with >=2 entities: the connectivity-aware gleaning pass below
+            # can still connect coordinated lists / taxonomic mentions that Stage 1
+            # missed. Bailing here is a primary source of orphan entities.
+            _can_glean_connectivity = self.enable_open_world and len(seg_entities) >= 2
+            if not rel_types_for_recovery and not det_value_triples and not _can_glean_connectivity:
                 return idx, segment_id, [], local_new_relations, rel_types, {"pairwise_pairs_considered": 0, "pairwise_positive_predictions": 0, "pairwise_triples_added": 0}, _empty_funnel
 
             pw_triples: List[Dict[str, Any]] = []
@@ -1588,11 +1644,15 @@ class RelationExtractor(BaseAgent):
                 f"}}"
             )
         else:
+            domain_examples = _format_domain_relation_examples(
+                getattr(self, "_domain_relation_examples", []) or []
+            ) or DEFAULT_RELATION_EXAMPLES
             prompt = RELATION_IDENTIFICATION_PROMPT.format(
                 text=text,
                 entities=entities_str,
                 suggested_types=", ".join(suggested_types) if suggested_types else "none provided (discover new types)",
                 domain=domain or "general",
+                domain_examples=domain_examples,
             )
         
         if self.use_self_consistency:
@@ -1760,18 +1820,44 @@ class RelationExtractor(BaseAgent):
         relation_types: List[str],
         existing_triples: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
-        """Recall-oriented second pass for supported facts missed by RHF."""
+        """Recall-oriented second pass for supported facts missed by RHF.
+
+        Connectivity-aware: entities left with no relation after RHF (orphans) are
+        surfaced to the LLM so this pass can prioritize connecting them at creation
+        time — with full segment text in hand — rather than leaving orphans for a
+        degraded post-integration relink. In open-world mode this runs even when no
+        relation types were pre-identified, since that is exactly the case where
+        coordinated lists / taxonomic mentions get orphaned.
+        """
         if not self.enable_relation_gleaning or not text or len(entities) < 2:
             return []
-        if not relation_types:
+        # In fixed-schema mode we can only glean against known types; skip if none.
+        if not relation_types and not self.enable_open_world:
+            return []
+
+        # Identify entities that participate in no existing triple.
+        connected: Set[str] = set()
+        for t in existing_triples:
+            for key in ("subject", "object", "subject_id", "object_id"):
+                v = t.get(key)
+                if v:
+                    connected.add(_normalize_surface(str(v)))
+        unconnected = [
+            e for e in entities
+            if _normalize_surface(str(e.get("id", "") or e.get("text", ""))) not in connected
+            and _normalize_surface(str(e.get("text", "") or e.get("id", ""))) not in connected
+        ]
+        # Nothing pre-identified AND everything already connected → nothing to do.
+        if not relation_types and not unconnected:
             return []
 
         prompt = RELATION_GLEANING_PROMPT.format(
             text=text,
             entities=self._entity_catalog_for_prompt(entities),
-            relation_types=", ".join(relation_types),
+            relation_types=", ".join(relation_types) if relation_types else "(open-world — propose concise UPPER_SNAKE_CASE predicates)",
             direction_guide=SCIERC_DIRECTION_HINT if not self.enable_open_world else "",
             existing_triples=json.dumps(existing_triples[:40], indent=2),
+            unconnected_entities=self._entity_catalog_for_prompt(unconnected) if unconnected else "(none — all entities already have at least one relation)",
         )
         result = self.call_llm(
             prompt=prompt,

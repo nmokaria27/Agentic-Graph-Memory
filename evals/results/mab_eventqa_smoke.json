@@ -1,0 +1,816 @@
+{
+  "eventqa": {
+    "dataset": "eventqa",
+    "aggregate": {
+      "accuracy": 0.2,
+      "substring_exact_match": 0.2,
+      "exact_match": 0.0444,
+      "token_f1": 0.1712,
+      "avg_memory_build_s": 2468.55,
+      "avg_query_s": 30.82,
+      "n": 45
+    },
+    "results": [
+      {
+        "context_id": 0,
+        "query_id": 0,
+        "question": "In what country is Normandy located?",
+        "gold_answers": [
+          "France",
+          "France",
+          "France",
+          "France"
+        ],
+        "prediction": "Normandy is located in France.",
+        "metrics": {
+          "substring_exact_match": 1.0,
+          "exact_match": 0.0,
+          "token_f1": 0.33333333333333337,
+          "primary": 1.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 28.400227069854736
+      },
+      {
+        "context_id": 0,
+        "query_id": 1,
+        "question": "When were the Normans in Normandy?",
+        "gold_answers": [
+          "10th and 11th centuries",
+          "in the 10th and 11th centuries",
+          "10th and 11th centuries",
+          "10th and 11th centuries"
+        ],
+        "prediction": "The provided evidence does not contain information about the Normans in Normandy.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.13333333333333333,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 22.221525192260742
+      },
+      {
+        "context_id": 0,
+        "query_id": 2,
+        "question": "From which countries did the Norse originate?",
+        "gold_answers": [
+          "Denmark, Iceland and Norway",
+          "Denmark, Iceland and Norway",
+          "Denmark, Iceland and Norway",
+          "Denmark, Iceland and Norway"
+        ],
+        "prediction": "The provided evidence does not contain information about the countries from which the Norse originated.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 19.00438618659973
+      },
+      {
+        "context_id": 0,
+        "query_id": 3,
+        "question": "Who was the Norse leader?",
+        "gold_answers": [
+          "Rollo",
+          "Rollo",
+          "Rollo",
+          "Rollo"
+        ],
+        "prediction": "No Norse leader is mentioned in the provided evidence.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 13.539897918701172
+      },
+      {
+        "context_id": 0,
+        "query_id": 4,
+        "question": "What century did the Normans first gain their separate identity?",
+        "gold_answers": [
+          "10th century",
+          "the first half of the 10th century",
+          "10th",
+          "10th"
+        ],
+        "prediction": "The provided evidence does not contain information about the Normans or their separate identity.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 17.160791158676147
+      },
+      {
+        "context_id": 0,
+        "query_id": 5,
+        "question": "Who was the duke in the battle of Hastings?",
+        "gold_answers": [
+          "William the Conqueror",
+          "William the Conqueror",
+          "William the Conqueror"
+        ],
+        "prediction": "The duke at the Battle of Hastings was William, Duke of Normandy, who led the Norman invasion of England in 1066.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.11764705882352941,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 19.489887952804565
+      },
+      {
+        "context_id": 0,
+        "query_id": 6,
+        "question": "Who ruled the duchy of Normandy",
+        "gold_answers": [
+          "Richard I",
+          "Richard I",
+          "Richard I"
+        ],
+        "prediction": "The provided evidence does not include information about who ruled the duchy of Normandy.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 17.820942640304565
+      },
+      {
+        "context_id": 0,
+        "query_id": 7,
+        "question": "What religion were the Normans",
+        "gold_answers": [
+          "Catholic",
+          "Catholic orthodoxy",
+          "Catholic"
+        ],
+        "prediction": "The available evidence does not contain information about the religion of the Normans.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 16.182842254638672
+      },
+      {
+        "context_id": 0,
+        "query_id": 8,
+        "question": "What is the original meaning of the word Norman?",
+        "gold_answers": [
+          "Viking",
+          "Norseman, Viking",
+          "Norseman, Viking"
+        ],
+        "prediction": "The original meaning of the word Norman is 'people from Normandy'.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 29.198435068130493
+      },
+      {
+        "context_id": 0,
+        "query_id": 9,
+        "question": "When was the Latin version of the word Norman first recorded?",
+        "gold_answers": [
+          "9th century",
+          "9th century",
+          "9th century"
+        ],
+        "prediction": "No evidence found in the provided sources regarding the first recorded Latin version of the word Norman.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 22.942835092544556
+      },
+      {
+        "context_id": 0,
+        "query_id": 10,
+        "question": "When was the Duchy of Normandy founded?",
+        "gold_answers": [
+          "911",
+          "911",
+          "911"
+        ],
+        "prediction": "The evidence does not provide the founding date of the Duchy of Normandy.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 17.980401039123535
+      },
+      {
+        "context_id": 0,
+        "query_id": 11,
+        "question": "Who did Rollo sign the treaty of Saint-Clair-sur-Epte with?",
+        "gold_answers": [
+          "King Charles III",
+          "King Charles III",
+          "King Charles III"
+        ],
+        "prediction": "According to the available evidence, Rollo signed the treaty of Saint-Clair-sur-Epte with a Frankish king, though the specific name is not provided in the evidence.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.08,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 29.845444679260254
+      },
+      {
+        "context_id": 0,
+        "query_id": 12,
+        "question": "What river originally bounded the Duchy",
+        "gold_answers": [
+          "Seine",
+          "Epte",
+          "Seine"
+        ],
+        "prediction": "The only river mentioned in the evidence is the Yellow River, but there is no direct link to a specific duchy. Given the lack of context, the Yellow River is the most plausible candidate.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 30.352011919021606
+      },
+      {
+        "context_id": 0,
+        "query_id": 13,
+        "question": "Who upon arriving gave the original viking settlers a common identity?",
+        "gold_answers": [
+          "Rollo",
+          "Rollo",
+          "Rollo"
+        ],
+        "prediction": "The available evidence does not contain information about who gave the original Viking settlers a common identity.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 23.353870153427124
+      },
+      {
+        "context_id": 0,
+        "query_id": 14,
+        "question": "What was the Norman religion?",
+        "gold_answers": [
+          "Catholicism",
+          "Catholicism",
+          "Catholicism"
+        ],
+        "prediction": "The provided evidence does not contain information about the Norman religion.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2556.054794073105,
+        "query_time": 17.851815938949585
+      },
+      {
+        "context_id": 1,
+        "query_id": 15,
+        "question": "Were Scott Derrickson and Ed Wood of the same nationality?",
+        "gold_answers": [
+          "yes"
+        ],
+        "prediction": "The available evidence does not provide information on the nationalities of Scott Derrickson and Ed Wood.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 11.758976936340332
+      },
+      {
+        "context_id": 1,
+        "query_id": 16,
+        "question": "What government position was held by the woman who portrayed Corliss Archer in the film Kiss and Tell?",
+        "gold_answers": [
+          "Chief of Protocol"
+        ],
+        "prediction": "The provided evidence does not identify the actress who portrayed Corliss Archer in the film Kiss and Tell, nor any government position she may have held.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 12.536070108413696
+      },
+      {
+        "context_id": 1,
+        "query_id": 17,
+        "question": "What science fantasy young adult series, told in first person, has a set of companion books narrating the stories of enslaved worlds and alien species?",
+        "gold_answers": [
+          "Animorphs"
+        ],
+        "prediction": "No matching series found in the provided context.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 12.19888186454773
+      },
+      {
+        "context_id": 1,
+        "query_id": 18,
+        "question": "Are the Laleli Mosque and Esma Sultan Mansion located in the same neighborhood?",
+        "gold_answers": [
+          "no"
+        ],
+        "prediction": "The available evidence does not contain information about the locations of the Laleli Mosque or the Esma Sultan Mansion, so it is not possible to determine whether they are in the same neighborhood.",
+        "metrics": {
+          "substring_exact_match": 1.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 1.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 11.209619045257568
+      },
+      {
+        "context_id": 1,
+        "query_id": 19,
+        "question": "The director of the romantic comedy \"Big Stone Gap\" is based in what New York city?",
+        "gold_answers": [
+          "Greenwich Village, New York City"
+        ],
+        "prediction": "The provided evidence does not contain any information about the director of 'Big Stone Gap' or their location.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 10.645076990127563
+      },
+      {
+        "context_id": 1,
+        "query_id": 20,
+        "question": "2014 S/S is the debut album of a South Korean boy group that was formed by who?",
+        "gold_answers": [
+          "YG Entertainment"
+        ],
+        "prediction": "2014 S/S is the debut album of WINNER, which was formed by YG Entertainment.",
+        "metrics": {
+          "substring_exact_match": 1.0,
+          "exact_match": 0.0,
+          "token_f1": 0.2666666666666667,
+          "primary": 1.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 18.38836979866028
+      },
+      {
+        "context_id": 1,
+        "query_id": 21,
+        "question": "Who was known by his stage name Aladin and helped organizations improve their performance as a consultant?",
+        "gold_answers": [
+          "Eenasul Fateh"
+        ],
+        "prediction": "The available evidence does not identify a person known by the stage name Aladin who worked as a performance improvement consultant.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 11.527693033218384
+      },
+      {
+        "context_id": 1,
+        "query_id": 22,
+        "question": "The arena where the Lewiston Maineiacs played their home games can seat how many people?",
+        "gold_answers": [
+          "3,677 seated"
+        ],
+        "prediction": "The Lewiston Maineiacs played their home games at the Androscoggin Bank Colisee, but the seating capacity is not provided in the available evidence.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 11.361849069595337
+      },
+      {
+        "context_id": 1,
+        "query_id": 23,
+        "question": "Who is older, Annie Morton or Terry Richardson?",
+        "gold_answers": [
+          "Terry Richardson"
+        ],
+        "prediction": "No information is available about the ages of Annie Morton and Terry Richardson.",
+        "metrics": {
+          "substring_exact_match": 1.0,
+          "exact_match": 0.0,
+          "token_f1": 0.2857142857142857,
+          "primary": 1.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 8.41600775718689
+      },
+      {
+        "context_id": 1,
+        "query_id": 24,
+        "question": "Are Local H and For Against both from the United States?",
+        "gold_answers": [
+          "yes"
+        ],
+        "prediction": "There is no available evidence to determine whether Local H and For Against are both from the United States.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 13.748701810836792
+      },
+      {
+        "context_id": 1,
+        "query_id": 25,
+        "question": "What is the name of the fight song of the university whose main campus is in Lawrence, Kansas and whose branch campuses are in the Kansas City metropolitan area?",
+        "gold_answers": [
+          "Kansas Song"
+        ],
+        "prediction": "No information is available to answer this question.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 11.326827049255371
+      },
+      {
+        "context_id": 1,
+        "query_id": 26,
+        "question": "What screenwriter with credits for \"Evolution\" co-wrote a film starring Nicolas Cage and T\u00e9a Leoni?",
+        "gold_answers": [
+          "David Weissman"
+        ],
+        "prediction": "David Diamond, who co-wrote the film 'Evolution', also co-wrote 'The Family Man' starring Nicolas Cage and T\u00e9a Leoni.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.1111111111111111,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 15.704739093780518
+      },
+      {
+        "context_id": 1,
+        "query_id": 27,
+        "question": "What year did Guns N Roses perform a promo for a movie starring Arnold Schwarzenegger as a former New York Police detective?",
+        "gold_answers": [
+          "1999"
+        ],
+        "prediction": "The provided knowledge base does not include any records of Guns N Roses performing a promo for a movie starring Arnold Schwarzenegger as a former NYPD detective.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.0,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 11.739820003509521
+      },
+      {
+        "context_id": 1,
+        "query_id": 28,
+        "question": "Are Random House Tower and 888 7th Avenue both used for real estate?",
+        "gold_answers": [
+          "no"
+        ],
+        "prediction": "No information is available to determine whether Random House Tower and 888 7th Avenue are both used for real estate.",
+        "metrics": {
+          "substring_exact_match": 1.0,
+          "exact_match": 0.0,
+          "token_f1": 0.09523809523809523,
+          "primary": 1.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 12.580252885818481
+      },
+      {
+        "context_id": 1,
+        "query_id": 29,
+        "question": "The football manager who recruited David Beckham managed Manchester United during what timeframe?",
+        "gold_answers": [
+          "from 1986 to 2013"
+        ],
+        "prediction": "The manager who recruited David Beckham was Sir Alex Ferguson, who managed Manchester United from 1986 to 2013.",
+        "metrics": {
+          "substring_exact_match": 1.0,
+          "exact_match": 0.0,
+          "token_f1": 0.4,
+          "primary": 1.0
+        },
+        "memory_construction_time": 2181.223356962204,
+        "query_time": 8.081784963607788
+      },
+      {
+        "context_id": 2,
+        "query_id": 30,
+        "question": "These are the events that have already occurred:\n\n1. Debbie sat with Stuart and Brent Tarleton on the porch of Tara.\n\n\nBelow is a list of possible subsequent events:\n\n['Debbie gazed out the window, eager to see her friend arrive from across the street.', 'Debbie paced in the garden, counting the minutes until her sister finally came home.', 'Debbie listened intently as her brother picked up his guitar, anticipating his new song.', 'Debbie sat on the porch swing, hoping her mother would return from the store.', \"Debbie leaned against the fence, excitedly watching for her neighbor's dog to come play.\", 'Debbie waited for her father at the end of the driveway.']\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Debbie waited for her father at the end of the driveway."
+        ],
+        "prediction": "Based on the available evidence, Debbie is on the porch with the Tarleton twins, and the most consistent subsequent event from the list is that she remains on the porch, hoping her mother would return from the store.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.1142857142857143,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 82.64400696754456
+      },
+      {
+        "context_id": 2,
+        "query_id": 31,
+        "question": "These are the events that have already occurred:\n\n1. Debbie sat with Stuart and Brent Tarleton on the porch of Tara.\n2. Debbie waited for her father at the end of the driveway.\n\n\nBelow is a list of possible subsequent events:\n\n[\"Marianne revealed her disappointment regarding Lucian's plan to assist the Garcia family.\", \"Marianne voiced her anger at Lucian's choice to support the Thompson family.\", \"Marianne criticized Lucian's effort to sponsor the Martinez family.\", \"Marianne lamented over Lucian's insistence to aid the Patel family.\", \"Marianne expressed frustration about Lucian's decision to help the Claudia family.\", \"Marianne shared her concerns about Lucian's intention to back the Roberts family.\"]\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Marianne expressed frustration about Lucian's decision to help the Claudia family."
+        ],
+        "prediction": "The evidence does not contain any information about Marianne or Lucian, so none of the listed events can be confirmed as happening next.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.18749999999999997,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 37.57378005981445
+      },
+      {
+        "context_id": 2,
+        "query_id": 32,
+        "question": "These are the events that have already occurred:\n\n1. Debbie sat with Stuart and Brent Tarleton on the porch of Tara.\n2. Debbie waited for her father at the end of the driveway.\n3. Marianne expressed frustration about Lucian's decision to help the Claudia family.\n\n\nBelow is a list of possible subsequent events:\n\n['Marianne articulated his distaste for the Harrison relatives.', 'Marianne revealed his disdain for the Thompson household.', 'Marianne voiced his aversion to the Campbell clan.', 'Marianne expressed his dislike for the MacIntosh family.', 'Marianne disclosed his dislike for the Johnson lineage.', 'Marianne proclaimed his disapproval of the Fitzgerald family.']\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Marianne expressed his dislike for the MacIntosh family."
+        ],
+        "prediction": "Marianne articulated his distaste for the Harrison relatives.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.42857142857142855,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 49.551697731018066
+      },
+      {
+        "context_id": 2,
+        "query_id": 33,
+        "question": "These are the events that have already occurred:\n\n1. Debbie sat with Stuart and Brent Tarleton on the porch of Tara.\n2. Debbie waited for her father at the end of the driveway.\n3. Marianne expressed frustration about Lucian's decision to help the Claudia family.\n4. Marianne expressed his dislike for the MacIntosh family.\n\n\nBelow is a list of possible subsequent events:\n\n['Lucian adapted to the slower pace of small-town life after transitioning from Athens.', 'Lucian acclimated to the rhythms of daily life after relocating from Decatur.', 'Lucian settled into the community of north Georgia after departing from Macon.', 'Lucian found comfort in the tranquility of the mountains after his shift from Columbus.', 'Lucian embraced the challenges of rural living after moving from Atlanta.', 'Lucian adjusted to life in north Georgia after leaving Savannah.']\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Lucian adjusted to life in north Georgia after leaving Savannah."
+        ],
+        "prediction": "Lucian settled into the community of north Georgia after departing from Macon.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.380952380952381,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 50.1657612323761
+      },
+      {
+        "context_id": 2,
+        "query_id": 34,
+        "question": "These are the events that have already occurred:\n\n1. Debbie sat with Stuart and Brent Tarleton on the porch of Tara.\n2. Debbie waited for her father at the end of the driveway.\n3. Marianne expressed frustration about Lucian's decision to help the Claudia family.\n4. Marianne expressed his dislike for the MacIntosh family.\n5. Lucian adjusted to life in north Georgia after leaving Savannah.\n\n\nBelow is a list of possible subsequent events:\n\n['Lucian dismissed the coachman.', 'Lucian ignored the messenger.', 'Lucian evicted the tenant.', 'Lucian challenged the artist.', 'Lucian summoned the chef.', 'Lucian confronted the rival.']\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Lucian dismissed the coachman."
+        ],
+        "prediction": "Based on the domain expert's suggestion of confrontation and the context of family conflicts, the most likely next event is Lucian confronting the rival.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.08695652173913045,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 64.01105999946594
+      },
+      {
+        "context_id": 2,
+        "query_id": 35,
+        "question": "These are the events that have already occurred:\n\n...\n2. Debbie waited for her father at the end of the driveway.\n3. Marianne expressed frustration about Lucian's decision to help the Claudia family.\n4. Marianne expressed his dislike for the MacIntosh family.\n5. Lucian adjusted to life in north Georgia after leaving Savannah.\n6. Lucian dismissed the coachman.\n\n\nBelow is a list of possible subsequent events:\n\n['Debbie tried on different dresses for the barbecue.', 'Debbie experimented with various hats for the picnic.', 'Debbie browsed through multiple swimsuits for the beach day.', 'Debbie selected several outfits for the garden party.', 'Debbie chose different shoes for the outdoor concert.', 'Debbie coordinated a range of accessories for the music festival.']\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Debbie tried on different dresses for the barbecue."
+        ],
+        "prediction": "Based on the evidence, Debbie is preparing for a barbecue, as indicated by the mention of 'barbecue' and 'waltzes' in the events_celebrations expert evidence. The graph context shows she is already dressed in a green flowered muslin dress and other attire, suggesting she is selecting outfits for the barbecue.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.2,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 58.253751039505005
+      },
+      {
+        "context_id": 2,
+        "query_id": 36,
+        "question": "These are the events that have already occurred:\n\n...\n3. Marianne expressed frustration about Lucian's decision to help the Claudia family.\n4. Marianne expressed his dislike for the MacIntosh family.\n5. Lucian adjusted to life in north Georgia after leaving Savannah.\n6. Lucian dismissed the coachman.\n7. Debbie tried on different dresses for the barbecue.\n\n\nBelow is a list of possible subsequent events:\n\n[\"Debbie was bewildered when she stumbled upon a video of Mark's unexpected return.\", \"Debbie was unsettled when she overheard colleagues gossiping about Sam's sudden promotion.\", \"Debbie was astonished when she found a photo of Lisa's secret wedding on social media.\", \"Debbie was taken aback when she received an invitation to Tim's surprise birthday party.\", \"Debbie felt shocked when she heard people talking casually about Kali's engagement.\", \"Debbie felt confused when she read an article announcing Alex's unplanned departure from the company.\"]\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Debbie felt shocked when she heard people talking casually about Kali's engagement."
+        ],
+        "prediction": "Based on the evidence from domain experts and the knowledge graph, the most likely next event is that Debbie feels shocked when she hears people talking casually about Kali's engagement. The graph contains a triple indicating that Kali Abrianna is engaged to Edgar Kaitlin, and multiple experts with high confidence support this event as the subsequent occurrence.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.37931034482758624,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 59.548919916152954
+      },
+      {
+        "context_id": 2,
+        "query_id": 37,
+        "question": "These are the events that have already occurred:\n\n...\n4. Marianne expressed his dislike for the MacIntosh family.\n5. Lucian adjusted to life in north Georgia after leaving Savannah.\n6. Lucian dismissed the coachman.\n7. Debbie tried on different dresses for the barbecue.\n8. Debbie felt shocked when she heard people talking casually about Kali's engagement.\n\n\nBelow is a list of possible subsequent events:\n\n['Barrett worried about brewing tea for Debbie at the brunch.', 'Barrett haggled about selecting pastries for Debbie at the fair.', 'Barrett debated about picking snacks for Debbie at the potluck.', 'Barrett agonized over wrapping gifts for Debbie at the party.', 'Barrett fussed about fetching dainties for Debbie at the barbecue.', 'Barrett fretted over icing cupcakes for Debbie at the picnic.']\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Barrett fussed about fetching dainties for Debbie at the barbecue."
+        ],
+        "prediction": "Barrett fussed about fetching dainties for Debbie at the barbecue.",
+        "metrics": {
+          "substring_exact_match": 1.0,
+          "exact_match": 1.0,
+          "token_f1": 1.0,
+          "primary": 1.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 49.895822048187256
+      },
+      {
+        "context_id": 2,
+        "query_id": 38,
+        "question": "These are the events that have already occurred:\n\n...\n5. Lucian adjusted to life in north Georgia after leaving Savannah.\n6. Lucian dismissed the coachman.\n7. Debbie tried on different dresses for the barbecue.\n8. Debbie felt shocked when she heard people talking casually about Kali's engagement.\n9. Barrett fussed about fetching dainties for Debbie at the barbecue.\n\n\nBelow is a list of possible subsequent events:\n\n[\"Kali found it challenging to recognize Debbie's emotional needs in their discussions.\", \"Kali displayed reluctance in admitting the significance of Debbie's emotions.\", \"Kali seemed unwilling to validate Debbie's viewpoints during their conversation.\", \"Kali expressed his reluctance to acknowledge Debbie's feelings.\", \"Kali showed hesitation in acknowledging the depth of Debbie's concerns.\", \"Kali struggled to accept Debbie's perspective on their relationship.\"]\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Kali expressed his reluctance to acknowledge Debbie's feelings."
+        ],
+        "prediction": "Based on the graph evidence, Debbie is amused by the latest expulsion and Kali is engaged to Edgar Kaitlin. There is no direct triple about emotional interaction between Kali and Debbie. However, given the sequence of events where Debbie felt shocked about Kali's engagement, the most likely subsequent event is that Kali found it challenging to recognize Debbie's emotional needs.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.1509433962264151,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 62.659257888793945
+      },
+      {
+        "context_id": 2,
+        "query_id": 39,
+        "question": "These are the events that have already occurred:\n\n...\n6. Lucian dismissed the coachman.\n7. Debbie tried on different dresses for the barbecue.\n8. Debbie felt shocked when she heard people talking casually about Kali's engagement.\n9. Barrett fussed about fetching dainties for Debbie at the barbecue.\n10. Kali expressed his reluctance to acknowledge Debbie's feelings.\n\n\nBelow is a list of possible subsequent events:\n\n['Debbie pondered auditioning for a Miami improv group or the Tampa Bay Dance Collective.', 'Debbie reflected on entering a New Orleans art competition or the Savannah Poetry Slam.', 'Debbie debated enrolling in a Houston culinary school or the Austin Music Academy.', 'Debbie mulled over applying to the Nashville Ballet or the Atlanta Folk Music Society.', 'Debbie contemplated taking a South Carolina Legion or the Atlanta Gate City Guard.', 'Debbie considered joining a local Asheville theater troupe or the Charlotte Symphony Orchestra.']\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Debbie contemplated taking a South Carolina Legion or the Atlanta Gate City Guard."
+        ],
+        "prediction": "Based on the evidence, Debbie is tired of hearing about the Civil War and her slippers are from Atlanta, so the next event is her contemplating joining a South Carolina Legion or the Atlanta Gate City Guard.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.45000000000000007,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 62.74301314353943
+      },
+      {
+        "context_id": 2,
+        "query_id": 40,
+        "question": "These are the events that have already occurred:\n\n...\n7. Debbie tried on different dresses for the barbecue.\n8. Debbie felt shocked when she heard people talking casually about Kali's engagement.\n9. Barrett fussed about fetching dainties for Debbie at the barbecue.\n10. Kali expressed his reluctance to acknowledge Debbie's feelings.\n11. Debbie contemplated taking a South Carolina Legion or the Atlanta Gate City Guard.\n\n\nBelow is a list of possible subsequent events:\n\n['Debbie found the suggestions made by friends about Catrina rather irritating.', 'Debbie was unfazed by the advice given to her on parenting Catrina.', 'Debbie ignored the recommendations from strangers about how to raise Catrina.', 'Debbie disliked the opinions of others regarding her child, Catrina.', \"Debbie was often annoyed by family members discussing Catrina's future.\", \"Debbie expressed her frustration over coworkers' thoughts on Catrina's upbringing.\"]\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Debbie disliked the opinions of others regarding her child, Catrina."
+        ],
+        "prediction": "The provided evidence focuses on Debbie O'Kerry's discussions about the American Civil War, her appearance, and her location at Tara plantation. There is no mention of Catrina, barbecue, or any of the listed subsequent events. Therefore, none of the possible events can be selected as the next event based on the evidence.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.1568627450980392,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 50.74532389640808
+      },
+      {
+        "context_id": 2,
+        "query_id": 41,
+        "question": "These are the events that have already occurred:\n\n...\n8. Debbie felt shocked when she heard people talking casually about Kali's engagement.\n9. Barrett fussed about fetching dainties for Debbie at the barbecue.\n10. Kali expressed his reluctance to acknowledge Debbie's feelings.\n11. Debbie contemplated taking a South Carolina Legion or the Atlanta Gate City Guard.\n12. Debbie disliked the opinions of others regarding her child, Catrina.\n\n\nBelow is a list of possible subsequent events:\n\n['Debbie discovered the lively park filled with families picnicking and children playing games.', 'Debbie noticed the bustling streets crowded with children in costumes and colorful balloons.', 'Debbie encountered the packed marketplace filled with vendors selling fresh produce and vibrant crafts.', 'Debbie observed the crowded sidewalks filled with men in uniform and various vehicles.', 'Debbie attended the crowded fairgrounds filled with thrill-seekers riding roller coasters and sampling treats.', 'Debbie watched the busy plaza filled with artists displaying their works and various performances.']\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Debbie observed the crowded sidewalks filled with men in uniform and various vehicles."
+        ],
+        "prediction": "Based on the graph evidence showing Debbie's involvement with the Civil War context and her tiredness of it, the most likely next event is that Debbie observed the crowded sidewalks filled with men in uniform and various vehicles, as this aligns with the war setting and her previous contemplation of military units.",
+        "metrics": {
+          "substring_exact_match": 1.0,
+          "exact_match": 0.0,
+          "token_f1": 0.4615384615384615,
+          "primary": 1.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 67.49030303955078
+      },
+      {
+        "context_id": 2,
+        "query_id": 42,
+        "question": "These are the events that have already occurred:\n\n...\n9. Barrett fussed about fetching dainties for Debbie at the barbecue.\n10. Kali expressed his reluctance to acknowledge Debbie's feelings.\n11. Debbie contemplated taking a South Carolina Legion or the Atlanta Gate City Guard.\n12. Debbie disliked the opinions of others regarding her child, Catrina.\n13. Debbie observed the crowded sidewalks filled with men in uniform and various vehicles.\n\n\nBelow is a list of possible subsequent events:\n\n['Debbie realized that the children could play games with elderly residents without supervision.', 'Debbie saw that the young professionals could collaborate with retired executives without barriers.', 'Debbie observed that the young ladies could engage with convalescent men without restrictions.', 'Debbie noted that the teenagers could interact with visiting scholars without limitations.', 'Debbie discovered that the students could converse with local artists without obstacles.', 'Debbie remarked that the volunteers could assist with active soldiers without guidelines.']\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Debbie observed that the young ladies could engage with convalescent men without restrictions."
+        ],
+        "prediction": "Based on the evidence, the most likely subsequent event is that Debbie remarked that the volunteers could assist with active soldiers without guidelines. This aligns with the military context (American Civil War, men in uniform) present in the graph and the earlier events.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.2608695652173913,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 77.57702827453613
+      },
+      {
+        "context_id": 2,
+        "query_id": 43,
+        "question": "These are the events that have already occurred:\n\n...\n10. Kali expressed his reluctance to acknowledge Debbie's feelings.\n11. Debbie contemplated taking a South Carolina Legion or the Atlanta Gate City Guard.\n12. Debbie disliked the opinions of others regarding her child, Catrina.\n13. Debbie observed the crowded sidewalks filled with men in uniform and various vehicles.\n14. Debbie observed that the young ladies could engage with convalescent men without restrictions.\n\n\nBelow is a list of possible subsequent events:\n\n['Debbie baked an array of pastries and sold them at the local fair.', 'Debbie listened to the music and sang along with the crowd.', 'Debbie captured stunning photographs and displayed them at an art exhibit.', 'Debbie guided a hiking group and shared stories of her adventures.', 'Debbie painted a vibrant mural while dancers entertained the audience.', 'Debbie hosted a trivia night and challenged friends to test their knowledge.']\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Debbie listened to the music and sang along with the crowd."
+        ],
+        "prediction": "Debbie listened to the music and sang along with the crowd.",
+        "metrics": {
+          "substring_exact_match": 1.0,
+          "exact_match": 1.0,
+          "token_f1": 1.0,
+          "primary": 1.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 48.85384202003479
+      },
+      {
+        "context_id": 2,
+        "query_id": 44,
+        "question": "These are the events that have already occurred:\n\n...\n11. Debbie contemplated taking a South Carolina Legion or the Atlanta Gate City Guard.\n12. Debbie disliked the opinions of others regarding her child, Catrina.\n13. Debbie observed the crowded sidewalks filled with men in uniform and various vehicles.\n14. Debbie observed that the young ladies could engage with convalescent men without restrictions.\n15. Debbie listened to the music and sang along with the crowd.\n\n\nBelow is a list of possible subsequent events:\n\n['Melly questioned the organization\u2019s goals and their willingness to collaborate.', \"Melly praised the squad's achievements and their commitment to advance.\", \"Melly discussed the coalition's strategies and their urgency to act.\", 'Melly criticized the volunteers\u2019 tactics and their necessity to unite.', \"Melly analyzed the team's performance and their obligation to train.\", \"Melly commented on the militia's abilities and their need to fight.\"]\n\n Your task is to choose from the above events which event happens next based on the book excerpt. In your response to me, only include the answer without anything else. ",
+        "gold_answers": [
+          "Melly commented on the militia's abilities and their need to fight."
+        ],
+        "prediction": "The subsequent event is Melly commenting on the militia's abilities and their need to fight, given the war-related context of the preceding events.",
+        "metrics": {
+          "substring_exact_match": 0.0,
+          "exact_match": 0.0,
+          "token_f1": 0.6249999999999999,
+          "primary": 0.0
+        },
+        "memory_construction_time": 2668.373767852783,
+        "query_time": 58.67025828361511
+      }
+    ]
+  }
+}

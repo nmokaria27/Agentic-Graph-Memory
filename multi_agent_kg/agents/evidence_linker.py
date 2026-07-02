@@ -164,7 +164,10 @@ class EvidenceLinker(BaseAgent):
 
         # Extract domain_config if provided
         domain_config = kwargs.get("domain_config")
-        self._current_domain = domain_config.get("domain", "general") if domain_config else (context.domain or "general")
+        self._current_domain = (
+            (domain_config.get("primary_domain") or domain_config.get("domain"))
+            if domain_config else None
+        ) or context.domain or "general"
 
         triples = triples or context.relations or []
 

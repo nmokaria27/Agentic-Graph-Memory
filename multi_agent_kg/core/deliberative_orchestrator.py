@@ -602,7 +602,12 @@ class DeliberativeOrchestrator:
             payload = ckpt.load("2")
             domain_config = payload["domain_config"]
             domain_result_confidence = payload.get("confidence", 0.95)
-            context.domain = payload.get("domain") or domain_config.get("domain", "general")
+            context.domain = (
+                payload.get("domain")
+                or domain_config.get("primary_domain")
+                or domain_config.get("domain")
+                or "general"
+            )
             if self.reuse_corpus_schema and domain_config:
                 self._corpus_domain_config = domain_config
             results["domain"] = context.domain
@@ -630,7 +635,12 @@ class DeliberativeOrchestrator:
                 domain_result_confidence = domain_result.confidence
                 if self.reuse_corpus_schema and domain_config:
                     self._corpus_domain_config = domain_config
-            context.domain = domain_config.get("domain", "general")
+            # DomainClassifier emits "primary_domain"; fixed schemas may emit "domain".
+            context.domain = (
+                domain_config.get("primary_domain")
+                or domain_config.get("domain")
+                or "general"
+            )
             results["domain"] = context.domain
             print(f"  Domain: {context.domain} (confidence: {domain_result_confidence:.2f})")
             ckpt.save(

@@ -25,6 +25,7 @@ from multi_agent_kg.agents.base import (
     MemoryType,
 )
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Entity, Triple
+from multi_agent_kg.core import provenance as prov
 from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
 from multi_agent_kg.core.governance import coerce_metadata
 from multi_agent_kg.core.memory import SharedMemory
@@ -54,6 +55,37 @@ Return:
     ],
     "unique_entities": ["<id1>", "<id2>", ...]
 }}"""
+
+
+def _coerce_entity(e: Any) -> Optional[Dict[str, Any]]:
+    """Coerce a raw extracted entity into a dict.
+
+    LLM JSON-parse failures can leave a bare string where an entity dict is
+    expected. Downstream dedup/normalization call ``.get()`` on every element,
+    so a single string crashes integration and silently zeroes the whole
+    document's KG. Wrap non-empty strings into a minimal entity; drop anything
+    else that is not already a dict.
+    """
+    if isinstance(e, dict):
+        return e
+    if isinstance(e, str) and e.strip():
+        s = e.strip()
+        return {"id": s, "text": s, "type": ""}
+    return None
+
+
+def _sanitize_entities(entities: List[Any]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for e in entities or []:
+        coerced = _coerce_entity(e)
+        if coerced is not None:
+            out.append(coerced)
+    return out
+
+
+def _sanitize_triples(triples: List[Any]) -> List[Dict[str, Any]]:
+    """Drop non-dict triples (same LLM-parse hazard as entities)."""
+    return [t for t in (triples or []) if isinstance(t, dict)]
 
 
 RELATION_NORMALIZATION_PROMPT = """Normalize these relation types to a canonical form.
@@ -186,7 +218,17 @@ class KnowledgeOrganizer(BaseAgent):
             if msg.comm_type == CommunicationType.DELEGATE and msg.content.get("action") == "integrate":
                 entities = msg.content.get("entities", entities)
                 triples = msg.content.get("triples", triples)
-        
+
+        # Guard against malformed items from LLM parse failures. A bare string
+        # where an entity/triple dict is expected would crash dedup/normalization
+        # (via .get()) and silently zero the entire document's KG.
+        _pre_e, _pre_t = len(entities), len(triples)
+        entities = _sanitize_entities(entities)
+        triples = _sanitize_triples(triples)
+        if len(entities) != _pre_e or len(triples) != _pre_t:
+            print(f"  [SANITIZE] dropped/coerced malformed items: "
+                  f"entities {_pre_e}->{len(entities)}, triples {_pre_t}->{len(triples)}")
+
         # Step 1: Entity deduplication
         print(f"\n" + "="*70)
         print(f"[ORGANIZER DEBUG] Entity Deduplication")
@@ -833,6 +875,7 @@ class KnowledgeOrganizer(BaseAgent):
                             "source_text": entity.get("source_text", ""),
                             "source_texts": entity.get("source_texts", []),
                             "extraction_method": entity.get("extraction_method", ""),
+                            "provenance": entity.get("provenance"),
                         },
                     )
                     if entity.get("candidate_domains"):
@@ -853,6 +896,7 @@ class KnowledgeOrganizer(BaseAgent):
                             "source_text": entity.get("source_text", ""),
                             "source_texts": entity.get("source_texts", []),
                             "extraction_method": entity.get("extraction_method", ""),
+                            "provenance": entity.get("provenance"),
                         },
                     )
                 added_entities += 1
@@ -909,6 +953,19 @@ class KnowledgeOrganizer(BaseAgent):
                 continue
             seen_triples.add(triple_key)
 
+            # Unified triple provenance: source doc, extracting agent, confidence +
+            # how it was derived, and the supporting evidence snippet.
+            _t_evidence = (triple.get("supporting_evidence") or triple.get("evidence") or "")
+            _t_conf = triple.get("final_confidence", triple.get("confidence", 0.7))
+            _t_verified = triple.get("verification_status") not in (None, "", "unknown")
+            triple_prov = prov.build_provenance(
+                refs=[prov.source_ref(document_id, snippet=_t_evidence or None)],
+                extractor="RelationExtractor",
+                confidence=_t_conf,
+                confidence_source=(prov.CONFIDENCE_VERIFICATION if _t_verified else prov.CONFIDENCE_EXTRACTION),
+                evidence_sentences=[_t_evidence] if _t_evidence else [],
+            )
+
             if self.governed_kg:
                 triple_metadata = coerce_metadata(triple.get("metadata", {}))
                 already_repaired = bool(
@@ -926,6 +983,7 @@ class KnowledgeOrganizer(BaseAgent):
                         "verification_status": triple.get("verification_status", "unknown"),
                         "original_subject": raw_subj,
                         "original_object": raw_obj,
+                        "provenance": triple_prov,
                     },
                 )
                 if (
@@ -958,6 +1016,7 @@ class KnowledgeOrganizer(BaseAgent):
                                 "original_subject": raw_subj,
                                 "original_object": raw_obj,
                                 "governance_repair": True,
+                                "provenance": triple_prov,
                             },
                         )
                 result = decision if decision.committed else None
@@ -973,6 +1032,7 @@ class KnowledgeOrganizer(BaseAgent):
                         "verification_status": triple.get("verification_status", "unknown"),
                         "original_subject": raw_subj,
                         "original_object": raw_obj,
+                        "provenance": triple_prov,
                     },
                 )
             if result is not None:

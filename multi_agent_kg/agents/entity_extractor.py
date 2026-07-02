@@ -31,6 +31,7 @@ from multi_agent_kg.agents.base import (
     MemoryType,
 )
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Entity
+from multi_agent_kg.core import provenance as prov
 from multi_agent_kg.core.memory import SharedMemory
 from multi_agent_kg.core.communication import MessageBus, CommunicationType
 from multi_agent_kg.core.config import LLMConfig
@@ -57,23 +58,19 @@ DOMAIN: {domain}
 {entity_guidance}
 
 EXTRACT entities including:
-- Domain concepts, theories, methods, techniques, phenomena, mechanisms
-- Medical/scientific conditions, diseases, treatments, clinical measures, biomarkers
-- Therapeutic interventions, drugs, procedures, therapies
-- Biological processes, pathways, molecular mechanisms
-- Clinical outcomes, complications, risk factors, prognostic indicators
-- Organizations, institutions, research groups, medical centers
-- Researchers, authors, key contributors
-- Specialized terminology and technical concepts
-- Study cohorts, patient populations, demographic groups
-- Measurement tools, instruments, assessment methods, scoring systems
-- Important statistical markers (e.g., "HbA1c", "IESS", "CFR") when they represent specific measurements
+- Named entities: people, organizations, institutions, groups, places, facilities
+- Domain concepts: theories, methods, techniques, processes, systems, phenomena
+- Works and artifacts: products, tools, technologies, publications, creative works
+- Events, time periods, and answer-bearing values (dates, measurements, quantities, scores)
+- Roles, titles, positions, and categories explicitly named in the text
+- Specialized terminology specific to this document's domain
+- Measurement tools, instruments, metrics, and named indicators when they represent specific concepts
 
 CRITICAL SPAN RULES:
 - Extract the SHORTEST meaningful noun phrase that still identifies the entity.
   GOOD: "morphological analysis"
   BAD:  "morphological analysis problem in Japanese"
-- Prefer the core scientific entity over the surrounding event or sentence frame.
+- Prefer the core entity over the surrounding event or sentence frame.
   GOOD: "proper nouns"
   BAD:  "Recognition of proper nouns in Japanese text"
 - Keep short but meaningful entities.
@@ -83,7 +80,7 @@ CRITICAL SPAN RULES:
 - For coordinated lists, extract the individual entities in the list when they are meaningful.
   GOOD: "proper names", "numerical expressions", "temporal expressions"
   BAD:  only the entire long list with no atomic entities
-- When a longer phrase contains a clear embedded scientific entity, extract the embedded entity too.
+- When a longer phrase contains a clear embedded entity, extract the embedded entity too.
   GOOD: "Recognition of proper nouns in Japanese text" -> also extract "proper nouns"
   GOOD: "morphological analysis problem" -> also extract "morphological analysis"
 - Keep qualifiers only when they are necessary to identify the entity.
@@ -102,29 +99,11 @@ DO NOT EXTRACT:
 IMPORTANT:
 - Err on the side of INCLUSION, but prefer cleaner and shorter entity spans.
 - Do NOT skip short entities just because they look simple.
-- Tool names, abbreviations, and common scientific noun phrases are valid entities.
+- Tool names, abbreviations, and domain-specific noun phrases are valid entities.
 - If a sentence names stages, tools, or resources explicitly, extract them individually.
 
 ## EXAMPLES
-
-Example 1 (Scientific):
-Text: "The constrained optimization scheme deforms a 3-D surface mesh. NE items include proper names, numerical and temporal expressions."
-Output:
-- "constrained optimization scheme" | Method | 0.95
-- "3-D surface mesh" | OtherScientificTerm | 0.90
-- "NE items" | OtherScientificTerm | 0.85
-- "proper names, numerical and temporal expressions" | OtherScientificTerm | 0.85
-- "proper names" | OtherScientificTerm | 0.80
-- "temporal expressions" | OtherScientificTerm | 0.80
-
-Example 2 (Medical):
-Text: "Metformin reduces HbA1c levels in patients with type 2 diabetes mellitus. The WHO recommends it as first-line therapy."
-Output:
-- "Metformin" | Method | 0.95
-- "HbA1c levels" | OtherScientificTerm | 0.95
-- "type 2 diabetes mellitus" | OtherScientificTerm | 0.95
-- "WHO" | Material | 0.90
-- "first-line therapy" | Method | 0.80
+{domain_examples}
 
 TEXT:
 {text}
@@ -141,6 +120,53 @@ Return a JSON object:
 }}
 
 Extract ALL entities. Be thorough. Prefer precise entity spans over long descriptive spans."""
+
+
+# Neutral fallback examples used only when the DomainClassifier provided no
+# document-specific few-shot examples. Deliberately mixed-domain so the model
+# is not steered toward any single schema.
+DEFAULT_ENTITY_EXAMPLES = """
+Example 1 (encyclopedic):
+Text: "Marie Curie won the Nobel Prize in Physics in 1903, sharing it with Pierre Curie and Henri Becquerel."
+Output:
+- "Marie Curie" | PERSON | 0.98
+- "Nobel Prize in Physics" | AWARD | 0.95
+- "1903" | DATE | 0.90
+- "Pierre Curie" | PERSON | 0.95
+- "Henri Becquerel" | PERSON | 0.95
+
+Example 2 (technical):
+Text: "The scheduler assigns tasks to worker nodes using a round-robin policy; failures are logged to the audit service."
+Output:
+- "scheduler" | SYSTEM_COMPONENT | 0.90
+- "worker nodes" | SYSTEM_COMPONENT | 0.90
+- "round-robin policy" | METHOD | 0.90
+- "audit service" | SYSTEM_COMPONENT | 0.85
+"""
+
+
+def _format_domain_entity_examples(examples: List[Dict[str, Any]]) -> str:
+    """Render DomainClassifier few-shot examples into the prompt's example format.
+
+    Each example is {"text_span", "entity", "entity_type", "explanation"}.
+    Returns "" if nothing usable, so the caller can fall back to defaults.
+    """
+    lines: List[str] = []
+    for i, ex in enumerate(examples[:5], 1):
+        if not isinstance(ex, dict):
+            continue
+        entity = ex.get("entity") or ""
+        etype = ex.get("entity_type") or ex.get("type") or ""
+        span = ex.get("text_span") or ""
+        if not entity or not etype:
+            continue
+        lines.append(f"Example {i} (from this document's domain):")
+        if span:
+            lines.append(f'Text: "{span}"')
+        lines.append("Output:")
+        lines.append(f'- "{entity}" | {etype} | 0.90')
+        lines.append("")
+    return "\n".join(lines).strip()
 
 
 OPEN_DOMAIN_VALUE_ENTITY_GUIDANCE = """
@@ -341,16 +367,25 @@ class EntityExtractor(BaseAgent):
         # Get entity types from domain config or use general
         entity_types_raw = domain_config.get("entity_types", []) if domain_config else []
         entity_types = self._normalize_entity_types(entity_types_raw)
-        
+
         if not entity_types:
             entity_types = ["PERSON", "ORGANIZATION", "LOCATION", "CONCEPT", "EVENT"]
-        
+
+        # Domain-specific few-shot examples from the DomainClassifier
+        # (entity_examples in domain_context, few_shot_examples on the bus).
+        self._domain_few_shot_examples = (
+            (domain_config.get("entity_examples") or domain_config.get("few_shot_examples") or [])
+            if domain_config else []
+        )
+
         # Check for domain messages
         if self.message_bus:
             messages = self.receive_messages()
             for msg in messages:
                 if msg.comm_type == CommunicationType.INFORM and "entity_types" in msg.content:
                     entity_types = self._normalize_entity_types(msg.content["entity_types"])
+                    if msg.content.get("few_shot_examples"):
+                        self._domain_few_shot_examples = msg.content["few_shot_examples"]
         
         # Process each segment
         all_entities = []
@@ -370,6 +405,9 @@ class EntityExtractor(BaseAgent):
         ) if domain_config else False
 
         total_segments = len(texts_to_process)
+        # segment_id -> segment dict, so provenance can carry the char offsets /
+        # chunk index that document_processor already computed per segment.
+        seg_meta = {s.get("segment_id"): s for s in (segments or [])}
         # --- Parallel segment extraction -----------------------------------
         # Each LLM call is independent (no shared write state per segment).
         # We fan out via threads; vLLM handles concurrent requests natively.
@@ -394,6 +432,7 @@ class EntityExtractor(BaseAgent):
             if not strict_types and self.enable_deterministic_value_harvesting:
                 typed = self._augment_open_domain_entities(text, typed)
             # Annotate segment provenance before returning
+            _seg = seg_meta.get(segment_id, {})
             for entity in typed:
                 entity["source_segment"] = segment_id
                 entity["source_document_id"] = context.document_id
@@ -402,6 +441,21 @@ class EntityExtractor(BaseAgent):
                     entity["confidence"] = float(entity.get("confidence", 0) or 0)
                 except (TypeError, ValueError):
                     entity["confidence"] = 0.0
+                # Unified provenance record: exact source doc/chunk/char-span + agent.
+                entity["provenance"] = prov.build_provenance(
+                    refs=[prov.source_ref(
+                        context.document_id,
+                        segment_id=segment_id,
+                        chunk_index=_seg.get("index"),
+                        char_start=_seg.get("char_start"),
+                        char_end=_seg.get("char_end"),
+                        source_path=_seg.get("source_path"),
+                        snippet=text[:280],
+                    )],
+                    extractor="EntityExtractor",
+                    confidence=entity["confidence"],
+                    confidence_source=prov.CONFIDENCE_EXTRACTION,
+                )
             with _print_lock:
                 if typed:
                     print(f"      -> {len(typed)} entities extracted")
@@ -521,6 +575,12 @@ class EntityExtractor(BaseAgent):
                 else:
                     entity_guidance = f"Suggested entity categories: {', '.join(entity_types_str)}\nYou may use these or create more specific types as needed."
 
+        # Prefer document-specific few-shot examples discovered by the
+        # DomainClassifier; fall back to neutral mixed-domain defaults.
+        domain_examples = _format_domain_entity_examples(
+            getattr(self, "_domain_few_shot_examples", []) or []
+        ) or DEFAULT_ENTITY_EXAMPLES.strip()
+
         prompt = COMBINED_EXTRACTION_PROMPT.format(
             text=text,
             entity_guidance=(
@@ -529,6 +589,7 @@ class EntityExtractor(BaseAgent):
                 else (entity_guidance + "\n" + OPEN_DOMAIN_VALUE_ENTITY_GUIDANCE).strip()
             ),
             domain=domain or "general",
+            domain_examples=domain_examples,
         )
 
         if strict_types:
@@ -681,6 +742,7 @@ class EntityExtractor(BaseAgent):
                 source_document_ids: List[str] = []
                 source_texts: List[str] = []
                 member_confidences: List[float] = []
+                merged_provenance: Optional[Dict[str, Any]] = None
                 mention_keys = {
                     str(value).lower().strip()
                     for value in [canonical_name, clean_id, raw_id, *mentions]
@@ -707,6 +769,12 @@ class EntityExtractor(BaseAgent):
                             member_confidences.append(float(original.get("confidence", 0) or 0))
                         except (TypeError, ValueError):
                             pass
+                        member_prov = original.get("provenance")
+                        if member_prov:
+                            merged_provenance = (
+                                prov.merge(merged_provenance, member_prov)
+                                if merged_provenance else member_prov
+                            )
 
                 # Propagate extraction confidence through coreference instead of
                 # flattening every group to 0.7/0.8. Flattening pushed nearly all
@@ -743,6 +811,11 @@ class EntityExtractor(BaseAgent):
                 if source_texts:
                     resolved_entity["source_text"] = source_texts[0]
                     resolved_entity["source_texts"] = source_texts[:3]
+                if merged_provenance:
+                    # Reflect the coref-resolved confidence on the merged record.
+                    merged_provenance = dict(merged_provenance)
+                    merged_provenance["confidence"] = resolved_confidence
+                    resolved_entity["provenance"] = merged_provenance
                 all_resolved.append(resolved_entity)
 
                 # Register aliases in shared memory
