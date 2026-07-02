@@ -803,11 +803,31 @@ class QAOrchestrator:
             except Exception:
                 pass
 
+    def _materialize_lazy_chunks(self, question: str) -> None:
+        """Lazy-ingest hook: extract KG from query-relevant chunks on demand.
+
+        Active only when a LazyIngestor is attached (self.lazy_ingestor).
+        After materialization the vector store re-embeds dirty items so the
+        just-extracted facts are retrievable in this same query.
+        """
+        ingestor = getattr(self, "lazy_ingestor", None)
+        if ingestor is None:
+            return
+        try:
+            result = ingestor.materialize_for_query(question)
+            if result.get("materialized"):
+                print(f"  Lazy ingest: materialized {result['materialized']} chunk(s)")
+                if self.vector_store is not None:
+                    self.vector_store.refresh()
+        except Exception as exc:
+            print(f"  WARNING: lazy materialization failed ({exc})")
+
     def query(self, question: str) -> Dict[str, Any]:
         print(f"\n{'='*70}")
         print("QA ORCHESTRATOR: Processing query")
         print(f"{'='*70}")
         print(f"Q: {question}\n")
+        self._materialize_lazy_chunks(question)
         self._emit_progress("routing", question=question)
 
         routing = self._decompose_and_route(question)

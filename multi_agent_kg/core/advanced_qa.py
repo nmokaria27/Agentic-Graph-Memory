@@ -1285,6 +1285,19 @@ class AdvancedQAOrchestrator:
         print(f"{'='*70}")
         print(f"Q: {question}\n")
 
+        # Lazy-ingest hook: extract KG from query-relevant chunks on demand,
+        # then refresh the vector store so new facts are retrievable now.
+        ingestor = getattr(self, "lazy_ingestor", None)
+        if ingestor is not None:
+            try:
+                lazy_result = ingestor.materialize_for_query(question)
+                if lazy_result.get("materialized"):
+                    print(f"  Lazy ingest: materialized {lazy_result['materialized']} chunk(s)")
+                    if self.vector_store is not None:
+                        self.vector_store.refresh()
+            except Exception as exc:
+                print(f"  WARNING: lazy materialization failed ({exc})")
+
         # ── Step 0: Session context ─────────────────────────────────
         session_context = self.session_memory.get_context_for_query(question)
         if session_context:

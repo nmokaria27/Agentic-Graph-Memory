@@ -169,18 +169,77 @@ class AgentGraphMemoryWrapper:
         full_text = "\n\n".join(self._chunks)
         t0 = time.time()
 
-        try:
-            self._governed_kg = self._run_pipeline(full_text)
-        except Exception as exc:
-            logger.warning("Pipeline failed (%s); falling back to empty KG.", exc)
-            kg = KnowledgeGraph()
-            self._governed_kg = GovernedKnowledgeGraph(
-                kg=kg,
-                governance_mode=self.governance_mode,
-            )
+        if os.environ.get("LAZY_INGEST") == "1":
+            # LazyGraphRAG-style deferred extraction: index all chunks cheaply
+            # now; the 9-agent pipeline runs at query time on relevant chunks
+            # only. Makes 1M+ char contexts tractable.
+            try:
+                self._governed_kg, self._lazy_ingestor = self._lazy_ingest(full_text)
+            except Exception as exc:
+                logger.warning("Lazy ingest failed (%s); falling back to empty KG.", exc)
+                self._governed_kg = GovernedKnowledgeGraph(
+                    kg=KnowledgeGraph(), governance_mode=self.governance_mode
+                )
+                self._lazy_ingestor = None
+        else:
+            self._lazy_ingestor = None
+            try:
+                self._governed_kg = self._run_pipeline(full_text)
+            except Exception as exc:
+                logger.warning("Pipeline failed (%s); falling back to empty KG.", exc)
+                kg = KnowledgeGraph()
+                self._governed_kg = GovernedKnowledgeGraph(
+                    kg=kg,
+                    governance_mode=self.governance_mode,
+                )
 
         self._build_time = time.time() - t0
         self._qa_system = self._build_qa_system(self._governed_kg)
+        # Communities + lazy materialization hooks read these attributes.
+        self._qa_system.governed_kg = self._governed_kg
+        if self._lazy_ingestor is not None:
+            self._qa_system.lazy_ingestor = self._lazy_ingestor
+
+    def _lazy_ingest(self, full_text: str):
+        """Build an empty governed KG + chunk index; extraction is query-driven."""
+        from multi_agent_kg.core import DeliberativeOrchestrator
+        from multi_agent_kg.core.lazy_ingest import LazyIngestor
+        from multi_agent_kg.agents.base import ModelTier
+
+        single_model = self.llm_config.model
+        model_tiers = {
+            ModelTier.SMALL:  os.environ.get("LLM_SMALL_MODEL",  single_model),
+            ModelTier.MEDIUM: os.environ.get("LLM_MEDIUM_MODEL", single_model),
+            ModelTier.LARGE:  os.environ.get("LLM_LARGE_MODEL",  single_model),
+        }
+        governed_kg = GovernedKnowledgeGraph(governance_mode=self.governance_mode)
+        orchestrator = DeliberativeOrchestrator(
+            llm_config=self.llm_config,
+            knowledge_graph=KnowledgeGraph(),
+            governed_kg=governed_kg,
+            quality_threshold=0.35,
+            max_refinement_iterations=1,
+            enable_self_consistency=False,
+            enable_open_world=True,
+            enable_cross_document=False,
+            reuse_corpus_schema=True,  # classify domain once, reuse per materialization
+            model_tiers=model_tiers,
+        )
+        self._lazy_orchestrator = orchestrator
+
+        def process_fn(text: str, document_id: Optional[str] = None) -> None:
+            orchestrator.process_corpus(
+                [{"text": text, "id": document_id, "metadata": {"source": "lazy_ingest"}}]
+            )
+
+        ingestor = LazyIngestor(
+            process_fn=process_fn,
+            embedding_model=self.retrieval_config.embedding_model,
+            chunk_size=int(os.environ.get("LAZY_CHUNK_SIZE", "1500")),
+        )
+        n_chunks = ingestor.ingest(full_text, document_id="context")
+        logger.info("Lazy ingest: indexed %d chunks, extraction deferred to query time", n_chunks)
+        return governed_kg, ingestor
 
         if self.save_dir:
             self._persist(context_id)
@@ -337,6 +396,8 @@ class AgentGraphMemoryWrapper:
         self._qa_system = None
         self._context_id = context_id
         self._build_time = 0.0
+        self._lazy_ingestor = None
+        self._lazy_orchestrator = None
 
     def save_agent(self, path: Optional[str] = None) -> None:
         target = Path(path) if path else self.save_dir
