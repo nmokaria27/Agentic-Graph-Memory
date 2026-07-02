@@ -395,6 +395,10 @@ class DeliberativeOrchestrator:
             self.knowledge_organizer.governed_kg = self.governed_kg
         # Strict-mode review callback closes over old org_chart/kg; rebuild.
         self._configure_governance_review()
+        # Rehydrate session-scoped alias table from the persisted graph so
+        # cross-document entity resolution survives resume/reload.
+        for alias, canonical in governed_kg.entity_aliases.items():
+            self.shared_memory.register_entity_alias(alias, canonical)
 
     def _setup_deliberation(self) -> None:
         """Set up deliberation coordinator for all agents."""
@@ -1094,10 +1098,15 @@ class DeliberativeOrchestrator:
                 knowledge_graph=self.knowledge_graph,
             )
         
+        # Persist per-document coref/organizer aliases into the governed KG
+        # (cross-document resolution syncs again at corpus level).
+        if self.shared_memory.entity_aliases:
+            self.governed_kg.sync_aliases_from(self.shared_memory.entity_aliases)
+
         # Summary
         elapsed = (datetime.now() - start_time).total_seconds()
         results["processing_time_seconds"] = elapsed
-        
+
         print(f"\n{'='*70}")
         print("PROCESSING COMPLETE")
         print(f"{'='*70}")
@@ -1822,9 +1831,14 @@ class DeliberativeOrchestrator:
                     triple.object = new_obj
                     remapped_triples += 1
 
+        # Persist the session alias table into the governed KG so it survives
+        # save/load instead of dying with this orchestrator instance.
+        persisted = self.governed_kg.sync_aliases_from(alias_map)
+
         stats = self.shared_memory.get_stats()
         print(f"  Entity aliases registered: {stats.get('entity_aliases', 0)}")
         print(f"  New aliases from resolution: {aliases_registered}")
+        print(f"  Aliases persisted to KG: {persisted}")
         print(f"  Triples remapped: {remapped_triples}")
         print(f"  Unique entities tracked: {stats.get('unique_entities', 0)}")
 

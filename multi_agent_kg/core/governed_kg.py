@@ -140,6 +140,10 @@ class GovernedKnowledgeGraph:
         self._min_admission_confidence = min_admission_confidence
         self._confidence_policy_label = confidence_policy_label
         self._bootstrap_assignment_stats: Dict[str, Any] = {}
+        # Persistent alias table (alias/mention -> canonical entity id).
+        # Mirrors SharedMemory.entity_aliases so cross-document entity
+        # resolution survives across sessions instead of dying with the run.
+        self.entity_aliases: Dict[str, str] = {}
         # Optional KGVectorStore kept in sync with committed updates.
         # None = vector features off; the index is derived state and is
         # always rebuildable from the graph itself.
@@ -221,6 +225,32 @@ class GovernedKnowledgeGraph:
 
     def set_bootstrap_assignment_stats(self, stats: Dict[str, Any]) -> None:
         self._bootstrap_assignment_stats = dict(stats)
+
+    def register_alias(self, alias: str, canonical_id: str) -> None:
+        """Record that `alias` refers to entity `canonical_id`.
+
+        Follows existing chains so the table stays flat (alias -> final id).
+        """
+        if not alias or not canonical_id or alias == canonical_id:
+            return
+        # Flatten: if the canonical target is itself an alias, point to its target.
+        target = self.entity_aliases.get(canonical_id, canonical_id)
+        if target == alias:  # would create a 2-cycle
+            return
+        self.entity_aliases[alias] = target
+
+    def sync_aliases_from(self, alias_map: Dict[str, str]) -> int:
+        """Bulk-import aliases (e.g. from SharedMemory). Returns count added."""
+        added = 0
+        for alias, canonical in alias_map.items():
+            if alias not in self.entity_aliases:
+                added += 1
+            self.register_alias(alias, canonical)
+        return added
+
+    def resolve_alias(self, entity_id: str) -> str:
+        """Resolve an id/mention through the alias table (flat, single hop)."""
+        return self.entity_aliases.get(entity_id, entity_id)
 
     def add_entity(
         self,
@@ -644,6 +674,7 @@ class GovernedKnowledgeGraph:
                 for t in self._pending_review
             ],
             "bootstrap_assignment_stats": self._bootstrap_assignment_stats,
+            "entity_aliases": self.entity_aliases,
             "triage_stats": self._triage_stats,
             "governance_policy": {
                 "min_admission_confidence": self._min_admission_confidence,
@@ -691,6 +722,7 @@ class GovernedKnowledgeGraph:
             for item in data.get("pending_review", [])
         ]
         graph._bootstrap_assignment_stats = data.get("bootstrap_assignment_stats", {})
+        graph.entity_aliases = dict(data.get("entity_aliases", {}))
         graph._triage_stats = data.get(
             "triage_stats",
             {
