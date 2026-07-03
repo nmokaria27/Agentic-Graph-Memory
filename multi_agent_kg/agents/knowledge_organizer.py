@@ -88,6 +88,38 @@ def _sanitize_triples(triples: List[Any]) -> List[Dict[str, Any]]:
     return [t for t in (triples or []) if isinstance(t, dict)]
 
 
+_MONTHS = ("january", "february", "march", "april", "may", "june", "july",
+           "august", "september", "october", "november", "december")
+
+
+def classify_value(text: Any) -> Optional[str]:
+    """Classify a surface form as a value node type (DATE/NUMBER/QUANTITY) or None.
+
+    Values (years, dates, quantities) are legitimate KG nodes WHEN a fact
+    connects to them — deleting them silently severed date-of-birth /
+    start-time style triples (the stage-9 recall leak,
+    evaluation/DocRED/MATRIX_REPORT.md). Domain-agnostic by design: patterns
+    describe value *shapes*, not any benchmark's vocabulary.
+    """
+    s = str(text or "").strip().lower().replace("_", " ")
+    if not s or len(s) > 40:
+        return None
+    import re as _re
+    # date-like: contains a month name plus a digit ("13 march 1963", "september 1911")
+    if any(m in s.split() for m in _MONTHS) and _re.search(r"\d", s):
+        return "DATE"
+    # bare year or year-range ("1997", "1997 98", "1997-98")
+    if _re.fullmatch(r"(1[0-9]{3}|20[0-9]{2})(\s*[-/]?\s*\d{2,4})?", s):
+        return "DATE"
+    # pure number ("91", "3.5", "12,000")
+    if _re.fullmatch(r"[\d][\d,.]*", s):
+        return "NUMBER"
+    # number + a single unit-ish word ("23 years", "70 percent", "40 km")
+    if _re.fullmatch(r"[\d][\d,.]*\s?%?\s*[a-z]{1,15}", s):
+        return "QUANTITY"
+    return None
+
+
 RELATION_NORMALIZATION_PROMPT = """Normalize these relation types to a canonical form.
 
 RELATIONS USED:
@@ -670,6 +702,16 @@ class KnowledgeOrganizer(BaseAgent):
             "these methods", "these models",
             "the proposed method", "the proposed approach",
         }
+        # Surface forms referenced by any triple endpoint: a value entity
+        # (year/number/quantity) referenced by a fact is a real node, not
+        # garbage. Deleting them severed every date/quantity triple downstream
+        # (skip reason 'unresolved_entity' — the stage-9 recall leak).
+        _referenced = set()
+        for t in triples:
+            for endpoint in (t.get("subject"), t.get("object")):
+                if endpoint:
+                    _referenced.add(str(endpoint).lower().strip())
+        value_entities_kept = 0
         for entity in entities:
             eid = entity.get("id", entity.get("text", ""))
             etext = entity.get("text", eid)
@@ -678,9 +720,16 @@ class KnowledgeOrganizer(BaseAgent):
                 continue
             stripped = etext.strip()
             if re.fullmatch(r'\d+', stripped):
-                # Numeric-only ID *and* numeric-only text → garbage
+                # Numeric-only ID *and* numeric-only text: keep as a typed
+                # value node when a triple references it, drop otherwise.
                 if re.fullmatch(r'\d+', eid):
-                    continue
+                    if stripped.lower() in _referenced or eid.lower() in _referenced:
+                        vtype = classify_value(stripped)
+                        if vtype and entity.get("type", "").upper() in {"", "UNKNOWN", "?"}:
+                            entity["type"] = vtype
+                        value_entities_kept += 1
+                    else:
+                        continue
             if stripped.lower() in _GARBAGE_PHRASES:
                 continue
             if len(stripped) < 2:
@@ -726,7 +775,8 @@ class KnowledgeOrganizer(BaseAgent):
                 entity["type"] = _TYPE_CONSOLIDATION[etype]
 
         print(f"  Filtered entities: {len(entities)} → {len(clean_entities)} "
-              f"(removed {len(entities) - len(clean_entities)} garbage)")
+              f"(removed {len(entities) - len(clean_entities)} garbage, "
+              f"kept {value_entities_kept} referenced value entities)")
         entities = clean_entities
 
         # ── Build name → entity_id lookup ────────────────────────────
@@ -814,6 +864,38 @@ class KnowledgeOrganizer(BaseAgent):
             miss_key = str(name)
             resolve_misses[miss_key] = resolve_misses.get(miss_key, 0) + 1
             return None
+
+        value_nodes_created: Dict[str, str] = {}
+
+        def _materialize_value_node(name: Optional[str]) -> Optional[str]:
+            """Create a typed value node (DATE/NUMBER/QUANTITY) for a
+            value-shaped triple endpoint that no existing entity matches."""
+            if not name:
+                return None
+            vtype = classify_value(name)
+            if not vtype:
+                return None
+            surface = str(name).strip()
+            vid = re.sub(r"\s+", "_", surface.lower().replace("-", "_"))
+            if vid in value_nodes_created:
+                return value_nodes_created[vid]
+            metadata = {
+                "source_document": document_id,
+                "confidence": 0.9,  # deterministic pattern match, not an LLM guess
+                "extraction_method": "value_node_materialization",
+            }
+            if self.governed_kg:
+                self.governed_kg.add_entity(
+                    entity_id=vid, labels=[surface], entity_type=vtype, metadata=metadata,
+                )
+            else:
+                self.knowledge_graph.add_entity(
+                    entity_id=vid, labels=[surface], entity_type=vtype, metadata=metadata,
+                )
+            name_to_id[surface.lower()] = vid
+            name_to_id[vid] = vid
+            value_nodes_created[vid] = vid
+            return vid
 
         allowed_relations = self._allowed_relation_types()
         seen_triples: Set[tuple] = set()
@@ -937,6 +1019,13 @@ class KnowledgeOrganizer(BaseAgent):
                 triple.get("object_id", "")
             )
 
+            # A value-shaped endpoint (year/date/quantity) asserted by a fact
+            # becomes a typed value node instead of killing the triple.
+            if not resolved_subj:
+                resolved_subj = _materialize_value_node(raw_subj)
+            if not resolved_obj:
+                resolved_obj = _materialize_value_node(raw_obj)
+
             if not resolved_subj or not resolved_obj:
                 skipped_triple_reasons["unresolved_entity"] += 1
                 skipped_triples += 1
@@ -1052,6 +1141,10 @@ class KnowledgeOrganizer(BaseAgent):
             for miss_name, count in sorted(resolve_misses.items(), key=lambda x: x[1], reverse=True)[:10]:
                 print(f"    - Miss: '{miss_name}' ({count} times)")
         
+        if value_nodes_created:
+            added_entities += len(value_nodes_created)
+            print(f"  Value nodes materialized from triple endpoints: {len(value_nodes_created)} "
+                  f"({', '.join(list(value_nodes_created)[:8])})")
         print(f"  Triples skipped (dup/invalid): {skipped_triples}")
         if skipped_triples:
             print(f"  Triple skip reasons: {skipped_triple_reasons}")
