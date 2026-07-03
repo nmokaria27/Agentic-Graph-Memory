@@ -173,10 +173,50 @@ _THINKING_MODEL_PATTERNS = (
 )
 
 
+# NVIDIA Nemotron exposes an explicit reasoning switch via a system directive
+# ("detailed thinking on" / "detailed thinking off"). Reasoning OFF is ~4x faster, BUT the
+# current verbose multi-stage RHF prompts make Nemotron reason past a small budget anyway
+# and truncate to EMPTY output (finish=length) when reasoning is forced off — so default is
+# ON to preserve correctness. The switch stays available for experiments: with SHORT
+# single-pass prompts, NEMOTRON_THINKING=off is fast AND complete. See EXTRACTION_EXPERIMENTS.md
+NEMOTRON_THINKING = os.getenv("NEMOTRON_THINKING", "on").strip().lower()
+
+
+def _is_nemotron(model_name: str) -> bool:
+    return "nemotron" in model_name.lower()
+
+
+def _nemotron_reasoning_suppressed(model_name: str) -> bool:
+    """True when this is a Nemotron model AND we want reasoning turned off."""
+    return _is_nemotron(model_name) and NEMOTRON_THINKING != "on"
+
+
 def _model_is_thinking(model_name: str) -> bool:
-    """Return True if the model is known to emit reasoning/thinking tokens."""
+    """Return True if the model is known to emit reasoning/thinking tokens.
+
+    A Nemotron model with reasoning suppressed behaves like a normal instruct model
+    (no <think> blocks), so it flows through the standard JSON-mode / non-inflated path.
+    """
+    if _nemotron_reasoning_suppressed(model_name):
+        return False
     name_lower = model_name.lower()
     return any(pat in name_lower for pat in _THINKING_MODEL_PATTERNS)
+
+
+def _apply_nemotron_reasoning_directive(
+    messages: List[Dict[str, str]], resolved_model: str
+) -> List[Dict[str, str]]:
+    """Prepend/merge Nemotron's 'detailed thinking off' control into the system msg."""
+    if not _nemotron_reasoning_suppressed(resolved_model):
+        return messages
+    directive = "detailed thinking off"
+    out = [dict(m) for m in messages]
+    for m in out:
+        if m.get("role") == "system":
+            if "detailed thinking" not in m["content"].lower():
+                m["content"] = f"{directive}\n{m['content']}"
+            return out
+    return [{"role": "system", "content": directive}, *out]
 
 
 def _extract_json(text: str) -> Any:
@@ -233,43 +273,47 @@ def _extract_json(text: str) -> Any:
     except json.JSONDecodeError:
         pass
 
-    # 5. Find the outermost JSON object or array via bracket matching
+    # 5. Find the outermost JSON object or array via bracket matching.
+    #    Reasoning models (Nemotron, DeepSeek-R1, etc.) produce prose before
+    #    the JSON that may contain stray '{' characters (e.g. "entities like
+    #    {Alice, Bob}").  Try ALL opening-bracket positions left-to-right;
+    #    stray braces in prose won't parse as valid JSON, so we naturally
+    #    skip them and reach the real JSON object.
     for open_char, close_char in [('{', '}'), ('[', ']')]:
-        start = cleaned.find(open_char)
-        if start == -1:
-            continue
-        depth = 0
-        in_string = False
-        escape_next = False
-        for i in range(start, len(cleaned)):
-            c = cleaned[i]
-            if escape_next:
-                escape_next = False
-                continue
-            if c == '\\' and in_string:
-                escape_next = True
-                continue
-            if c == '"' and not escape_next:
-                in_string = not in_string
-                continue
-            if in_string:
-                continue
-            if c == open_char:
-                depth += 1
-            elif c == close_char:
-                depth -= 1
-                if depth == 0:
-                    json_str = cleaned[start:i+1]
-                    try:
-                        return json.loads(json_str)
-                    except json.JSONDecodeError:
-                        pass
-                    fixed = re.sub(r',(\s*[}\]])', r'\1', json_str)
-                    try:
-                        return json.loads(fixed)
-                    except json.JSONDecodeError:
-                        pass
-                    break
+        positions = [i for i, c in enumerate(cleaned) if c == open_char]
+        for start in positions:
+            depth = 0
+            in_string = False
+            escape_next = False
+            for i in range(start, len(cleaned)):
+                c = cleaned[i]
+                if escape_next:
+                    escape_next = False
+                    continue
+                if c == '\\' and in_string:
+                    escape_next = True
+                    continue
+                if c == '"' and not escape_next:
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if c == open_char:
+                    depth += 1
+                elif c == close_char:
+                    depth -= 1
+                    if depth == 0:
+                        json_str = cleaned[start:i+1]
+                        try:
+                            return json.loads(json_str)
+                        except json.JSONDecodeError:
+                            pass
+                        fixed = re.sub(r',(\s*[}\]])', r'\1', json_str)
+                        try:
+                            return json.loads(fixed)
+                        except json.JSONDecodeError:
+                            pass
+                        break  # brackets balanced but invalid JSON → try next start
 
     # 6. Truncation repair: model hit token limit mid-JSON.
     #    Find the first { and attempt to close the structure.
@@ -395,6 +439,10 @@ def chat_completion(
     """
     resolved_model = _resolve_model(model)
 
+    # Nemotron: inject "detailed thinking off" so extraction calls emit JSON directly
+    # instead of burning the budget on hidden reasoning (no-op unless NEMOTRON_THINKING!=on).
+    messages = _apply_nemotron_reasoning_directive(messages, resolved_model)
+
     # GPT-5 / o-series reasoning models reject `max_tokens` and non-default `temperature`.
     # VLLM-hosted models always accept the standard parameters.
     is_reasoning = LLM_BACKEND == "openai" and (
@@ -424,12 +472,17 @@ def chat_completion(
             # JSON output isn't truncated after reasoning consumes the budget.
             # This applies to both Ollama and VLLM backends.
             _max_ctx = int(os.getenv("VLLM_MAX_MODEL_LEN", "32768"))
-            _inflated = max(max_tokens * 3, 8192)
+            _inflated = max(max_tokens * 4, 16384)
             # Cap so prompt + max_tokens stays under the context window with a
             # 2048-token safety margin for tokenization overhead.
             params["max_tokens"] = min(_inflated, _max_ctx - 2048)
         else:
             params["max_tokens"] = max_tokens
+    elif _model_is_thinking(resolved_model) and LLM_BACKEND not in ("openai",):
+        # When no max_tokens is specified, thinking models still need a generous
+        # budget so reasoning doesn't consume the server's default output window.
+        _max_ctx = int(os.getenv("VLLM_MAX_MODEL_LEN", "32768"))
+        params["max_tokens"] = min(16384, _max_ctx - 2048)
     # Ollama's OpenAI-compatible endpoint supports response_format for JSON
     # mode. Pass it through for both backends, but keep arbitrary provider
     # kwargs restricted to OpenAI so local calls don't receive unknown options.
@@ -443,7 +496,37 @@ def chat_completion(
         try:
             response = client.chat.completions.create(**params)
             _log_usage(resolved_model, response)
-            content = response.choices[0].message.content
+            choice = response.choices[0]
+            content = choice.message.content
+            finish = getattr(choice, "finish_reason", None)
+            # Thinking models (Nemotron, deepseek-r1, qwen3…) can burn the ENTIRE
+            # completion budget on hidden reasoning and get cut off before emitting
+            # any visible content (finish_reason="length", content empty). Upstream
+            # this surfaced as a SILENT empty extraction — the exact cause of RHF's
+            # dropped gleaning triples and ~74 s "empty" calls. Detect it, grow the
+            # budget, and retry within this loop instead of returning "" silently.
+            if (not content) and finish == "length":
+                _cur = params.get("max_tokens") or params.get("max_completion_tokens")
+                _cap = int(os.getenv("VLLM_MAX_MODEL_LEN", "32768")) - 2048
+                if _cur and _cur < _cap and attempt < _MAX_RETRIES:
+                    _bigger = min(_cur * 2, _cap)
+                    if _bigger > _cur:
+                        if "max_tokens" in params:
+                            params["max_tokens"] = _bigger
+                        if "max_completion_tokens" in params:
+                            params["max_completion_tokens"] = _bigger
+                        print(
+                            f"  WARNING: {resolved_model} truncated before output "
+                            f"(finish_reason=length) at {_cur} tokens; raising budget "
+                            f"-> {_bigger} and retrying"
+                        )
+                        continue
+                # Cannot grow further: warn loudly so this is never a silent zero.
+                print(
+                    f"  WARNING: {resolved_model} returned EMPTY output "
+                    f"(finish_reason=length) at max budget {_cur}; reasoning overran the "
+                    f"window. Shorten the prompt or raise VLLM_MAX_MODEL_LEN."
+                )
             return content if content is not None else ""
         except Exception as e:
             err = str(e)
@@ -586,21 +669,20 @@ def chat_completion_json(
     #           embed reasoning in visible output; skip constrained decoding to be safe.
     _is_thinking_model = _model_is_thinking(resolved_model)
 
-    max_retries = 3
+    max_retries = 4 if _is_thinking_model else 3
     last_response_text = ""
 
     for attempt in range(1, max_retries + 1):
         # Use json_object mode only when it won't conflict with model behavior:
         # - Always for OpenAI (native support)
-        # - For thinking models on VLLM: try on first attempt, fall back if empty
-        # - Never for thinking models on Ollama (GBNF blocks thinking tokens)
+        # - Never for thinking models on Ollama or VLLM: constrained decoding
+        #   blocks reasoning tokens (Ollama GBNF) or strips them (VLLM), leading
+        #   to empty or malformed output. Rely on _extract_json post-hoc instead.
         # - First attempt only for non-thinking Ollama/VLLM models
         if LLM_BACKEND == "openai":
             use_json_mode = True
-        elif _is_thinking_model and LLM_BACKEND == "ollama":
+        elif _is_thinking_model and LLM_BACKEND in ("ollama", "vllm"):
             use_json_mode = False
-        elif _is_thinking_model and LLM_BACKEND == "vllm":
-            use_json_mode = (attempt == 1)
         else:
             use_json_mode = (attempt == 1)
 

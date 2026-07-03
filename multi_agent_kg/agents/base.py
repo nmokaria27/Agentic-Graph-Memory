@@ -292,42 +292,183 @@ class BaseAgent(ABC):
         consensus, confidence = self._compute_consensus(responses)
         return consensus, confidence
 
+    # Fields that vary between samples without changing WHAT was extracted.
+    # Excluded from item identity so paraphrased rationales / jittered
+    # confidences don't split votes for the same entity or triple.
+    _CONSENSUS_VOLATILE_FIELDS = frozenset(
+        {"confidence", "rationale", "reasoning", "evidence", "explanation", "mentions"}
+    )
+    # Fields that DO define what an item is. Entity `type` is deliberately
+    # absent: the same entity typed PERSON in one sample and EMPLOYEE in
+    # another must merge (one vote each), not duplicate. `id` is also absent:
+    # ids are SAMPLE-LOCAL (each SC sample invents its own), so keying on them
+    # splits votes for identical items — observed live as a duplicate-riddled
+    # entity union that collapsed coreference (29 entities -> 1).
+    _CONSENSUS_IDENTITY_FIELDS = (
+        "subject", "object", "source", "target", "head", "tail",
+        "relation", "relation_type", "text", "name",
+    )
+
+    @classmethod
+    def _consensus_item_key(cls, item: Any) -> str:
+        """Canonical identity of an extracted item for cross-sample voting."""
+        if isinstance(item, dict):
+            ident = [
+                [k, str(item[k]).strip().lower()]
+                for k in cls._CONSENSUS_IDENTITY_FIELDS
+                if isinstance(item.get(k), (str, int, float, bool))
+            ]
+            if not ident:
+                ident = [
+                    [k, str(item[k]).strip().lower()]
+                    for k in sorted(item)
+                    if k not in cls._CONSENSUS_VOLATILE_FIELDS
+                    and isinstance(item.get(k), (str, int, float, bool))
+                ]
+            return json.dumps(ident, default=str)
+        if isinstance(item, str):
+            return item.strip().lower()
+        try:
+            return json.dumps(item, sort_keys=True, default=str)
+        except (TypeError, ValueError):
+            return str(item)
+
+    @classmethod
+    def _merge_item_lists(
+        cls,
+        lists: List[List[Any]],
+        n_samples: int,
+    ) -> Tuple[List[Any], float]:
+        """Union items across samples; support ratio drives item confidence.
+
+        Union (not majority) is intentional: extraction variance means a true
+        fact often appears in only one sample, and downstream deliberation /
+        verification / governance already filter weak items. Support is blended
+        into `confidence` (0.5 + 0.5*support, averaged with any model-provided
+        confidence) so singletons survive typical thresholds while unanimous
+        items still rank higher.
+        """
+        seen: Dict[str, List[Any]] = {}
+        order: List[str] = []
+        for lst in lists:
+            seen_in_sample: set = set()
+            for item in lst:
+                key = cls._consensus_item_key(item)
+                if key in seen_in_sample:
+                    continue
+                seen_in_sample.add(key)
+                if key in seen:
+                    seen[key][1] += 1
+                    # Keep the richest instance of the item (most fields).
+                    if (
+                        isinstance(item, dict)
+                        and isinstance(seen[key][0], dict)
+                        and len(item) > len(seen[key][0])
+                    ):
+                        seen[key][0] = item
+                else:
+                    seen[key] = [item, 1]
+                    order.append(key)
+        merged: List[Any] = []
+        supports: List[float] = []
+        for key in order:
+            item, count = seen[key]
+            support = count / max(n_samples, 1)
+            supports.append(support)
+            if isinstance(item, dict):
+                item = dict(item)
+                support_conf = 0.5 + 0.5 * support
+                try:
+                    base = float(item.get("confidence"))
+                except (TypeError, ValueError):
+                    base = None
+                item["confidence"] = round(
+                    support_conf if base is None else (base + support_conf) / 2, 3
+                )
+            merged.append(item)
+        mean_support = sum(supports) / len(supports) if supports else 0.0
+        return merged, round(mean_support, 3)
+
+    def _itemwise_consensus(
+        self,
+        responses: List[Any],
+    ) -> Tuple[Any, float]:
+        """Item-level consensus for extraction-shaped responses."""
+        n = len(responses)
+        if all(isinstance(r, list) for r in responses):
+            return self._merge_item_lists(responses, n)
+        keys: List[str] = []
+        for r in responses:
+            if isinstance(r, dict):
+                for k in r:
+                    if k not in keys:
+                        keys.append(k)
+        out: Dict[str, Any] = {}
+        agreements: List[float] = []
+        from collections import Counter
+        for k in keys:
+            values = [r[k] for r in responses if isinstance(r, dict) and k in r]
+            if values and all(isinstance(v, list) for v in values):
+                merged, mean_support = self._merge_item_lists(values, n)
+                out[k] = merged
+                if merged:
+                    agreements.append(mean_support)
+            else:
+                serialized = [json.dumps(v, sort_keys=True, default=str) for v in values]
+                top, count = Counter(serialized).most_common(1)[0]
+                try:
+                    out[k] = json.loads(top)
+                except (json.JSONDecodeError, ValueError):
+                    out[k] = values[0]
+                agreements.append(count / n)
+        confidence = sum(agreements) / len(agreements) if agreements else 0.0
+        return out, round(confidence, 3)
+
     def _compute_consensus(
         self,
         responses: List[Dict[str, Any]],
     ) -> Tuple[Dict[str, Any], float]:
         """
         Compute consensus from multiple responses.
-        
-        Uses a simple voting mechanism:
-        - Serialize each response
-        - Count occurrences
-        - Return most common with frequency as confidence
+
+        Extraction-shaped responses (dicts with list values, or bare lists) get
+        ITEM-level consensus: items are pooled across samples, deduped by
+        identity, and weighted by cross-sample support. Whole-response
+        exact-match voting — the previous behavior — almost never agrees at
+        temperature > 0 on multi-item JSON, so it degenerated to "return an
+        arbitrary sample at 1/n confidence" (3x cost, no benefit: the "broken
+        SC" this replaces). Scalar payloads still use exact-match voting.
         """
         if not responses:
             return {}, 0.0
-        
-        # Serialize for comparison
+
+        extraction_shaped = all(isinstance(r, (dict, list)) for r in responses) and any(
+            isinstance(r, list) or any(isinstance(v, list) for v in r.values())
+            for r in responses
+        )
+        if extraction_shaped:
+            return self._itemwise_consensus(responses)
+
+        # Scalar payloads: exact-serialization majority voting.
         serialized = []
         for r in responses:
             try:
                 serialized.append(json.dumps(r, sort_keys=True))
             except (TypeError, ValueError):
                 serialized.append(str(r))
-        
-        # Count votes
+
         from collections import Counter
         counts = Counter(serialized)
         most_common, count = counts.most_common(1)[0]
-        
+
         confidence = count / len(responses)
-        
+
         # Deserialize winner
         try:
             result = json.loads(most_common)
         except (json.JSONDecodeError, ValueError):
             result = responses[0]
-        
+
         return result, confidence
 
     # ==================== Memory Methods ====================

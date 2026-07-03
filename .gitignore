@@ -71,3 +71,11 @@ evaluation/results/
 
 # Claude Code local worktrees & settings
 .claude/
+
+# graphify generated artifacts
+graphify-out/
+
+# Re-DocRED datasets (re-downloadable; see evaluation/DocRED/data/README.md)
+evaluation/DocRED/data/dev_revised.json
+evaluation/DocRED/data/train_revised.json
+evaluation/DocRED/data/test_revised.json

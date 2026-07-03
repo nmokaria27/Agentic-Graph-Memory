@@ -480,7 +480,7 @@ class IncrementalEnricher:
             skip_verification=self.skip_verification,
             quality_threshold=quality_threshold,
             max_refinement_iterations=1,
-            enable_self_consistency=False,  # Speed: skip broken SC
+            enable_self_consistency=False,  # Speed: SC now works (item-level consensus) but costs n_samples x calls
             enable_open_world=not self.fixed_schema,
             enable_cross_document=self.use_base_context,
             enable_deliberation=False,  # Speed: skip fake deliberation

@@ -1,0 +1,39 @@
+{
+  "entities": [
+    "Alice Chen::PERSON",
+    "Northwind Robotics::ORGANIZATION",
+    "Bob Ramirez::PERSON",
+    "Portland::LOCATION",
+    "Toyota::PRODUCT",
+    "Meridian Bridge::PRODUCT",
+    "city of Ashford::LOCATION",
+    "Dr. Elena Voss::PERSON",
+    "Kessler enzyme::PRODUCT",
+    "Falcon Q7 drone::PRODUCT",
+    "Marcus Webb::PERSON",
+    "Lumen Analytics::ORGANIZATION",
+    "Nina Patel::PERSON",
+    "Vertex Cloud::ORGANIZATION",
+    "Orion Mark III telescope::PRODUCT",
+    "Seattle::LOCATION",
+    "Honda::PRODUCT",
+    "National Institute of Enzymology::ORGANIZATION",
+    "deep-sea hydrothermal vents::LOCATION"
+  ],
+  "triples": [
+    "(Alice Chen) -[WORKS_AT]-> (Northwind Robotics)",
+    "(Bob Ramirez) -[LOCATED_IN]-> (Portland)",
+    "(Bob Ramirez) -[DRIVES]-> (Toyota)",
+    "(Meridian Bridge) -[LOCATED_IN]-> (city of Ashford)",
+    "(Dr. Elena Voss) -[DISCOVERED]-> (Kessler enzyme)",
+    "(Kessler enzyme) -[LOCATED_IN]-> (deep-sea hydrothermal vents)",
+    "(Marcus Webb) -[FOUNDED]-> (Lumen Analytics)",
+    "(Marcus Webb) -[STEPPED_DOWN]-> (Lumen Analytics)",
+    "(Nina Patel) -[MANAGES]-> (Vertex Cloud)",
+    "(Bob Ramirez) -[MOVED_TO]-> (Seattle)",
+    "(Bob Ramirez) -[DRIVES]-> (Honda)",
+    "(Dr. Elena Voss) -[JOINED]-> (National Institute of Enzymology)",
+    "(Falcon Q7 drone) -[HAS_MAX_FLIGHT_TIME]-> (40 minutes)",
+    "(Orion Mark III telescope) -[WEIGHS]-> (12 kilograms)"
+  ]
+}

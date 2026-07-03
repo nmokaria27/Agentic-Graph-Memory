@@ -1,3 +1,6 @@
+import os
+from unittest import mock
+
 import multi_agent_kg.llm.openai_client as oc
 from multi_agent_kg.llm.openai_client import (
     _extract_json,
@@ -25,7 +28,6 @@ def test_reasoning_model_families_detected_as_thinking() -> None:
         "accounts/fireworks/models/gpt-oss-20b",
         "accounts/fireworks/models/minimax-m3",
         "accounts/fireworks/models/minimax-m2p7",
-        "accounts/fireworks/models/nemotron-3-ultra-nvfp4",
         "accounts/fireworks/models/qwen3p7-plus",
     ):
         assert _model_is_thinking(model), model
@@ -36,6 +38,63 @@ def test_reasoning_model_families_detected_as_thinking() -> None:
         "accounts/fireworks/models/deepseek-v3",
     ):
         assert not _model_is_thinking(model), model
+
+
+def test_nemotron_reasoning_toggle() -> None:
+    # Nemotron exposes an explicit reasoning switch. Default (NEMOTRON_THINKING!=on)
+    # suppresses reasoning so it flows through the fast JSON-mode path; set to "on"
+    # to restore chain-of-thought handling.
+    import importlib
+    import multi_agent_kg.llm.openai_client as oc
+
+    with mock.patch.dict(os.environ, {"NEMOTRON_THINKING": "off"}):
+        importlib.reload(oc)
+        assert not oc._model_is_thinking("nvidia/nemotron-3-nano")
+        msgs = [{"role": "system", "content": "Extract JSON."}]
+        out = oc._apply_nemotron_reasoning_directive(msgs, "nvidia/nemotron-3-nano")
+        assert out[0]["content"].lower().startswith("detailed thinking off")
+    with mock.patch.dict(os.environ, {"NEMOTRON_THINKING": "on"}):
+        importlib.reload(oc)
+        assert oc._model_is_thinking("nvidia/nemotron-3-nano")
+    importlib.reload(oc)  # restore default
+
+
+def _fake_choice(content, finish_reason):
+    msg = mock.Mock()
+    msg.content = content
+    choice = mock.Mock()
+    choice.message = msg
+    choice.finish_reason = finish_reason
+    resp = mock.Mock()
+    resp.choices = [choice]
+    resp.usage = None
+    return resp
+
+
+def test_truncated_thinking_output_grows_budget_and_retries(monkeypatch) -> None:
+    # Nemotron burns the whole budget on hidden reasoning -> empty content with
+    # finish_reason="length". The client must NOT silently return ""; it must
+    # double the budget and retry until real content arrives.
+    monkeypatch.setattr(oc, "LLM_BACKEND", "vllm")
+    monkeypatch.setattr(oc, "_model_is_thinking", lambda m: True)
+    monkeypatch.setenv("VLLM_MAX_MODEL_LEN", "32768")
+
+    budgets = []
+    responses = [
+        _fake_choice("", "length"),          # truncated before any output
+        _fake_choice('{"ok": true}', "stop"),  # succeeds after budget grows
+    ]
+
+    def fake_create(**params):
+        budgets.append(params.get("max_tokens"))
+        return responses.pop(0)
+
+    monkeypatch.setattr(oc.client.chat.completions, "create", fake_create)
+    out = oc.chat_completion([{"role": "user", "content": "x"}], model="nvidia/nemotron-3-nano", max_tokens=4096)
+    assert out == '{"ok": true}'
+    # first attempt inflated to 16384; retry doubled it (capped at 32768-2048).
+    assert budgets[0] == 16384
+    assert budgets[1] > budgets[0]
 
 
 def test_extract_json_digs_json_out_of_cot_prose() -> None:
