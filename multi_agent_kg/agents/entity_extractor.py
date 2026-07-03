@@ -189,6 +189,11 @@ RULES FOR GROUPING:
 - Full name = Partial name: "type 2 diabetes mellitus" and "type 2 diabetes" and "T2D" are the same
 - Synonyms in context: "metformin" and "Glucophage" when referring to the same drug
 - DO NOT group generic phrases: "the organization", "the disease", "the treatment" should NOT be grouped with specific entities
+- EVERY entity in the ENTITIES list must appear in exactly ONE group. An entity with no
+  coreferent mentions gets its OWN single-mention group. NEVER omit an entity: omitting it
+  deletes it from the knowledge graph.
+- Do NOT group different entities just because they relate to the same person or topic.
+  A person, their birthplace, their employer and their songs are DIFFERENT entities.
 
 RULES FOR CANONICAL_ID:
 - Use clean lowercase_snake_case derived from the canonical name
@@ -198,11 +203,13 @@ RULES FOR CANONICAL_ID:
 - Keep IDs concise but descriptive (e.g. "empagliflozin", "insulin_resistance", "coronary_flow_reserve")
 
 EXAMPLE:
-Entities: ["WHO", "World Health Organization", "T2D", "type 2 diabetes", "type 2 diabetes mellitus", "HbA1c", "glycated hemoglobin"]
+Entities: ["WHO", "World Health Organization", "T2D", "type 2 diabetes", "type 2 diabetes mellitus", "HbA1c", "glycated hemoglobin", "Mayo Clinic"]
 Groups:
 - canonical_id: "world_health_organization", canonical_name: "World Health Organization", mentions: ["WHO", "World Health Organization"]
 - canonical_id: "type_2_diabetes_mellitus", canonical_name: "type 2 diabetes mellitus", mentions: ["T2D", "type 2 diabetes", "type 2 diabetes mellitus"]
 - canonical_id: "hba1c", canonical_name: "HbA1c", mentions: ["HbA1c", "glycated hemoglobin"]
+- canonical_id: "mayo_clinic", canonical_name: "Mayo Clinic", mentions: ["Mayo Clinic"]
+(note: "Mayo Clinic" has no other mentions, so it forms its own single-mention group — it is NOT dropped and NOT merged into another group)
 
 TEXT:
 {text}
@@ -227,6 +234,37 @@ Return:
         }}
     ]
 }}"""
+
+
+# Pronouns and generic references that must not become KG entities.
+_COREF_PRONOUNS = {
+    "it", "its", "they", "them", "their", "this", "that",
+    "these", "those", "we", "our", "he", "she", "his", "her",
+}
+_COREF_GENERIC_WORDS = {
+    "approach", "method", "system", "technique",
+    "model", "information", "results", "study",
+    "findings", "data", "analysis", "set of rules",
+    "relationship", "association", "support", "community",
+    "change", "journey", "experience", "voice",
+    "values", "challenges", "understanding",
+}
+
+
+def _is_generic_reference(name: str) -> bool:
+    """True if a surface form is a pronoun or generic phrase (not a real entity)."""
+    lowered = str(name or "").lower().strip()
+    if not lowered:
+        return True
+    if lowered in _COREF_PRONOUNS or lowered in _COREF_GENERIC_WORDS:
+        return True
+    # Generic phrase behind an article ("the approach"), but keep proper names
+    # that merely start with "The" ("The Beatles").
+    if lowered.startswith(("our ", "this ", "that ", "these ", "those ", "a set of ", "the ", "a ", "an ")):
+        remaining = lowered.split(" ", 1)[-1] if " " in lowered else ""
+        if remaining in _COREF_GENERIC_WORDS or any(remaining.startswith(g) for g in _COREF_GENERIC_WORDS):
+            return True
+    return False
 
 
 class EntityExtractor(BaseAgent):
@@ -260,6 +298,7 @@ class EntityExtractor(BaseAgent):
         use_self_consistency: bool = True,
         n_consistency_samples: int = 3,
         enable_deterministic_value_harvesting: bool = False,
+        extraction_mode: str = "deliberative",
     ):
         super().__init__(
             name="EntityExtractor",
@@ -274,6 +313,13 @@ class EntityExtractor(BaseAgent):
         self.use_self_consistency = use_self_consistency
         self.n_consistency_samples = n_consistency_samples
         self.enable_deterministic_value_harvesting = enable_deterministic_value_harvesting
+        # "deliberative": multi-stage per-segment extraction (original RHF front end).
+        # "wide": single wide-harvest call per segment (singlepass recall engine)
+        #         feeding the same coref + deliberation back end. Relationship
+        #         candidates harvested in wide mode land in
+        #         self.wide_relation_candidates for downstream seeding.
+        self.extraction_mode = extraction_mode
+        self.wide_relation_candidates: List[Dict[str, Any]] = []
 
     def _enforce_strict_schema(
         self,
@@ -390,6 +436,7 @@ class EntityExtractor(BaseAgent):
         # Process each segment
         all_entities = []
         low_confidence_entities = []
+        self.wide_relation_candidates = []  # reset per document (wide mode)
         
         texts_to_process = []
         if segments:
@@ -419,11 +466,15 @@ class EntityExtractor(BaseAgent):
             if not text:
                 return segment_id, []
             with _print_lock:
-                print(f"    Segment {i+1}/{total_segments} ({segment_id}) — extracting entities...")
-            typed = self._extract_entities_combined(
-                text, entity_types, context.domain,
-                strict_types=strict_types,
-            )
+                print(f"    Segment {i+1}/{total_segments} ({segment_id}) — extracting entities"
+                      f" [{self.extraction_mode}]...")
+            if self.extraction_mode == "wide":
+                typed = self._extract_wide_segment(text, entity_types)
+            else:
+                typed = self._extract_entities_combined(
+                    text, entity_types, context.domain,
+                    strict_types=strict_types,
+                )
             if not typed:
                 with _print_lock:
                     print(f"    WARNING: segment {i+1}/{total_segments} ({segment_id}) returned 0 entities — possible LLM parse failure, data lost for this segment")
@@ -638,6 +689,62 @@ class EntityExtractor(BaseAgent):
             return []
         return [e.model_dump() for e in parsed.entities]
 
+    def _extract_wide_segment(
+        self,
+        text: str,
+        entity_types: List[str],
+    ) -> List[Dict[str, Any]]:
+        """Wide-harvest extraction (fused pipeline front end).
+
+        One call extracts EVERY entity + relationship candidate at once — the
+        singlepass recall engine that beat the multi-stage front end on entity
+        recall (0.81 vs 0.47, evaluation/DocRED/LESSONS.md). Output feeds the
+        same coref + deliberation + governance back end, which supplies the
+        precision. Relationship candidates are stashed on
+        ``self.wide_relation_candidates`` for downstream seeding.
+        """
+        type_hint = ""
+        if entity_types:
+            type_hint = (
+                "Suggested entity categories: "
+                + ", ".join(self._normalize_entity_types(entity_types))
+                + "\nYou may use these or create more specific types as needed.\n\n"
+            )
+        prompt = (
+            "You are extracting a knowledge graph from text.\n\n"
+            "Extract EVERY significant entity and EVERY relationship in ONE pass, including "
+            "dates, years, quantities and numeric values as entities when a fact connects to "
+            "them. Use the exact surface form for entity names. Prefer specific relations.\n\n"
+            f"{type_hint}"
+            f"TEXT:\n{text}\n\n"
+            "Return ONLY JSON:\n"
+            '{"entities": [{"text": "...", "type": "...", "confidence": 0.9}],\n'
+            ' "relationships": [{"source": "...", "relation": "...", "target": "...", "confidence": 0.9}]}'
+        )
+        result = self.call_llm(
+            prompt=prompt,
+            system_prompt="You are a precise knowledge-graph extractor. Return ONLY valid JSON.",
+            tier=ModelTier.MEDIUM,
+            max_tokens=8192,
+        )
+        if not isinstance(result, dict):
+            print("  WARNING: wide extraction returned non-dict output — 0 entities for segment")
+            return []
+
+        rels = result.get("relationships")
+        if isinstance(rels, list):
+            self.wide_relation_candidates.extend(
+                r for r in rels
+                if isinstance(r, dict) and r.get("source") and r.get("target")
+            )
+
+        try:
+            parsed = EntityExtractionOut.model_validate({"entities": result.get("entities", [])})
+        except ValidationError as exc:
+            print(f"  WARNING: wide extraction output failed validation ({exc}) — 0 entities")
+            return []
+        return [e.model_dump() for e in parsed.entities]
+
     def _stage4_coreference_resolution(
         self,
         text: str,
@@ -680,7 +787,12 @@ class EntityExtractor(BaseAgent):
                     max_tokens=4096,
                 )
             except Exception as e:
-                print(f"  WARNING: Coref batch {batch_num}/{total_batches} failed: {e}; skipping batch")
+                print(f"  WARNING: Coref batch {batch_num}/{total_batches} failed: {e}; "
+                      f"passing batch through unmerged")
+                all_resolved.extend(
+                    original for original in batch
+                    if not _is_generic_reference(original.get("text") or original.get("id") or "")
+                )
                 continue
             
             # Validate the coreference output against the Pydantic schema, which
@@ -695,11 +807,7 @@ class EntityExtractor(BaseAgent):
                 ]
             except ValidationError:
                 groups = []
-            # Pronouns and generic references that should be dropped
-            _PRONOUN_PATTERNS = {
-                "it", "its", "they", "them", "their", "this", "that",
-                "these", "those", "we", "our", "he", "she", "his", "her",
-            }
+            claimed_batch_indices: set = set()
             for group in groups:
                 if not isinstance(group, dict):
                     continue  # skip stray strings/None from a malformed parse
@@ -708,26 +816,11 @@ class EntityExtractor(BaseAgent):
                 mentions = group.get("mentions", [])
                 etype = group.get("type", "UNKNOWN")
 
-                # Skip UNRESOLVED or pronoun-only entities
+                # Skip UNRESOLVED or pronoun/generic canonical names
                 if etype.upper() == "UNRESOLVED":
                     continue
-                if canonical_name.lower().strip() in _PRONOUN_PATTERNS:
+                if _is_generic_reference(canonical_name):
                     continue
-                # Skip if canonical_name is a generic phrase (starts with article + generic noun)
-                cn_lower = canonical_name.lower().strip()
-                generic_words = {"approach", "method", "system", "technique",
-                                 "model", "information", "results", "study",
-                                 "findings", "data", "analysis", "set of rules",
-                                 "relationship", "association", "support", "community",
-                                 "change", "journey", "experience", "voice",
-                                 "values", "challenges", "understanding"}
-                if cn_lower in generic_words:
-                    continue
-                # Check if it's truly generic (not a proper name starting with "the")
-                if cn_lower.startswith(("our ", "this ", "that ", "these ", "those ", "a set of ", "the ", "a ", "an ")):
-                    remaining = cn_lower.split(" ", 1)[-1] if " " in cn_lower else ""
-                    if remaining in generic_words or any(remaining.startswith(g) for g in generic_words):
-                        continue
 
                 # Clean up the ID: strip _1, _2, _group suffixes the LLM may add
                 clean_id = self._clean_entity_id(raw_id, canonical_name)
@@ -748,7 +841,7 @@ class EntityExtractor(BaseAgent):
                     for value in [canonical_name, clean_id, raw_id, *mentions]
                     if value
                 }
-                for original in batch:
+                for batch_idx, original in enumerate(batch):
                     candidates = [
                         original.get("id", ""),
                         original.get("text", ""),
@@ -756,6 +849,7 @@ class EntityExtractor(BaseAgent):
                         *(original.get("mentions") or []),
                     ]
                     if any(str(candidate).lower().strip() in mention_keys for candidate in candidates if candidate):
+                        claimed_batch_indices.add(batch_idx)
                         segment = original.get("source_segment")
                         if segment and segment not in source_segments:
                             source_segments.append(segment)
@@ -824,7 +918,23 @@ class EntityExtractor(BaseAgent):
                     for mention in mentions:
                         if mention != canonical_name:
                             self.shared_memory.register_entity_alias(mention, canonical_id)
-        
+
+            # SAFETY NET — coref may MERGE entities, never DELETE them. Any
+            # extracted entity the LLM's groups did not claim passes through
+            # unchanged (pronouns/generic refs excepted). Without this, a model
+            # that returns only multi-mention clusters silently drops every
+            # singleton — the doc-3 collapse in evaluation/DocRED/LESSONS.md
+            # (29 extracted -> 1 survived).
+            passthrough = [
+                original for batch_idx, original in enumerate(batch)
+                if batch_idx not in claimed_batch_indices
+                and not _is_generic_reference(original.get("text") or original.get("id") or "")
+            ]
+            if passthrough:
+                print(f"      Coref batch {batch_num}: {len(passthrough)}/{len(batch)} entities "
+                      f"unclaimed by any group — passing through unmerged")
+                all_resolved.extend(passthrough)
+
         if not all_resolved:
             print(f"  WARNING: Coreference resolution produced 0 groups from {len(entities)} entities — falling back to raw entities")
             return entities

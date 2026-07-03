@@ -127,6 +127,7 @@ class DeliberativeOrchestrator:
         resume: bool = False,
         chunk_size: Optional[int] = None,
         chunk_overlap: int = 150,
+        extraction_mode: str = "deliberative",
     ):
         """
         Initialize the deliberative orchestrator.
@@ -167,6 +168,9 @@ class DeliberativeOrchestrator:
         # min≈0.75*chunk_size so a single number can be swept by the tuner.
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
+        # "deliberative" = original multi-stage front end; "wide" = fused
+        # pipeline (singlepass recall harvest -> same coref/deliberation back end)
+        self.extraction_mode = extraction_mode
         self.enable_governance = enable_governance or governed_kg is not None
         if governed_kg is not None:
             self.governed_kg = governed_kg
@@ -305,6 +309,7 @@ class DeliberativeOrchestrator:
             quality_threshold=self.quality_threshold,
             use_self_consistency=self.enable_self_consistency,
             enable_deterministic_value_harvesting=self.enable_deterministic_value_harvesting,
+            extraction_mode=self.extraction_mode,
         )
         
         self.relation_extractor = RelationExtractor(
