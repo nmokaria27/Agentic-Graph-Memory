@@ -135,7 +135,14 @@ def personalized_pagerank(
         return []
     try:
         scores = nx.pagerank(graph, alpha=alpha, personalization=seeds)
-    except Exception:
+    except Exception as exc:
+        # Surface (once) instead of silently disabling PPR — a missing optional
+        # dep (e.g. scipy, which networkx's pagerank needs) previously made this
+        # return [] on every call with no signal, silently degrading retrieval.
+        if not getattr(personalized_pagerank, "_warned", False):
+            print(f"  WARNING: personalized_pagerank disabled ({exc!r}); "
+                  f"install scipy to enable PPR retrieval")
+            personalized_pagerank._warned = True  # type: ignore[attr-defined]
         return []
     ranked = sorted(scores.items(), key=lambda item: item[1], reverse=True)
     return ranked[:top_k]

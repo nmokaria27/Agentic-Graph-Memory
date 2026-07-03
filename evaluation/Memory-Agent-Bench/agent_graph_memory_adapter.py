@@ -186,7 +186,11 @@ class AgentGraphMemoryWrapper:
             try:
                 self._governed_kg = self._run_pipeline(full_text)
             except Exception as exc:
-                logger.warning("Pipeline failed (%s); falling back to empty KG.", exc)
+                logger.error(
+                    "Pipeline construction failed before extraction (%s); this context "
+                    "will have an EMPTY KG and score ~0. Investigate — do not treat as normal.",
+                    exc,
+                )
                 kg = KnowledgeGraph()
                 self._governed_kg = GovernedKnowledgeGraph(
                     kg=kg,
@@ -271,7 +275,18 @@ class AgentGraphMemoryWrapper:
             enable_cross_document=False,
             model_tiers=model_tiers,
         )
-        orchestrator.process_corpus([document])
+        # Preserve partial, hard-won extraction on a mid-run failure instead of letting
+        # the exception bubble to an empty-KG fallback. `governed_kg` is passed in by
+        # reference, so whatever stages completed are already committed to it. Rich data
+        # that made it into the graph must survive — losing a whole context to one bad
+        # segment is the failure mode that produced near-empty KGs on past benchmark runs.
+        try:
+            orchestrator.process_corpus([document])
+        except Exception as exc:
+            logger.error(
+                "Pipeline failed mid-run (%s); PRESERVING partial KG: %d entities, %d triples",
+                exc, len(orchestrator.governed_kg.entities), len(orchestrator.governed_kg.triples),
+            )
         governed_kg = orchestrator.governed_kg
 
         # Orphan relink pass
