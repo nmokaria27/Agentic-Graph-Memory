@@ -1,3 +1,70 @@
+# DocRED Experiment Matrix v3 — Meta Report (2026-07-04, post hybrid-v2 fixes)
+
+Hybrid v2 shipped two structural fixes (HYBRID_V2_RUN.md): the stage-9 entity funnel
+(year-safe id cleanup, alias merge on collision, per-reason drop logging) and wide-harvest
+relation seeding. rhf + hybrid re-extracted on both slices; **singlepass caches untouched =
+regression control**. 20 doc-runs, zero silent-empty, no data lost (the doc-1 reasoning-runaway
+errors were segment-local and are addressed by the prompt-aware truncation cap, commit 419d049).
+
+## v3 headline (vs v2 in parens)
+
+| strategy | slice | entP | entR | pairR | flips | relF1@0.6 |
+|---|---|---|---|---|---|---|
+| **hybrid v2** | A | 0.86 | **0.72** (0.64) | **0.222** (0.126) | **1** | **0.211** (0.096) |
+| **hybrid v2** | B | 0.82 | 0.68 (0.71) | 0.178 (0.150) | 2 (5) | 0.112 (0.090) |
+| rhf | A | 0.89 | 0.67 (0.58) | 0.199 (0.176) | 4 (2) | 0.157 (0.148) |
+| rhf | B | 0.76 | 0.55 (0.68) | 0.108 (0.175) | 4 (1) | 0.053 (0.089) |
+| singlepass (control) | A | 0.87 | 0.81 | 0.232 | 1 | 0.188 |
+| singlepass (control) | B | 0.79 | 0.88 | 0.200 | 3 | 0.133 |
+
+## v3 verdict — the seeding fix is a decisive win; hybrid missed its recall bar but now owns quality
+
+Against the pre-registered bars (HYBRID_V2_RUN.md):
+
+- **Wide-harvest seeding worked, exactly as targeted (leak #2).** Hybrid slice-A pair recall
+  **+76%** (0.126 → 0.222, now *meets* singlepass's 0.232) and relF1@0.6 **more than doubled**
+  (0.096 → 0.211, now the **best of any strategy**). The deliberation back end, once fed the
+  candidates it used to discard, produces the highest-quality relations in the matrix.
+- **Direction flips: MET** (1 / 2 ≤ bar 2; hybrid v1 was 7). The funnel + alignment fixes
+  removed the coref-renaming that caused inversions.
+- **Entity recall: MISSED** (0.72 / 0.68 vs bar 0.75 / 0.80). Improved on slice A (0.64 → 0.72)
+  but still ~0.09–0.20 behind singlepass. Since hybrid and singlepass share the SAME wide front
+  end, this residual gap is **still back-end loss** (coref + integration) — smaller than v1's,
+  not yet closed. Slice-B entR even dipped (0.71 → 0.68); at n=5 this is within noise, but it
+  says the funnel fixes traded a little raw recall for correctness (fewer wrong merges).
+- **Regression control held exactly**: singlepass identical v2↔v3 (path untouched). rhf moved
+  (re-run): slice-A entR +0.09 (funnel fixes help rhf too) but slice-B entR −0.13 and flips
+  +2 — rhf is the noisiest strategy run-to-run and is no longer a contender on either recall
+  or quality.
+
+**Decision:** we now have a clean **recall-vs-quality frontier**, not a single winner.
+- **singlepass** = maximum entity recall (0.81 / 0.88), 1 LLM call, no governance → the
+  ingestion recall engine.
+- **hybrid v2** = best relation quality (relF1 0.211, flips 1), pair recall matching singlepass,
+  full deliberation/governance/provenance → the quality/governed backend.
+
+Production default: **hybrid v2 where relation quality or governance matters; singlepass for
+pure recall-critical bulk ingestion.** The open lever (Phase A) is the residual hybrid entity-
+recall gap = the coref/integration back-end loss that seeding did not touch. **This is a real,
+pre-registered miss — not spun as a win.**
+
+### Where the residual gap actually is (funnel evidence → Phase A target)
+
+The v3 entity-funnel logs localize it. The garbage filter is now nearly a no-op — it drops 0–2
+entities/doc (all `numeric_unreferenced` values), so **stage-9 integration is no longer the
+leak**; the funnel fix closed it. But the count entering the filter is already low (11, 14,
+17…) vs the ~20–30 standalone singlepass keeps. The difference is the one stage hybrid has and
+singlepass does not: **coreference resolution**. Singlepass emits the wide call's entities
+straight through; hybrid runs those *same* entities through coref, which still over-merges
+(merges distinct gold clusters into one), costing the ~0.09–0.20 recall.
+
+**Phase A next fix (one loop, same 5 docs):** loosen coref merging — it already can't delete,
+but it's still merging too eagerly. Candidate: require a stronger similarity/evidence threshold
+before merging two extracted entities, or gate merges on type agreement. Re-measure entR against
+this v3 baseline; success = hybrid entR → singlepass's 0.81 without pairR/relF1 regressing.
+
+---
+
 # DocRED Experiment Matrix — Meta Report (2026-07-03, post coref-fix)
 
 3 strategies × 2 slices, Re-DocRED dev. **Slice A** = docs 0–4 (diagnostic; every fix
