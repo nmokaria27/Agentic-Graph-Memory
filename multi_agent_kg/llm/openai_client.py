@@ -507,7 +507,21 @@ def chat_completion(
             # budget, and retry within this loop instead of returning "" silently.
             if (not content) and finish == "length":
                 _cur = params.get("max_tokens") or params.get("max_completion_tokens")
-                _cap = int(os.getenv("VLLM_MAX_MODEL_LEN", "32768")) - 2048
+                # Cap must leave room for the PROMPT inside the context window:
+                # a fixed margin 400'd vLLM at 129024 budget + 2049-token prompt
+                # (matrix v3, doc 1). chars/3 over-estimates prompt tokens, which
+                # errs on the safe side. The ceiling bounds wall time — one
+                # 92-minute ladder climb showed >65K budgets cost more in
+                # generation time than they recover in output; 65536 has been
+                # sufficient for every rescued call so far.
+                _prompt_tokens = sum(
+                    len(str(m.get("content", ""))) for m in messages
+                ) // 3 + 256
+                _ceiling = int(os.getenv("NEMOTRON_BUDGET_CEILING", "65536"))
+                _cap = min(
+                    int(os.getenv("VLLM_MAX_MODEL_LEN", "32768")) - _prompt_tokens,
+                    _ceiling,
+                )
                 if _cur and _cur < _cap and attempt < _MAX_RETRIES:
                     _bigger = min(_cur * 2, _cap)
                     if _bigger > _cur:
