@@ -679,6 +679,7 @@ class KnowledgeOrganizer(BaseAgent):
         real entity IDs instead of creating phantom entities.
         """
         added_entities = 0
+        merged_into_existing = 0
         added_triples = 0
         skipped_triples = 0
 
@@ -712,11 +713,19 @@ class KnowledgeOrganizer(BaseAgent):
                 if endpoint:
                     _referenced.add(str(endpoint).lower().strip())
         value_entities_kept = 0
+        # Every drop gets a counted reason (mirrors skipped_triple_reasons) so
+        # the entity funnel is auditable — "N entities vanished at integration"
+        # was the top unexplained recall leak (MATRIX_REPORT.md verdict 3).
+        entity_drop_reasons = {
+            "empty_text": 0, "numeric_unreferenced": 0, "garbage_phrase": 0,
+            "too_short": 0, "garbage_type": 0,
+        }
         for entity in entities:
             eid = entity.get("id", entity.get("text", ""))
             etext = entity.get("text", eid)
             # Skip empty, pure-number, or trivially short/generic entities
             if not etext or not etext.strip():
+                entity_drop_reasons["empty_text"] += 1
                 continue
             stripped = etext.strip()
             if re.fullmatch(r'\d+', stripped):
@@ -729,10 +738,13 @@ class KnowledgeOrganizer(BaseAgent):
                             entity["type"] = vtype
                         value_entities_kept += 1
                     else:
+                        entity_drop_reasons["numeric_unreferenced"] += 1
                         continue
             if stripped.lower() in _GARBAGE_PHRASES:
+                entity_drop_reasons["garbage_phrase"] += 1
                 continue
             if len(stripped) < 2:
+                entity_drop_reasons["too_short"] += 1
                 continue
             # Skip entities with garbage types
             etype = entity.get("type", "").upper()
@@ -740,6 +752,7 @@ class KnowledgeOrganizer(BaseAgent):
                 "STATISTICAL_METHOD", "STUDY_DESIGN", "ANALYSIS_TECHNIQUE",
                 "STATISTICAL_MODEL", "UNRESOLVED",
             }:
+                entity_drop_reasons["garbage_type"] += 1
                 continue
             clean_entities.append(entity)
         # ── Consolidate entity types ─────────────────────────────────
@@ -774,9 +787,11 @@ class KnowledgeOrganizer(BaseAgent):
                 entity["original_type"] = etype
                 entity["type"] = _TYPE_CONSOLIDATION[etype]
 
+        _drop_detail = ", ".join(f"{k}={v}" for k, v in entity_drop_reasons.items() if v)
         print(f"  Filtered entities: {len(entities)} → {len(clean_entities)} "
-              f"(removed {len(entities) - len(clean_entities)} garbage, "
-              f"kept {value_entities_kept} referenced value entities)")
+              f"(removed {len(entities) - len(clean_entities)} garbage"
+              + (f" [{_drop_detail}]" if _drop_detail else "")
+              + f", kept {value_entities_kept} referenced value entities)")
         entities = clean_entities
 
         # ── Build name → entity_id lookup ────────────────────────────
@@ -923,8 +938,11 @@ class KnowledgeOrganizer(BaseAgent):
                 for mention in entity.get("mentions", []):
                     name_to_id[mention.lower().strip()] = entity_id
             else:
-                # Clean up _1, _group suffixes from entity IDs
-                clean_id = re.sub(r'(?<=\w{3})_\d+$', '', entity_id)
+                # Clean up _1, _group suffixes from entity IDs. Only 1-2 digit
+                # artifact counters: a `_\d+$` pattern also ate 4-digit YEAR
+                # suffixes ("fibt_world_championships_1998" -> "..._championships"),
+                # silently collapsing distinct events (stage-9 audit finding).
+                clean_id = re.sub(r'(?<=\w{3})_\d{1,2}$', '', entity_id)
                 clean_id = re.sub(r'_group$', '', clean_id)
                 if clean_id != entity_id and clean_id not in self.knowledge_graph.entities:
                     name_to_id[entity_id.lower().strip()] = clean_id
@@ -982,6 +1000,27 @@ class KnowledgeOrganizer(BaseAgent):
                         },
                     )
                 added_entities += 1
+            else:
+                # Same-id collision: MERGE this entity's aliases into the
+                # existing node instead of discarding them. add_entity merges
+                # labels for existing ids; skipping the call threw away
+                # gold-matchable mention forms (stage-9 audit finding).
+                merge_labels = [
+                    lbl for lbl in
+                    ([etext] + list(entity.get("labels", [])) + list(entity.get("mentions", [])))
+                    if lbl
+                ]
+                target_kg = self.governed_kg if self.governed_kg else self.knowledge_graph
+                target_kg.add_entity(
+                    entity_id=entity_id,
+                    labels=merge_labels,
+                    entity_type=entity.get("type"),
+                )
+                merged_into_existing += 1
+
+        if merged_into_existing:
+            print(f"  Entity funnel: {added_entities} added, "
+                  f"{merged_into_existing} merged into existing ids (aliases kept)")
 
         # ── Add triples (with entity resolution) ─────────────────────
         # Filter out meaningless relation types
@@ -1151,6 +1190,8 @@ class KnowledgeOrganizer(BaseAgent):
             
         self.integration_stats["kg_triples_added"] = added_triples
         self.integration_stats["kg_entities_added"] = added_entities
+        self.integration_stats["entity_drop_reasons"] = entity_drop_reasons
+        self.integration_stats["entities_merged_into_existing"] = merged_into_existing
         self.integration_stats["skipped_triple_reasons"] = skipped_triple_reasons
         self.integration_stats["resolve_entity_name_misses"] = miss_count
         self.integration_stats["resolve_misses"] = dict(resolve_misses)

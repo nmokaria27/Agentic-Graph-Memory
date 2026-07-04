@@ -839,6 +839,11 @@ class DeliberativeOrchestrator:
                 segments=segments,
                 entities=entities,
                 domain_config=domain_config,
+                # Wide-mode relationship candidates (empty outside wide mode) —
+                # the front end already extracted these; seed instead of rebuild.
+                seed_candidates=getattr(
+                    self.entity_extractor, "wide_relation_candidates", None
+                ),
             )
             triples = relation_result.items
             context.relations = triples

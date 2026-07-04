@@ -8,7 +8,8 @@ scores: `evaluation/results/docred_scores_<strategy>_<slice>.json`.
 
 ## Headline numbers
 
-| strategy | slice | entP | entR | pairR | flips | relF1@0.6 |
+| strategy | slice | entP |
+ entR | pairR | flips | relF1@0.6 |
 |---|---|---|---|---|---|---|
 | rhf (pre-fix, last night) | A | 0.88 | 0.47 | 0.14 | 2 | 0.127 |
 | **rhf (coref fixed)** | A | 0.89 | **0.56** | **0.17** | 1 | **0.191** |

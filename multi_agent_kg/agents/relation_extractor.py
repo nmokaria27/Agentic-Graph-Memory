@@ -645,6 +645,63 @@ class RelationExtractor(BaseAgent):
             "segment_summaries": [],
         }
 
+    def _merge_seed_candidates(
+        self,
+        all_triples: List[Dict[str, Any]],
+        seed_candidates: List[Dict[str, Any]],
+        entities: Optional[List[Dict[str, Any]]],
+    ) -> int:
+        """Fold wide-harvest relationship candidates into the RHF triple pool.
+
+        Candidates use {source, relation, target} shape from the wide call.
+        They are aligned to the known entity catalog, deduped against the
+        already-extracted triples by normalized (subject, relation, object),
+        tagged ``seeded_from_wide`` for provenance, and appended. Returns the
+        number of triples actually added.
+        """
+        def _norm(value: Any) -> str:
+            return str(value or "").strip().lower()
+
+        existing = {
+            (_norm(t.get("subject")), _norm(t.get("relation")), _norm(t.get("object")))
+            for t in all_triples
+        }
+        seeds: List[Dict[str, Any]] = []
+        for cand in seed_candidates:
+            if not isinstance(cand, dict):
+                continue
+            subj, obj = cand.get("source"), cand.get("target")
+            rel = str(cand.get("relation", "")).strip()
+            if not subj or not obj or not rel:
+                continue
+            try:
+                conf = float(cand.get("confidence", 0.65) or 0.65)
+            except (TypeError, ValueError):
+                conf = 0.65
+            seeds.append({
+                "subject": str(subj),
+                "relation": rel.upper().replace(" ", "_"),
+                "object": str(obj),
+                "confidence": conf,
+                "metadata": {"seeded_from_wide": True},
+            })
+        if not seeds:
+            return 0
+        seeds = self._align_triples_to_known_entities(seeds, entities or [])
+        added = 0
+        for triple in seeds:
+            subj, rel, obj = (
+                _norm(triple.get("subject")), _norm(triple.get("relation")), _norm(triple.get("object")),
+            )
+            if not subj or not obj or subj == obj:
+                continue
+            if (subj, rel, obj) in existing:
+                continue
+            existing.add((subj, rel, obj))
+            all_triples.append(triple)
+            added += 1
+        return added
+
     def _record_funnel_segment(
         self,
         diagnostics: Dict[str, Any],
@@ -988,6 +1045,7 @@ class RelationExtractor(BaseAgent):
         segments: Optional[List[Dict[str, Any]]] = None,
         entities: Optional[List[Dict[str, Any]]] = None,
         domain_config: Optional[Dict[str, Any]] = None,
+        seed_candidates: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> ExtractionResult:
         """
@@ -1212,6 +1270,19 @@ class RelationExtractor(BaseAgent):
                 if triple.get("confidence", 0.0) < self.quality_threshold:
                     low_confidence_triples.append(triple)
         
+        # Fold in wide-harvest relationship candidates (hybrid mode). The wide
+        # front end already paid for these in its one big call; discarding them
+        # made hybrid rebuild pairs from scratch and find fewer (pairR 0.19 vs
+        # singlepass 0.23 — MATRIX_REPORT.md verdict 3, leak #2).
+        seeded_triples_added = 0
+        if seed_candidates:
+            seeded_triples_added = self._merge_seed_candidates(
+                all_triples, seed_candidates, entities
+            )
+            if seeded_triples_added:
+                print(f"  Wide-harvest seeding added: {seeded_triples_added} candidate triples")
+        funnel_diagnostics["seeded_triples_added"] = seeded_triples_added
+
         # Handle low confidence triples
         print(f"\n[RELATION EXTRACTOR DEBUG]")
         print(f"  Total extracted: {len(all_triples)}")
@@ -1263,6 +1334,7 @@ class RelationExtractor(BaseAgent):
                 "pairwise_positive_predictions": pairwise_positive_predictions,
                 "pairwise_triples_added": pairwise_triples_added,
                 "gleaned_triples_added": gleaned_triples_added,
+                "seeded_triples_added": seeded_triples_added,
                 "funnel_diagnostics": funnel_diagnostics,
             },
             needs_escalation=len(low_confidence_triples) > 0 or len(new_relations_discovered) > 0,
