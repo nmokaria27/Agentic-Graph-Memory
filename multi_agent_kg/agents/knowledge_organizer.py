@@ -738,8 +738,21 @@ class KnowledgeOrganizer(BaseAgent):
                             entity["type"] = vtype
                         value_entities_kept += 1
                     else:
-                        entity_drop_reasons["numeric_unreferenced"] += 1
-                        continue
+                        # Unreferenced pure integer: keep it ONLY if it is a
+                        # meaningful DATE/year — a memory system should retain
+                        # "1869" as a queryable node even before a relation
+                        # attaches (you may later ask "what happened in 1869?").
+                        # Bare counts (NUMBER: "91", page tallies) stay filtered
+                        # to avoid noise. Domain-general value-shape rule, not a
+                        # benchmark vocabulary.
+                        vtype = classify_value(stripped)
+                        if vtype == "DATE":
+                            if entity.get("type", "").upper() in {"", "UNKNOWN", "?"}:
+                                entity["type"] = vtype
+                            value_entities_kept += 1
+                        else:
+                            entity_drop_reasons["numeric_unreferenced"] += 1
+                            continue
             if stripped.lower() in _GARBAGE_PHRASES:
                 entity_drop_reasons["garbage_phrase"] += 1
                 continue

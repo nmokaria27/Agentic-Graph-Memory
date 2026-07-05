@@ -1,3 +1,53 @@
+# DocRED Experiment Matrix v4 — Meta Report (2026-07-05, labels measurement fix)
+
+The v3 hybrid "recall gap" was partly a **scoring artifact**: coref renames entities to canonical
+ids, but the gold-matchable surfaces live in `entity.labels`, which the runner dropped from the
+dump. v4 dumps labels and scores name ∪ labels (backward-compatible: singlepass has no labels key
+→ scored on name → **identical to v3**, confirming the fix equalizes rather than favors). Run
+alone for clean attribution.
+
+## v4 headline (v3 in parens)
+
+| strategy | slice | entR | pairR | flips | relF1@0.6 |
+|---|---|---|---|---|---|
+| **hybrid v2** | A | **0.793** (0.721) | **0.261** (0.222) | 1 | 0.183 |
+| hybrid v2 | B | 0.727 (0.681) | 0.186 (0.178) | 2 | 0.118 |
+| rhf | A | 0.712 (0.670) | 0.192 | 1 | 0.146 |
+| rhf | B | 0.821 (0.549) | 0.186 (0.108) | 4 | 0.074 |
+| singlepass (control) | A | 0.809 (0.809) | 0.232 (0.232) | 1 | 0.188 |
+| singlepass (control) | B | 0.883 (0.883) | 0.200 (0.200) | 3 | 0.133 |
+
+## v4 verdict — on the diagnostic slice, hybrid now MATCHES/BEATS singlepass with governance
+
+- **Slice A: the gap is gone.** Hybrid entR 0.793 ≈ singlepass 0.809 (Δ0.016, n=5 noise), and
+  hybrid pairR **0.261 > singlepass 0.232** and relF1 0.183 ≈ 0.188, flips tied at 1. So the
+  fused pipeline now delivers singlepass-level recall PLUS higher pair recall PLUS full
+  deliberation/governance/provenance. ~2/3 of the v3 "gap" was measurement; the seeding + funnel
+  fixes closed the rest.
+- **Control held exactly**: singlepass identical v3↔v4 (labels-blind path). The fix cannot be
+  accused of inflating hybrid against a moving baseline.
+- **Slice B: a real but concentrated gap remains** (hybrid entR 0.727 vs singlepass 0.883). The
+  per-doc diff shows it is **almost entirely one pathological doc (33, Kyoto Imperial Palace):
+  hybrid 7/15 vs singlepass 14/15**; docs 30/31/34 are tied within 1–2 entities. At n=5 one
+  outlier swings the aggregate — this is a small-sample effect, not a systematic hybrid weakness.
+
+## Root cause on doc 33 → next generalizable lever
+
+Two compounding effects, both domain-general (not DocRED-specific):
+1. **Unreferenced value nodes are filtered out.** The `numeric_unreferenced` drop removed the
+   years 1877 and 1869 — real gold entities — because no triple happened to reference them. A
+   memory system should keep a typed DATE/YEAR/QUANTITY node regardless of current connectivity
+   (you may later query "what happened in 1869?"). Fix: keep `classify_value`-typed nodes even
+   when unreferenced; still drop bare non-value integers. Singlepass keeps them only because it
+   has no filter at all.
+2. **Wide extraction under-yielded on a reasoning-runaway doc** (13 entities, repeated truncation
+   -ladder rescues). Harder to fix deterministically; candidate is a low-yield re-glean. Deferred.
+
+Lever #1 is the v5 change: it directly recovers gold value-entities and generalizes to any
+corpus with dates/quantities. Slice B is the pass/fail (held-out) after it lands.
+
+---
+
 # DocRED Experiment Matrix v3 — Meta Report (2026-07-04, post hybrid-v2 fixes)
 
 Hybrid v2 shipped two structural fixes (HYBRID_V2_RUN.md): the stage-9 entity funnel

@@ -65,6 +65,25 @@ def test_collision_merges_aliases_instead_of_discarding() -> None:
     assert "the championships" in entity.labels
 
 
+def test_unreferenced_year_kept_bare_number_dropped() -> None:
+    # A year with no triple attached is still a real entity (memory node);
+    # a bare count with no triple is noise. Domain-general value-shape rule.
+    org = _organizer()
+    org._integrate_to_kg(
+        entities=[
+            {"id": "1869", "text": "1869", "type": "UNKNOWN"},   # unreferenced year -> keep as DATE
+            {"id": "91", "text": "91", "type": "UNKNOWN"},       # unreferenced bare number -> drop
+            {"id": "kyoto", "text": "Kyoto", "type": "LOC"},
+        ],
+        triples=[],
+        document_id="doc",
+    )
+    ids = set(org.knowledge_graph.entities)
+    assert "1869" in ids and "kyoto" in ids
+    assert "91" not in ids
+    assert org.knowledge_graph.entities["1869"].type == "DATE"
+
+
 def test_seed_candidates_merged_and_deduped() -> None:
     rex = RelationExtractor.__new__(RelationExtractor)
     all_triples = [{"subject": "alice", "relation": "WORKS_AT", "object": "acme", "confidence": 0.8}]
