@@ -96,12 +96,23 @@ def score_doc(rec, rel_info, rel_sim, thresholds):
     gold = rec["gold"]
     clusters_norm = [{norm(m) for m in c["mentions"]} for c in gold["clusters"]]
 
-    # L1 — entities. Predicted node label: prefer human 'name', fall back to id.
-    pred_names = {}
-    for e in rec["entities"]:
-        label = e.get("name") or e.get("id")
-        pred_names[e["id"]] = label
-    ent_map = {eid: match_entity(label, clusters_norm) for eid, label in pred_names.items()}
+    # L1 — entities. Match against the entity's full surface set (name + every
+    # coref-merged label), not just the canonical name — the gold-matchable
+    # mention forms live in labels. Falls back to name/id for caches without a
+    # labels key (e.g. singlepass), so those score identically to before.
+    def _surfaces(e):
+        surfs = [e.get("name") or e.get("id")]
+        surfs.extend(e.get("labels", []) or [])
+        return [s for s in surfs if s]
+
+    def _match_any(surfaces):
+        for s in surfaces:
+            ci = match_entity(s, clusters_norm)
+            if ci is not None:
+                return ci
+        return None
+
+    ent_map = {e["id"]: _match_any(_surfaces(e)) for e in rec["entities"]}
     matched_preds = sum(1 for v in ent_map.values() if v is not None)
     matched_clusters = len({v for v in ent_map.values() if v is not None})
     n_pred, n_gold = len(ent_map), len(clusters_norm)

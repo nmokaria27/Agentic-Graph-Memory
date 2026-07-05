@@ -87,9 +87,15 @@ def run_rhf(text, model, self_consistency=False, extraction_mode="deliberative")
         error = f"{type(exc).__name__}: {exc}"
         traceback.print_exc()
     gkg = orch.governed_kg
+    # Dump the entity's full label set (every mention surface coref merged in),
+    # not just the canonical name. Coref renames "FIBT World Championships" to a
+    # canonical id; the gold-matchable surfaces live in labels. Omitting them
+    # made the scorer under-count hybrid/rhf recall vs singlepass (which keeps
+    # raw surfaces as its name) — a measurement artifact, not a real gap.
     entities = [
         {"id": eid, "type": str(getattr(e, "entity_type", "?")),
-         "name": str(getattr(e, "name", eid))}
+         "name": str(getattr(e, "name", eid)),
+         "labels": [str(l) for l in (getattr(e, "labels", None) or [])]}
         for eid, e in gkg.entities.items()
     ]
     triples = [
