@@ -33,6 +33,19 @@ def _mab_substring() -> AnswerFormatConfig:
     )
 
 
+def _longmemeval() -> AnswerFormatConfig:
+    # LongMemEval is LLM-judged "does the response contain the correct answer".
+    # The answer must be stated explicitly (not implied); a short window keeps the
+    # judge focused, but no commit_mode — knowledge-update answers often need one
+    # qualifying clause ("as of the last conversation, X").
+    return AnswerFormatConfig(
+        max_sentences=3,
+        short_answer_words=12,
+        style="minimal_span",
+        commit_mode=False,
+    )
+
+
 def _beam() -> AnswerFormatConfig:
     # BEAM uses LLM-as-judge with a rubric — answers are scored for semantic
     # compliance, not token F1. Allow fuller prose so the judge has enough
@@ -51,6 +64,7 @@ PROFILES = {
     "default": _default,
     "locomo": _locomo,
     "mab_substring": _mab_substring,
+    "longmemeval": _longmemeval,
     "beam": _beam,
 }
 

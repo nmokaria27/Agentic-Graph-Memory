@@ -90,7 +90,17 @@ class AgentGraphMemoryWrapper:
         verbose: bool = False,
         answer_format: Any = "mab_substring",
         retrieval_config: Optional[RetrievalConfig] = None,
+        extraction_mode: str = "deliberative",
+        checkpoint_dir: Optional[str] = None,
     ) -> None:
+        # extraction_mode="wide" selects hybrid v2 (frozen production extractor,
+        # matrix v5). Default stays "deliberative" so existing MAB configs —
+        # including the original-collapse regression rerun — are bit-identical.
+        self.extraction_mode = extraction_mode
+        # Per-context stage resume: orchestrator checkpoints land in
+        # checkpoint_dir/context_<id> so a crash mid-ingest resumes at the
+        # completed stage instead of re-extracting the whole context.
+        self.checkpoint_dir = Path(checkpoint_dir) if checkpoint_dir else None
         self.model = model
         self.embedding_model = embedding_model or os.environ.get(
             "EMBEDDING_MODEL", "mxbai-embed-large"
@@ -228,6 +238,7 @@ class AgentGraphMemoryWrapper:
             enable_cross_document=False,
             reuse_corpus_schema=True,  # classify domain once, reuse per materialization
             model_tiers=model_tiers,
+            extraction_mode=self.extraction_mode,
         )
         self._lazy_orchestrator = orchestrator
 
@@ -263,6 +274,8 @@ class AgentGraphMemoryWrapper:
             ModelTier.LARGE:  os.environ.get("LLM_LARGE_MODEL",  single_model),
         }
 
+        ctx_ckpt = (str(self.checkpoint_dir / f"context_{self._context_id}")
+                    if self.checkpoint_dir is not None else None)
         governed_kg = GovernedKnowledgeGraph(governance_mode=self.governance_mode)
         orchestrator = DeliberativeOrchestrator(
             llm_config=self.llm_config,
@@ -274,6 +287,8 @@ class AgentGraphMemoryWrapper:
             enable_open_world=True,
             enable_cross_document=False,
             model_tiers=model_tiers,
+            extraction_mode=self.extraction_mode,
+            checkpoint_dir=ctx_ckpt,
         )
         # Preserve partial, hard-won extraction on a mid-run failure instead of letting
         # the exception bubble to an empty-KG fallback. `governed_kg` is passed in by

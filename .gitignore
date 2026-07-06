@@ -79,3 +79,6 @@ graphify-out/
 evaluation/DocRED/data/dev_revised.json
 evaluation/DocRED/data/train_revised.json
 evaluation/DocRED/data/test_revised.json
+
+# LongMemEval datasets (re-downloadable; see evaluation/LongMemEval/PLAN.md)
+evaluation/LongMemEval/data/
