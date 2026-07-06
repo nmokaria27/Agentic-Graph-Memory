@@ -183,12 +183,145 @@ def score_doc(rec, rel_info, rel_sim, thresholds):
             "counts": rec["counts"]}
 
 
+# ── LLM-judge relation scoring (--judge) ─────────────────────────────────────
+# Closes the embedding-threshold measurement gap (ROADMAP §5.4) with the
+# inversion awareness FLIP_ANALYSIS.md calls for: an inverse lexicalization
+# ("person LEADER_OF org" vs gold "org chairperson person") is judged
+# `inverse`, its own category — neither punished as wrong nor silently
+# counted correct. One batched JSON call per doc; judgments cached per doc in
+# the kg-dir so re-scoring is free.
+
+def judge_doc(rec, rel_info, model, cache_path):
+    if cache_path and os.path.exists(cache_path):
+        with open(cache_path) as f:
+            return json.load(f)
+
+    gold = rec["gold"]
+    clusters_norm = [{norm(m) for m in c["mentions"]} for c in gold["clusters"]]
+    cluster_names = [c["mentions"][0] for c in gold["clusters"]]
+
+    def _surfaces(e):
+        surfs = [e.get("name") or e.get("id")]
+        surfs.extend(e.get("labels", []) or [])
+        return [s for s in surfs if s]
+
+    ent_map = {}
+    for e in rec["entities"]:
+        ci = None
+        for s in _surfaces(e):
+            ci = match_entity(s, clusters_norm)
+            if ci is not None:
+                break
+        ent_map[e["id"]] = ci
+
+    gold_pairs = {}
+    for t in gold["triples"]:
+        gold_pairs.setdefault((t["h"], t["t"]), []).append(rel_info.get(t["r"], t["r"]))
+
+    # comparisons: every pred triple landing on a gold pair (either direction)
+    # × every gold relation on that pair
+    comparisons = []
+    for t in rec["triples"]:
+        ch = ent_map.get(t["subject"], match_entity(t["subject"], clusters_norm))
+        ct = ent_map.get(t["object"], match_entity(t["object"], clusters_norm))
+        if ch is None or ct is None or ch == ct:
+            continue
+        pred_str = f"{t['subject']} --[{t['relation']}]--> {t['object']}"
+        if (ch, ct) in gold_pairs:
+            for grel in gold_pairs[(ch, ct)]:
+                comparisons.append({
+                    "pair": (ch, ct), "grel": grel, "pair_direction": "same",
+                    "pred": pred_str,
+                    "gold": f"{cluster_names[ch]} --[{grel}]--> {cluster_names[ct]}"})
+        elif (ct, ch) in gold_pairs:
+            for grel in gold_pairs[(ct, ch)]:
+                comparisons.append({
+                    "pair": (ct, ch), "grel": grel, "pair_direction": "flipped",
+                    "pred": pred_str,
+                    "gold": f"{cluster_names[ct]} --[{grel}]--> {cluster_names[ch]}"})
+
+    result = {"idx": rec["idx"], "n_comparisons": len(comparisons),
+              "verdicts": [], "judge_error": None}
+    if comparisons:
+        from multi_agent_kg.llm import openai_client as oc
+        items = [{"id": i, "predicted_fact": c["pred"], "gold_fact": c["gold"]}
+                 for i, c in enumerate(comparisons)]
+        prompt = (
+            "You judge whether extracted knowledge-graph facts express gold facts.\n"
+            "For EACH item compare predicted_fact to gold_fact (same entity pair):\n"
+            '- "same": predicted expresses the same relationship in the same direction\n'
+            '- "inverse": predicted correctly expresses the INVERSE relationship '
+            "(e.g. 'person leader_of org' vs gold 'org chairperson person')\n"
+            '- "different": the relationship meaning does not match either way\n\n'
+            f"ITEMS:\n{json.dumps(items, indent=1)}\n\n"
+            'Return ONLY JSON: {"verdicts":[{"id":0,"verdict":"same|inverse|different"}]}')
+        try:
+            res = oc.chat_completion_json(
+                messages=[{"role": "system",
+                           "content": "You are a precise relation-equivalence judge. Return ONLY valid JSON."},
+                          {"role": "user", "content": prompt}],
+                model=model, temperature=0.0, max_tokens=16384)
+            vmap = {v.get("id"): str(v.get("verdict", "")).lower()
+                    for v in (res.get("verdicts", []) if isinstance(res, dict) else [])
+                    if isinstance(v, dict)}
+        except Exception as exc:
+            result["judge_error"] = f"{type(exc).__name__}: {exc}"
+            vmap = {}
+        for i, c in enumerate(comparisons):
+            result["verdicts"].append({
+                "pair": list(c["pair"]), "grel": c["grel"],
+                "pair_direction": c["pair_direction"], "pred": c["pred"],
+                "verdict": vmap.get(i, "unjudged")})
+
+    # metrics. A gold (pair, grel) is covered when:
+    #   strict  — a same-direction pred judged "same"
+    #   +inverse — additionally, a flipped-pair pred judged "inverse"
+    #             (Class A in FLIP_ANALYSIS.md: correct fact, inverse phrasing)
+    # genuine_inversions = flipped-pair pred judged "same" (Class B: the pred
+    # asserts the gold direction's meaning while pointing the other way).
+    gold_total = sum(len(v) for v in gold_pairs.values())
+    covered_strict, covered_inv = set(), set()
+    inverse_correct = genuine_inversions = 0
+    pred_hits = pred_judged = 0
+    for v in result["verdicts"]:
+        key = (tuple(v["pair"]), v["grel"])
+        if v["verdict"] == "unjudged":
+            continue
+        pred_judged += 1
+        if v["pair_direction"] == "same" and v["verdict"] == "same":
+            covered_strict.add(key)
+            pred_hits += 1
+        elif v["pair_direction"] == "flipped" and v["verdict"] == "inverse":
+            covered_inv.add(key)
+            inverse_correct += 1
+            pred_hits += 1
+        elif v["pair_direction"] == "flipped" and v["verdict"] == "same":
+            genuine_inversions += 1
+    result["metrics"] = {
+        "gold_total": gold_total,
+        "recall_strict": round(len(covered_strict) / gold_total, 3) if gold_total else 0.0,
+        "recall_with_inverse": round(len(covered_strict | covered_inv) / gold_total, 3)
+                               if gold_total else 0.0,
+        "precision_on_judged": round(pred_hits / pred_judged, 3) if pred_judged else 0.0,
+        "inverse_correct": inverse_correct,
+        "genuine_inversions": genuine_inversions,
+    }
+    if cache_path:
+        with open(cache_path, "w") as f:
+            json.dump(result, f, indent=2)
+    return result
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--kg-dir", required=True)
     ap.add_argument("--strategy", default="rhf")
     ap.add_argument("--thresholds", default="0.6,0.7,0.8")
     ap.add_argument("--no-embed", action="store_true", help="token-Jaccard instead of embeddings")
+    ap.add_argument("--judge", action="store_true",
+                    help="LLM-judge relation meaning per matched pair (cached per doc)")
+    ap.add_argument("--judge-model",
+                    default=os.environ.get("LLM_DEFAULT_MODEL", "nvidia/nemotron-3-nano"))
     ap.add_argument("--output", default=None)
     args = ap.parse_args()
 
@@ -205,6 +338,10 @@ def main():
         with open(path) as f:
             rec = json.load(f)
         s = score_doc(rec, rel_info, rel_sim, thresholds)
+        if args.judge:
+            jcache = os.path.join(args.kg_dir,
+                                  f"judge_{rec['idx']}_{args.strategy}.json")
+            s["relation_judge"] = judge_doc(rec, rel_info, args.judge_model, jcache)
         results.append(s)
         mid = thresholds[len(thresholds) // 2]
         print(f"doc {s['idx']:>3} '{s['title'][:38]:<38}' "
@@ -212,7 +349,10 @@ def main():
               f"pairR={s['pair']['recall_either_direction']:.2f} "
               f"flip={s['pair']['flipped_only']} "
               f"relF1@{mid}={s['relation'][mid]['f1']:.2f} "
-              f"missed={s['missed_gold_entity_types']}")
+              + (f"judgeR={s['relation_judge']['metrics']['recall_strict']:.2f}"
+                 f"/+inv={s['relation_judge']['metrics']['recall_with_inverse']:.2f} "
+                 if args.judge and s.get("relation_judge", {}).get("metrics") else "")
+              + f"missed={s['missed_gold_entity_types']}")
 
     # micro aggregate (weighted by doc gold sizes via simple mean of ratios for now)
     n = len(results)
@@ -228,6 +368,23 @@ def main():
             "f1": round(sum(r["relation"][th]["f1"] for r in results) / n, 3),
         } for th in thresholds},
     }
+    if args.judge:
+        jm = [r["relation_judge"]["metrics"] for r in results
+              if r.get("relation_judge", {}).get("metrics")]
+        if jm:
+            agg["relation_judge"] = {
+                "judge_model": args.judge_model,
+                "docs_judged": len(jm),
+                "recall_strict": round(sum(m["recall_strict"] for m in jm) / len(jm), 3),
+                "recall_with_inverse": round(
+                    sum(m["recall_with_inverse"] for m in jm) / len(jm), 3),
+                "precision_on_judged": round(
+                    sum(m["precision_on_judged"] for m in jm) / len(jm), 3),
+                "inverse_correct": sum(m["inverse_correct"] for m in jm),
+                "genuine_inversions": sum(m["genuine_inversions"] for m in jm),
+                "judge_errors": sum(1 for r in results
+                                    if r.get("relation_judge", {}).get("judge_error")),
+            }
     print("\nAGGREGATE:", json.dumps(agg, indent=2))
     if args.output:
         with open(args.output, "w") as f:
