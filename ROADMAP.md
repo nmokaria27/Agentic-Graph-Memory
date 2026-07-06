@@ -1,78 +1,188 @@
-# Roadmap — from matrix v3 to a self-improving, benchmark-proven memory system
+# ROADMAP & Session Handoff — Agentic Graph Memory
 
-Anchored to the original goals: a **robust** multi-agent KG memory system (no mid-run
-failures), **domain-adaptive** (self-organizing schema, no fixed extractors), **quality-first**
-("rich, solid and good" KG data over speed), proven on benchmarks that previously crashed —
-and, longer-term, a system that improves itself from its own evaluation signals.
+**Purpose of this file:** complete onboarding for any coding agent (or human) picking this
+project up. It records the goals, everything done in the July 2026 experiment sessions, every
+fix with its commit, what is running right now, hard constraints, and the exact next steps.
+Read this first; follow the doc index at the bottom for depth.
 
-Status marker: matrix v3 running (hybrid v2 fixes). Everything below assumes its verdict.
+---
 
-## Phase A — close out DocRED (extraction quality) · ~2-3 days
+## 1. Project goals (the owner's standing requirements)
 
-1. **Matrix v3 verdict** (tomorrow): if hybrid v2 meets its bars (HYBRID_V2_RUN.md — entR
-   ≥0.75/0.80, pairR ≥ singlepass, flips ≤2), **hybrid becomes the production extractor**
-   with singlepass/rhf behind flags. If not: one more fix loop, then decide.
-2. **Deferred fixes, one loop each** (fix → re-run same 5 docs → accept/revert):
-   - direction post-check (flip detector on asymmetric relations like BORN_IN / LOCATED_IN)
-   - remaining TIME/NUM recall gap (gold's date/quantity nodes; policy already landed)
-   - LLM-judge relation scoring pass (open-schema names get punished by embedding
-     thresholds — a judge model closes the measurement gap, not the system gap)
-3. **Phase 4 confidence run**: 30–50 held-out dev docs, best config, overnight. Gate: slice-A
-   trends hold. This freezes the extractor for the memory benchmarks.
-4. **SC re-validation** (gates in EXTRACTION_EXPERIMENTS.md): coref never-delete landed and
-   `id`-identity fixed — re-run `rhf --sc` on the 12-fact doc with SC temp ~0.4 + explicit
-   max_tokens. If it passes, SC becomes a quality dial for governance-critical ingestion.
+1. **Robust system** — benchmark runs must never fail silently mid-run again (the project's
+   origin story: a MemoryAgentBench run collapsed from 122 extracted entities to 9 in the KG).
+2. **Domain-adaptive** — NO fixed general-purpose extractors (GLiNER explicitly rejected).
+   `DomainClassifier` discovers the schema per corpus; the system must self-organize for law /
+   medical / any incoming domain.
+3. **Quality first** — "rich, solid and good" KG data beats speed. Longer runs are acceptable.
+4. **No benchmark bias** — fixes must be structural/domain-general, never tuned to a dataset's
+   vocabulary. Guards: held-out slices, untouched controls, cross-benchmark validation.
+5. **Experiment → document → decide** — every change gets defined before running, measured
+   against pre-registered bars, and written up honestly (misses reported as misses).
+6. Local models only: **Nemotron-30B FP8 on vLLM (gpu02)**, embeddings `mxbai-embed-large`
+   on **Ollama (gpu01)**. See `SERVER_GUIDE.md` for cluster rules.
 
-## Phase B — memory benchmarks (the original goal) · ~1 week
+## 2. System in one paragraph
 
-5. **LongMemEval smoke → slices** (the best diagnostic for THIS system):
-   download, adapter (mirror DocRED runner conventions: per-context checkpoints, offline
-   scoring), then 5-question slices per ability. Run order: knowledge-updates first (tests
+Multi-agent governed KG pipeline (9 stages): DocumentProcessor → DomainClassifier (adaptive
+schema) → EntityExtractor (multi-stage or **wide-harvest** mode) → RelationExtractor (RHF:
+relation-head-first multi-stage; now also consumes wide-harvest seed candidates) →
+Connectivity → EvidenceLinking → Deliberation → Verification → KnowledgeOrganizer (stage 9:
+dedupe, coref-aware integration, governance commit into `GovernedKnowledgeGraph`). QA layer
+(`AdvancedQAOrchestrator`, PPR retrieval, community summaries) sits on top — **not yet
+benchmarked** (that's Phase B). Key dirs: `multi_agent_kg/` (system), `evaluation/` (harnesses),
+`tests/` (235 passing as of commit `c16b55d`).
+
+## 3. What happened in these sessions (chronological, with commits)
+
+### 3.1 Root-caused the original failure ("122 → 9")
+Not a filter bug. Thinking models (Nemotron) can burn the whole completion budget on hidden
+reasoning and return EMPTY content with `finish_reason=length`; `chat_completion` silently
+returned `""` and stages swallowed it. Fixes:
+- **Truncation-retry ladder** (`multi_agent_kg/llm/openai_client.py`, commit `738cf3b`):
+  detect empty+length, double budget, retry.
+- **Prompt-aware cap + 65536 ceiling** (commit `419d049`): ladder previously requested
+  budget+prompt > context window (vLLM 400) and one 92-min ladder climb; cap now subtracts
+  estimated prompt tokens (`chars/3`), env `NEMOTRON_BUDGET_CEILING` (default 65536).
+- `NEMOTRON_THINKING=on` is REQUIRED — reasoning-off yields blank extraction on this build.
+
+### 3.2 Extraction strategy experiments (`EXTRACTION_EXPERIMENTS.md`)
+- RHF (multi-stage) vs GraphRAG-style singlepass on a 12-fact doc → graph dumps showed RHF
+  richer/more-correct per fact, singlepass cheaper with better connectivity. Led to the
+  **hybrid** idea: singlepass-style wide harvest front end + RHF deliberation back end.
+- **Self-consistency (SC) rewritten** (commit `738cf3b`): stock SC voted on exact whole-response
+  strings (always disagree at temp>0 → arbitrary sample at 1/n confidence). Now item-level
+  consensus (union across samples, identity-keyed dedupe excluding `type` and sample-local
+  `id`, support-blended confidence). **SC remains GATED** — live run failed on temp-0.7
+  reasoning runaway; re-validation is a pending task. Do NOT enable in benchmark configs.
+- **Coref collapse** (doc could shrink 29 entities → 1): coref may merge but NEVER delete
+  (commit `60ca03e`). Reproduced without SC; structural fix; no collapse in 45+ runs since.
+
+### 3.3 Re-DocRED evaluation harness (`evaluation/DocRED/`, commit `5219908`)
+- **Why Re-DocRED**: original DocRED misses ~60% of true triples → punishes open-world
+  extractors. Data: `data/dev_revised.json` (500 docs), `train_revised.json`,
+  `rel_info.json` (95 P-code→name map built from the Wikidata API — GitHub mirrors 404).
+- `run_eval.py`: per-doc JSON checkpoints (crash loses ≤1 doc), cache-skip on rerun,
+  instruments every LLM call, dumps predicted graph + gold + entity `labels`.
+- `score_docred.py`: layered offline scorer — L1 entity (name ∪ labels vs gold mention
+  clusters), L2 pair recall (direction flips counted separately), L3 relation match
+  (embedding sim @0.6/0.7/0.8; 0.6 is the honest threshold for open schemas).
+- Doctrine (`PLAN.md`): slice A = docs 0–4 (diagnostic, hand-read), slice B = docs 30–34
+  (held-out, never tuned on), singlepass = untouched control. Fix → re-run same slice →
+  accept/revert. Lessons in `LESSONS.md`.
+
+### 3.4 The matrix arc (all verdicts in `MATRIX_REPORT.md`, newest first)
+| matrix | change tested | headline |
+|---|---|---|
+| v1/v2 | coref fix, value-entity policy (`c7f36b3`) | coref fix = generalizing win; hybrid v1 leaked 15–30% entities at integration; `wide_relation_candidates` harvested but unconsumed |
+| v3 | **stage-9 funnel fixes + relation seeding** (`5c81a79`) | seeding decisive: hybrid pairR +76%, relF1 2×; entity-recall bar MISSED (honest) |
+| v4 | **labels measurement fix** (`2a7446a`) | ~2/3 of the "recall gap" was a scoring artifact (coref canonical ids vs gold surfaces in `labels`); hybrid entR 0.79 ≈ singlepass 0.81 on slice A |
+| v5 | **keep unreferenced DATE nodes** (`d47e9bc`) | held-out pairR 0.186→**0.245** (+32%, beats singlepass); **n=5 noise floor reached** (rhf swung ±0.08 with unchanged code) |
+
+**Standing decision (v5): hybrid v2 is the frozen production extractor** — best relation
+quality (relF1 0.211) + pair recall + governance; singlepass stays as cheap bulk-recall mode.
+`extraction_mode="wide"` on `DeliberativeOrchestrator` = hybrid; strategy flags in `run_eval.py`.
+
+### 3.5 Stage-9 fixes detail (commit `5c81a79`, `knowledge_organizer.py`)
+- id-cleanup regex `_\d+$` ate 4-digit YEAR suffixes (collapsed distinct events) → now `_\d{1,2}$`.
+- same-id collisions silently DISCARDED the second entity's aliases → now merged via
+  `add_entity` (which merges labels for existing ids).
+- every drop has a counted reason (`entity_drop_reasons`), printed + in `integration_stats`.
+- unreferenced pure integers: keep if `classify_value`→DATE (a year is a queryable memory node);
+  drop bare NUMBER counts (`d47e9bc`).
+
+### 3.6 Bias audit (owner asked explicitly)
+Zero DocRED contamination in `multi_agent_kg/` (no P-codes, no gold schema; verified by grep +
+git blame). All system changes are instrumentation, bias *removals*, or reuse of the system's
+own output. Scorer changes are measurement-side and control-verified (singlepass identical
+across v3/v4/v5). **Pre-existing bias NOT from these sessions**: `_GARBAGE_PHRASES` and
+`_TYPE_CONSOLIDATION` in `knowledge_organizer.py` are medical/scientific-leaning lists from
+commit `3bc4b93` — flagged for a future domain-neutrality pass. Known imperfection: id regex
+still strips legit 1–2 digit suffixes ("Apollo 11").
+
+## 4. RUNNING RIGHT NOW (as of 2026-07-06)
+
+**Phase 4 confidence run** — PID 949154, script `evaluation/DocRED/phase4_confidence.sh`,
+log `evaluation/results/phase4_confidence.log`.
+- **Code version: commit `c16b55d`** (= frozen hybrid v2: ladder fixes + funnel fixes +
+  seeding + labels dump + DATE keep). Strategies: singlepass first (control, ~2 h), then
+  hybrid (~12 h), on **40 fresh never-touched docs (offset 100–139)**, cache dir
+  `evaluation/results/docred_kg_cache_phase4/`.
+- Outputs: `docred_phase4_<strategy>.json` (run summaries),
+  `docred_scores_phase4_<strategy>.json` (offline scores).
+- Monitor armed on `PHASE4_DONE`. Zero-error expectation; per-doc checkpoints mean a crash
+  loses ≤1 doc; reruns skip cached docs.
+- **Purpose**: n=40 kills the n=5 variance problem; confirms hybrid≈singlepass entR + better
+  pairR/relF1 at scale; freezes the extraction baseline for Phase B.
+
+### HARD CONSTRAINT while Phase 4 runs
+**Do NOT edit `multi_agent_kg/`** until the hybrid milestone appears in the log. The script
+launches the hybrid process AFTER singlepass finishes; edits now would be picked up by that
+fresh process and invalidate the "frozen extractor" measurement. Safe to touch: `evaluation/`
+(new adapters/scorers), `tests/` (new tests may run against edited eval code only), docs.
+
+## 5. Safe parallel work (ordered; all eval-side)
+
+1. **LongMemEval prep (Phase B #1)**: download dataset → `evaluation/LongMemEval/data/`;
+   build `run_eval.py` mirroring DocRED conventions (per-context checkpoints, offline scorer,
+   `--max-samples/--offset`, cache-skip). Ability splits: knowledge-updates FIRST (tests
    supersede/conflict-resolution — the system's thesis), then temporal, multi-session,
-   single-session, abstention. Each ability slice = its own lessons file before any full run.
-6. **Return to MemoryAgentBench** — the benchmark that originally collapsed (122→9).
-   The root causes are all fixed (truncation ladder, partial-KG preservation, coref).
-   Remaining wiring: pass `checkpoint_dir` through the MAB adapter for per-context resume.
-   Re-run the exact configuration that failed, as the regression proof of "robust system."
-7. **QA-layer eval**: DocRED scores extraction only. LoCoMo/LongMemEval exercise
-   retrieval + QA orchestration end-to-end — PPR retrieval, community summaries, and the
-   answer formatter all get their first honest numbers here.
+   single-session, abstention. 5-question smoke slices before anything bigger.
+2. **MAB adapter resume** (Phase B #2 prep): wire `checkpoint_dir` through
+   `evaluation/Memory-Agent-Bench/agent_graph_memory_adapter.py` (`_run_pipeline`) so
+   per-context resume works; the orchestrator already supports checkpoints (`ckpt.save/load`).
+3. **Direction-flip analysis (offline)**: mine v4/v5 caches for flipped pairs; classify which
+   relations invert (BORN_IN, LOCATED_IN…); design the post-check; implement only after
+   Phase 4 finishes.
+4. **LLM-judge relation scorer (offline)**: add `--judge` mode to `score_docred.py` scoring
+   predicted-vs-gold relation *meaning* with Nemotron on existing caches — closes the
+   embedding-threshold measurement gap. Runs on cached predictions; no pipeline involvement.
+5. **SC re-validation prep**: plan = temp ~0.4, explicit max_tokens in
+   `call_llm_with_self_consistency`; execute AFTER Phase 4 (touches system code).
 
-## Phase C — comparison & positioning · ~1 week, parallelizable
+## 6. Next steps after Phase 4 (the full ladder)
 
-8. **MuSiQue + 2WikiMultiHopQA subsets** (100–200 questions): build-KG-from-corpus +
-   multi-hop QA — the eval where HippoRAG/LightRAG publish numbers. This is the public
-   "is my system competitive" answer.
-9. **UltraDomain (legal/agriculture/CS)**: directly exercises the domain-adaptivity claim —
-   DomainClassifier must reshape the schema per corpus with zero config. Also the guard
-   against DocRED overfitting.
-10. **STaRK-Prime** (optional, retrieval-only): stress the retrieval layer on a given KG.
-    Only if Phases A-B leave appetite; it bypasses extraction/governance entirely.
+- **Phase 4 verdict** → append to `MATRIX_REPORT.md`; if slice-A picture holds at n=40,
+  DocRED closes (remaining items #3/#4 above ride on its data).
+- **Phase B — memory benchmarks (the original goal)**: LongMemEval smoke → ability slices →
+  verdicts; then **re-run the exact MemoryAgentBench config that originally collapsed** as the
+  regression proof. First honest numbers for the QA/retrieval layer (PPR, community summaries).
+- **Phase C — positioning**: MuSiQue + 2WikiMultiHopQA subsets (100–200 Qs) vs published
+  HippoRAG/LightRAG numbers; UltraDomain (legal/agriculture/CS) for the domain-adaptivity
+  claim AND as the DocRED-overfit guard. STaRK-Prime optional (retrieval-only).
+- **Phase D — self-improvement loop**: Tier 1 = automate fix→re-measure over prompt/config
+  variants using the DocRED harness as reward; Tier 2 = benchmark lessons stored as retrievable
+  exemplars consulted per domain; Tier 3 (research) = DPO-LoRA on Nemotron from
+  deliberation/governance accept/reject pairs collected during Phase B/C.
 
-## Phase D — self-improvement loop (the RL question, made practical)
+## 7. Gotchas & environment notes (hard-won)
 
-11. **Tier 1 — automated config/prompt search**: the DocRED harness is now a cheap, repeatable
-    reward signal. Wrap it: candidate change (prompt variant, threshold, stage toggle) →
-    5-doc slice → accept if F1 ↑. This is the manual Phase-3 loop, automated. No training.
-12. **Tier 2 — lessons as memory**: store benchmark failure patterns as retrievable exemplars
-    the extraction prompts consult per domain (the system eating its own dogfood). Zero
-    training cost, fully aligned with the self-organizing thesis.
-13. **Tier 3 — DPO-LoRA from governance signals** (research track): deliberation/verification
-    votes already label accepted vs rejected extractions; collect pairs during Phase B/C runs,
-    then DPO a LoRA on Nemotron. Only after Tiers 1-2 plateau — and only with the eval
-    harnesses as the referee.
+- `NEMOTRON_THINKING=on` always; reasoning-off ⇒ empty extraction. Budget env:
+  `NEMOTRON_BUDGET_CEILING` (65536), `VLLM_MAX_MODEL_LEN=131072`.
+- **Pathological docs exist** (e.g. dev doc 33 "Kyoto Imperial Palace", doc 1 "Ross Alger"):
+  reasoning runaway → ladder rescues but wide-call yield drops. Candidate future fix:
+  low-yield re-glean. Segment errors are contained; never fatal.
+- rhf strategy is variance-heavy run-to-run (±0.08 entR at n=5) — never conclude from small
+  rhf deltas.
+- `evaluation/results/` is **gitignored** — verdicts must be written into reports.
+- `gh` lives at `~/miniconda3/bin/gh` (not on default PATH); fine-grained PAT needs Contents:
+  Read-and-write. Pushes: `git push origin feat/vector-index-and-qa-improvements`.
+- After ANY `multi_agent_kg/` change: `graphify update .` (project rule) + full
+  `python -m pytest -q` (235 passing baseline).
+- Run scripts: always `nohup bash <script> > /dev/null 2>&1 &` + `until grep -q <MARKER>` wait
+  loops; per-doc checkpoints + cache-skip make reruns safe. Delete stale strategy caches when
+  the pipeline changes (scripts do this).
+- mem0 plugin SDK is broken on this host; durable memory = repo docs + `~/.claude/.../memory/`.
 
-## Standing infrastructure items (do opportunistically)
+## 8. Document index
 
-- **GitHub push auth** (blocked: no gh/SSH on host) — install gh + `gh auth login`, then push
-  the backlog of local commits.
-- **DomainClassifier cost**: item-level consensus should now produce real confidence (less
-  perpetual escalation); measure, and cache the domain per corpus (~90 s/build back).
-- **Graph/report hygiene**: keep `graphify update .` post-change; MATRIX_REPORT + LESSONS
-  stay the single source of truth for verdicts.
-
-## Sequencing logic
-
-DocRED freezes the extractor → LongMemEval/MAB prove the memory system end-to-end → MuSiQue/
-UltraDomain position it against the field → the self-improvement loop turns all those harnesses
-into training signal. Each phase's benchmark doubles as the regression suite for the next.
+| doc | contents |
+|---|---|
+| `evaluation/DocRED/MATRIX_REPORT.md` | all matrix verdicts v1→v5, newest first (single source of truth) |
+| `evaluation/DocRED/LESSONS.md` | per-failure-mode lessons from hand-reading graphs vs gold |
+| `evaluation/DocRED/PLAN.md` | the phased doctrine (slices, gates, scoring design) |
+| `evaluation/DocRED/HYBRID_V2_RUN.md` | pre-registered hybrid v2 changes + success bars |
+| `EXTRACTION_EXPERIMENTS.md` | strategy experiments, SC status + gates, profiling history |
+| `SERVER_GUIDE.md` | cluster rules (vLLM gpu02 / Ollama gpu01, ports, scratch) |
+| `evaluation/BENCHMARKS_GUIDE.md` | LoCoMo + MemoryAgentBench how-to |
+| `AGENT_SCHEMA.md`, `ARCHITECTURE_COMPARISON.md` | system design references |
