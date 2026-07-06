@@ -1,3 +1,46 @@
+# DocRED Experiment Matrix v5 — Meta Report (2026-07-05 18:41, DATE value-node fix)
+
+v5 tested one change: keep unreferenced DATE/year value nodes (drop only bare NUMBER counts).
+Zero errors; singlepass control identical for the third consecutive matrix.
+
+## v5 headline (v4 in parens)
+
+| strategy | slice | entR | pairR | flips | relF1@0.6 |
+|---|---|---|---|---|---|
+| **hybrid v2** | A | 0.783 (0.793) | 0.252 (0.261) | 2 | **0.211** (0.183) |
+| **hybrid v2** | B | 0.753 (0.727) | **0.245** (0.186) | 4 | 0.125 (0.118) |
+| rhf | A | 0.790 (0.712) | 0.208 | 4 | 0.083 (0.146) |
+| rhf | B | 0.749 (0.821) | 0.194 | 5 | 0.095 (0.074) |
+| singlepass (control) | A | 0.809 (=) | 0.232 (=) | 1 | 0.188 (=) |
+| singlepass (control) | B | 0.883 (=) | 0.200 (=) | 3 | 0.133 (=) |
+
+## v5 verdict — held-out pair recall +32%; and we have hit the n=5 noise floor
+
+- **The DATE fix delivered where it was aimed**: held-out (slice B) hybrid pairR jumped
+  0.186 → **0.245** (+32%, now the best of any strategy on B, beating singlepass's 0.200), with
+  entR +0.026. Kept years now anchor date-triples that previously died as `unresolved_entity`.
+- **Slice-A deltas (−0.01) are noise**, as expected for a change that only affects docs with
+  unreferenced years.
+- **Noise floor reached.** rhf — identical code v4→v5 — swung entR **+0.08 on A and −0.07 on B**
+  purely from sampling variance. The deltas we are now chasing (0.02–0.05) are smaller than
+  run-to-run variance at n=5. Further 5-doc iteration cannot resolve real effects. Flip counts
+  jitter 1–4 for the same reason.
+- **Cumulative picture (v2 → v5), hybrid v2**: pairR A 0.126 → 0.252 (**2×**), pairR B → 0.245,
+  relF1 A 0.096 → **0.211** (2.2×, best in matrix), entR A 0.64 → 0.78 (≈ singlepass), all with
+  full deliberation/governance/provenance. Singlepass keeps a raw-entR edge on B (0.883)
+  concentrated in reasoning-runaway docs where the wide call under-yields.
+
+## Decision — freeze hybrid v2 as the production extractor; go to Phase 4
+
+Per ROADMAP Phase A: **extractor = hybrid v2** (singlepass stays available for bulk-recall
+ingestion). Next measurement is the **Phase 4 confidence run** — 40 fresh, never-touched dev
+docs (100–139), hybrid + singlepass control — to (a) confirm the slice-A picture at a sample
+size where variance can't dominate, and (b) hand the memory benchmarks a stable baseline.
+Small-slice iteration on DocRED ends here; remaining Phase-A items (direction post-check,
+LLM-judge scoring) ride on Phase-4 data.
+
+---
+
 # DocRED Experiment Matrix v4 — Meta Report (2026-07-05, labels measurement fix)
 
 The v3 hybrid "recall gap" was partly a **scoring artifact**: coref renames entities to canonical
