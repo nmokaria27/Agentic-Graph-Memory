@@ -193,3 +193,26 @@ Test baseline: **235 passing** (`python -m pytest -q`).
   lane (gpu02 free) — adjudicates the relF1@0.6/@0.7 crossover; (2) EXP-3 G0 fix once
   EXP-2b finishes; (3) re-derive goal backlog from the Phase-4 hand-read list
   (docs 103, 104/108/109/112/113/132 runaways).
+
+---
+
+## EXP-4: LLM-judge adjudication of Phase-4 relation quality  (2026-07-07)
+- **Hypothesis:** embedding-sim@0.6 under-credits relation meaning (established: judge
+  precision 0.654 vs embedding ~0.1–0.2 on slice A) and the hybrid/singlepass
+  relF1@0.6-vs-@0.7 crossover reflects that gap; judge recall_strict/with_inverse on
+  n=40 settles which extractor produces more semantically-correct relations. Decides the
+  OPEN extractor question together with Phase B evidence.
+- **Change:** none (scoring-only; --judge mode from commit 576bf81 on existing caches).
+- **Lane & model:** LOCAL nemotron (gpu02 idle post-Phase-4) — same-model judging as the
+  original slice-A smoke for comparability. Offline on cached predictions.
+- **Slice & control:** all 40 Phase-4 docs × both strategies (80 judge calls, cached
+  per-doc — rerun-safe). Judge results are measurement-side; MATRIX_REPORT gets an
+  addendum, not a new matrix row.
+- **Success bar (interpretive):** if hybrid judge-recall ≥ singlepass +0.02 ⇒ hybrid's
+  relations are semantically denser than embeddings show (supports keeping hybrid for
+  quality-critical mode); if singlepass ≥ hybrid ⇒ singlepass wins outright and the
+  extractor decision closes without Phase B.
+- **Cost estimate:** ~80 batched local calls, ~1.5–3 h, zero Fireworks.
+- STATUS: RUNNING — `evaluation/DocRED/exp4_judge_phase4.sh`, log
+  `evaluation/results/exp4_judge.log`, judge caches inside
+  `evaluation/results/docred_kg_cache_phase4/`, marker `EXP4_DONE`.
