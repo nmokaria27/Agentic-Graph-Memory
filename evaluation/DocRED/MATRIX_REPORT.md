@@ -44,6 +44,19 @@ thesis). Until then: **singlepass = bulk extraction default; hybrid = quality-cr
 conflict-resolution mode**. Phase A closes; the extraction freeze LIFTS (EXP-3 robustness
 fix unblocked). This is an honest miss reported as a miss, per doctrine.
 
+## Addendum (2026-07-07 09:55) — judge adjudication CLOSES the extractor decision
+
+EXP-4 (LLM-judge over all 80 Phase-4 caches, local Nemotron, 0 judge errors): singlepass
+≥ hybrid on every judge metric — recall_strict 0.084 vs 0.083, recall_with_inverse 0.090
+vs 0.087, precision_on_judged **0.398 vs 0.350**. The @0.7 crossover was noise.
+**Decision: singlepass = production extractor on the local stack.** Hybrid is retained
+solely for Phase B conflict-resolution/governance experiments. Two structural notes:
+genuine_inversions = 0 across all 80 runs (direction post-check deprioritized — the
+Class-B flip signal was doc-1-pathology, not systematic); and judge recall ~0.08 for both
+strategies says the binding constraint is PAIR DISCOVERY (~23% of gold pairs found), not
+relation naming — future extraction work should target recall of connected entity pairs.
+Full details: EXPERIMENT_LOG.md EXP-4.
+
 ---
 
 # DocRED Experiment Matrix v5 — Meta Report (2026-07-05 18:41, DATE value-node fix)

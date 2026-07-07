@@ -216,3 +216,24 @@ Test baseline: **235 passing** (`python -m pytest -q`).
 - STATUS: RUNNING — `evaluation/DocRED/exp4_judge_phase4.sh`, log
   `evaluation/results/exp4_judge.log`, judge caches inside
   `evaluation/results/docred_kg_cache_phase4/`, marker `EXP4_DONE`.
+
+### EXP-4 verdict  (2026-07-07 09:55)
+- **Result (n=40, judge=local nemotron, 0 judge errors both strategies):**
+  | judge metric | singlepass | hybrid |
+  |---|---|---|
+  | recall_strict | **0.084** | 0.083 |
+  | recall_with_inverse | **0.090** | 0.087 |
+  | precision_on_judged | **0.398** | 0.350 |
+  | inverse_correct | 10 | 7 |
+  | genuine_inversions | **0** | **0** |
+- **Verdict: singlepass ≥ hybrid on every judge metric → per the pre-registered bar,
+  the extractor decision CLOSES: singlepass is the production extractor on the local
+  stack.** The relF1@0.7 crossover was noise, not hidden semantic quality. Hybrid keeps
+  one role: Phase B conflict-resolution/governance experiments (its actual thesis).
+- **Bonus finding: genuine_inversions = 0 on all 80 runs** — the G6 direction post-check
+  targets a failure mode that is empirically ~absent at n=40 (FLIP_ANALYSIS's ~15%
+  Class-B estimate came from pathological doc 1). **G6 deprioritized to backlog-bottom.**
+- **Sobering context**: judge-recall ~0.08 for both means only ~1/3 of the relations on
+  found pairs are semantically right, and only ~23% of gold pairs are found at all —
+  the recall ceiling is pair discovery, not relation naming. Feeds backlog re-derivation.
+- **Action:** MATRIX_REPORT addendum (extractor decision closed); no code change.
