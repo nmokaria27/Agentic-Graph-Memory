@@ -254,6 +254,39 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 
 ---
 
+## INFRA: gpu02 model swap — Nemotron → Qwen3-30B-A3B-Instruct-2507-FP8  (2026-07-07, owner approved)
+- Owner-approved plan: governed-singlepass architecture direction + local model test.
+  Accidental aspen-lease ingestion aborted beforehand; EXP-ROBUST-VALIDATE unaffected
+  (Fireworks lane).
+- Swap per SERVER_GUIDE rules (local TRITON_CACHE_DIR, FlashInfer sampler off, TP=2,
+  131k ctx). Nemotron's exact restore command captured in SERVER_GUIDE §7.1;
+  `.env` `LLM_DEFAULT_MODEL` now `Qwen/Qwen3-30B-A3B-Instruct-2507`.
+- Client smoke: chat OK; `chat_completion_json` extraction probe OK (5 ents / 3 rels)
+  in **0.9 s** — vs 15–60 s for Nemotron thinking-mode calls of the same class.
+
+## EXP-MODEL-LOCAL: slice A on local Qwen3-30B-A3B  (2026-07-07)
+- **Hypothesis:** Nemotron was a bottleneck on BOTH quality and wall time. Expected from
+  the Fireworks glm-5p2 proxy (EXP-HEADROOM-GLM): entR lift on both strategies, hybrid
+  relation-quality edge possibly returning, no reasoning-runaway pathology, large
+  wall-time drop (3B active params).
+- **Change:** none in code — served model only (this is the point of the experiment).
+- **Lane & model:** LOCAL gpu02 vLLM, `Qwen/Qwen3-30B-A3B-Instruct-2507` (FP8);
+  embeddings unchanged (gpu01 Ollama mxbai) so extraction is the only variable vs the
+  Nemotron caches.
+- **Slice & control:** slice A (docs 0–4), singlepass + hybrid, fresh cache
+  (`docred_kg_cache_qwen3/`). Controls = cached Nemotron slice-A numbers (matrix v4/v5)
+  and glm-5p2 numbers (EXP-HEADROOM-GLM) for the local-vs-hosted sanity check.
+- **Success bar (interpretive, n=5):** singlepass entR ≥ 0.85 AND wall ≤ half of
+  Nemotron's ⇒ Qwen3 becomes the default local model for Phase B; hybrid relF1@0.6 ≥
+  singlepass + 0.02 ⇒ re-open the extractor question on the new model (per
+  EXP-JUDGE-PHASE4's model-dependence caveat).
+- **Cost estimate:** local only; expected well under an hour for both strategies.
+- STATUS: RUNNING — `evaluation/DocRED/exp_model_local_qwen3.sh`, log
+  `evaluation/results/exp_model_local_qwen3.log`, cache
+  `evaluation/results/docred_kg_cache_qwen3/`, marker `EXPML_DONE`.
+
+---
+
 ## MILESTONE: Phase 4 complete — freeze LIFTED; v5 extractor decision overturned  (2026-07-07 09:36)
 - Full verdict in `evaluation/DocRED/MATRIX_REPORT.md` (single source of truth).
   Headline: at n=40 hybrid v2 loses entR on 29/40 docs (0.775 vs 0.833), ties pairR,

@@ -267,14 +267,18 @@ ollama pull <model_name>
 |----------|-------|
 | Host | `gpu02.mind.cs.umd.edu` |
 | Port | `8000` |
-| Status | **NOT running** (as of Jun 29, 2026 — GPUs idle, 0 MiB used) |
-| Model | `google/gemma-4-31B-it` (HuggingFace ID) |
+| Status | **RUNNING** (as of Jul 7, 2026) |
+| Model | `Qwen/Qwen3-30B-A3B-Instruct-2507` (served name), weights at `/scratch/models/qwen3-30b-a3b-instruct-2507-fp8` |
 | Tensor Parallel | 2 (uses both L40S GPUs) |
-| Max Model Len | 32768 tokens |
+| Max Model Len | 131072 tokens |
 | GPU Memory Util | 0.85 |
 | API | OpenAI-compatible (`/v1/chat/completions`, `/v1/models`) |
 
-> **Current state:** vLLM is not running. Both L40S GPUs on gpu02 are idle (0 MiB, 0% util). See [Section 7.1](#71-starting-vllm-gpu02) to start it.
+> **Current state (2026-07-07):** serving **Qwen3-30B-A3B-Instruct-2507-FP8** (MoE,
+> 3B active params — several× Nemotron's throughput; non-thinking instruct). Swapped in
+> for EXP-MODEL-LOCAL after Phase 4 closed. Nemotron-30B weights remain at
+> `/scratch/models/nemotron-nano-30b-fp8`; its exact relaunch command is in §7.1.
+> NOTE: `NEMOTRON_THINKING`/budget-ceiling env vars are inert for Qwen3.
 
 **Verify vLLM is running:**
 ```bash
@@ -393,39 +397,68 @@ https://gpuyter.mind.cs.umd.edu/user/nmokaria/proxy/5150
 
 ### 7.1 Starting vLLM (gpu02)
 
-SSH into gpu02 and launch vLLM with the Gemma model:
+One model at a time (both L40S are needed via TP=2). Weights live under
+`/scratch/models/`. Use a model-specific `TRITON_CACHE_DIR` and log file.
+
+**Qwen3-30B-A3B-Instruct-2507-FP8 (CURRENT, since 2026-07-07):**
 
 ```bash
 ssh gpu02.mind.cs.umd.edu
 
 nohup env \
-  TRITON_CACHE_DIR=/scratch/triton_cache_gemma \
+  TRITON_CACHE_DIR=/scratch/triton_cache_qwen3 \
   VLLM_USE_FLASHINFER_SAMPLER=0 \
   CUDA_VISIBLE_DEVICES=0,1 \
-  python -m vllm.entrypoints.openai.api_server \
-    --model google/gemma-4-31B-it \
+  /home/nmokaria/miniconda3/bin/python -m vllm.entrypoints.openai.api_server \
+    --model /scratch/models/qwen3-30b-a3b-instruct-2507-fp8 \
+    --served-model-name Qwen/Qwen3-30B-A3B-Instruct-2507 \
     --tensor-parallel-size 2 \
     --port 8000 \
     --host 0.0.0.0 \
-    --max-model-len 32768 \
+    --max-model-len 131072 \
     --gpu-memory-utilization 0.85 \
-  > /scratch/vllm_gemma.log 2>&1 &
+  > /scratch/vllm_qwen3.log 2>&1 &
 ```
+
+**Nemotron-30B FP8 (previous production model — exact restore command):**
+
+```bash
+nohup env \
+  TRITON_CACHE_DIR=/scratch/triton_cache_nemotron \
+  VLLM_USE_FLASHINFER_SAMPLER=0 \
+  CUDA_VISIBLE_DEVICES=0,1 \
+  /home/nmokaria/miniconda3/bin/python -m vllm.entrypoints.openai.api_server \
+    --model /scratch/models/nemotron-nano-30b-fp8 \
+    --served-model-name nvidia/nemotron-3-nano \
+    --tensor-parallel-size 2 \
+    --port 8000 \
+    --host 0.0.0.0 \
+    --max-model-len 131072 \
+    --gpu-memory-utilization 0.85 \
+    --kv-cache-dtype fp8 \
+    --trust-remote-code \
+    --reasoning-parser-plugin /scratch/models/nemotron-nano-30b-fp8/nano_v3_reasoning_parser.py \
+    --reasoning-parser nano_v3 \
+  > /scratch/vllm_nemotron.log 2>&1 &
+```
+
+Remember when swapping: update `LLM_DEFAULT_MODEL` in the repo `.env` to the served
+model name; Nemotron needs `NEMOTRON_THINKING=on` in run env (inert for other models).
 
 **Key flags explained:**
 
 | Flag | Why |
 |------|-----|
-| `TRITON_CACHE_DIR=/scratch/triton_cache_gemma` | Avoids GlusterFS Triton JIT race conditions (uses gpu02's 5.8 TB RAID0 `/scratch`) |
+| `TRITON_CACHE_DIR=/scratch/triton_cache_<model>` | Avoids GlusterFS Triton JIT race conditions (uses gpu02's 5.8 TB RAID0 `/scratch`) |
 | `VLLM_USE_FLASHINFER_SAMPLER=0` | Disables FlashInfer sampler (avoids compatibility issues) |
 | `CUDA_VISIBLE_DEVICES=0,1` | Uses both L40S GPUs |
 | `--tensor-parallel-size 2` | Splits model across 2 GPUs |
-| `--max-model-len 32768` | 32K token context window |
+| `--max-model-len 131072` | 128K token context window |
 | `--gpu-memory-utilization 0.85` | Leaves 15% VRAM headroom |
 
 **Check startup:**
 ```bash
-tail -f /scratch/vllm_gemma.log
+tail -f /scratch/vllm_qwen3.log
 # Wait for "Application startup complete" message
 ```
 
@@ -612,15 +645,52 @@ Represent this sentence for searching relevant passages: <query>
 
 The code handles this automatically in `embed_query()` (`openai_client.py:722-732`). Passages are embedded raw (no prefix).
 
-### 9.6 API Server (Frontend)
+### 9.6 API Server + Web Frontend
 
-The FastAPI backend (`scripts/api_server.py`) runs on port 8000 by default. When running inside JupyterHub, access it via the web proxy URL:
+The FastAPI backend (`scripts/api_server.py`) serves both the JSON API **and the built
+React frontend** (`frontend/app/dist/`) from a single port. On gpu02 use port **5150**
+— the default port (8000) is occupied by vLLM.
 
+> **No node/npm on gpu02** — use `bun` (installed at `~/.bun/bin/bun`) for the frontend build.
+
+**On gpu02 — build and start:**
+
+```bash
+conda activate agm
+pip install -e ".[server]"                    # one-time: fastapi, uvicorn, python-multipart, pypdf
+
+cd frontend/app
+bun install                                    # one-time (and after dependency changes)
+VITE_API_BASE='' bun run build                 # rebuild after any frontend change
+cd ../..
+
+nohup python scripts/api_server.py --port 5150 > pipeline_logs/api_server.log 2>&1 &
+# add --data-only to skip QA/LLM initialization (KG view + upload only, /qa returns 503)
 ```
-https://gpuyter.mind.cs.umd.edu/user/nmokaria/proxy/8000
+
+`VITE_API_BASE=''` makes the app call the API on the same origin it was served from,
+which is what the single-port deploy needs. (Without it the app defaults to `/api`,
+which only works behind the Vite dev proxy.)
+
+**On your MacBook — tunnel and open:**
+
+```bash
+ssh -f -N -J nmokaria@mind-access00.cs.umd.edu -L 5150:localhost:5150 nmokaria@gpu02.mind.cs.umd.edu
+open http://localhost:5150
 ```
 
-> **Port conflict:** The API server default port (8000) conflicts with vLLM. When running both locally, use `--port 5150` or another free port for the API server.
+The UI shows: the knowledge graph (Explore), QA chat with streamed progress (QA),
+governance review (Govern), document upload (+ INGEST), and a global status bar with
+backend health, KG size, and a live per-stage pipeline progress bar during ingestion.
+
+**Frontend dev mode** (only when actively editing frontend code): run
+`cd frontend/app && bunx vite --port 3000` on gpu02 with the API on 5150 (the dev
+proxy in `vite.config.js` targets 5150), and tunnel port 3000 instead.
+
+Alternative access without a tunnel — the JupyterHub web proxy:
+`https://gpuyter.mind.cs.umd.edu/user/nmokaria/proxy/5150/` (only works while your
+JupyterHub session runs on the same node as the server; asset paths may need a
+relative-base build: `VITE_API_BASE='' bun run build -- --base=./`).
 
 ---
 
@@ -695,7 +765,7 @@ ssh gpu02.mind.cs.umd.edu 'nvidia-smi'
 |------|---------|------|-------------------|
 | 11434 | Ollama | gpu01 | 11435 (via tunnel) |
 | 8000 | vLLM | gpu02 | 8000 (via tunnel) |
-| 8000 | FastAPI (frontend) | local/JupyterHub | — (use `--port 5150` to avoid conflict) |
+| 5150 | FastAPI (API + web frontend) | gpu02 | 5150 (via tunnel) — see §9.6 |
 
 ### Login Reference
 
