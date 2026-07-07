@@ -139,6 +139,24 @@ Test baseline: **235 passing** (`python -m pytest -q`).
   `evaluation/results/exp2b_lme_smoke.log`, cache
   `evaluation/results/lme_kg_cache_fw_smoke_flash/`, marker `EXP2B_DONE`.
 
+### EXP-2b final verdict  (2026-07-07 14:11)
+- **Result:** 5/5 questions completed; substring accuracy **0/5**; 2/5 wiped by G0
+  (q0 + q4, both the stage-9 dedup `'str'.get` crash — trigger B fired twice; the
+  runner guard caught both). The 3 healthy questions built real KGs (219–371 entities)
+  and answered fluently but WRONG in thesis-relevant ways: q2 returned the OUTDATED
+  location ("Chicago" vs gold "the suburbs"), q3 the OUTDATED amount ("$350,000" vs
+  gold "$400,000"), q1 failed count aggregation ("four").
+- **Verdict: B1-0 gate FAILED — and the smoke earned its keep three times over.**
+  (1) G0 robustness hole confirmed as systematic on conversational corpora (3 wipeouts
+  in 7 question-runs across two models/triggers); (2) freshness/supersede failure
+  confirmed with concrete dev examples — the KG stores both old and new facts but QA
+  serves the stale one — G7 is now evidence-backed as the top Phase B mechanism gap;
+  (3) extraction itself works on chat transcripts (healthy per-session yields).
+- **Action:** EXP-3 (G0 fix) proceeds NOW — freeze lifted and EXP-2b finished, so
+  system code is editable with no live process holding old code. G7 freshness
+  experiment follows as EXP-5 once EXP-3 lands. B1-0 reruns (on the fixed code,
+  local Nemotron) become the real gate attempt.
+
 ### EXP-2b q0 finding: SECOND distinct G0 trigger — stage-9 dedup type crash  (2026-07-07 07:15)
 - **Result (q0 on flash, 2.8h, 300 calls):** flash cleared the stage-5 timeout zone that
   killed pro, completed verification (67/67 batches, 804 approved triples), reached
