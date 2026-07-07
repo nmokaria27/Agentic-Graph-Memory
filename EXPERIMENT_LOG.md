@@ -139,14 +139,40 @@ Test baseline: **235 passing** (`python -m pytest -q`).
   `evaluation/results/exp2b_lme_smoke.log`, cache
   `evaluation/results/lme_kg_cache_fw_smoke_flash/`, marker `EXP2B_DONE`.
 
+### EXP-2b q0 finding: SECOND distinct G0 trigger — stage-9 dedup type crash  (2026-07-07 07:15)
+- **Result (q0 on flash, 2.8h, 300 calls):** flash cleared the stage-5 timeout zone that
+  killed pro, completed verification (67/67 batches, 804 approved triples), reached
+  stage-9 Entity Deduplication (484 entities in) — then crashed:
+  `'str' object has no attribute 'get'`. Document marked failed; **all 484 entities /
+  804 approved triples discarded**. The new runner guard fired correctly
+  (`ERROR=SUSPECTED_SILENT_PIPELINE_FAILURE` now in the record — no longer silent).
+- **Root cause pinned (read-only, freeze respected):**
+  `multi_agent_kg/agents/knowledge_organizer.py:366–385` — `_deduplicate_entities`
+  iterates LLM-returned `merge_groups` calling `group.get(...)` without an
+  `isinstance(group, dict)` guard; flash returned strings in the list after a JSON parse
+  retry. The dict-shape assumption is even documented at L64 — never enforced.
+- **Implication: G0 has (at least) two triggers with one shared amplifier.** Trigger A =
+  transient API failure in an enrichment stage (EXP-2/pro); trigger B = LLM response
+  shape variance in stage 9 (EXP-2b/flash). Amplifier = document-failure handling that
+  discards all completed work. EXP-3's fix must address the amplifier (graceful
+  degradation + partial commit) AND both triggers (shape guards on every LLM-list parse
+  in stage 9; stage-5 failure tolerance).
+- **Parked observation (do NOT chase yet):** verification flagged 1075/1997 triples as
+  "hallucinated" on conversational text — possible verifier-prompt genre mismatch;
+  investigate as its own goal after B1-0 closes.
+- EXP-2b continues on q1–q4 (q0's failure is cached evidence; 4 questions remain).
+
 ## EXP-3 (pre-registered, BLOCKED until Phase 4 frees multi_agent_kg/): graceful stage degradation
 - **Hypothesis:** post-extraction enrichment failures (evidence linking, connectivity,
   deliberation-support stages) must degrade gracefully: log the stage as skipped-failed,
   proceed to stage 9 with what exists, commit the partial KG, and surface
   `failed_documents`/`degraded_stages` to callers. Preserves requirement #1.
-- **Change (planned):** `process_document` per-stage try/except for enrichment stages;
-  `process_corpus` exception path salvages staged results before counting the doc failed;
-  MAB adapter + runners read `failed_documents` into their error fields.
+- **Change (planned):** (a) `process_document` per-stage try/except for enrichment
+  stages; (b) `process_corpus` exception path salvages staged results before counting
+  the doc failed; (c) MAB adapter + runners read `failed_documents` into their error
+  fields; (d) `knowledge_organizer.py:366–385` (and every LLM-list parse in stage 9):
+  skip non-dict elements with a counted drop reason instead of crashing (enforce the
+  L64-documented shape contract).
 - **Slice & control:** fault-injection test (mock evidence-linking exception) + q0 rerun;
   DocRED slice B regression (numbers must not move — the change only affects failure paths).
 - **Success bar:** injected-failure doc commits >0 entities with error surfaced; 235
