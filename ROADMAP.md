@@ -173,11 +173,19 @@ fresh process and invalidate the "frozen extractor" measurement. Safe to touch: 
   loops; per-doc checkpoints + cache-skip make reruns safe. Delete stale strategy caches when
   the pipeline changes (scripts do this).
 - mem0 plugin SDK is broken on this host; durable memory = repo docs + `~/.claude/.../memory/`.
+- **Fireworks lane (added 2026-07-06):** `FIREWORKS_API_KEY` in `.env`; any run can target
+  Fireworks per-process via env overrides (`LLM_BACKEND=vllm`,
+  `VLLM_BASE_URL=https://api.fireworks.ai/inference/v1`, `VLLM_API_KEY=$FIREWORKS_API_KEY`,
+  `LLM_DEFAULT_MODEL=accounts/fireworks/models/<m>`). Experiment lane ONLY — production
+  stays local (requirement #6); see `.claude/skills/self-improve/SKILL.md` §5.
 
 ## 8. Document index
 
 | doc | contents |
 |---|---|
+| `EXPERIMENT_LOG.md` | self-improvement loop: every experiment pre-registered + verdict (newest at bottom) |
+| `.claude/skills/self-improve/SKILL.md` | the loop agent's guide: context bootstrap, doctrine, Fireworks lane, discipline |
+| `RESEARCH_IDEAS.md` | 25 vetted techniques w/ experiment sketches (deep-research pass 2026-07-06) |
 | `evaluation/DocRED/MATRIX_REPORT.md` | all matrix verdicts v1→v5, newest first (single source of truth) |
 | `evaluation/DocRED/LESSONS.md` | per-failure-mode lessons from hand-reading graphs vs gold |
 | `evaluation/DocRED/PLAN.md` | the phased doctrine (slices, gates, scoring design) |
