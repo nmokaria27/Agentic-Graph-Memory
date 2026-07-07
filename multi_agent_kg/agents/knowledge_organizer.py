@@ -353,14 +353,22 @@ class KnowledgeOrganizer(BaseAgent):
             ], indent=2)
             
             prompt = ENTITY_DEDUP_PROMPT.format(entities_json=entities_json)
-            
-            result = self.call_llm(
-                prompt=prompt,
-                system_prompt="You are an expert at entity resolution. Identify duplicates carefully.",
-                tier=ModelTier.MEDIUM,
-                max_tokens=4096,
-            )
-            
+
+            # LLM dedup is an OPTIMIZATION: any failure here (API outage,
+            # unparseable response) must degrade to "no LLM dedup", never
+            # abort stage 9 — an abort forfeits the document's whole KG.
+            try:
+                result = self.call_llm(
+                    prompt=prompt,
+                    system_prompt="You are an expert at entity resolution. Identify duplicates carefully.",
+                    tier=ModelTier.MEDIUM,
+                    max_tokens=4096,
+                )
+            except Exception as exc:
+                print(f"      WARNING: LLM dedup call failed ({exc}); "
+                      f"keeping {len(remaining)} entities unmerged")
+                result = None
+
             # Handle both dict and list responses from LLM
             if isinstance(result, dict):
                 merge_groups = result.get("merge_groups", [])
@@ -370,7 +378,14 @@ class KnowledgeOrganizer(BaseAgent):
                 merge_groups = []
             
             # Apply merges
+            malformed_groups = 0
             for group in merge_groups:
+                # Enforce the dict shape contract: models sometimes emit bare
+                # strings/fragments inside merge_groups; calling .get on one
+                # crashed stage 9 and cost the entire document's extraction.
+                if not isinstance(group, dict):
+                    malformed_groups += 1
+                    continue
                 canonical_id = group.get("canonical_id")
                 canonical_name = group.get("canonical_name")
                 merge_ids = group.get("merge_ids", [])
@@ -380,11 +395,14 @@ class KnowledgeOrganizer(BaseAgent):
                     if self.shared_memory:
                         for alias_id in merge_ids:
                             self.shared_memory.register_entity_alias(alias_id, canonical_id)
-                    
+
                     # Remove merged entities
                     remaining = [e for e in remaining if e.get("id", e.get("text", "")) not in merge_ids]
                     obvious_merges.extend(merge_groups)
-        
+            if malformed_groups:
+                print(f"      WARNING: skipped {malformed_groups} malformed merge group(s) "
+                      f"from LLM dedup response (non-dict elements)")
+
         merged_count = len(entities) - len(remaining)
         return remaining, merged_count
 

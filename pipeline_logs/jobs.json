@@ -1,0 +1,14 @@
+{
+  "698d74d456ee": {
+    "job_id": "698d74d456ee",
+    "filename": "aspen-lease.txt",
+    "doc_path": "/home/nmokaria/Agentic-Graph-Memory/inbox/698d74d456ee_aspen-lease.txt",
+    "status": "failed",
+    "queued_at": 1783452000.009887,
+    "started_at": 1783452000.0179198,
+    "log_file": "/home/nmokaria/Agentic-Graph-Memory/pipeline_logs/698d74d456ee.log",
+    "checkpoint_dir": "/home/nmokaria/Agentic-Graph-Memory/checkpoints/jobs/698d74d456ee",
+    "return_code": -15,
+    "finished_at": 1783453533.577763
+  }
+}

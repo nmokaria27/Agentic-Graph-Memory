@@ -595,6 +595,9 @@ class DeliberativeOrchestrator:
                 print(f"Rebound orchestrator + agents to {document_id}'s governed_kg snapshot")
 
         results = {}
+        # Enrichment stages that failed but were degraded (not fatal) land here;
+        # callers/harnesses read this to distinguish "clean" from "survived".
+        results["degraded_stages"] = []
 
         # ===== WORKER AGENTS =====
 
@@ -964,23 +967,34 @@ class DeliberativeOrchestrator:
                 self.debug_logger.log_stage_header(5, "Evidence Linking")
             print("\n[5/9] Evidence Linking")
             print("-" * 50)
-            evidence_result = self.evidence_linker.run(
-                context,
-                triples=triples,
-                segments=segments,
-                domain_config=domain_config,
-            )
-            linked_triples = evidence_result.items
-            results["triples_linked"] = len(linked_triples)
-            print(f"  Linked: {len(linked_triples)} (confidence: {evidence_result.confidence:.2f})")
-            ckpt.save(
-                "5",
-                {
-                    "linked_triples": linked_triples,
-                    "confidence": evidence_result.confidence,
-                },
-                governed_kg=self.governed_kg,
-            )
+            # Evidence linking is ENRICHMENT: a failure here must never cost
+            # the document (a transient API outage in this stage once silently
+            # discarded 654 extracted entities). Degrade to unlinked triples.
+            try:
+                evidence_result = self.evidence_linker.run(
+                    context,
+                    triples=triples,
+                    segments=segments,
+                    domain_config=domain_config,
+                )
+                linked_triples = evidence_result.items
+                results["triples_linked"] = len(linked_triples)
+                print(f"  Linked: {len(linked_triples)} (confidence: {evidence_result.confidence:.2f})")
+                ckpt.save(
+                    "5",
+                    {
+                        "linked_triples": linked_triples,
+                        "confidence": evidence_result.confidence,
+                    },
+                    governed_kg=self.governed_kg,
+                )
+            except Exception as exc:
+                results["degraded_stages"].append(f"evidence_linking: {exc}")
+                linked_triples = triples
+                results["triples_linked"] = len(linked_triples)
+                print(f"  DEGRADED: evidence linking failed ({exc}); "
+                      f"passing through {len(linked_triples)} triples unlinked")
+                ckpt.save("5", {"linked_triples": linked_triples}, governed_kg=self.governed_kg)
         
         # Step 6: Multi-Agent Deliberation
         if self.debug_logger:
@@ -1000,12 +1014,20 @@ class DeliberativeOrchestrator:
             print(f"  SKIPPED (resumed) — {len(entities)} entities, {len(linked_triples)} triples")
         else:
             if self.enable_deliberation and self.deliberation_coordinator:
-                deliberation_results = self._run_deliberation_phase(
-                    context=context,
-                    entities=entities,
-                    triples=linked_triples,
-                    segments=segments,
-                )
+                # Deliberation is ENRICHMENT: on failure keep the
+                # pre-deliberation entities/triples instead of losing the doc.
+                try:
+                    deliberation_results = self._run_deliberation_phase(
+                        context=context,
+                        entities=entities,
+                        triples=linked_triples,
+                        segments=segments,
+                    )
+                except Exception as exc:
+                    results["degraded_stages"].append(f"deliberation: {exc}")
+                    deliberation_results = {}
+                    print(f"  DEGRADED: deliberation failed ({exc}); "
+                          f"keeping pre-deliberation entities/triples")
                 results["voting_sessions"] = deliberation_results.get("voting_sessions", 0)
                 results["debates_triggered"] = deliberation_results.get("debates_triggered", 0)
                 results["items_accepted_by_vote"] = deliberation_results.get("accepted", 0)
@@ -1076,12 +1098,21 @@ class DeliberativeOrchestrator:
                 self.debug_logger.log_stage_header(8, "Extraction Verification")
             print("\n[8/9] Extraction Verification")
             print("-" * 50)
-            verification_result = self.verification_agent.run(
-                context,
-                entities=entities,
-                triples=linked_triples,
-            )
-            verified = verification_result.items
+            # Verification is a quality gate, but a CRASHED gate must fail
+            # open (same semantics as skip_verification), not forfeit the doc.
+            try:
+                verification_result = self.verification_agent.run(
+                    context,
+                    entities=entities,
+                    triples=linked_triples,
+                )
+                verified = verification_result.items
+            except Exception as exc:
+                results["degraded_stages"].append(f"verification: {exc}")
+                verified = {"entities": entities, "approved_triples": linked_triples,
+                            "rejected_triples": []}
+                print(f"  DEGRADED: verification failed ({exc}); "
+                      f"passing through {len(linked_triples)} triples unverified")
             results["approved_triples"] = len(verified.get("approved_triples", []))
             results["rejected_triples"] = len(verified.get("rejected_triples", []))
             print(f"  Approved: {results['approved_triples']}")
@@ -1137,6 +1168,9 @@ class DeliberativeOrchestrator:
         print(f"Time: {elapsed:.2f}s")
         print(f"Entities: {results['entities_extracted']} extracted -> {results['kg_entities']} in KG")
         print(f"Triples: {results['triples_extracted']} extracted -> {results['approved_triples']} approved -> {results['kg_triples']} in KG")
+        if results["degraded_stages"]:
+            print(f"DEGRADED STAGES ({len(results['degraded_stages'])}): "
+                  + "; ".join(results["degraded_stages"]))
         print(f"{'='*70}\n")
         
         # Store in history
@@ -1739,6 +1773,8 @@ class DeliberativeOrchestrator:
             "memory_stats": self.shared_memory.get_stats(),
             "kg_stats": self.knowledge_organizer.get_kg_stats(),
             "failed_documents": failed_documents,
+            "degraded_stage_events": [d for r in all_results
+                                      for d in r.get("degraded_stages", [])],
             "relation_funnel_summary": self.get_relation_funnel_summary(),
         }
         
@@ -1750,6 +1786,9 @@ class DeliberativeOrchestrator:
         print(f"Total Triples: {aggregate['total_triples']}")
         print(f"Total Time: {aggregate['total_time']:.2f}s")
         print(f"Failed Documents: {len(failed_documents)}")
+        if aggregate["degraded_stage_events"]:
+            print(f"Degraded Stage Events: {len(aggregate['degraded_stage_events'])} "
+                  "(work preserved; see per-document DEGRADED lines)")
         print("=" * 70 + "\n")
         
         return aggregate

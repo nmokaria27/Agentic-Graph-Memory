@@ -295,13 +295,31 @@ class AgentGraphMemoryWrapper:
         # reference, so whatever stages completed are already committed to it. Rich data
         # that made it into the graph must survive — losing a whole context to one bad
         # segment is the failure mode that produced near-empty KGs on past benchmark runs.
+        self._last_ingest_stats = {}
         try:
-            orchestrator.process_corpus([document])
+            aggregate = orchestrator.process_corpus([document])
+            if isinstance(aggregate, dict):
+                self._last_ingest_stats = {
+                    "failed_documents": aggregate.get("failed_documents", []),
+                    "degraded_stage_events": aggregate.get("degraded_stage_events", []),
+                }
+                if self._last_ingest_stats["failed_documents"]:
+                    logger.error(
+                        "process_corpus reported FAILED documents (work may be lost): %s",
+                        self._last_ingest_stats["failed_documents"],
+                    )
+                if self._last_ingest_stats["degraded_stage_events"]:
+                    logger.warning(
+                        "process_corpus degraded %d enrichment stage(s) (work preserved): %s",
+                        len(self._last_ingest_stats["degraded_stage_events"]),
+                        self._last_ingest_stats["degraded_stage_events"],
+                    )
         except Exception as exc:
             logger.error(
                 "Pipeline failed mid-run (%s); PRESERVING partial KG: %d entities, %d triples",
                 exc, len(orchestrator.governed_kg.entities), len(orchestrator.governed_kg.triples),
             )
+            self._last_ingest_stats = {"pipeline_exception": str(exc)}
         governed_kg = orchestrator.governed_kg
 
         # Orphan relink pass

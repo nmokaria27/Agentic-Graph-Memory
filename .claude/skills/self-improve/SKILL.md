@@ -195,21 +195,24 @@ python -u evaluation/LongMemEval/run_eval.py --question-type knowledge-update \
 python evaluation/LongMemEval/score_longmemeval.py --cache-dir <cache> --output <scores.json> [--judge]
 ```
 
-## 7. Goal backlog (work top-down unless the owner reprioritizes)
+## 7. Goal backlog — v2, re-derived 2026-07-07 after Phase 4 + smoke verdicts
 
-| # | goal | mechanism | lane now | ref |
-|---|---|---|---|---|
-| G1 | Validate LongMemEval harness end-to-end | B1-0 smoke (5 knowledge-update Qs) via Fireworks | FW now; Nemotron rerun for real numbers later | LME PLAN.md |
-| G2 | Measure model headroom | slice A singlepass+hybrid on kimi-k2p6 vs Nemotron baselines | FW now | EXP-1 |
-| G3 | Diagnose hybrid zero-triple funnel docs (doc 103 class) | rerun failing doc on FW model: reproduces ⇒ pipeline bug, else model-specific; then design re-glean trigger | FW now | IDEAS #2 |
-| G4 | Retire empty-output failure class | guided-JSON / `response_format` prototype on FW; port to vLLM guided decoding after freeze | FW proto now | IDEAS #1 |
-| G5 | Close hybrid entity-recall gap (~0.07 vs singlepass) | coref merge-gating, 2-sample wide-harvest union | FW proto; local port post-freeze | IDEAS #4/#5/#7 |
-| G6 | Direction post-check | value-subject swap rule + typed-argument spot-check; prototype offline on caches | offline now; stage-9 port post-freeze | FLIP_ANALYSIS.md |
-| G7 | Knowledge-update mechanics for B1 | deterministic freshness assembly; bi-temporal supersede | eval-side proto now; QA-layer port post-freeze | IDEAS #18, #16/#17 |
-| G8 | SC re-validation | temp 0.4, explicit max_tokens, item-level union | FW now (cheap) | EXTRACTION_EXPERIMENTS.md |
+Experiment naming: `EXP-<AREA>-<WHAT>` (descriptive; see the naming table at the top of
+EXPERIMENT_LOG.md — old sequential ids remain as aliases).
 
-After each Phase-4-style verdict lands, re-derive this table: retire done goals, add new
-failure modes from hand-reads, re-rank by (expected gain × evidence) / effort.
+| # | weak area (evidence) | goal-based operation | status |
+|---|---|---|---|
+| GB-1 | **Silent work loss** (3 wipeouts in 7 smoke runs — EXP-LMESMOKE-*) | graceful stage degradation + shape guards (**EXP-ROBUST-DEGRADE: SHIPPED**); end-to-end validation (**EXP-ROBUST-VALIDATE: running**) | in flight |
+| GB-2 | **Stale answers on knowledge updates** (q2 "Chicago" vs suburbs, q3 $350k vs $400k — the thesis gap) | **EXP-FRESHNESS-QA**: deterministic newest-fact assembly at QA; then bi-temporal supersede in governance (IDEAS #18, #16/#17). Measure on knowledge-update dev, confirm held-out + no temporal regression | NEXT |
+| GB-3 | **Pair discovery is the binding constraint** (~23% of gold pairs found; relation naming is NOT the problem — EXP-JUDGE-PHASE4) | offline coverage analysis on Phase-4 caches (which gold pairs die where), then 2-sample harvest union (#7) / targeted re-glean (#2) | after GB-2 |
+| GB-4 | **Extraction cost/latency** (hybrid 30×; monster docs 2–3 h; owner priority) | singlepass = production default (DECIDED); parallelize per-batch LLM calls (asyncio vs vLLM); cap/skip evidence-linking for memory ingestion; SMALL-tier models for glean/verify; guided decoding kills retry ladders | design w/ GB-5 |
+| GB-5 | **Per-model JSON brittleness** (kimi fragment bug; dedup str crash; `_THINKING_MODEL_PATTERNS` hardcoded) | vLLM guided/structured decoding (IDEAS #1) + `LLM_THINKING_MODELS` env override | after GB-2 |
+| GB-6 | **Verifier genre mismatch** (1075/1997 triples "hallucinated" on conversational text) | hand-read 30 rejected triples from smoke caches; if real, add genre-neutral verification framing (domain-general only) | parked |
+| GB-7 | **Abstention quality** (Phase B `_abs` questions) | retrieval-sufficiency gate (IDEAS abstention item), scored on `_abs` dev slice | Phase B1-1+ |
+| retired | G6 direction post-check (0 genuine inversions in 80 runs); G2 headroom (answered); SC re-validation folded into GB-5 (guided decoding changes SC's failure mode) | — | — |
+
+After each major verdict: re-derive this table — retire done goals, add new failure
+modes from hand-reads, re-rank by (expected gain × evidence) / effort.
 
 ## 8. The loop (one iteration)
 

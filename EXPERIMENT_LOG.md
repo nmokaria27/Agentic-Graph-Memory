@@ -7,11 +7,24 @@ not reportable numbers; local-lane DocRED verdicts also go to
 `evaluation/DocRED/MATRIX_REPORT.md`. `evaluation/results/` is gitignored — numbers only
 survive if written here.
 
-Test baseline: **235 passing** (`python -m pytest -q`).
+Test baseline: **237 passing** (`python -m pytest -q`; was 235 before EXP-ROBUST-DEGRADE).
+
+**Naming (2026-07-07, owner request):** experiments carry descriptive names; the original
+sequential ids remain as aliases (commits/logs reference them). Convention:
+`EXP-<AREA>-<WHAT>`.
+
+| old id | name | one-liner |
+|---|---|---|
+| EXP-1 | **EXP-HEADROOM-GLM** | model-headroom baseline, slice A on glm-5p2 |
+| EXP-2 | **EXP-LMESMOKE-PRO** | LongMemEval B1-0 smoke, deepseek-v4-pro (found G0 trigger A) |
+| EXP-2b | **EXP-LMESMOKE-FLASH** | B1-0 smoke rerun on flash (found G0 trigger B, freshness evidence) |
+| EXP-3 | **EXP-ROBUST-DEGRADE** | G0 fix: graceful stage degradation + shape guards |
+| EXP-4 | **EXP-JUDGE-PHASE4** | LLM-judge adjudication of Phase-4 relation quality |
+| EXP-5 (planned) | **EXP-FRESHNESS-QA** | deterministic freshness assembly for knowledge updates |
 
 ---
 
-## EXP-1: Model-headroom baseline — slice A on Fireworks kimi-k2p6  (2026-07-06)
+## EXP-HEADROOM-GLM (formerly EXP-1): Model-headroom baseline — slice A on Fireworks kimi-k2p6  (2026-07-06)
 - **Hypothesis:** If a stronger open-weight model substantially lifts slice-A extraction
   (esp. hybrid entR and the zero-triple funnel behavior), the current ceiling is
   model-bound, not pipeline-bound — which reprioritizes G3/G5 (pipeline fixes) vs
@@ -68,6 +81,10 @@ Test baseline: **235 passing** (`python -m pytest -q`).
   post-freeze; G2 answered at n=5 (headroom exists but pipeline gaps persist cross-model);
   local-lane reproduction impossible by definition (model IS the variable) — treat as
   lane evidence per SKILL.md §5. Follow-up: EXP-3 candidate = doc-103 funnel probe on glm.
+
+---
+
+## EXP-LMESMOKE-PRO (formerly EXP-2): LongMemEval B1-0 smoke via Fireworks (goal G1)  (2026-07-06)
 - **Hypothesis:** the LongMemEval harness (runner → AgentGraphMemoryWrapper ingest →
   AdvancedQA answer → offline scorer) works end-to-end; hand-reading 5 knowledge-update
   answers reveals where the QA layer loses updated facts (thesis ability, B1-0 gate:
@@ -124,7 +141,7 @@ Test baseline: **235 passing** (`python -m pytest -q`).
   System-side fix pre-registered as EXP-3 (post-freeze). Pro run killed (q0 cached);
   rerun on flash = EXP-2b.
 
-## EXP-2b: B1-0 smoke rerun on deepseek-v4-flash  (2026-07-07)
+## EXP-LMESMOKE-FLASH (formerly EXP-2b): B1-0 smoke rerun on deepseek-v4-flash  (2026-07-07)
 - **Hypothesis:** flash's much lower per-call latency avoids the timeout trigger and
   completes all 5 questions in ~1–2h total, giving the full B1-0 hand-read set; q0 on
   flash also tests whether the q0 wipeout is timing-dependent (flaky robustness).
@@ -180,7 +197,7 @@ Test baseline: **235 passing** (`python -m pytest -q`).
   investigate as its own goal after B1-0 closes.
 - EXP-2b continues on q1–q4 (q0's failure is cached evidence; 4 questions remain).
 
-## EXP-3 (pre-registered, BLOCKED until Phase 4 frees multi_agent_kg/): graceful stage degradation
+## EXP-ROBUST-DEGRADE (formerly EXP-3; pre-registered, BLOCKED until Phase 4 frees multi_agent_kg/): graceful stage degradation
 - **Hypothesis:** post-extraction enrichment failures (evidence linking, connectivity,
   deliberation-support stages) must degrade gracefully: log the stage as skipped-failed,
   proceed to stage 9 with what exists, commit the partial KG, and surface
@@ -195,6 +212,45 @@ Test baseline: **235 passing** (`python -m pytest -q`).
   DocRED slice B regression (numbers must not move — the change only affects failure paths).
 - **Success bar:** injected-failure doc commits >0 entities with error surfaced; 235
   tests + new fault-injection test pass; slice B scores unchanged.
+
+### EXP-ROBUST-DEGRADE implementation + verdict  (2026-07-07 ~16:00)
+- **Shipped (first system-code change of the loop; freeze lifted, no live pipeline
+  processes — the accidental aspen-lease ingestion was aborted first at owner request):**
+  1. `knowledge_organizer.py` `_deduplicate_entities`: non-dict merge_groups elements
+     skipped with a counted warning (trigger B — the crash observed twice); the whole
+     LLM-dedup block try/except-ed — API failure degrades to "no LLM dedup".
+  2. `deliberative_orchestrator.py`: stage 5 evidence-linking failure → pass triples
+     through unlinked; stage 6 deliberation failure → keep pre-deliberation
+     entities/triples; stage 8 verification failure → fail OPEN (skip_verification
+     semantics). Each records into `results["degraded_stages"]`; per-doc and corpus
+     summaries print DEGRADED lines; aggregate exposes `degraded_stage_events`
+     (trigger A + the amplifier: stage 9 now always runs, partial work always commits).
+  3. MAB adapter: captures the aggregate; logs failed_documents (error) and degraded
+     events (warning); stores `_last_ingest_stats`.
+- **Verification:** 2 new fault-injection tests (malformed merge_groups; dedup API
+  outage) — pass; full suite **237 passed** (new baseline). Diff review: every system
+  edit is inside an except-branch or additive reporting — success paths untouched, so
+  the slice-B "numbers must not move" bar holds by construction (LLM nondeterminism
+  makes a rerun comparison weaker evidence than the diff argument; noted honestly).
+- **Verdict: ACCEPT.** Real-world validation = EXP-ROBUST-VALIDATE below.
+
+---
+
+## EXP-ROBUST-VALIDATE: B1-0 rerun on fixed code (flash)  (2026-07-07)
+- **Hypothesis:** with EXP-ROBUST-DEGRADE in place, the two questions that wiped (q0,
+  q4) now commit their KGs (hundreds of entities) even if enrichment stages fail, and
+  the B1-0 gate ("5/5 with error:None or explicit degraded events, ≥1 substring hit")
+  becomes reachable.
+- **Change:** none beyond EXP-ROBUST-DEGRADE (this validates it end-to-end).
+- **Lane & model:** fireworks `deepseek-v4-flash` + `qwen3-embedding-8b` (same as
+  EXP-LMESMOKE-FLASH for comparability).
+- **Slice & control:** same 5 dev knowledge-update questions; fresh cache dir.
+- **Success bar:** zero SUSPECTED_SILENT_PIPELINE_FAILURE; q0/q4 KGs > 100 entities;
+  any stage failures appear as DEGRADED lines, not wipeouts.
+- **Cost estimate:** ~600–900 flash calls, ~1.5–3 h.
+- STATUS: RUNNING — `evaluation/LongMemEval/exp_robust_validate.sh`, log
+  `evaluation/results/exp_robust_validate.log`, cache
+  `evaluation/results/lme_kg_cache_fw_validate/`, marker `EXPRV_DONE`.
 
 ---
 
@@ -214,7 +270,7 @@ Test baseline: **235 passing** (`python -m pytest -q`).
 
 ---
 
-## EXP-4: LLM-judge adjudication of Phase-4 relation quality  (2026-07-07)
+## EXP-JUDGE-PHASE4 (formerly EXP-4): LLM-judge adjudication of Phase-4 relation quality  (2026-07-07)
 - **Hypothesis:** embedding-sim@0.6 under-credits relation meaning (established: judge
   precision 0.654 vs embedding ~0.1–0.2 on slice A) and the hybrid/singlepass
   relF1@0.6-vs-@0.7 crossover reflects that gap; judge recall_strict/with_inverse on
