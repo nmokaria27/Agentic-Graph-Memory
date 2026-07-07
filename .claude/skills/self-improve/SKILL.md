@@ -24,9 +24,12 @@ under these standing rules (never violate them to win a benchmark):
    vocabulary may enter `multi_agent_kg/`.
 5. **Experiment → document → decide** — pre-register before running, measure against
    the bar, write the verdict honestly (misses reported as misses).
-6. **Production inference is local** — Nemotron-30B FP8 on vLLM (gpu02), embeddings
-   `mxbai-embed-large` on Ollama (gpu01). Fireworks (§5) is an *experiment lane*, not
-   production: any win found there must be reproduced on the local stack before adoption.
+6. **Production inference is local** — gpu02 vLLM (2× L40S, 92 GB total), embeddings
+   `mxbai-embed-large` on Ollama (gpu01). Local model as of 2026-07-07:
+   **Qwen3-30B-A3B-Instruct-2507-FP8** (replaced Nemotron-30B after EXP-MODEL-LOCAL hit
+   its bar; Nemotron restore recipe in SERVER_GUIDE §7.1). Fireworks (§5) is an
+   *experiment lane*, not production: any win found there must be reproduced on the
+   local stack before adoption.
 
 ## 2. Context bootstrap (do this first, in order)
 
@@ -79,12 +82,21 @@ script under `evaluation/` operating on cached outputs, and port it after the fr
 ## 5. Two compute lanes
 
 ### Local lane (production truth)
-- vLLM on gpu02 serves `nvidia/nemotron-3-nano` (Nemotron-30B FP8). `NEMOTRON_THINKING=on`
-  is REQUIRED (reasoning-off ⇒ blank extraction). `VLLM_MAX_MODEL_LEN=131072`,
-  `NEMOTRON_BUDGET_CEILING=65536`. Truncation-retry ladder rescues reasoning runaway.
+- vLLM on gpu02 (2× L40S) serves **`Qwen/Qwen3-30B-A3B-Instruct-2507`** (FP8 MoE, 3B
+  active — since 2026-07-07; `.env` `LLM_DEFAULT_MODEL` already points at it). Fast
+  (~8 s/doc singlepass, ~1 s JSON calls) and non-thinking: `NEMOTRON_THINKING` /
+  `NEMOTRON_BUDGET_CEILING` are inert for it. `VLLM_MAX_MODEL_LEN=131072`.
+- Model swapping: one model at a time (TP=2 uses both GPUs); recipes for Qwen3 AND the
+  previous production model (Nemotron-30B FP8 — needs `NEMOTRON_THINKING=on` + the
+  truncation ladder envs) are in SERVER_GUIDE §7.1. Weights live in `/scratch/models/`.
+  Candidates that fit 92 GB if needed: gpt-oss-120b (~63 GB, quality pick), Qwen3-32B
+  dense. NVFP4 models do NOT run on L40S (Ada — no FP4 tensor cores).
 - Embeddings: Ollama on gpu01 (`EMBEDDING_BASE_URL` in `.env`). Cheap; usable anytime.
 - Use for: final/reportable numbers, anything feeding MATRIX_REPORT or phase verdicts.
 - Do NOT run heavy local jobs while another local benchmark leg is measuring.
+- All Nemotron-era baselines (matrix v1–v5, Phase 4, EXP-JUDGE-PHASE4) are cached in
+  `evaluation/results/` and documented in MATRIX_REPORT — comparable via cached scores,
+  no need to re-serve Nemotron unless re-extracting.
 
 ### Fireworks lane (parallel experiments — no gpu02 contention)
 The client (`multi_agent_kg/llm/openai_client.py`) routes by env, so ANY run can target
@@ -101,8 +113,17 @@ python -u evaluation/DocRED/run_eval.py ...
 
 - List available models:
   `curl -s -H "Authorization: Bearer $FIREWORKS_API_KEY" https://api.fireworks.ai/inference/v1/models`
-  (as of 2026-07: `kimi-k2p6`, `kimi-k2p5`, `glm-5p2`, `glm-5p1`, `gpt-oss-120b`).
-  Default experiment model: `accounts/fireworks/models/kimi-k2p6` (strong, non-thinking).
+  (as of 2026-07: `kimi-k2p6`, `kimi-k2p5`, `glm-5p2`, `glm-5p1`, `gpt-oss-120b`,
+  `nemotron-3-ultra-nvfp4`, `deepseek-v4-pro`, `deepseek-v4-flash`,
+  `qwen3-embedding-8b`, `qwen3-reranker-8b`).
+- **Model quirks (tested through the project client — trust this over assumptions):**
+  `glm-5p2`, `gpt-oss-120b`, `deepseek-v4-pro/flash`, `nemotron-3-ultra` all pass
+  chat+JSON. **`kimi-k2p6` BREAKS `chat_completion_json`** (nested-fragment extraction →
+  silent 0-entity docs); `kimi-k2p5` 500s server-side. `qwen3-reranker-8b` is a
+  reranker, NOT embeddings. Default experiment models:
+  `deepseek-v4-flash` (fast/cheap), `glm-5p2` (quality), embeddings
+  `qwen3-embedding-8b` (4096-dim) via `EMBEDDING_BASE_URL`/`EMBEDDING_MODEL` overrides.
+  deepseek-v4-pro is SLOW (1–2 min/call) — smoke gates only, never bulk.
 - `NEMOTRON_*` env vars are inert for non-Nemotron model names.
 - **Always use a fresh cache dir per (model × experiment)** — e.g.
   `evaluation/results/docred_kg_cache_fw_<tag>/`. Never mix models in one cache dir.
@@ -202,14 +223,16 @@ EXPERIMENT_LOG.md — old sequential ids remain as aliases).
 
 | # | weak area (evidence) | goal-based operation | status |
 |---|---|---|---|
-| GB-1 | **Silent work loss** (3 wipeouts in 7 smoke runs — EXP-LMESMOKE-*) | graceful stage degradation + shape guards (**EXP-ROBUST-DEGRADE: SHIPPED**); end-to-end validation (**EXP-ROBUST-VALIDATE: running**) | in flight |
-| GB-2 | **Stale answers on knowledge updates** (q2 "Chicago" vs suburbs, q3 $350k vs $400k — the thesis gap) | **EXP-FRESHNESS-QA**: deterministic newest-fact assembly at QA; then bi-temporal supersede in governance (IDEAS #18, #16/#17). Measure on knowledge-update dev, confirm held-out + no temporal regression | NEXT |
-| GB-3 | **Pair discovery is the binding constraint** (~23% of gold pairs found; relation naming is NOT the problem — EXP-JUDGE-PHASE4) | offline coverage analysis on Phase-4 caches (which gold pairs die where), then 2-sample harvest union (#7) / targeted re-glean (#2) | after GB-2 |
-| GB-4 | **Extraction cost/latency** (hybrid 30×; monster docs 2–3 h; owner priority) | singlepass = production default (DECIDED); parallelize per-batch LLM calls (asyncio vs vLLM); cap/skip evidence-linking for memory ingestion; SMALL-tier models for glean/verify; guided decoding kills retry ladders | design w/ GB-5 |
-| GB-5 | **Per-model JSON brittleness** (kimi fragment bug; dedup str crash; `_THINKING_MODEL_PATTERNS` hardcoded) | vLLM guided/structured decoding (IDEAS #1) + `LLM_THINKING_MODELS` env override | after GB-2 |
-| GB-6 | **Verifier genre mismatch** (1075/1997 triples "hallucinated" on conversational text) | hand-read 30 rejected triples from smoke caches; if real, add genre-neutral verification framing (domain-general only) | parked |
-| GB-7 | **Abstention quality** (Phase B `_abs` questions) | retrieval-sufficiency gate (IDEAS abstention item), scored on `_abs` dev slice | Phase B1-1+ |
-| retired | G6 direction post-check (0 genuine inversions in 80 runs); G2 headroom (answered); SC re-validation folded into GB-5 (guided decoding changes SC's failure mode) | — | — |
+| GB-1 | **Silent work loss** (3 wipeouts in 7 smoke runs — EXP-LMESMOKE-*) | graceful stage degradation + shape guards (**EXP-ROBUST-DEGRADE: SHIPPED, 237-test baseline**); **EXP-ROBUST-VALIDATE q0 gate PASSED** (506 ents committed vs 0 pre-fix) | validating (q1–q4) |
+| GB-8 | **Organizer dedup over-merge = mass entity deletion** (Qwen3 hybrid slice A: 32 extracted → 2 in KG; the coref-collapse pathology recurring in `_deduplicate_entities`, which DELETES merged entities — coref's merge-never-delete guard (commit 60ca03e) was never applied here) | merge-into-aliases instead of delete; cap merge-group size; require type compatibility; fault-injection test with an aggressive-merge response. **BLOCKS EXP-SPGOV** (same code path) | NEXT (small) |
+| GB-2 | **Stale answers on knowledge updates** (q2 "Chicago" vs suburbs, q3 $350k vs $400k, q0 "27:12" vs 25:50 — the thesis gap; KG holds both facts, QA serves the old one) | **EXP-FRESHNESS-QA**: deterministic newest-fact assembly at QA; then bi-temporal supersede in governance (IDEAS #18, #16/#17). Measure on knowledge-update dev, confirm held-out + no temporal regression | after GB-8 |
+| GB-9 | **Governed singlepass (SP-GOV)** — owner-approved architecture direction: per-segment single-call harvest → dedup → verify → govern, skipping RHF+deliberation. Target: singlepass recall + governed graph at ~2–5 min/doc | implement `extraction_mode="governed_singlepass"`; 3-way vs cached singlepass/hybrid; bars pre-drafted in EXPERIMENT_LOG discussion (entR ≥ 0.80, entP ≥ 0.83, relF1@0.6 ≥ 0.16, ≤ 5 min/doc) | after GB-8 + GB-2 |
+| GB-3 | **Pair discovery is the binding constraint** (~23% of gold pairs found; relation naming is NOT the problem — EXP-JUDGE-PHASE4) | offline coverage analysis on Phase-4 caches, then 2-sample harvest union (#7) / targeted re-glean (#2) | after GB-9 |
+| GB-4 | **Extraction cost/latency** (owner priority; largely relieved by Qwen3 — 8 s/doc singlepass) | remaining: parallelize per-batch LLM calls (asyncio); cap/skip evidence-linking for memory ingestion; EXP-LONGDOC-POSITION (recall-by-position curve, whole-doc vs segmented — owner's long-doc hypothesis) | with GB-9 |
+| GB-5 | **Per-model JSON brittleness** (kimi fragment bug; dedup str crash; Qwen3 aggressive merges; `_THINKING_MODEL_PATTERNS` hardcoded) | vLLM guided/structured decoding (IDEAS #1) + `LLM_THINKING_MODELS` env override | after GB-2 |
+| GB-6 | **Verifier genre mismatch** (1075/1997 triples "hallucinated" on conversational text) | hand-read 30 rejected triples from smoke caches; if real, genre-neutral verification framing | parked |
+| GB-7 | **Abstention quality** (Phase B `_abs` questions) | retrieval-sufficiency gate, scored on `_abs` dev slice | Phase B1-1+ |
+| retired | G6 direction post-check (0 genuine inversions in 80 runs); G2 headroom (answered: model-bound + pipeline gaps); SC re-validation folded into GB-5 | — | — |
 
 After each major verdict: re-derive this table — retire done goals, add new failure
 modes from hand-reads, re-rank by (expected gain × evidence) / effort.
@@ -229,7 +252,31 @@ modes from hand-reads, re-rank by (expected gain × evidence) / effort.
 8. Repeat, or stop and summarize if the owner's attention is needed (a standing
    requirement is at risk, a result contradicts prior verdicts, or budget/lane limits hit).
 
-## 9. Fresh-agent checklist
+## 9. State snapshot (2026-07-07 ~18:45 — trust EXPERIMENT_LOG.md for anything newer)
+
+- **Phase A (DocRED) CLOSED.** Phase 4 n=40 verdict: hybrid v2 freeze OVERTURNED
+  (lost entR on 29/40 docs at 30× cost); EXP-JUDGE-PHASE4 closed the decision —
+  **singlepass = production extractor**. Hybrid retained only for Phase B
+  governance/conflict experiments. Full detail: MATRIX_REPORT.md top section.
+- **Local model = Qwen3-30B-A3B** (EXP-MODEL-LOCAL: entR 0.908 @ 8 s/doc, bar hit).
+  Nemotron-era baselines live in cached scores; SERVER_GUIDE §7.1 has both recipes.
+- **Robustness (GB-1):** graceful-degradation shipped (test baseline **237**);
+  EXP-ROBUST-VALIDATE q0 gate PASSED (506 ents committed on the twice-wiped question);
+  q1–q4 were running on the Fireworks lane at snapshot time — **check
+  `evaluation/results/exp_robust_validate.log` for `EXPRV_DONE` and write the final
+  verdict if nobody has** (watcher may have died with the session).
+- **Known open bug (GB-8, do this first):** organizer LLM-dedup deletes merged
+  entities; Qwen3's aggressive merge responses collapse 32→2. Blocks SP-GOV.
+- **The thesis gap is confirmed 3× (GB-2):** KG stores updated facts but QA serves the
+  stale one ("Chicago"/suburbs, "$350k"/"$400k", "27:12"/"25:50") — all on dev
+  questions; freshness assembly is the highest-value mechanism next.
+- **B1-0 gate not yet passed** (0/5 substring on the pre-fix run); rerun on fixed code
+  + local Qwen3 becomes the real attempt after GB-8/GB-2.
+- Owner's standing emphases this week: incremental pre-registered experiments (never
+  score-chasing), anti-memorization guards (§6), doc-on-every-change + push-always
+  (§4), Fireworks for parallel experiments, robustness above all.
+
+## 10. Fresh-agent checklist
 
 - [ ] Read §2 docs (30 min well spent; do not skip EXPERIMENT_LOG.md)
 - [ ] `ps aux | grep run_eval` — know the freeze state before touching anything
