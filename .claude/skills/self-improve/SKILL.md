@@ -122,6 +122,38 @@ if a "measurement fix" changes the control's numbers, it's a bug or bias.
 
 Never conclude from n=5 beyond "runs/doesn't"; rhf swings ±0.08 entR at n=5.
 
+### Anti-memorization guards (owner's explicit order, 2026-07-06)
+
+The loop improves the system's *mechanisms for adapting to information it sees* — it must
+never make the system *memorize the benchmark*. Incremental, experiment-driven updates
+only; no brute-force "try everything against the score" sweeps against a fixed question
+set. Enforcement:
+
+1. **Dev/held-out split on EVERY benchmark, always.** Any question/doc you hand-read,
+   debug against, or iterate on is DEVELOPMENT data forever (like DocRED slice A). Each
+   ability gets a frozen HELD-OUT subset that is scored at most once per accepted change
+   and never inspected. LongMemEval: per question-type, filtered-list indices 0–19 = dev,
+   20+ = held-out (pre-registered in evaluation/LongMemEval/PLAN.md). The smoke questions
+   (indices 0–4) are permanently dev.
+2. **One pre-registered structural change per experiment.** If you cannot state the
+   domain-general mechanism a change fixes ("dates must survive ingestion"), it does not
+   run. Changes phrased as "this makes the score go up" are rejected by construction.
+3. **No benchmark vocabulary in `multi_agent_kg/`** — no question-type names, no
+   dataset-specific formats, prompts, or heuristics. Session/context formatting lives in
+   the eval adapters. Audit with grep before every accept (the DocRED bias-audit pattern).
+4. **Controls must not move.** Keep an untouched control configuration per benchmark;
+   if a change alters the control's numbers, it is a bug or bias — investigate, don't accept.
+5. **Cross-validate accepted changes** on a second ability or benchmark before calling
+   them wins (e.g., a knowledge-update fix must not regress temporal-reasoning; DocRED
+   fixes get sanity-checked on the other benchmark's slices).
+6. **Triangulate metrics** — substring + LLM-judge + hand-reads. Never optimize against
+   the judge alone (Goodhart); a judge-only gain with flat substring/hand-read is
+   INCONCLUSIVE, not ACCEPT.
+7. **Lessons-as-memory (Phase D Tier 2) stores failure PATTERNS, never dataset content**
+   — "biography docs: coref over-merges into the protagonist" is a lesson; a gold answer
+   or question phrasing is contamination. Never store benchmark answers anywhere the
+   system can retrieve them.
+
 **Pre-registration template (append to EXPERIMENT_LOG.md BEFORE running):**
 
 ```markdown

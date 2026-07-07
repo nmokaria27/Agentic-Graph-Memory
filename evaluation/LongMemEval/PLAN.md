@@ -52,6 +52,15 @@ oracle split is diagnostic, `_s` split is the honest benchmark condition; no fix
 reference LongMemEval vocabulary inside `multi_agent_kg/` (bias guard); every slice gets
 a written verdict before the next launches.
 
+**Dev/held-out split (pre-registered 2026-07-06, owner's anti-memorization order):**
+within each question-type's filtered list, indices **0–19 = development** (may be
+hand-read, debugged, iterated on) and **20+ = held-out** (scored at most once per
+accepted change, never inspected, never hand-read). All smoke slices draw from dev
+indices 0–4. Reportable ability numbers = held-out scores. Any change accepted on a
+dev slice must hold on the held-out slice AND not regress one other ability's dev slice
+before it counts as a win. The system must improve by adapting to information generally
+— never by memorizing this benchmark's questions, formats, or answers.
+
 **Ability order rationale:** knowledge-update first — it directly tests supersede/conflict
 resolution in governance, the original reason this system exists. Abstention is scored
 within each slice via `_abs` ids rather than as a separate run.

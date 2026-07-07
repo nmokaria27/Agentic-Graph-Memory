@@ -70,3 +70,17 @@ Test baseline: **235 passing** (`python -m pytest -q`).
 - STATUS: RUNNING — `evaluation/DocRED/../LongMemEval/../../evaluation/LongMemEval` via
   `evaluation/LongMemEval/exp2_smoke_fw.sh`, log `evaluation/results/exp2_lme_smoke.log`,
   cache `evaluation/results/lme_kg_cache_fw_smoke/`, marker `EXP2_DONE`.
+
+---
+
+## PROCESS: anti-memorization guards codified  (2026-07-06, owner's order)
+- Owner directive: the loop must do incremental experiment-driven updates (the pattern
+  used throughout the DocRED arc), never brute-force score-chasing; the system must not
+  MEMORIZE benchmarks (especially LongMemEval) — it must learn to adapt to information
+  generally.
+- Added SKILL.md §6 "Anti-memorization guards" (7 rules: dev/held-out on every benchmark,
+  one structural change per experiment, no benchmark vocab in system code, immovable
+  controls, cross-ability validation, metric triangulation, lessons-store-patterns-only).
+- Pre-registered LongMemEval dev/held-out split in PLAN.md: per question-type indices
+  0–19 dev / 20+ held-out; EXP-2's smoke questions (0–4) permanently development data.
+- No system/eval code changed; process docs only.
