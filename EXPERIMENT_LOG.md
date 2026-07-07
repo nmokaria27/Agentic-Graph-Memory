@@ -103,3 +103,51 @@ Test baseline: **235 passing** (`python -m pytest -q`).
 - Pre-registered LongMemEval dev/held-out split in PLAN.md: per question-type indices
   0–19 dev / 20+ held-out; EXP-2's smoke questions (0–4) permanently development data.
 - No system/eval code changed; process docs only.
+
+---
+
+### EXP-2 interim verdict: B1-0 gate FAILED — major robustness bug found  (2026-07-07 04:15)
+- **Result (q0, deepseek-v4-pro, 5.25h build):** stages 1–4 extracted **654 entities
+  (conf 0.90) + 1,727 triples + 795 wide-harvest seeds + 305 gleaned** on the
+  conversational context — extraction WORKS on chat transcripts. Then evidence-linking
+  batch 1 hit repeated Fireworks request timeouts (8 retries exhausted) →
+  `process_document` raised → `process_corpus` swallowed it via
+  `continue_on_document_error` (deliberative_orchestrator.py:1699–1717) → stage-9
+  governance commit NEVER RAN → **final KG: 0 entities / 0 triples, runner `error: None`**
+  → QA abstained. The founding "122→9" family reproduced as **186 calls → 0**, silently.
+- **Verdict: the smoke did its job — requirement #1 violation confirmed on a NEW path.**
+  A post-extraction enrichment-stage failure destroys all completed extraction work AND
+  reports success. Model-agnostic bug (any transient outage triggers it); Fireworks
+  timeout was just the trigger. This outranks every backlog item: new **G0**.
+- **Action (eval-side now, freeze respected):** runner hardened — records
+  `SUSPECTED_SILENT_PIPELINE_FAILURE` when 0 entities committed after >20 LLM calls.
+  System-side fix pre-registered as EXP-3 (post-freeze). Pro run killed (q0 cached);
+  rerun on flash = EXP-2b.
+
+## EXP-2b: B1-0 smoke rerun on deepseek-v4-flash  (2026-07-07)
+- **Hypothesis:** flash's much lower per-call latency avoids the timeout trigger and
+  completes all 5 questions in ~1–2h total, giving the full B1-0 hand-read set; q0 on
+  flash also tests whether the q0 wipeout is timing-dependent (flaky robustness).
+- **Change:** eval-side only: silent-failure guard in LME runner (this commit); model
+  pro→flash; fresh cache dir (no model mixing).
+- **Lane & model:** fireworks `deepseek-v4-flash` + `qwen3-embedding-8b`.
+- **Slice & control:** same 5 dev knowledge-update questions (permanently dev data).
+- **Success bar:** B1-0 gate as pre-registered in EXP-2, plus: zero
+  SUSPECTED_SILENT_PIPELINE_FAILURE records.
+- **Cost estimate:** ~600–900 flash calls, ~1–2h.
+- STATUS: RUNNING — `evaluation/LongMemEval/exp2b_smoke_flash.sh`, log
+  `evaluation/results/exp2b_lme_smoke.log`, cache
+  `evaluation/results/lme_kg_cache_fw_smoke_flash/`, marker `EXP2B_DONE`.
+
+## EXP-3 (pre-registered, BLOCKED until Phase 4 frees multi_agent_kg/): graceful stage degradation
+- **Hypothesis:** post-extraction enrichment failures (evidence linking, connectivity,
+  deliberation-support stages) must degrade gracefully: log the stage as skipped-failed,
+  proceed to stage 9 with what exists, commit the partial KG, and surface
+  `failed_documents`/`degraded_stages` to callers. Preserves requirement #1.
+- **Change (planned):** `process_document` per-stage try/except for enrichment stages;
+  `process_corpus` exception path salvages staged results before counting the doc failed;
+  MAB adapter + runners read `failed_documents` into their error fields.
+- **Slice & control:** fault-injection test (mock evidence-linking exception) + q0 rerun;
+  DocRED slice B regression (numbers must not move — the change only affects failure paths).
+- **Success bar:** injected-failure doc commits >0 entities with error surfaced; 235
+  tests + new fault-injection test pass; slice B scores unchanged.

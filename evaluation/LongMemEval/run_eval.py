@@ -209,6 +209,15 @@ def main():
             print(f"  WARNING: KG dump failed ({exc})", flush=True)
         wall = round(time.time() - t0, 1)
 
+        # A pipeline that spent many LLM calls but committed nothing has failed
+        # SILENTLY (e.g. a stage exception marked the doc failed and stage 9 never
+        # committed — EXP-2 q0, 186 calls -> 0 entities, error None). Surface it:
+        # the scorer and verdicts must see this as an error, not a valid empty KG.
+        if error is None and not entities and len(CALLS) > 20:
+            error = (f"SUSPECTED_SILENT_PIPELINE_FAILURE: 0 entities committed "
+                     f"after {len(CALLS)} LLM calls (check failed_documents in log)")
+            print(f"  WARNING: {error}", flush=True)
+
         counts = {
             "wall_s": wall,
             "build_s": build_time,
