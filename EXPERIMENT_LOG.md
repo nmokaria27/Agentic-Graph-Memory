@@ -46,9 +46,28 @@ Test baseline: **235 passing** (`python -m pytest -q`).
   cache → `docred_kg_cache_fw_glm/`. Success bars unchanged.
 - STATUS: RUNNING — log `evaluation/results/fw1_glm_sliceA.log`, marker `FW1_DONE`.
 
----
-
-## EXP-2: LongMemEval B1-0 smoke via Fireworks (goal G1)  (2026-07-06)
+### EXP-1 verdict  (2026-07-06 23:15)
+- **Result (glm-5p2, slice A, n=5):**
+  | metric | glm singlepass | glm hybrid | nemotron singlepass (v4) | nemotron hybrid (v4/v5) |
+  |---|---|---|---|---|
+  | entR | **0.908** | **0.870** | 0.81 | 0.79 |
+  | entP | 0.855 | 0.881 | ~0.86 | ~0.87 |
+  | pairR | 0.329 | 0.323 | ~0.26 | ~0.28 |
+  | relF1@0.6 | 0.261 | **0.289** | ~0.22 | ~0.21 |
+  Zero-pair docs: none. Direction flips: 1 per strategy. Hybrid wall 7–11 min/doc,
+  NO reasoning-runaway pathology (Nemotron doc-1 took far longer with ladder rescues).
+- **Verdict: MODEL-BOUND signal (bars hit: hybrid entR 0.87 ≥ 0.85 ✗→borderline,
+  relF1 0.289 ≥ 0.25 ✓).** Honest read at n=5: a stronger open-weight model lifts every
+  layer (+0.08–0.10 entR, +0.07 relF1) and eliminates the runaway pathology on these docs.
+  Two structural findings survive the model swap: (1) hybrid > singlepass on relF1 on
+  BOTH models — the deliberation stack's value is real, not a Nemotron artifact;
+  (2) hybrid entR still trails singlepass by ~0.04 on glm too — the G5 recall gap is
+  PIPELINE-side (funnel/coref), not model-side. G3's zero-triple funnel did not reproduce
+  on slice A; needs the actual doc-103 rerun after Phase 4 frees the comparison.
+- **Action:** no code change (validation experiment). Informs: G5 stays top priority
+  post-freeze; G2 answered at n=5 (headroom exists but pipeline gaps persist cross-model);
+  local-lane reproduction impossible by definition (model IS the variable) — treat as
+  lane evidence per SKILL.md §5. Follow-up: EXP-3 candidate = doc-103 funnel probe on glm.
 - **Hypothesis:** the LongMemEval harness (runner → AgentGraphMemoryWrapper ingest →
   AdvancedQA answer → offline scorer) works end-to-end; hand-reading 5 knowledge-update
   answers reveals where the QA layer loses updated facts (thesis ability, B1-0 gate:
