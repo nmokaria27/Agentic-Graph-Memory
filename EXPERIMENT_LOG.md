@@ -45,3 +45,28 @@ Test baseline: **235 passing** (`python -m pytest -q`).
   cache, script renamed `fw1_glm_sliceA.sh`, model → `accounts/fireworks/models/glm-5p2`,
   cache → `docred_kg_cache_fw_glm/`. Success bars unchanged.
 - STATUS: RUNNING — log `evaluation/results/fw1_glm_sliceA.log`, marker `FW1_DONE`.
+
+---
+
+## EXP-2: LongMemEval B1-0 smoke via Fireworks (goal G1)  (2026-07-06)
+- **Hypothesis:** the LongMemEval harness (runner → AgentGraphMemoryWrapper ingest →
+  AdvancedQA answer → offline scorer) works end-to-end; hand-reading 5 knowledge-update
+  answers reveals where the QA layer loses updated facts (thesis ability, B1-0 gate:
+  "runs clean end-to-end" per evaluation/LongMemEval/PLAN.md).
+- **Change:** none (harness validation; code at commit 1e549be + EXP-1 amendment commit).
+- **Lane & model:** fireworks `deepseek-v4-pro` (strongest granted model; smoke-tested
+  chat+json OK) + embeddings `qwen3-embedding-8b` via Fireworks (4096-dim, smoke-tested).
+  New models granted by owner 2026-07-06: `nemotron-3-ultra-nvfp4`, `deepseek-v4-pro`,
+  `deepseek-v4-flash` — all three pass chat+json smoke through the frozen client.
+  (`qwen3-reranker-8b` is a reranker, not an embeddings endpoint — not usable via
+  `get_embeddings`.)
+- **Slice & control:** 5 knowledge-update questions, oracle split (`--max-questions 5`).
+  No control needed (validation run, not a comparison). Nemotron rerun later = the
+  reportable number.
+- **Success bar (B1-0 gate):** all 5 questions complete with `error: None`, non-empty
+  hypotheses, ≥1 substring hit; every graph + answer hand-read. NOT a quality
+  measurement (n=5).
+- **Cost estimate:** ~150–400 Fireworks calls, ~20–60 min.
+- STATUS: RUNNING — `evaluation/DocRED/../LongMemEval/../../evaluation/LongMemEval` via
+  `evaluation/LongMemEval/exp2_smoke_fw.sh`, log `evaluation/results/exp2_lme_smoke.log`,
+  cache `evaluation/results/lme_kg_cache_fw_smoke/`, marker `EXP2_DONE`.
