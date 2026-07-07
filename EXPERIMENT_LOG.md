@@ -177,3 +177,19 @@ Test baseline: **235 passing** (`python -m pytest -q`).
   DocRED slice B regression (numbers must not move — the change only affects failure paths).
 - **Success bar:** injected-failure doc commits >0 entities with error surfaced; 235
   tests + new fault-injection test pass; slice B scores unchanged.
+
+---
+
+## MILESTONE: Phase 4 complete — freeze LIFTED; v5 extractor decision overturned  (2026-07-07 09:36)
+- Full verdict in `evaluation/DocRED/MATRIX_REPORT.md` (single source of truth).
+  Headline: at n=40 hybrid v2 loses entR on 29/40 docs (0.775 vs 0.833), ties pairR,
+  splits relF1, at 30× wall cost. Pre-registered bars MISSED — honest miss, reported.
+  Production extractor choice reverts to OPEN pending --judge adjudication + Phase B.
+- **Freeze status: `multi_agent_kg/` is EDITABLE again** (no local benchmark process
+  alive). EXP-2b (FW lane) still running — one loop-discipline note: its single python
+  process holds pre-edit code in memory; a crash-restart after EXP-3 lands would mix
+  code versions, so EXP-3 merges only after EXP-2b completes or with a restart-guard note.
+- Next loop actions (in order): (1) judge pass over the 80 Phase-4 caches on the local
+  lane (gpu02 free) — adjudicates the relF1@0.6/@0.7 crossover; (2) EXP-3 G0 fix once
+  EXP-2b finishes; (3) re-derive goal backlog from the Phase-4 hand-read list
+  (docs 103, 104/108/109/112/113/132 runaways).

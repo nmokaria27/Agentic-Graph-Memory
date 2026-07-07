@@ -1,3 +1,51 @@
+# Phase 4 Confidence Run — Verdict (2026-07-07 09:36, n=40, commit c16b55d)
+
+40 fresh never-touched docs (100–139), hybrid v2 vs singlepass control, frozen code.
+Zero fatal errors; 2 segment-level relation timeouts contained by design; 18
+empty-completion events all ladder-rescued; per-doc checkpoints, no docs lost.
+
+## Phase 4 headline (n=40)
+
+| metric | hybrid v2 | singlepass | per-doc win/tie/loss (hybrid) |
+|---|---|---|---|
+| entity precision | **0.842** | 0.822 | — |
+| entity recall | 0.775 | **0.833** | 5/6/**29** |
+| pair recall | 0.234 | 0.230 | 15/11/14 |
+| relF1 @0.6 | 0.161 | **0.175** | 17/2/21 |
+| relF1 @0.7 | **0.097** | 0.092 | — |
+| direction flips | **11** | 16 | — |
+| wall (total / median) | 21.2 h / 772 s | **0.7 h / 32 s** | — |
+
+## Verdict — pre-registered bars MISSED; the v5 freeze decision is OVERTURNED at n=40
+
+- **entR parity: MISSED.** Hybrid trails singlepass by 0.058 and loses on 29/40 docs —
+  the slice-A "≈parity" (0.78 vs 0.81) was the small-n mirage the run existed to test.
+- **pairR/relF1 advantage: MISSED.** pairR is a statistical tie (+0.004); relF1@0.6 is a
+  slight loss. v5's held-out pairR edge (0.245 vs 0.200) did not generalize — n=5
+  variance strikes exactly as the v5 report warned.
+- **What hybrid does win**: entity precision (+0.02), fewer direction flips (11 vs 16),
+  relF1@0.7 (+0.005) — its approved relations may be semantically tighter (the @0.6/@0.7
+  crossover is inside the embedding-threshold measurement gap; the --judge scorer can
+  adjudicate on these cached predictions).
+- **Hybrid-specific pathologies confirmed at scale**: doc 103 ("Blank Page") zero-triple
+  funnel failure (singlepass scored 0.23 pairR on the same doc); 6/40 docs >1 h
+  (reasoning-runaway, max 3.1 h). Together: ~30× the cost for no recall gain on Nemotron.
+- **Cross-model caveat (Fireworks EXP-1, n=5)**: on glm-5p2, hybrid relF1 beat singlepass
+  0.289 vs 0.261 with zero runaway docs — hybrid's deliberation may pay off on stronger
+  models. Untested at scale; a Nemotron-vs-better-model decision, not a pipeline verdict.
+
+## Decision — production extractor on the local stack reverts to OPEN; DocRED closes
+
+At n=40 on Nemotron, **hybrid v2 is not the better production extractor**: singlepass
+dominates recall and cost. Freezing a new choice needs (1) the --judge pass over these 80
+cached runs (gpu02 now free) to settle relation-meaning quality, and (2) the Phase B
+knowledge-update evidence (governance/deliberation may earn its cost there — its actual
+thesis). Until then: **singlepass = bulk extraction default; hybrid = quality-critical /
+conflict-resolution mode**. Phase A closes; the extraction freeze LIFTS (EXP-3 robustness
+fix unblocked). This is an honest miss reported as a miss, per doctrine.
+
+---
+
 # DocRED Experiment Matrix v5 — Meta Report (2026-07-05 18:41, DATE value-node fix)
 
 v5 tested one change: keep unreferenced DATE/year value nodes (drop only bare NUMBER counts).
