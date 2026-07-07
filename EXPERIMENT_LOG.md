@@ -285,6 +285,35 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   `evaluation/results/exp_model_local_qwen3.log`, cache
   `evaluation/results/docred_kg_cache_qwen3/`, marker `EXPML_DONE`.
 
+### EXP-MODEL-LOCAL verdict  (2026-07-07 18:30)
+- **Singlepass on Qwen3 (n=5): BAR HIT.** entR **0.908** (= glm-5p2, vs Nemotron 0.81),
+  relF1@0.6 0.254 (≈ glm 0.261, vs Nemotron ~0.19), pairR 0.286, **median wall 8 s/doc**
+  (~3× faster than Nemotron singlepass, no runaway class). entP dipped to 0.783 (vs
+  Nemotron ~0.86) — more generous extraction; watch at n=40.
+  **Decision: Qwen3-30B-A3B is the local default model for Phase B.**
+- **Hybrid on Qwen3: INVALID as a strategy measurement — new pathology exposed.**
+  entR collapsed to 0.244 with entP 0.925. Funnel trace: segments extract normally
+  (e.g. 32 entities, conf 0.90) → organizer dedup input 32 → **KG total 2**. Stage-9
+  LLM dedup on Qwen3 returns pathologically large merge groups and `_deduplicate_entities`
+  DELETES merged entities (`remaining = [e ... not in merge_ids]`). This is the
+  historical coref-collapse shape ("29→1", fixed in coref with merge-never-delete in
+  commit 60ca03e) recurring through the ORGANIZER path, which never got that guard.
+  Model-dependent trigger (Nemotron/glm dedup responses were conservative; Qwen3's are
+  aggressive), but the vulnerability is structural: an unbounded LLM merge decision can
+  destroy arbitrarily many entities.
+- **New goal GB-8 (high priority, blocks any hybrid/SP-GOV work on Qwen3):** apply
+  merge-never-delete to organizer dedup — merged entities become aliases/labels of the
+  canonical (like coref), never removed outright; cap merge-group size; require type
+  compatibility. Domain-general, no benchmark vocabulary.
+- **Action:** singlepass default confirmed on new model; GB-8 pre-registration next;
+  SP-GOV experiment must land AFTER GB-8 (its dedup path is the same code).
+
+### EXP-ROBUST-VALIDATE interim: q0 GATE PASSED  (2026-07-07 18:20)
+- q0 — the question that wiped twice (0 entities) — committed **506 entities / 731
+  triples** and answered. The graceful-degradation fix works under real fault
+  conditions. (Answer "27:12" vs gold "25:50" = the stale-fact pattern again — GB-2's
+  job, not a robustness issue.) q1–q4 in progress.
+
 ---
 
 ## MILESTONE: Phase 4 complete — freeze LIFTED; v5 extractor decision overturned  (2026-07-07 09:36)
