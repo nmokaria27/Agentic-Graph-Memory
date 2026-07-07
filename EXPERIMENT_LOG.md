@@ -28,3 +28,20 @@ Test baseline: **235 passing** (`python -m pytest -q`).
 - STATUS: RUNNING — `evaluation/DocRED/fw1_kimi_sliceA.sh`, log
   `evaluation/results/fw1_kimi_sliceA.log`, caches
   `evaluation/results/docred_kg_cache_fw_kimi/`, marker `FW1_DONE`.
+
+### EXP-1 amendment: kimi-k2p6 aborted, retargeted to glm-5p2  (2026-07-06)
+- **Finding (unplanned, valuable):** on kimi-k2p6, `chat_completion_json` returned a
+  nested fragment (`{source, relation, target}`) instead of the full document → doc 0
+  singlepass silently produced 0 entities. Plain `chat_completion` on the same prompt
+  returned perfect JSON — the failure is in the client's per-model JSON-mode/extraction
+  heuristics (`_THINKING_MODEL_PATTERNS` doesn't know kimi; no env override exists).
+  kimi-k2p5 500s server-side. glm-5p2 and gpt-oss-120b work correctly through
+  `chat_completion_json` (5-6 ents on the probe).
+- **Implication:** direct evidence for G4 (RESEARCH_IDEAS #1 guided JSON): per-model
+  string heuristics are brittle; schema-enforced decoding removes the class. Client is
+  frozen (Phase 4) — after the freeze, add kimi patterns AND/OR guided JSON, plus an env
+  override (`LLM_THINKING_MODELS`) so model onboarding never needs a code edit.
+- **Action:** killed kimi processes (Phase 4 PID verified alive), deleted contaminated
+  cache, script renamed `fw1_glm_sliceA.sh`, model → `accounts/fireworks/models/glm-5p2`,
+  cache → `docred_kg_cache_fw_glm/`. Success bars unchanged.
+- STATUS: RUNNING — log `evaluation/results/fw1_glm_sliceA.log`, marker `FW1_DONE`.
