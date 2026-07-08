@@ -420,6 +420,48 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   `EXPRV_DONE`).
 - STATUS: PENDING PORT — prototype + tests written; awaiting freeze lift, then port +
   local slice-A re-run.
+- **Port deviation (owner-approved, 2026-07-07):** instead of waiting for the freeze
+  lift, the guard was ported inside a **git worktree**
+  (`.claude/worktrees/gb8-dedup-guard`, branch `worktree-gb8-dedup-guard` off the feat
+  branch @ 0aef71e) — the live EXP-ROBUST-VALIDATE process runs from the MAIN tree,
+  whose `multi_agent_kg/` was never touched, so the freeze rule is satisfied while the
+  port and slice-A re-run proceed in parallel. Merge into the feat branch is DEFERRED
+  until `EXPRV_DONE`. Workflow lessons for SKILL.md: `EnterWorktree` default-bases on
+  `origin/main`, NOT the current feature branch — `git reset --hard <feat-branch>`
+  first; `.env` and gitignored DocRED data files must be bridged in manually.
+- **Result (slice-A hybrid re-run, local Qwen3, cache
+  `docred_kg_cache_gb8_slicea/`, scores `gb8_slicea_scores.json`):**
+  | metric | pre-guard hybrid | post-guard hybrid | singlepass ref | bar |
+  |---|---|---|---|---|
+  | entR | 0.244 | **0.801** | 0.908 | ≥ 0.858 → **MISS by 0.057** |
+  | entP | 0.925 (artifact of 2-survivor docs) | 0.831 | 0.783 | — |
+  | pairR | 0.160 | 0.247 | 0.286 | — |
+  | relF1@0.6 | 0.116 | 0.187 | 0.254 | — |
+  | max triples/entities | 29.5 (doc_0: 2 ents / 59 triples) | **2.47** | — | ≤ 3 → **PASS all 5 docs** |
+  | dangling triple endpoints | 27/29 on doc_0 alone | **2/258 total** | — | — |
+  Per-doc kept entities: 2/2/9/19/3 → **34/24/17/38/17**. Direction flips 0.
+  (a) fault-injection: **PASS** — 4 prototype self-tests + 3 new pytest tests
+  (`test_dedup_guard_blocks_cross_type_merge`, `_blocks_mega_merge` reproducing the
+  doc_0 collapse, `_preserves_aliases_on_valid_merge`); one PRE-EXISTING test fixed —
+  `test_dedup_skips_malformed_merge_groups`'s "valid" example was itself a cross-type
+  merge (warsaw:Location → marie_curie:Person), i.e. it validated the GB-8 pathology;
+  retargeted to a same-type (Person→Person) merge. (d) **PASS** — pytest 240 green
+  (237 baseline + 3). Singlepass control: untouched (guard lives in the organizer
+  path singlepass never calls; cached numbers by construction unchanged).
+- **Verdict:** **ACCEPT** — the deletion bug is decisively fixed: bars (a), (c), (d)
+  pass, entity mass-deletion and dangling references are gone, and hybrid entR
+  recovers +0.557. Bar (b) is honestly a miss (0.801 vs 0.858), and the reading is
+  that the bar was miscalibrated, not that the guard underperforms: 0.858 =
+  singlepass − 0.05, a level healthy hybrid has never reached (Phase 4 n=40: hybrid
+  lost entR to singlepass on 29/40 docs — its back-end verification/deliberation
+  drops entities for reasons unrelated to dedup). The guard cannot and should not
+  recover those; a dedup-deletion fix that beat singlepass − 0.05 would itself be
+  suspicious. The miss is also within the documented ±0.08 n=5 swing.
+  **Unblocks EXP-SPGOV (GB-9).**
+- **Action:** committed on `worktree-gb8-dedup-guard` (code + tests + this verdict),
+  branch pushed; merge into `feat/vector-index-and-qa-improvements` deferred until
+  EXPRV_DONE lifts the freeze, then pytest + `graphify update .` re-run on the merged
+  tree.
 
 ### EXP-SPGOV baseline prep (GB-9 pre-work): local Qwen3 singlepass on docs 100–119  (2026-07-07)
 - **Why now:** EXP-ROBUST-VALIDATE (Fireworks) holds the freeze but gpu02 compute is

@@ -377,8 +377,22 @@ class KnowledgeOrganizer(BaseAgent):
             else:
                 merge_groups = []
             
-            # Apply merges
+            # Apply merges — guarded (GB-8). The unconditional-delete loop
+            # this replaces let a single mixed-type mega-group collapse a
+            # whole document (Qwen3 hybrid slice A: 32 entities -> 2, 27/29
+            # triple endpoints left dangling to deleted entities). Three
+            # domain-general guards, none keyed to any dataset vocabulary:
+            #   1. type-compatibility — an entity may only merge into a
+            #      canonical of the same type (empty/unknown type permissive)
+            #   2. merge-group size cap — real coref clusters are small; a
+            #      group swallowing half the doc is pathology, not resolution
+            #   3. merge-into-aliases — canonical absorbs merged surface
+            #      forms so no gold-matchable name is lost on merge
             malformed_groups = 0
+            skipped_groups = 0
+            by_id = {e.get("id", e.get("text", "")): e for e in remaining}
+            doc_size = len(remaining)
+            removed: Set[str] = set()
             for group in merge_groups:
                 # Enforce the dict shape contract: models sometimes emit bare
                 # strings/fragments inside merge_groups; calling .get on one
@@ -387,21 +401,54 @@ class KnowledgeOrganizer(BaseAgent):
                     malformed_groups += 1
                     continue
                 canonical_id = group.get("canonical_id")
-                canonical_name = group.get("canonical_name")
                 merge_ids = group.get("merge_ids", [])
-                
-                if canonical_id and merge_ids:
-                    # Register aliases in shared memory
-                    if self.shared_memory:
-                        for alias_id in merge_ids:
-                            self.shared_memory.register_entity_alias(alias_id, canonical_id)
+                if not (canonical_id and merge_ids):
+                    continue
 
-                    # Remove merged entities
-                    remaining = [e for e in remaining if e.get("id", e.get("text", "")) not in merge_ids]
-                    obvious_merges.extend(merge_groups)
+                canonical = by_id.get(canonical_id)
+                if canonical is None:
+                    skipped_groups += 1
+                    continue
+                canon_type = (canonical.get("type") or "").strip().upper()
+
+                eligible = []
+                for mid in merge_ids:
+                    if mid == canonical_id or mid in removed:
+                        continue
+                    target = by_id.get(mid)
+                    if target is None:
+                        continue
+                    t_type = (target.get("type") or "").strip().upper()
+                    if not canon_type or not t_type or t_type == canon_type:
+                        eligible.append(mid)
+                if not eligible:
+                    continue
+
+                rel_limit = max(1, int(doc_size * 0.5))
+                if len(eligible) > 8 or len(eligible) > rel_limit:
+                    skipped_groups += 1
+                    continue
+
+                labels = canonical.setdefault("labels", [])
+                if canonical.get("text") and canonical["text"] not in labels:
+                    labels.append(canonical["text"])
+                if self.shared_memory:
+                    for mid in eligible:
+                        self.shared_memory.register_entity_alias(mid, canonical_id)
+                for mid in eligible:
+                    target = by_id[mid]
+                    for surf in [target.get("text")] + list(target.get("labels", [])):
+                        if surf and surf not in labels:
+                            labels.append(surf)
+                    removed.add(mid)
+
+            remaining = [e for e in remaining if e.get("id", e.get("text", "")) not in removed]
             if malformed_groups:
                 print(f"      WARNING: skipped {malformed_groups} malformed merge group(s) "
                       f"from LLM dedup response (non-dict elements)")
+            if skipped_groups:
+                print(f"      WARNING: skipped {skipped_groups} merge group(s) that failed "
+                      f"the dedup guard (missing canonical / oversized or type-mismatched group)")
 
         merged_count = len(entities) - len(remaining)
         return remaining, merged_count
