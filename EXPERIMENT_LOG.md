@@ -522,3 +522,34 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   --max-docs 20 --save-kg-dir evaluation/results/docred_kg_cache_union2_sampleB`, log
   `evaluation/results/union2_sampleB.log`, marker `UNION2_SAMPLEB_DONE`. Union + score
   script to follow once sample B lands.
+
+### EXP-UNION2-SINGLEPASS verdict  (2026-07-08)
+- **Result (n=20, docs 100–119, offline-scored, id-exact union — no fuzzy matching):**
+  | metric | sample A | sample B | **union** | bar needed |
+  |---|---|---|---|---|
+  | entity_recall | 0.878 | 0.833 | **0.887** (+0.009 vs max) | ≥ +0.03 |
+  | entity_precision | 0.728 | 0.706 | 0.717 (−0.011) | drop ≤ 0.03 ✓ |
+  | pair_recall | 0.209 | 0.188 | **0.224** (+0.015 vs max) | ≥ +0.02 |
+  | relF1@0.6 | 0.137 | 0.135 | 0.143 (+0.006) | (not gated) |
+  Run-to-run entR spread (A vs B alone: 0.878 vs 0.833) again confirms the ~0.04–0.08
+  noise floor from earlier findings — consistent, not new.
+- **Verdict: REVERT (bar MISSED).** Neither the entR nor the pairR success threshold
+  was hit; the union recovers real but small gains. Root cause: entity IDs already
+  overlap ~84% across independent samples (doc_100: 58/69 shared) — complementary misses
+  are concentrated in **triples on already-known entities** (209 union-only triples vs
+  only 31 union-only entities across 20 docs), not in new entity coverage. Idea #7's
+  premise ("union recovers materially more") holds directionally but not at the
+  pre-registered magnitude for singlepass at default temp 0.2 — doubling front-end cost
+  is not justified as a bulk default.
+- **Secondary finding worth keeping (not a bar, but real):** sample B silently returned
+  **0 entities / 0 triples on doc_105** ("The Hurting") — 1 successful LLM call,
+  `error: null`, no empty-call flag, just a valid-but-empty parse. Sample A got that same
+  doc fully (33 ents / 24 triples). The union fully recovered it. This is a same-doc,
+  single-sample total-miss case distinct from the aggregate recall question — a targeted
+  low-yield re-glean trigger (idea #2, GB-3's next listed item) would be a cheaper,
+  more surgical way to catch exactly this pattern than a blanket 2× front-end cost.
+- **Action:** do not adopt union2-singlepass as a bulk default. Feeds GB-3 backlog
+  re-derivation: prefer idea #2 (targeted low-yield re-glean, triggered on
+  suspiciously-low entity/triple counts per doc) over blanket 2-sample union — cheaper
+  and the doc_105 case shows the failure mode it targets is real. No code change from
+  this experiment (scoring-only, freeze respected).
