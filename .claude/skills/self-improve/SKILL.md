@@ -63,6 +63,19 @@ mid-measurement. Everything in `evaluation/`, `tests/`, docs, and new files is s
 When you need to prototype system-layer logic during a freeze, write it as a standalone
 script under `evaluation/` operating on cached outputs, and port it after the freeze.
 
+**Worktree escape hatch (owner-approved 2026-07-07, first used for GB-8):** to port and
+validate `multi_agent_kg/` changes WHILE the main tree is frozen, use a git worktree —
+the live process never sees the edits. Checklist (each item bit us once):
+1. `EnterWorktree` default-bases on `origin/main`, NOT your feature branch — immediately
+   `git reset --hard feat/<branch>` inside the worktree and confirm the pytest count.
+2. Bridge gitignored files manually: `cp <main>/.env .env`; symlink the DocRED data
+   JSONs individually into `evaluation/DocRED/data/` (the dir has tracked files — don't
+   symlink the whole dir).
+3. Runs launched from the worktree may use gpu02 ONLY if the frozen run doesn't (e.g.
+   it's on Fireworks) — the freeze rule protects code, not compute.
+4. Commit on the worktree branch + push it (R2 holds), but MERGE into the feat branch
+   only after the frozen run's done-marker — the merge rewrites the main tree's files.
+
 ## 4. Non-negotiable discipline (the owner's explicit orders)
 
 - **R1 — Log every change.** EVERY experiment and EVERY code change gets an entry in
