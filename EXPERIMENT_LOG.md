@@ -817,3 +817,77 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   cost/entity-stability success bar — this is what actually closes GB-2's
   original symptom (stale QA answers). GB-2 (this experiment) graduates from
   "NEXT" to "mechanism shipped, GB-2b pending" in the goal backlog.
+
+---
+
+## EXP-FRESHNESS-E2E (GB-2b): per-session dated ingestion — does the freshness machinery actually fix stale answers?  (2026-07-08)
+- **Hypothesis:** GB-2 (EXP-FRESHNESS-QA, merged `60c8937`) proved the date→provenance→
+  resolver chain works when fed a date, but nothing feeds it one: the LongMemEval
+  adapter concatenates all of a question's dated sessions into ONE undated blob
+  (one `process_corpus([document])` call). Baseline evidence from the
+  EXP-ROBUST-VALIDATE caches (fresh count, this session): the resolver fired
+  **76–178 times per question but superseded only 0–3 facts** (q0: 136 resolutions →
+  0 supersedes; 51–97 coexisting duplicate (subject,relation) pairs per KG) — with
+  no recency signal, its "if genuinely uncertain, choose coexist" fallback dominates.
+  Feeding real per-session dates should flip a meaningful share of those coexists to
+  supersedes on knowledge-update questions, and the QA layer should then serve the
+  fresh fact (q0 25:50, q2 suburbs, q3 $400k).
+- **Change (eval-adapter only — zero `multi_agent_kg/` edits; the core mechanism
+  shipped in GB-2):**
+  1. `agent_graph_memory_adapter.py`: `send_message`/`_memorize` accept optional
+     `date`; chunks tracked with parallel `_chunk_dates`. When ANY date is present,
+     `_ensure_kg_built` builds one document per chunk with `metadata={"date": ...}`;
+     all-None dates keep the legacy single-blob path byte-identical
+     (MemoryAgentBench control unmoved — verified by stub-pipeline smoke test).
+  2. Same file: `_run_pipeline(documents)` — multi-doc mode additionally sets
+     `reuse_corpus_schema=True` (one schema discovery per corpus, not N drifting
+     ones) and `enable_cross_document=True` (same real-world entity must resolve to
+     one id across session docs, or same-subject conflict detection never fires).
+     Single-doc calls keep the exact historical flags.
+  3. `evaluation/LongMemEval/run_eval.py`: passes each session's `haystack_date`
+     into `send_message(..., date=...)`; `dump_kg` now records per-triple
+     `superseded` + `document_date`; `counts` gains `triples_superseded` +
+     `conflict_stats` (from `GovernedKnowledgeGraph.get_stats()`), so scoring is
+     offline-auditable per question.
+  Base commit: `60c8937`. Stub-pipeline smoke test passed (dated → 2 docs w/ dates;
+  undated → single blob, identical text). pytest 250 green.
+- **Lane & model (BOTH lanes in parallel, per owner's request):**
+  - **Fireworks leg**: `deepseek-v4-flash` + `qwen3-embedding-8b` — apples-to-apples
+    vs `lme_kg_cache_fw_validate` (same model, same questions, pre-GB-2b code).
+  - **Local leg**: gpu02 Qwen3-30B-A3B + gpu01 mxbai embeddings (production lane) —
+    doubles as the first honest **B1-0 gate attempt** on fully-fixed code
+    (post GB-1 + GB-8 + GB-2/2b) + production model.
+  No compute contention: legs share zero hardware. Same code, same commit.
+- **Slice & control:** the 5 knowledge-update dev questions (permanently dev).
+  Controls: (1) MemoryAgentBench legacy path — no dates → behavior byte-identical
+  (smoke-tested); (2) DocRED — untouched, run_eval.py for DocRED passes no dates.
+- **Success bar (pre-committed):**
+  (a) **Mechanism fires**: `triples_superseded ≥ 1` on ≥3/5 questions on at least
+      one lane (baseline: 0/3/0-ish per validate caches — q0 had 136 resolutions,
+      0 supersedes).
+  (b) **Stale-serve flips**: of q0/q2/q3 (the three confirmed stale answers), ≥2
+      hand-read as serving the FRESH fact on at least one lane; committed KG shows
+      the old fact `superseded=true` and the new one active.
+  (c) **B1-0 gate** (local leg): ≥1/5 substring hit (gate bar from PLAN.md, missed
+      0/5 by both pre-fix runs and the validate run).
+  (d) **Cost guard**: per-question wall ≤ 1.5× the validate baseline on the
+      Fireworks leg (7000–11400 s/q baseline). Per-session split adds a second
+      pipeline pass per question; reuse_corpus_schema should keep the overhead
+      sub-linear. If wall blows past 1.5×, that's a REVERT signal regardless of
+      quality gains.
+  (e) **Entity fragmentation guard**: `conflicts_checked > 0` on q0/q2/q3 (if
+      per-session ingestion fragments entities into different ids, conflicts stop
+      being detected at all — the failure mode this bar watches); entity counts
+      within ±40% of the validate baseline per question.
+  (f) q1/q4 hedge pattern remains out of scope (separate QA-synthesis issue).
+- **Cost estimate:** Fireworks leg ~5 × 2–3 h ≈ same as validate (~$ modest, flash);
+  local leg expected much faster per call (Qwen3 8s/doc singlepass-class calls),
+  wall unknown for wide mode on LME contexts — first data point for B1-0 pacing.
+- STATUS: RUNNING — launched in parallel from the main tree (ff-merged to this commit):
+  - FW: `evaluation/LongMemEval/exp_freshness_e2e_fw.sh`, log
+    `evaluation/results/exp_freshness_e2e_fw.log`, cache
+    `evaluation/results/lme_kg_cache_fw_freshness/`, marker `EXPFR_FW_DONE`.
+  - LOCAL: `evaluation/LongMemEval/exp_freshness_e2e_local.sh`, log
+    `evaluation/results/exp_freshness_e2e_local.log`, cache
+    `evaluation/results/lme_kg_cache_qwen3_freshness/`, marker `EXPFR_LOCAL_DONE`.
+  `multi_agent_kg/` freeze in effect in the main tree for the duration of both runs.

@@ -133,6 +133,12 @@ class AgentGraphMemoryWrapper:
 
         # State reset per context
         self._chunks: List[str] = []
+        # Parallel to _chunks: the real-world date each chunk's content is
+        # from (e.g. a session transcript's date), or None. When ANY date is
+        # present, ingestion switches to one-document-per-chunk so each
+        # triple's provenance carries its source date (GB-2b freshness);
+        # all-None keeps the legacy single-blob path byte-identical.
+        self._chunk_dates: List[Optional[str]] = []
         self._governed_kg: Optional[GovernedKnowledgeGraph] = None
         self._qa_system: Optional[Any] = None
         self._context_id: Optional[int] = None
@@ -148,9 +154,10 @@ class AgentGraphMemoryWrapper:
         memorizing: bool = False,
         query_id: int = 0,
         context_id: int = 0,
+        date: Optional[str] = None,
     ) -> Dict[str, Any]:
         if memorizing:
-            return self._memorize(message, context_id)
+            return self._memorize(message, context_id, date=date)
         else:
             return self._query(message, query_id, context_id)
 
@@ -158,11 +165,13 @@ class AgentGraphMemoryWrapper:
     # Memorization
     # ------------------------------------------------------------------
 
-    def _memorize(self, chunk: str, context_id: int) -> Dict[str, Any]:
+    def _memorize(self, chunk: str, context_id: int,
+                  date: Optional[str] = None) -> Dict[str, Any]:
         """Accumulate chunk; pipeline runs lazily on first query."""
         if context_id != self._context_id:
             self._reset_context(context_id)
         self._chunks.append(chunk)
+        self._chunk_dates.append(date)
         return {
             "output": "Memorized",
             "input_len": _count_tokens(chunk),
@@ -193,8 +202,24 @@ class AgentGraphMemoryWrapper:
                 self._lazy_ingestor = None
         else:
             self._lazy_ingestor = None
+            # GB-2b: when chunks carry dates (dated session transcripts), keep
+            # them as separate documents so each triple's provenance records
+            # its source date — the recency signal conflict resolution needs.
+            # All-None dates (MemoryAgentBench legacy callers) preserve the
+            # original single-blob behavior exactly (control must not move).
+            if any(d for d in self._chunk_dates):
+                documents = [
+                    {"text": text,
+                     "id": f"session_{i}",
+                     "metadata": {"source": "memoryagentbench",
+                                  **({"date": d} if d else {})}}
+                    for i, (text, d) in enumerate(zip(self._chunks, self._chunk_dates))
+                ]
+            else:
+                documents = [{"text": full_text,
+                              "metadata": {"source": "memoryagentbench"}}]
             try:
-                self._governed_kg = self._run_pipeline(full_text)
+                self._governed_kg = self._run_pipeline(documents)
             except Exception as exc:
                 logger.error(
                     "Pipeline construction failed before extraction (%s); this context "
@@ -259,12 +284,21 @@ class AgentGraphMemoryWrapper:
         if self.save_dir:
             self._persist(context_id)
 
-    def _run_pipeline(self, text: str) -> GovernedKnowledgeGraph:
-        """Run the extraction pipeline via DeliberativeOrchestrator (same as run_pipeline.py)."""
+    def _run_pipeline(self, documents: List[Dict[str, Any]]) -> GovernedKnowledgeGraph:
+        """Run the extraction pipeline via DeliberativeOrchestrator (same as run_pipeline.py).
+
+        Takes a list of document dicts ({"text", "id"?, "metadata"?}). A single
+        undated blob reproduces the historical behavior exactly. Multiple
+        (dated) documents additionally enable corpus-schema reuse (one schema
+        discovery for the corpus instead of N drifting ones) and cross-document
+        entity resolution (the same real-world entity must resolve to ONE id
+        across session documents, or same-subject conflict detection — the
+        whole point of dated ingestion — never fires).
+        """
         from multi_agent_kg.core import DeliberativeOrchestrator
         from multi_agent_kg.agents.base import ModelTier
 
-        document = {"text": text, "metadata": {"source": "memoryagentbench"}}
+        multi_doc = len(documents) > 1
 
         # Force all tiers to same model to avoid OOM from multiple models loading simultaneously
         single_model = self.llm_config.model
@@ -285,7 +319,8 @@ class AgentGraphMemoryWrapper:
             max_refinement_iterations=1,
             enable_self_consistency=False,
             enable_open_world=True,
-            enable_cross_document=False,
+            enable_cross_document=multi_doc,
+            reuse_corpus_schema=multi_doc,
             model_tiers=model_tiers,
             extraction_mode=self.extraction_mode,
             checkpoint_dir=ctx_ckpt,
@@ -297,7 +332,7 @@ class AgentGraphMemoryWrapper:
         # segment is the failure mode that produced near-empty KGs on past benchmark runs.
         self._last_ingest_stats = {}
         try:
-            aggregate = orchestrator.process_corpus([document])
+            aggregate = orchestrator.process_corpus(documents)
             if isinstance(aggregate, dict):
                 self._last_ingest_stats = {
                     "failed_documents": aggregate.get("failed_documents", []),
@@ -440,6 +475,7 @@ class AgentGraphMemoryWrapper:
 
     def _reset_context(self, context_id: int) -> None:
         self._chunks = []
+        self._chunk_dates = []
         self._governed_kg = None
         self._qa_system = None
         self._context_id = context_id

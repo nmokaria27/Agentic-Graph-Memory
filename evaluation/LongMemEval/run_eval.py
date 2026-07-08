@@ -105,10 +105,26 @@ def dump_kg(wrapper):
     ]
     triples = [
         {"subject": t.subject, "relation": t.relation, "object": t.object,
-         "confidence": float(getattr(t, "confidence", 0.0) or 0.0)}
+         "confidence": float(getattr(t, "confidence", 0.0) or 0.0),
+         # GB-2b observability: which facts got superseded, and what date the
+         # source document carried — the scorer/hand-reads need both.
+         "superseded": bool((getattr(t, "metadata", None) or {}).get("superseded_by")),
+         "document_date": next(
+             (r.get("document_date")
+              for r in ((getattr(t, "metadata", None) or {}).get("provenance") or {}).get("refs", [])
+              if isinstance(r, dict) and r.get("document_date")), None)}
         for t in gkg.triples
     ]
     return entities, triples
+
+
+def conflict_stats(wrapper):
+    """Conflict-resolution counters from the governed KG (zeros if absent)."""
+    try:
+        stats = wrapper._governed_kg.get_stats().get("conflict_resolution", {})
+        return {k: int(v) for k, v in stats.items()}
+    except Exception:
+        return {}
 
 
 def main():
@@ -191,8 +207,11 @@ def main():
                           extraction_mode=args.extraction_mode,
                           checkpoint_dir=os.path.join(args.save_kg_dir, "ckpt"))
         try:
-            for s in sessions:
-                wrapper.send_message(s, memorizing=True, context_id=idx)
+            # Each session is passed with its date so the adapter can ingest it
+            # as a separate dated document — triples then carry document_date
+            # in provenance and conflict resolution can judge recency (GB-2b).
+            for d, s in zip(q["haystack_dates"], sessions):
+                wrapper.send_message(s, memorizing=True, context_id=idx, date=d)
             question_text = q["question"] if args.no_date_prefix else (
                 f"The current date is {q['question_date']}. {q['question']}")
             resp = wrapper.send_message(question_text, memorizing=False,
@@ -228,6 +247,8 @@ def main():
             "context_chars": total_chars,
             "kg_entities": len(entities),
             "kg_triples": len(triples),
+            "triples_superseded": sum(1 for t in triples if t.get("superseded")),
+            "conflict_stats": conflict_stats(wrapper),
             "error": error,
         }
         record = {
@@ -251,7 +272,8 @@ def main():
         with open(cache_path, "w") as f:      # checkpoint IMMEDIATELY per question
             json.dump(record, f, indent=2)
         print(f"[LME] q {idx} done in {wall}s (build {build_time}s / query {query_time}s): "
-              f"{len(entities)} ents / {len(triples)} triples, "
+              f"{len(entities)} ents / {len(triples)} triples "
+              f"({counts['triples_superseded']} superseded), "
               f"hyp={hypothesis[:100]!r}"
               + (f" ERROR={error}" if error else ""), flush=True)
         summary.append(counts | {"idx": idx, "question_id": qid})
