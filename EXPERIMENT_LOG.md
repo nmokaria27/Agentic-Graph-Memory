@@ -969,3 +969,66 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   14039 s (1.23× baseline — inside the 1.5× cost bar), 3 supersedes, answer
   "not specified" (flash retrieval weaker than Qwen3 here; per-lane verdicts
   will differ).
+
+---
+
+## EXP-GB2C-RELATION-EMBED (GB-2c): relation-aware conflict candidates via embedding similarity  (2026-07-08)
+- **Process note (owner should know):** this experiment's code (commit `df8ccdf`)
+  was written and committed BEFORE this pre-registration, breaking R1/the
+  pre-registration-before-running doctrine — caught while writing up the smoke-test
+  result below. Recorded here in full, retroactively, rather than silently
+  skipped. Going forward: pre-register FIRST, even for small fixes discovered
+  mid-experiment.
+- **Hypothesis:** `find_conflicts()` keys on exact (subject, relation); the
+  EXP-FRESHNESS-E2E local-leg q0 KG held `personal_best_time -[HAS_TIME]->
+  twenty_seven_twelve` (stale) and `personal_best_time -[HAS_VALUE]->
+  twenty_five_fifty` (fresh) BOTH active simultaneously — a perfect recency
+  signal (GB-2/2b, both dated correctly) never gets used because the two
+  relation names never share a lookup key. Mirroring the existing
+  `_relation_outside_schema` embedding tier (min_score 0.85) to widen conflict
+  candidates to same-subject, embedding-similar-relation triples should close
+  this gap.
+- **Change:** `GovernedKnowledgeGraph._relation_aware_conflicts` — same-subject
+  active triples whose relation embeds ≥0.85 similar to the candidate's (and
+  isn't an exact match, already covered) are added to the resolver's candidate
+  set. Inert without a vector store (DocRED control unmoved). 3 unit tests using
+  a deterministic fake embedder calibrated to clear 0.85 for engineered
+  near-identical relation strings; all passed (255-test baseline).
+- **Real-embedding smoke test** (`evaluation/LongMemEval/smoke_gb2c.py`, gpu01
+  mxbai, run on gpu02-adjacent hardware while the FW leg used only Fireworks):
+  reproduced the exact q0 scenario end-to-end with the REAL `LLMConflictResolver`
+  (not a stub).
+- **Result — HONEST NEGATIVE for the motivating case, but a real positive
+  elsewhere:**
+  | relation pair | real mxbai cosine | clears 0.85? |
+  |---|---|---|
+  | "has time" vs "has value" (q0's actual pair) | **0.694** | **NO** |
+  | "spouse of" vs "married to" (genuine synonym) | 0.883 | yes |
+  | "ceo of" vs "chief executive officer of" | 0.887 | yes |
+  | "located in" vs "based in" | 0.840 | borderline no |
+  The unit tests passed because the fake trigram-hash embedder used in
+  `test_conflict_resolution.py` was (unintentionally) calibrated on strings
+  with heavy literal character overlap ("race completion time duration" vs
+  "...duration value") — a much easier case than real relation-name synonymy.
+  With real embeddings, `_relation_aware_conflicts` returns `[]` for the q0
+  pair (`conflicts_checked` stayed 0 in the smoke test) — HAS_TIME and
+  HAS_VALUE are not lexically/semantically close as short relation phrases,
+  even though in this narrative they name the same fact. **Relation-name
+  embedding similarity is the wrong signal for this specific pathology** — it
+  IS the right signal for genuine relation-vocabulary drift (spouse_of vs
+  married_to, ceo_of vs chief_executive_officer_of — a real, recurring
+  extraction-variance problem, e.g. the kind of naming instability
+  EXP-JUDGE-PHASE4 documented for DocRED relations).
+- **Verdict: PARTIAL ACCEPT.** Ship as-is for genuine relation synonyms
+  (real, tested, zero regression risk, useful independent of GB-2c's original
+  motivation). Does NOT close q0's specific case. **New backlog item GB-2d**:
+  the actual pattern is "an attribute-holder subject accumulates multiple
+  active outgoing triples with different relations but value-typed objects
+  (numbers, durations, dates) — these should ALL be conflict candidates for
+  resolver review regardless of relation-name similarity," which needs a
+  different detection signal (object-type/shape co-occurrence per subject,
+  not relation embedding). Pre-register GB-2d separately before implementing —
+  this time before writing code.
+- **Action:** GB-2c code stays merged (real, if narrower, value). GB-2d added
+  to backlog, blocked on design (needs a concrete object-type-signature
+  mechanism, domain-general, before pre-registration).
