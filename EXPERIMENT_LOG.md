@@ -314,6 +314,50 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   conditions. (Answer "27:12" vs gold "25:50" = the stale-fact pattern again — GB-2's
   job, not a robustness issue.) q1–q4 in progress.
 
+### EXP-ROBUST-VALIDATE final verdict  (2026-07-08 03:24)
+- **Result — robustness half of the bar: PASS.** All 5/5 questions completed with
+  `error: null`, zero `SUSPECTED_SILENT_PIPELINE_FAILURE` events, zero DEGRADED events
+  (no stage actually failed this run — a clean pass, not just a caught one). Committed
+  KG sizes: q0=506e/731t, q1=345e/608t, q2=366e/444t, q3=310e/617t, q4=364e/456t — every
+  question landed hundreds of entities, none near the pre-fix wipeout floor (0).
+  **The silent-wipeout class (GB-1) is closed**: two of these five questions (q0, q4)
+  were the exact ones that wiped to 0 entities across 7 pre-fix smoke runs; both now
+  build full graphs and answer.
+  Cost: 571/448/384/386/396 LLM calls, wall 7000–11400s/question (~2–3.2h; Fireworks
+  flash lane, not a production-latency claim).
+- **Result — B1-0 QA gate ("≥1 substring hit" across 5): MISS. Substring acc = 0/5.**
+  All 5 answers, read individually:
+  | q | hypothesis (system answer) | gold | pattern |
+  |---|---|---|---|
+  | q0 | "27:12" | "25:50" | **stale fact served** (KG has both times; wrong one answered) |
+  | q1 | hedged: "does not specify... a specific count" | "four" | **under-confident non-answer** (count likely in KG, not surfaced) |
+  | q2 | "Chicago" | "the suburbs" | **stale fact served** (GB-2's exact diagnosed pattern) |
+  | q3 | "$350,000" | "$400,000" | **stale fact served** (GB-2's exact diagnosed pattern) |
+  | q4 | hedged: "does not specify an optimal frequency" | "Three times a week" | **under-confident non-answer** |
+  This SHARPENS the GB-2 diagnosis rather than changing it: 3/5 (q0, q2, q3) are the
+  already-localized `find_conflicts()` batch-vs-incremental bug — QA serves an old
+  co-existing fact instead of the newest one. 2/5 (q1, q4) are a DIFFERENT failure the
+  earlier 3-case sample hadn't isolated: the QA orchestrator hedges/abstains
+  (`Overall coverage: 0.88`, `confidence: 0.70` on q4) even when the updated fact is
+  present in the graph — a retrieval-surfacing or synthesis-confidence issue, not a
+  conflict-resolution issue. **New sub-finding for EXP-FRESHNESS-QA's design**: fixing
+  `find_conflicts()` alone will not close q1/q4; the QA synthesis/coverage path needs
+  its own look (candidate: why does 0.88 coverage + a present fact still yield a
+  hedge instead of an assertion?).
+- **Verdict: PARTIAL ACCEPT.** EXP-ROBUST-DEGRADE (GB-1) is validated end-to-end under
+  real multi-hour, multi-fault conditions — robustness bar decisively met, GB-1 CLOSED.
+  The B1-0 gate itself is an honest miss (0/5, bar was ≥1) — reported as a miss per
+  doctrine, not spun. This was expected: ROADMAP already flagged "B1-0 gate not yet
+  passed... rerun on fixed code + local Qwen3 becomes the real attempt after GB-8/GB-2"
+  — this run used Fireworks flash with GB-1 only, deliberately isolating the robustness
+  variable before GB-2 lands. It is diagnostic evidence for GB-2, not GB-2's own gate.
+- **Action:** GB-1 marked CLOSED in the goal backlog. Freeze on `multi_agent_kg/`
+  (main tree) LIFTS — the GB-8 worktree branch (`worktree-gb8-dedup-guard`, commit
+  `d70b35e`) is now mergeable. GB-2 (EXP-FRESHNESS-QA) pre-registration should widen
+  its success bar to explicitly cover the q1/q4 hedge pattern alongside the q0/q2/q3
+  stale-serve pattern, or split into two experiments if the mechanisms turn out
+  unrelated after code inspection.
+
 ---
 
 ## MILESTONE: Phase 4 complete — freeze LIFTED; v5 extractor decision overturned  (2026-07-07 09:36)
