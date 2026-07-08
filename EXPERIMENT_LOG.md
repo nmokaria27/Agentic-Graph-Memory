@@ -445,3 +445,47 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   judged as *≥ this singlepass baseline on the SAME docs* (its point is a governed graph
   at singlepass recall/cost), not against the stale n=5 threshold. Will finalize the bar
   in the EXP-SPGOV pre-registration once GB-8/GB-2 land.
+
+---
+
+## GB-2 diagnostic (freeze-safe, code-read only): freshness bug is localized  (2026-07-08)
+- **Goal:** before pre-registering EXP-FRESHNESS-QA, find *where* the stale-answer bug
+  actually lives — the write-side supersede machinery looked complete on inspection
+  (`GovernedKnowledgeGraph` has `conflict_resolver`, `is_superseded()`,
+  `supersedes`/`superseded_by` metadata; QA retrieval already calls
+  `get_active_triples()` which filters superseded triples — graph_traversal.py L25/88,
+  qa_orchestrator.py L379/427). If both ends already work, GB-2 is not "build
+  freshness," it's "find why the existing machinery didn't fire."
+- **Evidence (offline, on already-committed `governed_kg_latest.json` from the
+  smoke-flash cache, `evaluation/results/lme_kg_cache_fw_smoke_flash/`):** across the 3
+  KGs that actually committed triples —
+  | question | triples | superseded | (subject,relation) pairs with ≥2 distinct objects |
+  |---|---|---|---|
+  | doc_1_8e0d5158 | 374 | 0 | **58** |
+  | doc_1_a5ff6f8e | 319 | 1 | **61** |
+  | doc_1_48130d9e | 401 | 2 | **31** |
+  Dozens of same-(subject,relation) fact pairs coexist as ACTIVE triples per question
+  while `superseded` count is ~0. The old and new fact both sit in the graph as live —
+  exactly the observed QA symptom (Chicago vs suburbs, $350k vs $400k).
+- **Root cause located:** `KnowledgeGraph.find_conflicts()` (knowledge_graph.py L259)
+  only compares each **candidate** triple against **already-committed** triples in the
+  graph (`key = (triple.subject, triple.relation)` built from existing triples, L276;
+  candidates checked against that index, L283). LongMemEval ingests a whole multi-session
+  conversation's extracted triples as one batch per corpus build. When "I live in
+  Chicago" (session N) and "we moved to the suburbs" (session N+3) are extracted in the
+  same ingestion pass, **neither is "existing" relative to the other at check time** (or
+  ordering inside the batch makes the check order-dependent) — so `find_conflicts` never
+  pairs them and the resolver never runs. This is a batch-vs-incremental gap in conflict
+  detection, not a missing supersede mechanism.
+- **Implication for EXP-FRESHNESS-QA pre-registration:** the domain-general fix is
+  narrower than originally scoped — conflict detection must run **within a single
+  integration batch**, not just against the pre-batch graph state (candidates must be
+  checked pairwise against each other too, keyed on (subject, relation), with the
+  temporally-later one as candidate — LongMemEval sessions already carry per-turn
+  timestamps the extractor can attach as triple provenance). QA-side assembly
+  (`get_active_triples`) likely needs no change once detection recall is fixed — it
+  already filters superseded triples correctly. Will confirm no secondary QA-side bug
+  once GB-8 unfreezes the tree and a controlled reproduction is possible.
+- **No code changed** (read + offline cache analysis only, freeze respected). Next:
+  pre-register EXP-FRESHNESS-QA against this narrower, evidence-backed mechanism once
+  GB-8 ports and the freeze lifts.
