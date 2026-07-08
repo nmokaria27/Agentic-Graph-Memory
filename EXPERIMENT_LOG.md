@@ -435,3 +435,13 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - STATUS: RUNNING — `nohup ... run_eval.py --strategy singlepass --offset 100
   --max-docs 20`, cache `evaluation/results/docred_kg_cache_spgov_baseline/`, log
   `evaluation/results/spgov_baseline.log`, marker `SPGOV_BASELINE_DONE`.
+
+### EXP-SPGOV baseline result  (2026-07-07 ~21:00)
+- **Qwen3 singlepass, docs 100–119 (n=20, local, offline-scored):** entR **0.878**,
+  entP **0.728**, pairR **0.209**, relF1@0.6 **0.137**, relF1@0.7 0.082, direction_flips 6.
+  0 errors, ~4–6 s/doc, 1 LLM call/doc. Cached for the EXP-SPGOV 3-way comparison.
+- **Bar-calibration note:** the SP-GOV draft bar relF1@0.6 ≥ 0.16 was set from slice-A
+  (n=5) numbers; on fresh n=20 the plain-singlepass ceiling is 0.137. SP-GOV must be
+  judged as *≥ this singlepass baseline on the SAME docs* (its point is a governed graph
+  at singlepass recall/cost), not against the stale n=5 threshold. Will finalize the bar
+  in the EXP-SPGOV pre-registration once GB-8/GB-2 land.
