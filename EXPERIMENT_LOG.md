@@ -943,3 +943,29 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   consider a hypothesis=="" guard in run_eval as a GB-1 follow-up.
 - Requery of q0/q2/q4 on the fixed code is running (cached KGs, local lane);
   FW leg still in flight. Full verdict after both.
+
+### EXP-FRESHNESS-E2E: requery after GB-10 fix — B1-0 GATE PASSED (2026-07-08 ~19:30)
+- Requery of q0/q2/q4 on cached KGs with fixed QA code (33-97 s/question — the
+  requery tool turned a 4 h re-extraction into ~3 min):
+  | q | pre-fix answer | post-fix answer | verdict |
+  |---|---|---|---|
+  | q0 | EMPTY (crash) | **"25:50"** | **CORRECT — first time ever** (was "27:12" in all 3 prior runs) |
+  | q2 | EMPTY (crash) | **"moved back to the suburbs"** | **CORRECT — first time ever** (was "Chicago") |
+  | q4 | EMPTY (crash) | hedge ("does not provide a specific frequency") | known out-of-scope hedge pattern |
+- **Official substring: 1/5** (q2). **B1-0 gate (≥1/5) PASSED** — first pass after
+  three 0/5 runs (EXP-LMESMOKE-PRO, -FLASH, EXP-ROBUST-VALIDATE).
+- **Hand-read (doctrine triangulation): 2/5 correct.** q0's "25:50" is right but
+  the substring metric requires the full gold string "25 minutes and 50 seconds
+  (or 25:50)" — metric artifact, recorded as such, not inflated. (q0's KG holds
+  both facts ACTIVE — the relation-variance gap, GB-2c — yet QA retrieval still
+  surfaced the fresh fact; good, but the KG-level fix is still needed for
+  determinism rather than retrieval luck.)
+- **2/3 confirmed stale-serve cases now serve the FRESH fact (bar b: ≥2 → PASS
+  on the local leg).** q3 remains an extraction gap ($400k never entered the
+  graph — GB-3 territory), not a freshness failure.
+- NOTE for the FW leg: it runs the PRE-fix main-tree code (freeze), so its
+  questions may also hit the GB-10 crash — recover post-run with
+  requery_cached.py after the merge, exactly as done here. FW q0 already done:
+  14039 s (1.23× baseline — inside the 1.5× cost bar), 3 supersedes, answer
+  "not specified" (flash retrieval weaker than Qwen3 here; per-lane verdicts
+  will differ).
