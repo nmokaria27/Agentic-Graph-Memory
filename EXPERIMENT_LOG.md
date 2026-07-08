@@ -373,3 +373,65 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   found pairs are semantically right, and only ~23% of gold pairs are found at all —
   the recall ceiling is pair discovery, not relation naming. Feeds backlog re-derivation.
 - **Action:** MATRIX_REPORT addendum (extractor decision closed); no code change.
+
+---
+
+## EXP-DEDUP-GUARD (GB-8): organizer dedup over-merge = mass entity deletion  (2026-07-07)
+- **Hypothesis:** `KnowledgeOrganizer._deduplicate_entities` (knowledge_organizer.py
+  L382–401) applies every LLM-returned merge group by **deleting** all `merge_ids` from
+  the entity list, with no bound on group size and no type check. Qwen3's aggressive
+  merge responses collapse whole documents: on the EXP-MODEL-LOCAL hybrid slice-A cache
+  (`docred_kg_cache_qwen3/`), doc_0 kept **2 entities (both DATE) with 59 triples** —
+  27/29 triple endpoints dangle to deleted entities (schneider, turin, german…). Same
+  collapse on doc_1 (2/42), doc_4 (3/36). This is the coref-collapse pathology (fixed in
+  the coref stage by commit 60ca03e's merge-never-delete guard) recurring in the
+  organizer, which never got that guard. **Blocks EXP-SPGOV (shared code path).**
+- **Change (one structural mechanism, three domain-general guards):** in
+  `_deduplicate_entities`, before applying a merge group's deletion —
+  (1) **type-compatibility gate**: filter `merge_ids` to entities whose type matches the
+  canonical's type (case-insensitive; empty/UNKNOWN type = permissive). A PERSON cannot
+  be merged into a DATE.
+  (2) **merge-group size cap**: skip any group whose type-filtered `merge_ids` exceeds an
+  absolute cap (8) OR a relative cap (50% of the document's entities) — real coref
+  clusters are small; a group swallowing half the doc is pathology, not resolution.
+  Skipped groups keep their entities unmerged; count + warn (mirrors the malformed-group
+  counter already there).
+  (3) **merge-into-aliases**: when a merge IS applied, copy each merged entity's
+  `text`/`labels` onto the canonical entity's alias list so no gold-matchable surface
+  form is lost (mirrors coref 60ca03e + matrix-v3 alias-merge; label-aware scorer already
+  credits name ∪ labels).
+  Base commit: `fd4bdcc`. All three guards are structural — no dataset vocabulary; passes
+  the anti-memorization audit (§6.3).
+- **Lane & model:** LOCAL Qwen3-30B-A3B (gpu02 free; validate runs on Fireworks). Re-run
+  hybrid slice A after porting.
+- **Slice & control:** DocRED slice A (docs 0–4), hybrid strategy. **Singlepass control
+  must NOT move** (it never calls this path — sanity check its cached numbers unchanged).
+- **Success bar:** (a) fault-injection unit test: an aggressive-merge response
+  (merge_ids = all-but-one, mixed types) leaves entities un-collapsed; a legit same-type
+  duplicate still merges; (b) hybrid slice-A entR recovers to ≥ singlepass − 0.05 (was
+  ~0.24 collapsed vs singlepass 0.908 on Qwen3); (c) no doc ends with triples > 3×
+  entities (dangling-reference smell test); (d) pytest baseline 237 still green (+ new
+  tests).
+- **Cost estimate:** ~5 local hybrid docs (~20 min) + offline score; zero Fireworks.
+- **Freeze note:** `multi_agent_kg/` is FROZEN while EXP-ROBUST-VALIDATE (PID 2135154,
+  Fireworks) is alive. Prototype built freeze-safe as a pure, unit-tested guard function
+  under `evaluation/DocRED/dedup_guard_prototype.py`; ports verbatim into
+  `_deduplicate_entities` the moment validate finishes (watcher `bl6qustqa` on
+  `EXPRV_DONE`).
+- STATUS: PENDING PORT — prototype + tests written; awaiting freeze lift, then port +
+  local slice-A re-run.
+
+### EXP-SPGOV baseline prep (GB-9 pre-work): local Qwen3 singlepass on docs 100–119  (2026-07-07)
+- **Why now:** EXP-ROBUST-VALIDATE (Fireworks) holds the freeze but gpu02 compute is
+  IDLE (both L40S at 0%, Qwen3 resident). EXP-SPGOV's pre-registered slice is
+  "slice A + 100–119"; the plain singlepass baseline for those fresh docs is a required
+  comparison leg and can be computed now on otherwise-idle local hardware. Freeze-safe:
+  runs the existing (unedited) singlepass path — singlepass does not hit the collapsing
+  dedup group loop (EXP-MODEL-LOCAL singlepass = healthy entR 0.908).
+- **Change:** none (baseline computation on current code, commit `fd4bdcc`).
+- **Lane & model:** LOCAL Qwen3-30B-A3B (gpu02).
+- **Slice:** DocRED docs 100–119 (fresh, never hand-read), strategy singlepass.
+- **Use:** cached comparison leg for EXP-SPGOV (GB-9); not a standalone verdict.
+- STATUS: RUNNING — `nohup ... run_eval.py --strategy singlepass --offset 100
+  --max-docs 20`, cache `evaluation/results/docred_kg_cache_spgov_baseline/`, log
+  `evaluation/results/spgov_baseline.log`, marker `SPGOV_BASELINE_DONE`.
