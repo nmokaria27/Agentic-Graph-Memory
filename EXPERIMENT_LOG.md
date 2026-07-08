@@ -489,3 +489,36 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - **No code changed** (read + offline cache analysis only, freeze respected). Next:
   pre-register EXP-FRESHNESS-QA against this narrower, evidence-backed mechanism once
   GB-8 ports and the freeze lifts.
+
+---
+
+## EXP-UNION2-SINGLEPASS (GB-3 pre-work, RESEARCH_IDEAS #7 adapted): 2-sample singlepass union  (2026-07-08)
+- **Hypothesis:** idea #7 (RESEARCH_IDEAS.md) is scoped for the hybrid front-end
+  ("hybrid-union2 vs hybrid"), but hybrid is currently unsafe to run (GB-8: organizer
+  dedup collapses it). Adapted to the actual production extractor: singlepass at its
+  existing default temperature (0.2, unchanged config) is non-deterministic, so two
+  independent runs on the same docs are a valid 2-sample union test with **zero code
+  change** — same principle (complementary misses across samples recover pairs a single
+  pass drops), applied where it's currently safe. Targets GB-3's binding constraint
+  directly: EXP-JUDGE-PHASE4 found only ~23% of gold pairs are found by a single
+  singlepass call; does the union of two independent draws recover materially more?
+- **Change:** none (two ordinary `run_eval.py --strategy singlepass` invocations,
+  different cache dirs; union computed by a new offline scoring script — no
+  `multi_agent_kg/` edit, freeze respected).
+- **Lane & model:** LOCAL Qwen3-30B-A3B (gpu02 idle while EXP-ROBUST-VALIDATE runs on
+  Fireworks — no contention).
+- **Slice & control:** docs 100–119 (n=20). **Sample A = the existing EXP-SPGOV baseline
+  cache** (`docred_kg_cache_spgov_baseline/`, entR 0.878/pairR 0.209/relF1@0.6 0.137,
+  already scored — reused, not re-run, to save compute). **Sample B = fresh independent
+  draw**, same docs/strategy/temp, new cache dir `docred_kg_cache_union2_sampleB/`.
+- **Success bar (idea #7, adapted):** union entR ≥ either sample + 0.03 (meaningful
+  recall gain from complementary misses); union pairR ≥ either sample + 0.02; precision
+  drop on union ≤ 0.03 (naive union with no consensus filter may add noise — if
+  precision craters, the "no consensus machinery" premise fails for singlepass and the
+  idea needs the voting variant instead, idea #6).
+- **Cost estimate:** 1 fresh singlepass pass, 20 docs, ~2 min local + offline union
+  script + score. Effectively free (reuses sample A).
+- STATUS: RUNNING — sample B: `nohup ... run_eval.py --strategy singlepass --offset 100
+  --max-docs 20 --save-kg-dir evaluation/results/docred_kg_cache_union2_sampleB`, log
+  `evaluation/results/union2_sampleB.log`, marker `UNION2_SAMPLEB_DONE`. Union + score
+  script to follow once sample B lands.
