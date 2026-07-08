@@ -464,6 +464,47 @@ class GovernedKnowledgeGraph:
                 self.vector_store.mark_dirty(triples=[result])
         return result
 
+    def _relation_aware_conflicts(self, triple: Triple) -> List[Triple]:
+        """Same-subject active triples whose relation is embedding-similar to
+        the candidate's, but not identical (exact matches are already caught
+        by find_conflicts).
+
+        GB-2c: exact-key conflict detection misses semantically-equivalent
+        relations extracted under different names for the same fact (e.g. a
+        race-time value stated once as `HAS_TIME` and again, on update, as
+        `HAS_VALUE`) — the two coexist forever with no conflict ever
+        detected, even with a perfect recency signal (GB-2/2b), because they
+        never share a lookup key. Domain-general (no relation vocabulary
+        hardcoded) — mirrors the existing schema-relation embedding tier in
+        `_relation_outside_schema`. Only active with a vector store attached,
+        so undated/unvectored corpora (DocRED) see zero behavior change.
+        """
+        if self.vector_store is None:
+            return []
+        candidates = [
+            t for t in self._kg.get_triples_by_subject(triple.subject)
+            if t.relation != triple.relation and not is_superseded(t)
+        ]
+        if not candidates:
+            return []
+        try:
+            from multi_agent_kg.core.vector_index import VectorIndex
+
+            index_kwargs = getattr(self.vector_store, "_index_kwargs", {})
+            index = VectorIndex(**index_kwargs)
+            index.upsert({
+                str(i): t.relation.replace("_", " ").replace("-", " ").lower()
+                for i, t in enumerate(candidates)
+            })
+            hits = index.search(
+                triple.relation.replace("_", " ").replace("-", " ").lower(),
+                top_k=len(candidates),
+                min_score=0.85,
+            )
+            return [candidates[int(item_id)] for item_id, _score in hits]
+        except Exception:
+            return []
+
     def _apply_conflict_resolution(
         self,
         triple: Triple,
@@ -481,6 +522,7 @@ class GovernedKnowledgeGraph:
             return None
         conflicts = self._kg.find_conflicts([triple])
         existing = [c.existing_triple for c in conflicts if not is_superseded(c.existing_triple)]
+        existing += self._relation_aware_conflicts(triple)
         # Deduplicate while preserving order (find_conflicts can repeat).
         seen: set = set()
         existing = [t for t in existing if not (triple_uid(t) in seen or seen.add(triple_uid(t)))]

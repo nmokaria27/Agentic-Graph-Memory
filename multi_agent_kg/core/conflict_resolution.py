@@ -30,7 +30,7 @@ DISCARD_NEW = "discard_new"
 _VALID_ACTIONS = {COEXIST, SUPERSEDE, DISCARD_NEW}
 
 
-CONFLICT_RESOLUTION_PROMPT = """You maintain a knowledge graph. A newly extracted fact conflicts with existing facts (same subject and relation, different object). Decide how to resolve it.
+CONFLICT_RESOLUTION_PROMPT = """You maintain a knowledge graph. A newly extracted fact conflicts with existing facts about the same subject (same relation, or a differently-worded relation describing the same underlying property, with a different object). Decide how to resolve it.
 
 NEW FACT:
 {new_fact}
