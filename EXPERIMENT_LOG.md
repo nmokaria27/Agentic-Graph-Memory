@@ -891,3 +891,55 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
     `evaluation/results/exp_freshness_e2e_local.log`, cache
     `evaluation/results/lme_kg_cache_qwen3_freshness/`, marker `EXPFR_LOCAL_DONE`.
   `multi_agent_kg/` freeze in effect in the main tree for the duration of both runs.
+
+### EXP-FRESHNESS-E2E interim: LOCAL leg complete (2026-07-08 18:37); QA-layer bug found + fixed; requery in flight
+- **Local leg (Qwen3, 5 questions, 4h09m total, ~45-60 min/q):** all 5 completed,
+  0 extraction errors. Per-question:
+  | q | supersedes (baseline ~0) | conflicts checked | answer state |
+  |---|---|---|---|
+  | q0 | 3 | 84 | EMPTY — QA crashed |
+  | q1 | 0 | 206 | hedge (as before; out of scope) |
+  | q2 | 6 | 221 | EMPTY — QA crashed |
+  | q3 | 1 | 121 | answered, but graph-speak, not gold |
+  | q4 | 20 | 189 | EMPTY — QA crashed |
+- **Bar (a) mechanism fires: PASS** — supersedes on 4/5 questions (bar ≥3/5);
+  resolver now makes targeted supersede decisions instead of blanket coexist.
+- **Bar (e) fragmentation guard: PASS** — conflicts_checked 84–221 (conflict
+  detection alive across session documents); entity counts 189–333 (baseline
+  310–542; lower but explained by cross-doc dedup, within the ±40% guard for
+  4/5, q3 at 189 vs 310 = −39%, inside the bar).
+- **Hand-reads of the three stale-serve KGs (bar b evidence):**
+  - **q2: KG now CORRECT** — `rachel -[MOVED_BACK_TO]-> suburbs` ACTIVE with the
+    later date (05/26); no active stale residence fact. The dated ingestion did
+    its job; only the QA crash blocked serving it.
+  - **q0: NEW ROOT-CAUSE LAYER FOUND** — both facts present and BOTH ACTIVE:
+    `personal_best_time -[HAS_TIME]-> 27_12` (stale) vs `personal_best_time
+    -[HAS_VALUE]-> twenty_five_fifty` (fresh). Conflict never detected because
+    `find_conflicts` keys on EXACT (subject, relation) and the extractor named
+    the two relations differently. **Relation-name variance blinds conflict
+    detection** — dates flow correctly, the resolver works, but semantically
+    equivalent relations with different surface names never meet. → new backlog
+    item **GB-2c**: relation-aware conflict candidate matching (e.g. same
+    subject + embedding-similar relation, reusing the existing relation-embedding
+    infra), pre-registered separately.
+  - **q3: extraction gap** — the gold $400,000 value never entered the graph
+    (no value triple for either amount); freshness machinery irrelevant here.
+    Feeds GB-3 (pair/value recall), not GB-2.
+- **NEW BUG (GB-10), found + fixed:** 3/5 questions returned EMPTY answers —
+  `'AdvancedQAOrchestrator' object has no attribute '_community_context'`.
+  `QAOrchestrator._build_global_fallback_context` (borrowed with an
+  AdvancedQAOrchestrator as `self`, advanced_qa.py L1388) calls
+  `self._community_context`, which only QAOrchestrator defines. Latent since
+  0932808 (GraphRAG communities); GB-2b's multi-document ingestion changes
+  domain/ownership shape enough that the fallback path now triggers routinely.
+  Fixed by adding the method to AdvancedQAOrchestrator (delegates to the same
+  `community_context` helper it already uses elsewhere); AST audit confirms no
+  other borrowed-method attribute is missing; 2 regression tests; 252 green.
+  Commit `d16a891` (worktree branch; merge deferred — FW leg holds the main-tree
+  freeze). Also shipped `requery_cached.py`: re-runs ONLY the ~30 s QA step on
+  cached KG checkpoints, so the QA fix costs minutes, not a 4 h re-extraction.
+  NOTE: empty-hypothesis-with-no-error is a silent-ish failure mode the q0-style
+  entity guard doesn't catch (entities > 0, so no SUSPECTED_SILENT flag) —
+  consider a hypothesis=="" guard in run_eval as a GB-1 follow-up.
+- Requery of q0/q2/q4 on the fixed code is running (cached KGs, local lane);
+  FW leg still in flight. Full verdict after both.
