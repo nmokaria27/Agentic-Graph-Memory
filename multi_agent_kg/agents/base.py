@@ -94,6 +94,11 @@ class AgentContext:
     max_iterations: int = 4
     quality_threshold: float = 0.85
     previous_feedback: List[Dict[str, Any]] = field(default_factory=list)
+    # Real-world date this document's content is from/about (not ingestion wall-clock
+    # time). None when the source has no natural date (e.g. DocRED articles). Threaded
+    # into triple provenance so freshness-sensitive conflict resolution has a recency
+    # signal to act on (GB-2 / EXP-FRESHNESS-QA).
+    document_date: Optional[str] = None
 
 
 class BaseAgent(ABC):

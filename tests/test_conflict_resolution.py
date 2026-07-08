@@ -1,13 +1,15 @@
 """Tests for Mem0-style conflict resolution on triple admission."""
 
+from multi_agent_kg.core import provenance as prov
 from multi_agent_kg.core.conflict_resolution import (
     COEXIST,
     DISCARD_NEW,
     SUPERSEDE,
+    _describe,
     normalize_resolution,
 )
 from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
-from multi_agent_kg.core.knowledge_graph import is_superseded, triple_uid
+from multi_agent_kg.core.knowledge_graph import Triple, is_superseded, triple_uid
 
 
 def _gkg(resolver):
@@ -121,3 +123,76 @@ def test_supersede_survives_serialization():
     active = restored.kg.get_active_triples()
     assert len(active) == 1
     assert active[0].object == "bob"
+
+
+def test_describe_surfaces_document_date_when_present():
+    """GB-2: a triple whose provenance carries a document_date shows date= in
+    the resolver's description, giving the LLM a recency signal to act on."""
+    triple = Triple(
+        subject="rachel", relation="located_in", object="chicago",
+        confidence=0.9, source="doc_1_abc",
+        metadata={
+            "provenance": prov.build_provenance(
+                refs=[prov.source_ref("doc_1_abc", document_date="2022-03-01")],
+                extractor="RelationExtractor",
+                confidence=0.9,
+            )
+        },
+    )
+    assert "date=2022-03-01" in _describe(triple)
+
+
+def test_describe_omits_date_when_absent():
+    """Regression guard: undated sources (DocRED-style) produce byte-identical
+    output to before document_date existed — no 'date=' segment at all."""
+    triple = Triple(
+        subject="rachel", relation="located_in", object="chicago",
+        confidence=0.9, source="doc_1_abc",
+        metadata={
+            "provenance": prov.build_provenance(
+                refs=[prov.source_ref("doc_1_abc")],
+                extractor="RelationExtractor",
+                confidence=0.9,
+            )
+        },
+    )
+    assert "date=" not in _describe(triple)
+
+
+def test_describe_omits_date_with_no_provenance_at_all():
+    triple = Triple(subject="rachel", relation="located_in", object="chicago", confidence=0.9)
+    assert "date=" not in _describe(triple)
+
+
+def test_conflict_resolver_receives_dated_descriptions():
+    """Integration-style: propose_triple -> _apply_conflict_resolution wires real
+    Triple objects (with provenance) into the resolver; a resolver that inspects
+    _describe() output sees both triples' dates, proving the plumbing from
+    GovernedKnowledgeGraph.propose_triple through to the resolver call is intact."""
+    seen_descriptions = []
+
+    def spy_resolver(new_triple, existing):
+        seen_descriptions.append(_describe(new_triple))
+        for t in existing:
+            seen_descriptions.append(_describe(t))
+        return {"action": SUPERSEDE, "superseded_indices": [0], "reasoning": "newer date"}
+
+    gkg = _gkg(spy_resolver)
+    old_prov = prov.build_provenance(
+        refs=[prov.source_ref("doc_0", document_date="2022-01-01")],
+        extractor="RelationExtractor", confidence=0.9,
+    )
+    gkg.propose_triple("acme", "CEO_IS", "alice", confidence=0.9,
+                        metadata={"provenance": old_prov})
+    new_prov = prov.build_provenance(
+        refs=[prov.source_ref("doc_5", document_date="2023-12-25")],
+        extractor="RelationExtractor", confidence=0.9,
+    )
+    decision = gkg.propose_triple("acme", "CEO_IS", "bob", confidence=0.9,
+                                   metadata={"provenance": new_prov})
+
+    assert decision.committed
+    assert any("date=2022-01-01" in d for d in seen_descriptions)
+    assert any("date=2023-12-25" in d for d in seen_descriptions)
+    old = [t for t in gkg.kg.triples if t.object == "alice"][0]
+    assert is_superseded(old)

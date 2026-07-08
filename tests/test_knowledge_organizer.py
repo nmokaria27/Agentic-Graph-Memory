@@ -107,3 +107,59 @@ def test_integrate_to_kg_skips_self_loops_and_duplicate_triples() -> None:
     triple = governed.kg.triples[0]
     assert triple.subject == "method_a"
     assert triple.object == "task_b"
+
+
+def test_integrate_to_kg_threads_document_date_into_triple_provenance() -> None:
+    """GB-2: a caller-supplied document_date must survive into the committed
+    triple's provenance so conflict resolution can judge recency."""
+    governed = _governed_graph()
+    organizer = KnowledgeOrganizer(
+        knowledge_graph=KnowledgeGraph(),
+        governed_kg=governed,
+        llm_config=LLMConfig(model="test-model"),
+    )
+
+    entities = [
+        {"id": "method_a", "text": "Method A", "type": "METHOD"},
+        {"id": "task_b", "text": "Task B", "type": "TASK"},
+    ]
+    triples = [
+        {"subject": "Method A", "relation": "Used-for", "object": "Task B", "confidence": 0.9},
+    ]
+
+    organizer._integrate_to_kg(
+        entities=entities,
+        triples=triples,
+        document_id="doc1",
+        document_date="2023-12-25",
+    )
+
+    triple = governed.kg.triples[0]
+    refs = triple.metadata["provenance"]["refs"]
+    assert refs[0]["document_date"] == "2023-12-25"
+
+
+def test_integrate_to_kg_leaves_document_date_none_when_unset() -> None:
+    """Regression guard: callers that never pass document_date (e.g. DocRED,
+    which has no natural document date) get the same None as before this field
+    existed — no behavior change for undated corpora."""
+    governed = _governed_graph()
+    organizer = KnowledgeOrganizer(
+        knowledge_graph=KnowledgeGraph(),
+        governed_kg=governed,
+        llm_config=LLMConfig(model="test-model"),
+    )
+
+    entities = [
+        {"id": "method_a", "text": "Method A", "type": "METHOD"},
+        {"id": "task_b", "text": "Task B", "type": "TASK"},
+    ]
+    triples = [
+        {"subject": "Method A", "relation": "Used-for", "object": "Task B", "confidence": 0.9},
+    ]
+
+    organizer._integrate_to_kg(entities=entities, triples=triples, document_id="doc1")
+
+    triple = governed.kg.triples[0]
+    refs = triple.metadata["provenance"]["refs"]
+    assert refs[0]["document_date"] is None

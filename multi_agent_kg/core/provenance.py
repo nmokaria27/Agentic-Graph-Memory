@@ -56,8 +56,15 @@ def source_ref(
     char_end: Optional[int] = None,
     source_path: Optional[str] = None,
     snippet: Optional[str] = None,
+    document_date: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Build a single source-location reference."""
+    """Build a single source-location reference.
+
+    ``document_date`` is the real-world date the source content is from/about
+    (e.g. a dated session transcript, a versioned report) — not ingestion
+    wall-clock time. None when the source has no natural date. Lets
+    freshness-sensitive conflict resolution judge recency (GB-2).
+    """
     return {
         "document_id": document_id,
         "segment_id": segment_id,
@@ -66,6 +73,7 @@ def source_ref(
         "char_end": char_end,
         "source_path": source_path,
         "snippet": (snippet[:280] if snippet else None),
+        "document_date": document_date,
     }
 
 

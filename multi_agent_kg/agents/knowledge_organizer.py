@@ -292,6 +292,7 @@ class KnowledgeOrganizer(BaseAgent):
                 entities,
                 triples,
                 context.document_id,
+                document_date=context.document_date,
             )
             self.integration_stats["entities_added"] += added_entities
             self.integration_stats["triples_added"] += added_triples
@@ -736,6 +737,7 @@ class KnowledgeOrganizer(BaseAgent):
         entities: List[Dict[str, Any]],
         triples: List[Dict[str, Any]],
         document_id: str,
+        document_date: Optional[str] = None,
     ) -> tuple:
         """Integrate into knowledge graph with entity-name resolution.
         
@@ -1165,7 +1167,8 @@ class KnowledgeOrganizer(BaseAgent):
             _t_conf = triple.get("final_confidence", triple.get("confidence", 0.7))
             _t_verified = triple.get("verification_status") not in (None, "", "unknown")
             triple_prov = prov.build_provenance(
-                refs=[prov.source_ref(document_id, snippet=_t_evidence or None)],
+                refs=[prov.source_ref(document_id, snippet=_t_evidence or None,
+                                       document_date=document_date)],
                 extractor="RelationExtractor",
                 confidence=_t_conf,
                 confidence_source=(prov.CONFIDENCE_VERIFICATION if _t_verified else prov.CONFIDENCE_EXTRACTION),

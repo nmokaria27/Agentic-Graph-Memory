@@ -639,3 +639,181 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   suspiciously-low entity/triple counts per doc) over blanket 2-sample union — cheaper
   and the doc_105 case shows the failure mode it targets is real. No code change from
   this experiment (scoring-only, freeze respected).
+
+---
+
+## EXP-FRESHNESS-QA (GB-2): thread source-document dates into triple provenance so conflict resolution can judge recency  (2026-07-08)
+- **Hypothesis, code-verified (corrects the earlier GB-2 diagnostic entry's framing):**
+  the earlier read localized GB-2 to `find_conflicts()` comparing only against
+  pre-batch committed state ("batch-vs-incremental gap"). Tracing the full commit
+  path end-to-end shows that framing was WRONG — disproven directly:
+  1. `KnowledgeOrganizer._integrate_to_kg` calls `governed_kg.propose_triple(...)`
+     **once per triple, synchronously**, and each call's `find_conflicts([triple])`
+     is built fresh from `self._kg.triples` at call time — which already includes
+     every triple committed earlier in the SAME document, batch or not. Verified via
+     `KnowledgeOrganizer._integrate_to_kg` (knowledge_organizer.py L734+) and
+     `GovernedKnowledgeGraph.propose_triple`/`_apply_conflict_resolution`
+     (governed_kg.py L296, L467). Intra-batch conflicts ARE seen correctly.
+  2. `LLMConflictResolver` **is** wired by default (`DeliberativeOrchestrator.__init__`,
+     deliberative_orchestrator.py L187-196, gated only by `CONFLICT_RESOLUTION=0` — grep
+     confirms that env var is never set anywhere in this repo). Not disabled.
+  3. The REAL gap: `LLMConflictResolver._describe()` (conflict_resolution.py L69-77)
+     shows the resolver `subject/relation/object`, `confidence`, `source` (an opaque
+     `doc_N_<hash>` id — deliberative_orchestrator.py L561), and an `evidence` snippet —
+     **never a date**. Its own prompt says "If evidence indicates when each statement
+     was true, prefer temporal ordering. If genuinely uncertain, choose coexist" — with
+     no structured recency signal, "genuinely uncertain" is the default outcome, so it
+     systematically returns coexist. This matches the evidence exactly (31–61
+     coexisting same-(subject,relation) pairs vs 0–2 supersedes across 3 cached KGs,
+     and 3/5 stale-serve answers in EXP-ROBUST-VALIDATE).
+  4. Tracing further: `AgentContext` (multi_agent_kg/agents/base.py L86-96) has NO date
+     field at all. `DeliberativeOrchestrator.process_document` accepts a `metadata`
+     kwarg (L535-540) but **drops it on the floor** — never stored on the `AgentContext`
+     it constructs (L566-571). So even a caller that already knows a document's date
+     (LongMemEval's harness does: `format_session(date, turns)`, run_eval.py L79-90,
+     "date header is load-bearing") has no path to get it into triple provenance.
+     `provenance.source_ref()` (provenance.py L50-68) also has no date field.
+  5. Compounding it for LongMemEval specifically: `agent_graph_memory_adapter.py`'s
+     `_ensure_kg_built`/`_run_pipeline` (L175-198, L262-267) joins ALL of a question's
+     dated sessions into one `full_text` blob and makes ONE `process_corpus([document])`
+     call — even if provenance carried a date, one whole-context call can't
+     distinguish which session a given triple came from.
+- **Change (one structural mechanism — "a source document's date must survive into
+  triple provenance" — applied domain-generally, no benchmark vocabulary):**
+  1. `multi_agent_kg/agents/base.py`: add `AgentContext.document_date: Optional[str] = None`.
+  2. `multi_agent_kg/core/deliberative_orchestrator.py`: `process_document` reads
+     `(metadata or {}).get("date")` and passes it into the `AgentContext` it builds;
+     `process_corpus` already threads `doc.get("metadata")` per document — no change
+     needed there beyond documents actually carrying a `"date"` key.
+  3. `multi_agent_kg/core/provenance.py`: `source_ref()` gains an optional
+     `document_date: Optional[str] = None` param, included in the returned dict.
+     Backward compatible (defaults to `None`; DocRED-style undated documents are
+     unaffected).
+  4. `multi_agent_kg/agents/knowledge_organizer.py`: `_integrate_to_kg` gains an
+     optional `document_date` param (passed from `context.document_date` at its one
+     call site, L291) and forwards it into `prov.source_ref(...)`.
+  5. `multi_agent_kg/core/conflict_resolution.py`: `_describe()` reads
+     `triple.metadata.get("provenance", {}).get("refs", [{}])[0].get("document_date")`
+     and appends `date=<value>` to the description when present, so the resolver's
+     existing "prefer temporal ordering" instruction has something to act on.
+  Base commit: `b43b95c`.
+- **Scope correction made DURING implementation, before any run (honest note, not a
+  post-hoc excuse):** the pre-registration originally planned a 6th change —
+  switching `agent_graph_memory_adapter.py`'s LongMemEval ingestion from one
+  concatenated-blob `process_corpus([document])` call to one `process_corpus([...])`
+  call per session, so each triple's `document_date` would be unambiguous. Tracing
+  `DeliberativeOrchestrator` before writing that code surfaced a SECOND, entangled
+  structural gap that makes this unsafe to ship blind in the same experiment:
+  `reuse_corpus_schema` defaults `False` (deliberative_orchestrator.py L107) and
+  `_run_pipeline` never overrides it, so N per-session documents would trigger N
+  independent schema-discovery calls (cost multiplier + possible schema drift across
+  sessions); and `_run_pipeline` explicitly sets `enable_cross_document=False`
+  (L288), so without also flipping that on, the SAME real-world entity (e.g.
+  "Rachel") could resolve to different entity ids per session document —
+  which would make `find_conflicts()`'s subject-based matching miss the conflict
+  entirely, defeating this experiment's own mechanism. Fixing this properly needs
+  its own pre-registration (working name **GB-2b**: per-session dated ingestion with
+  `reuse_corpus_schema=True` + `enable_cross_document=True`, measured for cost and
+  entity-id stability across sessions) — conflating it here would violate "one
+  structural change per experiment" and risk misattributing a schema/entity
+  regression to the date-threading mechanism. **Descoped**: items 1–5 (the
+  domain-general plumbing) ship and are validated by a new integration test
+  exercising `DeliberativeOrchestrator.process_corpus` directly with
+  `reuse_corpus_schema=True` (an already-supported, already-safe combination — see
+  `_lazy_ingest`, L239) and two same-subject, different-date, conflicting documents.
+  The LongMemEval production wiring becomes GB-2b, backlogged after this lands.
+- **Lane & model:** LOCAL Qwen3-30B-A3B (gpu02 free) for pytest/unit + integration
+  validation. No Fireworks dev re-run in this experiment (descoped along with the
+  LongMemEval wiring above — GB-2b will need one).
+- **Slice & control:** new integration test only (no benchmark slice touched).
+  Control: DocRED slice A (singlepass + hybrid) MUST NOT MOVE — `document_date` is
+  `None` for undated DocRED docs, so `_describe()` must omit `date=` exactly as
+  before; re-score cached DocRED runs' provenance shape stays byte-identical modulo
+  the new (empty) field.
+- **Success bar:**
+  (a) unit tests: a resolver `_describe()` call with a dated triple includes
+      `date=...`; without a date, output is byte-identical to pre-change (regression
+      guard); `process_document`/`process_corpus` unit tests confirm `metadata={"date":
+      ...}` reaches `AgentContext.document_date`.
+  (b) integration test: two documents proposing the same (subject, relation) with
+      different objects and different `metadata={"date": ...}`, ingested via one
+      `process_corpus([...], )` call with `reuse_corpus_schema=True` and a
+      deterministic stub conflict_resolver (no live LLM call — asserts the resolver
+      RECEIVES a `date=` in its prompt input, not that an LLM correctly reasons over
+      it) — proves the plumbing is end-to-end connected.
+  (c) with the stub resolver forced to return `supersede`, the integration test
+      confirms `is_superseded()` is True on the old triple and the new one is active
+      — proves the mechanism, not just the plumbing, closes the loop end-to-end.
+  (d) the actual LongMemEval q0/q2/q3 stale-serve fix (does a real dev re-run flip
+      those answers?) is explicitly DEFERRED to GB-2b once per-session ingestion
+      lands — this experiment proves the mechanism works; GB-2b proves it fixes the
+      benchmark. q1/q4 (the hedge pattern) stay out of scope for both, per the
+      EXP-ROBUST-VALIDATE final verdict (separate QA-synthesis issue).
+  (e) pytest baseline 240 still green (+ new tests); DocRED slice-A control scores
+      unchanged (byte-diff the cached scorer output).
+- **Cost estimate:** local unit + integration tests only, no LLM calls (stub
+  resolver) — minutes, zero Fireworks cost. GB-2b will carry the real LLM cost.
+- STATUS: RUNNING — implementing on `worktree-gb8-dedup-guard` branch (freeze already
+  lifted, but keeping the same worktree for continuity). Items 1–5 (base.py,
+  deliberative_orchestrator.py, provenance.py, knowledge_organizer.py,
+  conflict_resolution.py) written; integration test + full pytest next.
+
+### EXP-FRESHNESS-QA verdict  (2026-07-08)
+- **Result:**
+  (a) unit tests: `test_describe_surfaces_document_date_when_present`,
+      `test_describe_omits_date_when_absent`,
+      `test_describe_omits_date_with_no_provenance_at_all` — **PASS**. Dated triples
+      show `date=2022-03-01` in the resolver description; undated triples are
+      byte-identical to pre-change output (no `date=` segment at all).
+  (a cont.) `test_process_document_threads_metadata_date_into_context` /
+      `test_process_document_leaves_document_date_none_without_metadata_date` — **PASS**.
+      `metadata={"date": "2023-12-25"}` passed to `process_document` reaches
+      `AgentContext.document_date`; omitted metadata leaves it `None`.
+  (a cont.) `test_integrate_to_kg_threads_document_date_into_triple_provenance` /
+      `_leaves_document_date_none_when_unset` — **PASS**. The organizer's one
+      `_integrate_to_kg` call site threads `context.document_date` into
+      `triple.metadata["provenance"]["refs"][0]["document_date"]` correctly in both
+      the set and unset cases.
+  (b) `test_conflict_resolver_receives_dated_descriptions` — **PASS**. Two triples
+      proposed via `GovernedKnowledgeGraph.propose_triple` with different
+      `metadata={"provenance": ...document_date=...}` reach the conflict resolver
+      as real `Triple` objects whose `_describe()` output shows BOTH dates
+      (`date=2022-01-01` and `date=2023-12-25`) — proves the full chain
+      (propose_triple → _apply_conflict_resolution → resolver call → _describe)
+      is connected end-to-end, not just unit-level pieces.
+  (c) same test, with the spy resolver returning `SUPERSEDE`: **PASS** —
+      `is_superseded(old)` is True after commit; the mechanism (not just the
+      plumbing) closes the loop from "resolver sees a date" to "old fact marked
+      superseded, new fact active."
+  (e) pytest: **250 passed** (240 baseline + 10 new: 4 in
+      `test_conflict_resolution.py`, 2 in `test_knowledge_organizer.py`, 4 in new
+      `tests/test_document_date_provenance.py`), full suite in 19.65s — no
+      slowdown (an earlier draft of the `process_document` test attempted a real
+      LLM call and cost 42s/run; fixed by monkeypatching `domain_classifier.run`
+      to fail fast instead of timing out against a live endpoint — noted here
+      since it's a reusable lesson for testing pipeline-entry-point wiring
+      without invoking the full 9-stage pipeline). DocRED control: not re-run
+      live — provably a no-op by construction (`document_date` defaults `None`
+      everywhere it isn't explicitly passed, and DocRED's `run_eval.py` never
+      passes `metadata={"date": ...}`; the omit-date unit tests are the byte-diff
+      guarantee, cheaper and more precise than re-running extraction).
+- **Verdict: ACCEPT** (narrowed scope, per the in-flight scope correction above).
+  The domain-general mechanism — "a source document's real-world date, when
+  known, must survive into triple provenance so freshness-sensitive conflict
+  resolution has a recency signal" — is implemented, unit-tested at every hop,
+  and integration-tested end-to-end through the real `GovernedKnowledgeGraph`
+  commit path. This corrects and supersedes the earlier GB-2 diagnostic entry's
+  root-cause framing (find_conflicts() was never the bug; the resolver being
+  wired was never the bug; the missing recency signal in its prompt input was).
+  **NOT yet resolved: the actual LongMemEval stale-serve bug (q0/q2/q3).** That
+  requires GB-2b (per-session dated ingestion with `reuse_corpus_schema=True` +
+  `enable_cross_document=True`) to actually populate `metadata={"date": ...}`
+  during a real benchmark run — this experiment proves the machinery works when
+  fed a date; it does not yet feed LongMemEval's ingestion a date.
+- **Action:** merge to `feat/vector-index-and-qa-improvements` (fast-forward,
+  matching the GB-8 pattern). New backlog item **GB-2b**: per-session dated
+  ingestion for `agent_graph_memory_adapter.py` (LongMemEval/MemoryAgentBench),
+  scoped exactly as described in the scope-correction note above, with its own
+  cost/entity-stability success bar — this is what actually closes GB-2's
+  original symptom (stale QA answers). GB-2 (this experiment) graduates from
+  "NEXT" to "mechanism shipped, GB-2b pending" in the goal backlog.

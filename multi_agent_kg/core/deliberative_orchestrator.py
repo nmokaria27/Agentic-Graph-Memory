@@ -570,6 +570,7 @@ class DeliberativeOrchestrator:
             text=text or "",
             quality_threshold=self.quality_threshold,
             max_iterations=self.max_refinement_iterations,
+            document_date=(metadata or {}).get("date"),
         )
         self._active_source_text = context.text
 

@@ -66,12 +66,30 @@ def _evidence_of(triple: Triple) -> str:
     return ""
 
 
+def _document_date_of(triple: Triple) -> str:
+    """Real-world date of the triple's source document, if any (GB-2).
+
+    None for undated sources (e.g. DocRED articles) — omitted from the
+    description exactly as before this field existed.
+    """
+    md = triple.metadata or {}
+    prov = md.get("provenance") or {}
+    for ref in prov.get("refs") or []:
+        date = ref.get("document_date") if isinstance(ref, dict) else None
+        if date:
+            return str(date)
+    return ""
+
+
 def _describe(triple: Triple) -> str:
     parts = [f"({triple.subject}) -[{triple.relation}]-> ({triple.object})"]
     if triple.confidence is not None:
         parts.append(f"confidence={triple.confidence:.2f}")
     if triple.source:
         parts.append(f"source={triple.source}")
+    date = _document_date_of(triple)
+    if date:
+        parts.append(f"date={date}")
     evidence = _evidence_of(triple)
     if evidence:
         parts.append(f'evidence="{evidence}"')
