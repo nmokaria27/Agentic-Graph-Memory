@@ -1694,6 +1694,27 @@ Return ONLY the JSON."""
 
         return "\n".join(lines) if lines else ""
 
+    def _community_context(self, question: str) -> str:
+        """Query-relevant community summaries (GraphRAG global layer).
+
+        Borrowed QAOrchestrator methods (e.g. _build_global_fallback_context,
+        called with an AdvancedQAOrchestrator as self) invoke
+        self._community_context — this class must provide it or the whole QA
+        query dies with AttributeError on the fallback path (latent since
+        0932808; surfaced by multi-document ingestion triggering fallback
+        more often — EXP-FRESHNESS-E2E local leg, 3/5 questions).
+        """
+        if self.governed_kg is None or not getattr(self.governed_kg, "communities", None):
+            return ""
+        from multi_agent_kg.core.community import community_context
+
+        return community_context(
+            self.governed_kg,
+            question,
+            top_k=self.retrieval_config.community_top_k,
+            vector_store=self.vector_store,
+        )
+
     def _format_debate_results(self, debate_results: List[Dict]) -> str:
         """Format debate resolutions for the synthesizer."""
         if not debate_results:
