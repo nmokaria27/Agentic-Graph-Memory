@@ -37,7 +37,7 @@ def load_wrapper_class():
 def best_kg_snapshot(ckpt_context_dir: str):
     """The per-document snapshots accumulate; take the one with most triples."""
     best, best_n = None, -1
-    for f in glob.glob(os.path.join(ckpt_context_dir, "doc_*", "governed_kg_latest.json")):
+    for f in glob.glob(os.path.join(ckpt_context_dir, "*", "governed_kg_latest.json")):
         try:
             d = json.load(open(f))
             n = len((d.get("knowledge_graph") or d).get("triples", []))
