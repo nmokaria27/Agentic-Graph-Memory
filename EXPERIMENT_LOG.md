@@ -1260,3 +1260,26 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   (same bars as EXP-SPGOV) — old caches still show `'?'` because they were
   dumped with the broken getattr; re-extraction required.
 - **Action:** GB-11 CLOSED; GB-9 unblocked → EXP-SPGOV-2 next.
+
+---
+
+## EXP-SPGOV-2 (GB-9): governed singlepass re-run after GB-11 type propagation  (2026-07-09)
+- **Hypothesis:** EXP-SPGOV's disqualifying entR miss (0.726 vs 0.828) was driven by
+  organizer same-type over-merge that GB-8's type gate should have blocked but could
+  not — entities arrived at stage 9 untyped (GB-11). With types now surviving
+  coref → stage 9 (commit 8ecd19b), the doc_109-class wrong merges ("Spanish"←USA,
+  "Dr. Beat"←5 albums, "1984"←4 years) are mechanically blocked: entR should recover
+  toward the bar while keeping the entP gain governance delivered last run.
+- **Change:** NONE in this experiment — pure measurement of GB-11 (8ecd19b) under
+  `extraction_mode="governed_singlepass"`. Base state: 8ecd19b.
+- **Lane & model:** local gpu02 vLLM Qwen3-30B-A3B-Instruct-2507; gpu01 mxbai
+  embeddings for scoring.
+- **Slice & control:** primary docs 100–119 (n=20) + diagnostic slice A (docs 0–4).
+  Controls: cached singlepass/hybrid scores (untouched). Fresh cache dir
+  (`docred_kg_cache_spgov2`) — never mixed with EXP-SPGOV's.
+- **Success bar (identical to EXP-SPGOV, pre-committed there):** entR ≥ 0.828,
+  entP ≥ 0.728, relF1@0.6 ≥ 0.137, median wall ≤ 90 s/doc, no doc > 3× singlepass
+  wall. Secondary watch (not a bar): doc_109 retained-entity count (was 29→9).
+- **Cost estimate:** ~25 docs, ~1–1.5 h gpu02.
+- STATUS: RUNNING — `nohup bash evaluation/DocRED/exp_spgov2.sh`; log
+  `evaluation/results/exp_spgov2.log`; cache `evaluation/results/docred_kg_cache_spgov2/`
