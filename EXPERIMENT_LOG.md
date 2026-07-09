@@ -1135,3 +1135,51 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   offline vs cached baselines.
 - STATUS: PRE-REGISTERED — implementation next (this entry committed BEFORE any code,
   per the GB-2c process-slip lesson).
+
+### EXP-SPGOV verdict  (2026-07-09 03:45)
+- **Run:** 25/25 docs completed, 0 failures, 1h10m total (gpu02 Qwen3). Primary
+  slice (100–119, n=20) vs pre-committed bars:
+  | bar | target | actual | verdict |
+  |---|---|---|---|
+  | (a) entR | ≥ 0.828 | **0.726** | **MISS −0.102** |
+  | (b) entP | ≥ 0.728 | **0.804** | PASS +0.076 |
+  | (c) relF1@0.6 | ≥ 0.137 | **0.123** | **MISS −0.014** |
+  | (d) median wall | ≤ 90 s/doc | **121 s** (mean 131, max 253; ~13 LLM calls/doc) | **MISS 1.34×** |
+  | (e) sanity | 0 docs >3× triples/ents | 1 (doc_109, 3.33×) | marginal MISS |
+  | (f) tests/controls | 259 green, controls untouched | 259 green | PASS |
+  vs cached same-slice singlepass: entR 0.878→0.726 (−0.152), entP 0.728→0.804
+  (+0.076), pairR 0.209→0.216 (+0.007), relF1@0.6 0.137→0.123. Cost: 15×
+  singlepass (8 s), 0.5× hybrid (~240 s). Slice A (diagnostic): same shape.
+- **Failure diagnosis (hand-traced, doc_109 "Gloria Estefan albums discography",
+  entR 0.33):** wide harvest extracted 29 entities (healthy); **organizer LLM
+  dedup merged 29→9**. The merges are semantically wrong: "Dr. Beat" absorbed
+  FIVE distinct albums, "1984" absorbed 1985/1987/1989/1993, "Spanish" absorbed
+  USA/Spain/Cuban-American. GB-8's guard did not fire because (1) each group was
+  ≤8 and ≤50% of the doc — size-legal — and (2) **the type-compatibility gate was
+  disarmed: every entity reaches stage 9 with NO type** (`entity.get("type")`
+  empty ⇒ gate permissive by design). GB-8's aliases DID survive (labels intact)
+  but a single canonical carrying 6 gold surfaces can only match one gold
+  cluster — recall still lost.
+- **NEW SYSTEMIC FINDING (GB-11):** the type loss is NOT SP-GOV-specific —
+  hybrid's committed entities also dump as `type='?'` (checked
+  docred_kg_cache_gb8_slicea/doc_0). Entity "type" is stripped somewhere between
+  extraction and stage 9 in ALL orchestrator modes, so the GB-8 type gate has
+  been inert in production pipelines since it shipped (its fault-injection tests
+  pass types explicitly, so the gate logic itself is correct and tested). GB-8's
+  slice-A recovery came from the size cap + alias preservation alone. Fixing
+  type propagation should mechanically block the doc_109-class wrong merges
+  (Spanish/USA is exactly a cross-type merge) and likely recovers a meaningful
+  share of SP-GOV's entR miss — and possibly some of hybrid's.
+- **Secondary factors:** verification rejects aggressively on list-heavy docs
+  (doc_109 lost 24→ several triples on technically-correct-but-pedantic grounds);
+  wall driven by verification batches + dedup + domain classification (13
+  calls/doc).
+- **Verdict: REVERT as a production-default candidate** (3 of 5 measured bars
+  missed, honest miss) — but HIGH diagnostic value. The mode stays in-tree
+  (opt-in, tested, zero effect on other paths — precedent: hybrid). The entP
+  +0.076 and pairR parity at half hybrid's cost say the architecture is
+  promising once the dedup over-merge is fixed.
+- **Action:** new goal **GB-11** (type propagation to stage 9 — small fix,
+  disproportionate payoff, benefits ALL modes) → then **EXP-SPGOV-2** re-run
+  against the same bars + cached baselines. Backlog updated; GB-9 stays open,
+  blocked on GB-11.
