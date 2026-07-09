@@ -1032,3 +1032,51 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - **Action:** GB-2c code stays merged (real, if narrower, value). GB-2d added
   to backlog, blocked on design (needs a concrete object-type-signature
   mechanism, domain-general, before pre-registration).
+
+### EXP-FRESHNESS-E2E: FW leg complete + combined final verdict  (2026-07-09 01:47)
+- **FW leg (deepseek-v4-flash, 5 questions, 6h32m total, 5626-14039s/question):**
+  all 5 completed, 0 errors, **no GB-10 crashes** (unlike local — flash's routing
+  apparently doesn't hit the same fallback path as often). Supersedes fired on
+  5/5 questions (1-3 each; bar (a) PASS). Official substring **1/5** (q3).
+  | q | supersedes | substring | hand-read |
+  |---|---|---|---|
+  | q0 | 3 | ✗ | wrong — see extraction divergence below |
+  | q1 | 1 | ✗ | hedge (out of scope) |
+  | q2 | 2 | ✗ | wrong — "suburbs" never extracted at all on this lane |
+  | q3 | 1 | ✓ | correct (mentions both amounts, includes gold $400,000) |
+  | q4 | 3 | ✗ | confidently WRONG ("twice a week" vs gold "three times a week") — a
+    new failure shape, not a hedge |
+- **Hand-read finding: FW leg's failures are extraction-quality, not freshness-
+  mechanism, failures.** q2's KG has ZERO "suburbs" entity — deepseek-v4-flash
+  never extracted the update at all (vs local Qwen3, which extracted
+  `rachel -[MOVED_BACK_TO]-> suburbs` correctly and answered right after the
+  GB-10 fix). q0's KG shows the flash extractor modeled the update as a
+  DIFFERENT entity (`personal_best_time_25`, framed as a goal —
+  "AIMS_TO_BEAT", "IS_A -> goal") rather than an achieved-value update to the
+  same `personal_best_time` entity Qwen3 used — so there's no triple-level
+  conflict for the resolver to even see; the freshness machinery has nothing
+  to resolve because the extractor split one fact into two disjoint entities.
+  This reproduces the project's standing finding (EXP-MODEL-LOCAL, matrix arc):
+  **local Qwen3 is a stronger, more consistent extractor than Fireworks flash
+  for this benchmark** — cross-lane divergence here is extraction quality, not
+  a freshness-mechanism defect. Per doctrine (§5), Fireworks results are
+  evidence, not the reportable number; local Qwen3's B1-0 pass is the result
+  that counts.
+- **Combined verdict across EXP-FRESHNESS-E2E (GB-2b) + the GB-2c smoke test:**
+  **ACCEPT the freshness mechanism** (GB-2 + GB-2b): supersedes fire reliably
+  on both lanes (was ~0 before, now 1-20/question), two of three chronic
+  stale-serve cases now serve the fresh fact on the local (production) lane,
+  and the **B1-0 gate passed for the first time** (three prior runs: 0/5).
+  **GB-2c: PARTIAL ACCEPT** (ships for genuine relation synonyms, does not
+  close the HAS_TIME/HAS_VALUE case — see its own verdict above; GB-2d
+  backlogged for that). **GB-10** (QA fallback crash) found and fixed as a
+  byproduct of GB-2b's ingestion-shape change — reproducible, testable, closed.
+  Remaining known gaps, cleanly separated by root cause: q1/q4 hedge pattern
+  (QA-synthesis confidence, not freshness), q3's original $400k value
+  (extraction recall on the local lane, GB-3), and now q0/q2 on the FW lane
+  specifically (extraction quality gap, not this experiment's mechanism).
+- **Action:** merge worktree branch (`worktree-gb8-dedup-guard`, HEAD after
+  GB-2/2b/GB-10/GB-2c) into `feat/vector-index-and-qa-improvements`; run pytest +
+  `graphify update .` on the merged tree; update backlog — GB-2/GB-2b CLOSED,
+  GB-10 CLOSED, GB-2c PARTIAL (kept), GB-2d added (blocked on design), GB-9
+  (SP-GOV) now the top unblocked goal.
