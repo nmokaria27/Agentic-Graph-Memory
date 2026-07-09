@@ -1080,3 +1080,58 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   `graphify update .` on the merged tree; update backlog — GB-2/GB-2b CLOSED,
   GB-10 CLOSED, GB-2c PARTIAL (kept), GB-2d added (blocked on design), GB-9
   (SP-GOV) now the top unblocked goal.
+
+---
+
+## EXP-SPGOV (GB-9): governed singlepass — wide harvest, skip RHF+deliberation, keep verify+govern  (2026-07-09)
+- **Hypothesis:** the owner-approved architecture direction. Phase 4 + EXP-JUDGE-PHASE4
+  settled that singlepass beats the RHF/deliberation stack on recall at 1/30th cost —
+  but plain singlepass produces an UNGOVERNED graph (no dedup guard, no verification,
+  no conflict resolution, no audit trail, no provenance dates). SP-GOV should keep
+  singlepass-class recall while producing a governed graph: per-segment wide harvest
+  (the proven singlepass recall engine, already in the codebase as wide mode's front
+  end) → coref → convert harvested relation candidates DIRECTLY to triples (zero RHF
+  calls) → skip evidence linking + deliberation (the cost centers; GB-4) → verification
+  (precision layer) → stage-9 organizer (GB-8-guarded dedup + governed commit with
+  GB-2 freshness machinery). Newly unblocked: GB-8 fixed the shared dedup path that
+  collapsed 32→2; GB-2/2b give governed commits date provenance.
+- **Change (one structural mechanism: a third extraction mode, no benchmark
+  vocabulary):**
+  1. `deliberative_orchestrator.py`: `extraction_mode="governed_singlepass"` —
+     EntityExtractor receives "wide" (same harvest front end as hybrid); the mode
+     forces `skip_evidence_linking=True` + `enable_deliberation=False` (existing
+     flags); stage 4 branches to convert `entity_extractor.wide_relation_candidates`
+     into the standard triple dicts (source→subject, target→object, exact-duplicate
+     collapse) with zero RelationExtractor calls. Stages 4b (gated connectivity),
+     8 (verification), 9 (organizer/governance) unchanged.
+  2. `evaluation/DocRED/run_eval.py`: `--strategy spgov` → existing `run_rhf(...)`
+     plumbing with `extraction_mode="governed_singlepass"` (same governed_kg dump
+     path as hybrid — labels included).
+  3. Unit test: orchestrator in this mode never calls RelationExtractor (monkeypatched
+     to raise), converts candidates correctly, forces the two skip flags.
+- **Lane & model:** LOCAL gpu02 Qwen3-30B-A3B + gpu01 embeddings (production lane —
+  this is a reportable architecture decision, not a Fireworks experiment).
+- **Slice & control:** PRIMARY = docs 100–119 (n=20, fresh) vs the CACHED same-slice
+  Qwen3 singlepass baseline (entR 0.878 / entP 0.728 / pairR 0.209 / relF1@0.6 0.137 —
+  SP-GOV baseline prep, 2026-07-07). DIAGNOSTIC = slice A (docs 0–4) vs cached
+  singlepass (0.908/0.783/0.286/0.254) and post-GB-8 hybrid (0.801/0.831/0.247/0.187).
+  Controls untouched: singlepass (standalone function, no shared code) and hybrid
+  ("wide" branch unmodified — new code is gated on the new mode name only).
+- **Success bar (pre-committed; recalibrated against the n=20 Qwen3 cached baseline —
+  the old draft bars (entP ≥ 0.83, relF1 ≥ 0.16) were Nemotron-era slice-A numbers,
+  documented as stale in the SP-GOV baseline prep note):**
+  (a) entR(100–119) ≥ 0.828 (singlepass − 0.05: governance must not cost meaningful
+      recall — hybrid's historic failure);
+  (b) entP(100–119) ≥ 0.728 (≥ singlepass: verify+govern exist to ADD precision;
+      below baseline = the architecture pitch fails);
+  (c) relF1@0.6(100–119) ≥ 0.137 (≥ singlepass same-slice);
+  (d) median wall ≤ 90 s/doc (~≤2.7× singlepass's 8 s; ≥2.5× cheaper than hybrid's
+      ~240 s/doc Qwen3 pacing — the cost pitch);
+  (e) governed-graph sanity: 0 docs with triples > 3× entities; dangling endpoints
+      ≈ 0 (GB-8 regression watch); >0 governance decisions per doc (governance
+      actually engaged, not bypassed);
+  (f) pytest 255+ green; cached singlepass/hybrid scores byte-identical (controls).
+- **Cost estimate:** 25 docs × ~30–90 s ≈ 30–60 min gpu02, zero Fireworks. Scoring
+  offline vs cached baselines.
+- STATUS: PRE-REGISTERED — implementation next (this entry committed BEFORE any code,
+  per the GB-2c process-slip lesson).
