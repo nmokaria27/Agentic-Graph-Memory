@@ -136,7 +136,7 @@ def main():
     ap.add_argument("--data-file", default=os.path.join(os.path.dirname(__file__), "data", "dev_revised.json"))
     ap.add_argument("--max-docs", type=int, default=1)
     ap.add_argument("--offset", type=int, default=0)
-    ap.add_argument("--strategy", choices=["rhf", "singlepass", "hybrid"], default="rhf")
+    ap.add_argument("--strategy", choices=["rhf", "singlepass", "hybrid", "spgov"], default="rhf")
     ap.add_argument("--sc", action="store_true", help="self-consistency (GATED — see EXTRACTION_EXPERIMENTS.md)")
     ap.add_argument("--save-kg-dir", required=True)
     ap.add_argument("--output", required=True)
@@ -172,6 +172,11 @@ def main():
         elif args.strategy == "hybrid":
             entities, triples, error = run_rhf(text, model, self_consistency=args.sc,
                                                extraction_mode="wide")
+        elif args.strategy == "spgov":
+            # GB-9: governed singlepass — wide harvest becomes the triples,
+            # RHF/evidence/deliberation skipped, verify + governed commit kept.
+            entities, triples, error = run_rhf(text, model, self_consistency=args.sc,
+                                               extraction_mode="governed_singlepass")
         else:
             entities, triples, error = run_singlepass(text, model)
         wall = round(time.time() - t0, 1)

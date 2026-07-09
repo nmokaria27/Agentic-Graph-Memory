@@ -169,8 +169,15 @@ class DeliberativeOrchestrator:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         # "deliberative" = original multi-stage front end; "wide" = fused
-        # pipeline (singlepass recall harvest -> same coref/deliberation back end)
+        # pipeline (singlepass recall harvest -> same coref/deliberation back end);
+        # "governed_singlepass" (GB-9 / EXP-SPGOV) = wide harvest front end, but
+        # the harvested relationship candidates BECOME the triples (zero RHF
+        # calls), evidence linking + deliberation are skipped, and only
+        # verification + governed stage-9 integration run on top.
         self.extraction_mode = extraction_mode
+        if extraction_mode == "governed_singlepass":
+            skip_evidence_linking = True
+            enable_deliberation = False
         self.enable_governance = enable_governance or governed_kg is not None
         if governed_kg is not None:
             self.governed_kg = governed_kg
@@ -309,7 +316,10 @@ class DeliberativeOrchestrator:
             quality_threshold=self.quality_threshold,
             use_self_consistency=self.enable_self_consistency,
             enable_deterministic_value_harvesting=self.enable_deterministic_value_harvesting,
-            extraction_mode=self.extraction_mode,
+            # governed_singlepass reuses wide's harvest front end verbatim —
+            # the extractor only understands "deliberative" vs "wide".
+            extraction_mode=("wide" if self.extraction_mode == "governed_singlepass"
+                             else self.extraction_mode),
         )
         
         self.relation_extractor = RelationExtractor(
@@ -531,6 +541,34 @@ class DeliberativeOrchestrator:
             print(f"  Consensus Threshold: 0.6")
             print(f"  Min Votes Required: 2")
         print("=" * 70 + "\n")
+
+    @staticmethod
+    def _wide_candidates_to_triples(candidates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Convert wide-harvest relationship candidates into standard triple
+        dicts (governed_singlepass stage 4): drop malformed/self-loop entries,
+        collapse case-insensitive exact duplicates, keep first-seen confidence.
+        """
+        seen_keys: set = set()
+        triples: List[Dict[str, Any]] = []
+        for cand in candidates or []:
+            if not isinstance(cand, dict):
+                continue
+            subj = str(cand.get("source", "")).strip()
+            obj = str(cand.get("target", "")).strip()
+            rel = str(cand.get("relation", "")).strip()
+            if not (subj and obj and rel) or subj == obj:
+                continue
+            key = (subj.lower(), rel.lower(), obj.lower())
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            try:
+                conf = float(cand.get("confidence", 0.7) or 0.7)
+            except (TypeError, ValueError):
+                conf = 0.7
+            triples.append({"subject": subj, "relation": rel,
+                            "object": obj, "confidence": conf})
+        return triples
 
     def process_document(
         self,
@@ -837,6 +875,25 @@ class DeliberativeOrchestrator:
             if relation_metadata.get("funnel_diagnostics"):
                 results["relation_funnel_diagnostics"] = relation_metadata["funnel_diagnostics"]
             print(f"  SKIPPED (resumed) — {len(triples)} triples from checkpoint")
+        elif self.extraction_mode == "governed_singlepass":
+            # GB-9 / EXP-SPGOV: the wide harvest already extracted relationship
+            # candidates alongside entities (one call per segment). Use them AS
+            # the triples — zero RelationExtractor calls. Verification (stage 8)
+            # and governed integration (stage 9) supply the precision layer.
+            raw = getattr(self.entity_extractor, "wide_relation_candidates", None) or []
+            triples = self._wide_candidates_to_triples(raw)
+            context.relations = triples
+            results["triples_extracted"] = len(triples)
+            relation_metadata = {"governed_singlepass_candidates": len(raw)}
+            relation_confidence = 0.7
+            print(f"  Governed singlepass: {len(triples)} triples from "
+                  f"{len(raw)} wide-harvest candidates (0 RHF calls)")
+            ckpt.save(
+                "4",
+                {"triples": triples, "confidence": relation_confidence,
+                 "metadata": relation_metadata},
+                governed_kg=self.governed_kg,
+            )
         else:
             relation_result = self.relation_extractor.run(
                 context,
