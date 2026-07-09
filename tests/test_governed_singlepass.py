@@ -87,12 +87,25 @@ def test_stage4_uses_candidates_and_never_calls_rhf(monkeypatch):
 
     monkeypatch.setattr(orch.entity_extractor, "run", _fake_entity_run)
 
-    # Cut the run off after stage 4 by making a later stage raise a sentinel.
+    # Cut the run off AFTER stage 4. Important: verification's GB-1 degrade
+    # path catches Exception and continues into stage 9 (LLM dedup) — a
+    # sentinel raised from verification_agent.run is swallowed and the test
+    # hangs on a real LLM call. Stop from knowledge_organizer instead, and
+    # make verification a no-LLM pass-through so we never leave the process.
     class _Stop(Exception):
         pass
 
-    monkeypatch.setattr(orch.verification_agent, "run",
-                        lambda *a, **k: (_ for _ in ()).throw(_Stop()))
+    def _fake_verify(ctx, **kwargs):
+        triples = kwargs.get("triples") or getattr(ctx, "relations", []) or []
+        entities = kwargs.get("entities") or getattr(ctx, "entities", []) or []
+        return _R({"entities": entities, "approved_triples": triples,
+                   "rejected_triples": []})
+
+    monkeypatch.setattr(orch.verification_agent, "run", _fake_verify)
+    monkeypatch.setattr(
+        orch.knowledge_organizer, "run",
+        lambda *a, **k: (_ for _ in ()).throw(_Stop("stage4 done")),
+    )
 
     captured = {}
     real_convert = DeliberativeOrchestrator._wide_candidates_to_triples
@@ -105,11 +118,9 @@ def test_stage4_uses_candidates_and_never_calls_rhf(monkeypatch):
     monkeypatch.setattr(DeliberativeOrchestrator, "_wide_candidates_to_triples",
                         staticmethod(_spy_convert))
 
-    try:
+    with pytest.raises(_Stop):
         orch.process_document(text="Marie Curie won the Nobel Prize.",
                               document_id="spgov_test_doc")
-    except Exception:
-        pass  # later stages need an LLM/are sentinel-stopped; stage 4 already ran
 
     assert captured.get("triples") == [
         {"subject": "Marie Curie", "relation": "WON", "object": "Nobel Prize",

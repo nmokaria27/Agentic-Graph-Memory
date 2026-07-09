@@ -168,7 +168,7 @@ def run_rhf(model, self_consistency=False):
     orphan_n = sum(1 for eid in ents if eid not in conn)
     rel_types = {getattr(t, "relation", "").lower() for t in gkg.triples}
     _dump_graph("rhf",
-                [f"{eid}::{getattr(e, 'entity_type', '?')}" for eid, e in ents.items()],
+                [f"{eid}::{getattr(e, 'type', None) or '?'}" for eid, e in ents.items()],
                 [(t.subject, t.relation, t.object) for t in gkg.triples])
     return {"entities": len(ents), "triples": len(gkg.triples),
             "relation_types": len(rel_types), "avg_degree": round(2 * len(gkg.triples) / max(len(ents), 1), 2),

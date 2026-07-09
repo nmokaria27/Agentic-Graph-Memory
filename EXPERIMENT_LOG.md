@@ -7,7 +7,7 @@ not reportable numbers; local-lane DocRED verdicts also go to
 `evaluation/DocRED/MATRIX_REPORT.md`. `evaluation/results/` is gitignored — numbers only
 survive if written here.
 
-Test baseline: **255 passing** (`python -m pytest -q`; was 237 before GB-8/GB-2/2b/2c/GB-10).
+Test baseline: **266 passing** (`python -m pytest -q`; was 255 before GB-11 / EXP-TYPE-PROP + SPGOV hang fix).
 
 **Naming (2026-07-07, owner request):** experiments carry descriptive names; the original
 sequential ids remain as aliases (commits/logs reference them). Convention:
@@ -1183,3 +1183,80 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   disproportionate payoff, benefits ALL modes) → then **EXP-SPGOV-2** re-run
   against the same bars + cached baselines. Backlog updated; GB-9 stays open,
   blocked on GB-11.
+
+---
+
+## EXP-TYPE-PROP (GB-11): preserve entity types through coref → stage 9 → KG dump  (2026-07-09)
+- **Hypothesis:** EXP-SPGOV's disqualifying entR miss (0.726 vs 0.828) was driven by
+  organizer same-type over-merge on list-heavy docs (doc_109: 29→9; "Spanish"
+  absorbed USA/Cuban-American). GB-8's type-compatibility gate should have blocked
+  those merges, but every entity reaches stage 9 / the committed KG with no usable
+  type — so the gate is permissive by design. Fixing type propagation re-arms GB-8
+  for ALL orchestrator modes (spgov, hybrid, rhf) and should mechanically recover
+  the doc_109-class wrong merges without any benchmark-specific logic.
+- **Root-cause trace (pre-implementation):**
+  1. **Eval dump bug (measurement + diagnosis):** `run_eval.py` (DocRED + LongMemEval)
+     reads `getattr(e, "entity_type", "?")`, but `Entity` stores the field as `.type`
+     (`add_entity(..., entity_type=...)` → `Entity.type`). Every cached KG therefore
+     dumps `type='?'` even when the live object holds a real type — this is why the
+     SP-GOV diagnosis saw `'?'` on hybrid caches too.
+  2. **Coref type wipe:** `_stage4_coreference_resolution` sets
+     `etype = group.get("type", "UNKNOWN")` from the LLM group and never inherits
+     member extraction types when the LLM omits/defaults type. Resolved entities
+     then carry `UNKNOWN`, and GB-8 treats `UNKNOWN == UNKNOWN` as same-type
+     (eligible), so the gate never fires.
+  3. **Gate blank-type set incomplete:** empty string is permissive, but
+     `UNKNOWN` / `?` are treated as real types — two untyped entities "match".
+- **Change (one structural mechanism: type must survive extraction → commit):**
+  1. Coref: when LLM group type is blank/`UNKNOWN`/`?`, inherit a non-blank type
+     from matched member entities (majority; first non-blank fallback).
+  2. Organizer GB-8 gate: treat `UNKNOWN` / `?` as blank (permissive only when
+     *either* side lacks a real type; two blanks no longer count as same-type match
+     via string equality — they stay permissive via the empty-side clause, which is
+     correct; the bug was `UNKNOWN==UNKNOWN` looking like a positive type match).
+  3. Eval dumps: read `Entity.type` (and labels[0]/id for name) in DocRED +
+     LongMemEval runners so caches reflect committed types.
+  4. Fault-injection tests: (a) coref inherits member type when LLM omits it;
+     (b) end-to-end integrate preserves type on the committed Entity; (c) dump
+     helper reads `.type` not `.entity_type`.
+- **Lane & model:** local unit tests first (no GPU). Validation smoke = offline
+  re-dump is N/A (types live on objects, not old caches). Live confirmation =
+  EXP-SPGOV-2 on the same bars after this lands (separate experiment).
+- **Slice & control:** unit/fault-injection only for this EXP. Controls: existing
+  GB-8 tests must stay green (they pass types explicitly). No DocRED re-score
+  until EXP-SPGOV-2.
+- **Success bar:**
+  (a) pytest green at ≥255 baseline + new tests;
+  (b) committed `Entity.type` equals extraction type in the e2e integrate test;
+  (c) dump of a typed Entity yields that type (not `'?'`);
+  (d) coref with LLM type=`UNKNOWN` + member type=`PERSON` → resolved type `PERSON`;
+  (e) GB-8 still blocks Person←Location; two `UNKNOWN` entities remain merge-eligible
+      only via the blank-side permissive clause (documented), not via false same-type.
+- **Cost estimate:** minutes (tests). No Fireworks / no gpu02.
+- STATUS: RUNNING — implementing now.
+
+### EXP-TYPE-PROP verdict  (2026-07-09)
+- **Result:** all pre-committed bars hit:
+  | bar | result |
+  |---|---|
+  | (a) pytest | **266 passed** (was 255; +7 GB-11 tests; SPGOV suite no longer hangs) |
+  | (b) integrate preserves type | PASS — `Entity.type` = LANGUAGE/LOCATION |
+  | (c) dump reads `.type` | PASS — was always `'?'` via nonexistent `.entity_type` |
+  | (d) coref inherits member type | PASS — LLM `UNKNOWN` + members PERSON → PERSON |
+  | (e) GB-8 cross-type still blocked; UNKNOWN blank-clause documented | PASS |
+- **Shipped:**
+  - `multi_agent_kg/agents/entity_types.py` — shared `is_blank_entity_type` /
+    `inherit_type_from_members`
+  - coref inherits member extraction types when LLM group type is blank/UNKNOWN/?
+  - organizer LLM + semantic dedup treat UNKNOWN/? as blank (re-arms GB-8)
+  - DocRED + LongMemEval + extraction_experiment dumps read `Entity.type`
+  - `tests/test_type_propagation.py` (7 tests)
+  - **Collateral:** `test_stage4_uses_candidates_and_never_calls_rhf` hung the
+    full suite — its `_Stop` sentinel was raised from `verification_agent.run`,
+    which GB-1's degrade path catches and continues into stage-9 LLM dedup.
+    Fixed: stop from `knowledge_organizer.run` instead; verification is a
+    no-LLM pass-through. Latent since EXP-SPGOV / GB-1 interaction.
+- **Verdict: ACCEPT.** Live DocRED confirmation deferred to **EXP-SPGOV-2**
+  (same bars as EXP-SPGOV) — old caches still show `'?'` because they were
+  dumped with the broken getattr; re-extraction required.
+- **Action:** GB-11 CLOSED; GB-9 unblocked → EXP-SPGOV-2 next.
