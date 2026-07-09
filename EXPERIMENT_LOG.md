@@ -7,7 +7,7 @@ not reportable numbers; local-lane DocRED verdicts also go to
 `evaluation/DocRED/MATRIX_REPORT.md`. `evaluation/results/` is gitignored — numbers only
 survive if written here.
 
-Test baseline: **237 passing** (`python -m pytest -q`; was 235 before EXP-ROBUST-DEGRADE).
+Test baseline: **255 passing** (`python -m pytest -q`; was 237 before GB-8/GB-2/2b/2c/GB-10).
 
 **Naming (2026-07-07, owner request):** experiments carry descriptive names; the original
 sequential ids remain as aliases (commits/logs reference them). Convention:
