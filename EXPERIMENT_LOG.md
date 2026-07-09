@@ -1283,3 +1283,37 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - **Cost estimate:** ~25 docs, ~1–1.5 h gpu02.
 - STATUS: RUNNING — `nohup bash evaluation/DocRED/exp_spgov2.sh`; log
   `evaluation/results/exp_spgov2.log`; cache `evaluation/results/docred_kg_cache_spgov2/`
+
+### EXP-SPGOV-2 verdict  (2026-07-09)
+- **Result (primary docs 100–119, n=20, vs the unchanged EXP-SPGOV bars):**
+  | bar | target | SPGOV-1 | SPGOV-2 | |
+  |---|---|---|---|---|
+  | entity recall | ≥ 0.828 | 0.726 | **0.739** | MISS |
+  | entity precision | ≥ 0.728 | 0.804 | **0.764** | PASS |
+  | relF1@0.6 | ≥ 0.137 | 0.123 | **0.137** | PASS (at bar) |
+  | median wall | ≤ 90 s | 121 s | **123.9 s** | MISS |
+  | pairR (watch) | — | 0.216 | 0.214 | flat |
+- **GB-11 validated LIVE — the type fix works exactly as designed:**
+  - doc_109 (the motivating pathology): 9 → **21 committed entities**, all five years
+    (1984/85/87/89/93) and all five absorbed albums survive as separate typed
+    entities (`DATE`×5, `MUSIC_RELEASE`×9). Cross-type merges are gone.
+  - Over-merge docs recovered big: doc_109 entR +0.297, doc_118 Le Ventre +0.428,
+    doc_107 +0.182. Real types now reach committed KGs in every dump.
+- **Why entR still misses (two residual mechanisms, both traced on doc_100):**
+  1. **Same-type over-merge** — stage-9 dedup merged 16/37 (43%) on doc_100; with a
+     coarse 5-type discovered schema most entities share a type, so the GB-8 type
+     gate is *correctly permissive* for these (1911/1992 absorbed by 1939 — all
+     `DATE`). The gate can never block within-type merges by design; distinct
+     numeric/date **literals** merging is the remaining pathology (→ GB-12).
+  2. **Wide-harvest run variance** — doc_100 post-coref was 37 this run vs ≥51 in
+     SPGOV-1 (doc_102 −0.38, Paul Morphy −0.20 similarly). Nondeterminism, not the fix.
+- **Verdict: REVERT (×2) as production default.** SP-GOV keeps its entP edge and
+  relF1 just reached the bar, but entR is structurally short and wall time is
+  ~40% over bar with no latency lever in this mode yet. Mode stays in-tree opt-in.
+  GB-9 CLOSED as an architecture bet until GB-12 (literal-merge guard) + GB-4
+  (call parallelization for the wall bar) land — re-opening then is cheap since
+  bars + caches + script are all preserved.
+- **Action:** backlog updated — GB-9 closed (REVERT ×2, re-open blocked on
+  GB-12+GB-4); new **GB-12**: distinct numeric/date literals must never merge in
+  stage-9 dedup (domain-general guard, no dataset vocabulary; benefits all modes —
+  hybrid has the same exposure).
