@@ -1317,3 +1317,39 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   GB-12+GB-4); new **GB-12**: distinct numeric/date literals must never merge in
   stage-9 dedup (domain-general guard, no dataset vocabulary; benefits all modes —
   hybrid has the same exposure).
+
+---
+
+## EXP-LITERAL-GUARD (GB-12): distinct numeric/date literals must never merge in stage-9 dedup  (2026-07-09)
+- **Hypothesis:** EXP-SPGOV-2 traced the residual same-type over-merge to literal
+  absorption (doc_100: 1911/1992 absorbed by 1939 — all `DATE`, size-legal group, so
+  GB-8's type gate is correctly permissive). Two distinct entities whose surfaces
+  denote different numbers/dates can NEVER be the same entity in any domain —
+  blocking those merges is a pure recall win with negligible precision cost
+  (blocked merges keep both entities). Exposure exists in BOTH stage-9 paths:
+  the LLM merge-group eligibility loop AND `_find_semantic_duplicates` (trigram
+  cosine of "1984"/"1985" shares " 19"/"198"/"984" grams and can clear 0.88).
+- **Change (one structural mechanism, zero LLM calls, no dataset vocabulary):**
+  `numeric_signature(text)` = tuple of digit runs after stripping thousands
+  separators; `literal_conflict(a, b)` = both surfaces carry digits AND their
+  signatures differ. Applied as a hard block in (1) the LLM merge-group
+  eligibility check and (2) the semantic-dedup pair loop. Identical-literal
+  duplicates ("1984"/"1984") and digit-free merges are untouched. Known scope
+  limit (logged, not fixed here): coref inside EntityExtractor could still
+  group distinct literals — stage-9 is where the SPGOV-2 damage happened.
+- **Lane & model:** unit/fault-injection tests locally (no GPU); diagnostic n=5
+  live smoke on gpu02 (idle), local Qwen3.
+- **Slice & control:** fault-injection tests mirror the doc_100 pathology
+  (year-absorbing merge response). Controls: all existing GB-8/GB-11 dedup tests
+  must stay green; identical-name dedup unchanged. Diagnostic (NOT a bar,
+  n=5 = runs/doesn't per doctrine): re-run spgov docs 100–104 into a fresh cache,
+  watch doc_100 merged-count (was 16/37) and entR (was 0.462).
+- **Success bar:**
+  (a) pytest green at ≥266 + new tests;
+  (b) fault-injection: LLM merge response `1939 ← [1911, 1992]` (all `DATE`)
+      leaves all three entities committed;
+  (c) semantic dedup does not merge "1984"/"1985" (same type) — but still merges
+      a digit-free near-duplicate pair;
+  (d) controls: existing dedup/type tests untouched and green.
+- **Cost estimate:** minutes (tests) + ~12 min gpu02 (diagnostic).
+- STATUS: RUNNING — implementing after this pre-registration is committed.
