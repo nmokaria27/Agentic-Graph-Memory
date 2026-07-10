@@ -30,6 +30,7 @@ from multi_agent_kg.agents.base import (
     ModelTier,
     MemoryType,
 )
+from multi_agent_kg.agents.entity_types import inherit_type_from_members
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Entity
 from multi_agent_kg.core import provenance as prov
 from multi_agent_kg.core.memory import SharedMemory
@@ -814,10 +815,10 @@ class EntityExtractor(BaseAgent):
                 raw_id = group.get("canonical_id", "")
                 canonical_name = group.get("canonical_name", "")
                 mentions = group.get("mentions", [])
-                etype = group.get("type", "UNKNOWN")
+                llm_etype = group.get("type", "UNKNOWN")
 
                 # Skip UNRESOLVED or pronoun/generic canonical names
-                if etype.upper() == "UNRESOLVED":
+                if (llm_etype or "").upper() == "UNRESOLVED":
                     continue
                 if _is_generic_reference(canonical_name):
                     continue
@@ -835,6 +836,7 @@ class EntityExtractor(BaseAgent):
                 source_document_ids: List[str] = []
                 source_texts: List[str] = []
                 member_confidences: List[float] = []
+                member_types: List[str] = []
                 merged_provenance: Optional[Dict[str, Any]] = None
                 mention_keys = {
                     str(value).lower().strip()
@@ -863,12 +865,20 @@ class EntityExtractor(BaseAgent):
                             member_confidences.append(float(original.get("confidence", 0) or 0))
                         except (TypeError, ValueError):
                             pass
+                        member_type = original.get("type")
+                        if member_type:
+                            member_types.append(str(member_type))
                         member_prov = original.get("provenance")
                         if member_prov:
                             merged_provenance = (
                                 prov.merge(merged_provenance, member_prov)
                                 if merged_provenance else member_prov
                             )
+
+                # GB-11: keep a real extraction type when the LLM group omits
+                # or defaults type to UNKNOWN — otherwise stage-9 GB-8 sees
+                # every entity as same-typed and the gate never fires.
+                etype = inherit_type_from_members(llm_etype, member_types)
 
                 # Propagate extraction confidence through coreference instead of
                 # flattening every group to 0.7/0.8. Flattening pushed nearly all

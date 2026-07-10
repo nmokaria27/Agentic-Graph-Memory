@@ -24,6 +24,7 @@ from multi_agent_kg.agents.base import (
     ModelTier,
     MemoryType,
 )
+from multi_agent_kg.agents.entity_types import is_blank_entity_type
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Entity, Triple
 from multi_agent_kg.core import provenance as prov
 from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
@@ -384,7 +385,9 @@ class KnowledgeOrganizer(BaseAgent):
             # triple endpoints left dangling to deleted entities). Three
             # domain-general guards, none keyed to any dataset vocabulary:
             #   1. type-compatibility — an entity may only merge into a
-            #      canonical of the same type (empty/unknown type permissive)
+            #      canonical of the same *real* type (blank/UNKNOWN/? on
+            #      either side stays permissive; GB-11: UNKNOWN==UNKNOWN
+            #      must NOT count as a positive same-type match)
             #   2. merge-group size cap — real coref clusters are small; a
             #      group swallowing half the doc is pathology, not resolution
             #   3. merge-into-aliases — canonical absorbs merged surface
@@ -411,6 +414,8 @@ class KnowledgeOrganizer(BaseAgent):
                     skipped_groups += 1
                     continue
                 canon_type = (canonical.get("type") or "").strip().upper()
+                if is_blank_entity_type(canon_type):
+                    canon_type = ""
 
                 eligible = []
                 for mid in merge_ids:
@@ -420,6 +425,8 @@ class KnowledgeOrganizer(BaseAgent):
                     if target is None:
                         continue
                     t_type = (target.get("type") or "").strip().upper()
+                    if is_blank_entity_type(t_type):
+                        t_type = ""
                     if not canon_type or not t_type or t_type == canon_type:
                         eligible.append(mid)
                 if not eligible:
@@ -489,7 +496,12 @@ class KnowledgeOrganizer(BaseAgent):
 
         normalized = [normalized_text(entity) for entity in entities]
         vectors = [trigram_vector(text) for text in normalized]
-        types = [(entity.get("type") or "").upper() for entity in entities]
+        # GB-11: UNKNOWN/? are not real type signals — treat as blank so
+        # type-aware semantic merge doesn't treat UNKNOWN==UNKNOWN as a match.
+        types = []
+        for entity in entities:
+            raw = (entity.get("type") or "").upper()
+            types.append("" if is_blank_entity_type(raw) else raw)
 
         # Optional embedding-based similarity: catches synonym/abbreviation
         # duplicates ("NYC" vs "New York City") that trigram overlap misses.

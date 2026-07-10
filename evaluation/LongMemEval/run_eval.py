@@ -98,8 +98,8 @@ def dump_kg(wrapper):
     if gkg is None:
         return [], []
     entities = [
-        {"id": eid, "type": str(getattr(e, "entity_type", "?")),
-         "name": str(getattr(e, "name", eid)),
+        {"id": eid, "type": str(getattr(e, "type", None) or "?"),
+         "name": str((getattr(e, "labels", None) or [None])[0] or eid),
          "labels": [str(l) for l in (getattr(e, "labels", None) or [])]}
         for eid, e in gkg.entities.items()
     ]
