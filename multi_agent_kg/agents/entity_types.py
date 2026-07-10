@@ -1,16 +1,43 @@
-"""Shared entity-type helpers (GB-8 / GB-11).
+"""Shared entity merge-guard helpers (GB-8 / GB-11 / GB-12).
 
 Kept outside EntityExtractor / KnowledgeOrganizer so both can import without
 circular dependencies. Blank types are not usable signals for type-compatibility
-gates: UNKNOWN==UNKNOWN must not look like a positive same-type match.
+gates: UNKNOWN==UNKNOWN must not look like a positive same-type match. Distinct
+numeric/date literals are never the same entity in any domain.
 """
 
 from __future__ import annotations
 
+import re
 from collections import Counter
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 _BLANK_ENTITY_TYPES = frozenset({"", "UNKNOWN", "?"})
+
+_DIGIT_RUN = re.compile(r"\d+")
+# "1,000"-style thousands separators between digit groups — collapse so
+# "1,000" and "1000" share a signature.
+_THOUSANDS_SEP = re.compile(r"(?<=\d)[,.](?=\d{3}(?:\D|$))")
+
+
+def numeric_signature(text: Optional[str]) -> Tuple[str, ...]:
+    """Digit runs of a surface form, thousands separators collapsed."""
+    cleaned = _THOUSANDS_SEP.sub("", text or "")
+    return tuple(_DIGIT_RUN.findall(cleaned))
+
+
+def literal_conflict(a: Optional[str], b: Optional[str]) -> bool:
+    """True when both surfaces carry digits and those digits differ.
+
+    GB-12: "1911" and "1939" (or "1 million" and "100 million") denote
+    different literals — no coreference can make them the same entity, so
+    stage-9 dedup must never merge them regardless of type or string
+    similarity. Digit-free surfaces are never blocked here.
+    """
+    sig_a, sig_b = numeric_signature(a), numeric_signature(b)
+    if not sig_a or not sig_b:
+        return False
+    return sig_a != sig_b
 
 
 def is_blank_entity_type(etype: Optional[str]) -> bool:

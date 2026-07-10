@@ -24,7 +24,7 @@ from multi_agent_kg.agents.base import (
     ModelTier,
     MemoryType,
 )
-from multi_agent_kg.agents.entity_types import is_blank_entity_type
+from multi_agent_kg.agents.entity_types import is_blank_entity_type, literal_conflict
 from multi_agent_kg.core.knowledge_graph import KnowledgeGraph, Entity, Triple
 from multi_agent_kg.core import provenance as prov
 from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
@@ -392,8 +392,14 @@ class KnowledgeOrganizer(BaseAgent):
             #      group swallowing half the doc is pathology, not resolution
             #   3. merge-into-aliases — canonical absorbs merged surface
             #      forms so no gold-matchable name is lost on merge
+            #   4. literal guard (GB-12) — surfaces denoting distinct
+            #      numbers/dates ("1911" vs "1939") never merge; the type
+            #      gate is correctly permissive for same-type literals, so
+            #      this is the only thing standing between a coarse
+            #      discovered schema and year-absorption
             malformed_groups = 0
             skipped_groups = 0
+            literal_blocked_total = 0
             by_id = {e.get("id", e.get("text", "")): e for e in remaining}
             doc_size = len(remaining)
             removed: Set[str] = set()
@@ -418,17 +424,26 @@ class KnowledgeOrganizer(BaseAgent):
                     canon_type = ""
 
                 eligible = []
+                literal_blocked = 0
                 for mid in merge_ids:
                     if mid == canonical_id or mid in removed:
                         continue
                     target = by_id.get(mid)
                     if target is None:
                         continue
+                    if literal_conflict(
+                        canonical.get("text") or canonical_id,
+                        target.get("text") or mid,
+                    ):
+                        literal_blocked += 1
+                        continue
                     t_type = (target.get("type") or "").strip().upper()
                     if is_blank_entity_type(t_type):
                         t_type = ""
                     if not canon_type or not t_type or t_type == canon_type:
                         eligible.append(mid)
+                if literal_blocked:
+                    literal_blocked_total += literal_blocked
                 if not eligible:
                     continue
 
@@ -457,6 +472,9 @@ class KnowledgeOrganizer(BaseAgent):
             if skipped_groups:
                 print(f"      WARNING: skipped {skipped_groups} merge group(s) that failed "
                       f"the dedup guard (missing canonical / oversized or type-mismatched group)")
+            if literal_blocked_total:
+                print(f"      Literal guard: blocked {literal_blocked_total} merge(s) of "
+                      f"distinct numeric/date surfaces (GB-12)")
 
         merged_count = len(entities) - len(remaining)
         return remaining, merged_count
@@ -538,6 +556,10 @@ class KnowledgeOrganizer(BaseAgent):
                 if other_idx in consumed:
                     continue
                 if types[idx] and types[other_idx] and types[idx] != types[other_idx]:
+                    continue
+                # GB-12: "1984"/"1985" share enough trigrams to clear 0.88 —
+                # distinct literals are never duplicates, whatever the score.
+                if literal_conflict(normalized[idx], normalized[other_idx]):
                     continue
                 similarity = cosine_similarity(vectors[idx], vectors[other_idx])
                 if similarity < 0.88:
