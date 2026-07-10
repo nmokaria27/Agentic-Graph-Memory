@@ -1353,3 +1353,25 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   (d) controls: existing dedup/type tests untouched and green.
 - **Cost estimate:** minutes (tests) + ~12 min gpu02 (diagnostic).
 - STATUS: RUNNING — implementing after this pre-registration is committed.
+
+### EXP-LITERAL-GUARD verdict  (2026-07-09)
+- **Result — all pre-committed bars hit:**
+  | bar | result |
+  |---|---|
+  | (a) pytest | **270 passed** (was 266; +4 literal-guard tests) |
+  | (b) LLM merge `1939 ← [1911, 1992]` blocked | PASS (all three survive; digit-free merge in same response unaffected) |
+  | (c) semantic dedup "1984"/"1985" blocked, digit-free near-dup still merges | PASS |
+  | (d) controls (GB-8/GB-11 dedup + type tests) | green, untouched |
+- **Diagnostic (n=5 spgov docs 100–104, runs/doesn't only):** doc_100 — the
+  motivating pathology — committed 21 → **42 entities**, entR 0.462 → **0.808**,
+  digit-bearing survivors 2 → 5 (1911/1939/1950s/1960s/1992 all present).
+  Other 4 docs within run-variance (−0.05…0). 5-doc aggregate entP 0.86.
+- **Finding:** the year-absorption path was the **embedding tier of semantic
+  dedup**, not the LLM merge groups — "1911"/"1939" share only ~2/6 trigrams
+  (cosine ≈0.33, below 0.88) but their mxbai embeddings clear 0.85. The LLM-path
+  guard print never fired; the semantic-path guard has no print (minor
+  observability gap — add a counter if it ever matters).
+- **Verdict: ACCEPT.** Guard is zero-LLM, zero dataset vocabulary, benefits all
+  modes (hybrid has the same embedding-dedup exposure).
+- **Action:** GB-12 CLOSED (commit 0015386). GB-9 re-open now blocked only on
+  GB-4 (wall bar — call parallelization). Test baseline now **270**.
