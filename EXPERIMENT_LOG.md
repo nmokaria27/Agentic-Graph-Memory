@@ -1375,3 +1375,41 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   modes (hybrid has the same embedding-dedup exposure).
 - **Action:** GB-12 CLOSED (commit 0015386). GB-9 re-open now blocked only on
   GB-4 (wall bar — call parallelization). Test baseline now **270**.
+
+---
+
+## EXP-PAPER-COMPARE: current best stack vs the paper's Table 2 protocol  (2026-07-10)
+- **Hypothesis:** the paper ("From Extraction to Governed Memory", ACL sub 6433)
+  measured MAGG on the SciERC test split (100 docs, GPT-5, fixed schema):
+  strict F1 0.156 / mapped F1 0.290, governance delta over flat insertion
+  +47% strict / +51% mapped. Since then the loop shipped GB-1 (no silent loss),
+  GB-8 (dedup guards), GB-2/2b (freshness — inert on undated SciERC by design),
+  GB-10 (advanced-QA fallback crash), GB-11 (types reach stage 9), GB-12
+  (literal guard), and the production model moved to local Qwen3-30B. The
+  current stack should preserve or widen the paper's *internal* governance
+  delta, and its absolute numbers should be competitive with the paper's
+  GPT-5 numbers despite a 30B local model.
+- **Change:** NONE — pure milestone measurement of HEAD (667d239) using the
+  paper's own in-tree harness (`build_governed_scierc.py` /
+  `build_ungoverned_scierc.py`, `--split test --max-docs 100 --fixed-schema`,
+  canonicalize → `evaluate_kg.py` for strict+mapped).
+- **Lane & model:** local gpu02 Qwen3-30B-A3B (GPT-5 NOT reproducible — the
+  paper's `OPENAI_API_KEY_BACKUP` is no longer configured). The model confound
+  is EXPLICIT: absolute deltas vs the paper mix code+model; the flat-vs-MAGG
+  delta WITHIN this run is model-controlled and is the primary comparison.
+- **Slice & control:** SciERC test split docs 0–99 (the paper's own eval set —
+  never used by the improvement loop, which tuned only on DocRED/LongMemEval
+  dev slices; cross-benchmark validation per doctrine guard #5). Control =
+  flat insertion condition, same model, built by the same run.
+- **Pre-committed comparison questions (descriptive, not accept/revert bars):**
+  (Q1) internal governance delta: MAGG strict-F1 relative gain over flat
+       ≥ +47%? mapped ≥ +51%?
+  (Q2) absolute: current MAGG strict F1 vs 0.156, mapped vs 0.290;
+  (Q3) graph shape: entities/triples counts vs paper's 1731/1077 (over- vs
+       under-admission drift);
+  (Q4) robustness: 100/100 docs complete, zero silent drops (GB-1 check).
+- **Cost estimate:** governed ~2–3 min/doc + flat ~1 min/doc on Qwen3 ≈ 5–7 h
+  sequential on gpu02. Zero external API cost.
+- STATUS: RUNNING — `nohup bash evaluation/exp_paper_compare.sh`; log
+  `evaluation/results/exp_paper_compare.log`; artifacts
+  `evaluation/results/scierc_{governed,flat}_qwen3_test_100*.json`
