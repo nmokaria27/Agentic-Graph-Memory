@@ -1413,3 +1413,42 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - STATUS: RUNNING — `nohup bash evaluation/exp_paper_compare.sh`; log
   `evaluation/results/exp_paper_compare.log`; artifacts
   `evaluation/results/scierc_{governed,flat}_qwen3_test_100*.json`
+
+---
+
+## EXP-ASYNC-BATCH (GB-4): bounded parallel fan-out for per-batch LLM calls  (2026-07-10)
+- **Hypothesis:** stage wall time is dominated by SEQUENTIAL independent LLM calls
+  (spgov doc: ~34 calls; verification 3 batches + coref 2 batches + evidence
+  N batches run one-after-another though each batch is self-contained). vLLM
+  serves concurrent requests efficiently, so dispatching independent batches
+  through a bounded thread pool should cut median wall 25%+ with byte-identical
+  aggregation semantics. This is the only remaining blocker for re-opening GB-9
+  (EXP-SPGOV-2 wall 123.9 s vs ≤90 s bar).
+- **Change (one structural mechanism):** `multi_agent_kg/core/parallel.py` —
+  `map_batches(worker, batches)` dispatches via ThreadPoolExecutor bounded by
+  env `LLM_BATCH_CONCURRENCY`, collecting results in SUBMISSION ORDER. Default
+  (unset/≤1) = plain sequential loop — the control cannot move by construction.
+  Applied to exactly three fan-out sites, moving ONLY the prompt-build+LLM call
+  into workers (all aggregation stays ordered on the main thread): verification
+  batches, coref batches (per-batch GB-1 passthrough preserved inside the
+  worker), evidence-linking batches.
+- **Lane & model:** implemented in the gb8-dedup-guard worktree (main tree is
+  FROZEN — EXP-PAPER-COMPARE is running from it). Validation on the Fireworks
+  lane (deepseek-v4-flash) FROM THE WORKTREE. No merge to feat until the
+  freeze lifts.
+- **Slice & control:** spgov docs 100–104 (dev diagnostic slice), two arms,
+  fresh cache dirs: arm A `LLM_BATCH_CONCURRENCY=1` (control), arm B `=4`.
+  Same model, same code, env is the only delta.
+- **Success bar:**
+  (a) pytest green ≥270 + new tests (order preservation under out-of-order
+      completion; sequential fallback when env unset; exception propagation
+      matches sequential semantics);
+  (b) arm B median wall ≥25% below arm A on the 5 docs;
+  (c) quality watch: per-doc pred_entities/pred_triples within ±20% between
+      arms (LLM nondeterminism allowed; no collapses, no empty docs).
+  Local confirmation (EXP-SPGOV-3 vs the 90 s bar on gpu02) is a SEPARATE
+  follow-up after the paper-compare freeze lifts — Fireworks wall ratios are
+  evidence, not reportable numbers.
+- **Cost estimate:** ~10 docs × ~30 flash calls ≈ 300 Fireworks calls, minutes
+  of wall; zero gpu02 contention.
+- STATUS: RUNNING — implementing in worktree after committing this pre-registration.
