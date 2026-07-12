@@ -2306,10 +2306,11 @@ class RelationExtractor(BaseAgent):
         batch_size = 10
         all_new_triples = []
 
-        for i in range(0, len(disconnected), batch_size):
-            batch = disconnected[i:i + batch_size]
+        batches = [disconnected[i:i + batch_size]
+                   for i in range(0, len(disconnected), batch_size)]
 
-            # Format entities for prompt
+        def _connectivity_batch(index, batch):
+            # Worker: prompt build + LLM call only (GB-4 fan-out safe).
             disc_str = "\n".join(
                 f"- {e.get('id', '?')}: \"{e.get('text', e.get('labels', ['?'])[0] if e.get('labels') else '?')}\" (type: {e.get('type', '?')})"
                 for e in batch
@@ -2329,13 +2330,15 @@ class RelationExtractor(BaseAgent):
                 relation_types=", ".join(relation_types) if relation_types else "none discovered yet",
             )
 
-            result = self.call_llm(
+            return self.call_llm(
                 prompt=prompt,
                 system_prompt="You are an expert at discovering relationships between entities in text. Be thorough — find every relationship you can.",
                 tier=ModelTier.MEDIUM,
                 max_tokens=4096,
             )
 
+        from multi_agent_kg.core.parallel import map_batches
+        for result in map_batches(_connectivity_batch, batches):
             new_triples = _coerce_llm_items(result, ("triples",), TripleOut)
 
             # Filter self-referencing triples
