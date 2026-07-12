@@ -26,6 +26,7 @@ from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.core.memory import SharedMemory
 from multi_agent_kg.core.communication import MessageBus, CommunicationType
 from multi_agent_kg.core.config import LLMConfig
+from multi_agent_kg.core.parallel import map_batches
 
 if TYPE_CHECKING:
     from multi_agent_kg.core.deliberation import VoteType
@@ -272,12 +273,12 @@ class EvidenceLinker(BaseAgent):
         if total_batches > 1:
             print(f"      Running evidence linking in {total_batches} batches...")
             
-        for i in range(0, len(triples), batch_size):
-            batch_num = (i // batch_size) + 1
+        batches = [triples[i:i + batch_size] for i in range(0, len(triples), batch_size)]
+
+        def _evidence_batch(index, batch):
+            # Worker: prompt build + LLM call only (GB-4 fan-out safe).
             if total_batches > 1:
-                print(f"        Processing evidence batch {batch_num}/{total_batches}...")
-            batch = triples[i:i + batch_size]
-            
+                print(f"        Processing evidence batch {index + 1}/{total_batches}...")
             triples_json = json.dumps([
                 {
                     "subject": t.get("subject", ""),
@@ -286,20 +287,21 @@ class EvidenceLinker(BaseAgent):
                 }
                 for t in batch
             ], indent=2)
-            
+
             prompt = EVIDENCE_LINKING_PROMPT.format(
                 text=text[:4000],  # Limit text length
                 triples_json=triples_json,
                 domain=getattr(self, '_current_domain', 'general'),
             )
-            
-            result = self.call_llm(
+
+            return self.call_llm(
                 prompt=prompt,
                 system_prompt="You are an expert at finding evidence for claims. Be precise about source sentences.",
                 tier=ModelTier.MEDIUM,
                 max_tokens=8192,
             )
-            
+
+        for batch, result in zip(batches, map_batches(_evidence_batch, batches)):
             linked = (
                 result
                 if isinstance(result, list)

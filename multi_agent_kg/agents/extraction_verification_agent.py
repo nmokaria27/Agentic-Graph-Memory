@@ -27,6 +27,7 @@ from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
 from multi_agent_kg.core.memory import SharedMemory
 from multi_agent_kg.core.communication import MessageBus, CommunicationType, MessagePriority
 from multi_agent_kg.core.config import LLMConfig
+from multi_agent_kg.core.parallel import map_batches
 
 
 VERIFICATION_PROMPT = """Verify these triples are factually correct based on the source text.
@@ -423,11 +424,12 @@ class ExtractionVerificationAgent(BaseAgent):
         if total_batches > 1:
             print(f"      Running verification on {len(triples)} triples in {total_batches} batches...")
 
-        for i in range(0, len(triples), BATCH):
-            batch_num = (i // BATCH) + 1
+        batches = [triples[i:i + BATCH] for i in range(0, len(triples), BATCH)]
+
+        def _verify_batch(index: int, batch: List[Dict[str, Any]]):
+            # Worker: prompt build + LLM call only (GB-4 fan-out safe).
             if total_batches > 1:
-                print(f"        Processing verification batch {batch_num}/{total_batches}...")
-            batch = triples[i:i + BATCH]
+                print(f"        Processing verification batch {index + 1}/{total_batches}...")
             triples_json = json.dumps([
                 {
                     "subject": t.get("subject", ""),
@@ -443,7 +445,7 @@ class ExtractionVerificationAgent(BaseAgent):
                 triples_json=triples_json,
             )
 
-            result = self.call_llm(
+            return self.call_llm(
                 prompt=prompt,
                 system_prompt=(
                     "You are an expert fact verifier. "
@@ -459,6 +461,7 @@ class ExtractionVerificationAgent(BaseAgent):
                 max_tokens=4096,
             )
 
+        for result in map_batches(_verify_batch, batches):
             if isinstance(result, list):
                 all_verified.extend(result)
                 batch_summary = {}

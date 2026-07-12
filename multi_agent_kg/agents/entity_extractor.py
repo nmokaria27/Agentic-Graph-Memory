@@ -767,35 +767,43 @@ class EntityExtractor(BaseAgent):
         total_batches = (len(entities) + batch_size - 1) // batch_size
         print(f"    Running coreference resolution on {len(entities)} entities ({total_batches} batches)...")
         
-        for i in range(0, len(entities), batch_size):
-            batch_num = (i // batch_size) + 1
-            print(f"      Processing coref batch {batch_num}/{total_batches}...")
-            batch = entities[i:i+batch_size]
+        batches = [entities[i:i + batch_size] for i in range(0, len(entities), batch_size)]
+
+        def _coref_batch(index, batch):
+            # Worker: prompt build + LLM call only (GB-4 fan-out safe). A
+            # failed call returns the exception as a sentinel so the batch
+            # degrades to passthrough without killing sibling batches.
+            print(f"      Processing coref batch {index + 1}/{total_batches}...")
             entities_json = json.dumps(batch, indent=2)
             known_json = json.dumps(known_entities[:20], indent=2) if known_entities else "[]"
-            
+
             prompt = COREFERENCE_PROMPT.format(
                 text=text[:3000],  # Limit context
                 entities_json=entities_json,
                 known_entities=known_json,
             )
-            
+
             try:
-                result = self.call_llm(
+                return self.call_llm(
                     prompt=prompt,
                     system_prompt="You are an expert at coreference resolution. Group mentions accurately.",
                     tier=ModelTier.MEDIUM,
                     max_tokens=4096,
                 )
             except Exception as e:
-                print(f"  WARNING: Coref batch {batch_num}/{total_batches} failed: {e}; "
+                print(f"  WARNING: Coref batch {index + 1}/{total_batches} failed: {e}; "
                       f"passing batch through unmerged")
+                return e
+
+        from multi_agent_kg.core.parallel import map_batches
+        for batch, result in zip(batches, map_batches(_coref_batch, batches)):
+            if isinstance(result, Exception):
                 all_resolved.extend(
                     original for original in batch
                     if not _is_generic_reference(original.get("text") or original.get("id") or "")
                 )
                 continue
-            
+
             # Validate the coreference output against the Pydantic schema, which
             # tolerates the list / dict-wrapper shapes, drops malformed groups,
             # and fills defaults. A single bad batch degrades to "no coref this
@@ -941,7 +949,7 @@ class EntityExtractor(BaseAgent):
                 and not _is_generic_reference(original.get("text") or original.get("id") or "")
             ]
             if passthrough:
-                print(f"      Coref batch {batch_num}: {len(passthrough)}/{len(batch)} entities "
+                print(f"      Coref batch: {len(passthrough)}/{len(batch)} entities "
                       f"unclaimed by any group — passing through unmerged")
                 all_resolved.extend(passthrough)
 
