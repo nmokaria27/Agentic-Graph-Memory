@@ -1452,3 +1452,32 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - **Cost estimate:** ~10 docs × ~30 flash calls ≈ 300 Fireworks calls, minutes
   of wall; zero gpu02 contention.
 - STATUS: RUNNING — implementing in worktree after committing this pre-registration.
+
+### EXP-ASYNC-BATCH verdict  (2026-07-12)
+- **Result:** (a) PASS — 276 tests (was 270; +6 parallel-dispatch tests, incl.
+  out-of-order completion and sequential/parallel equivalence on the real
+  verification agent). (b) **MISS** — Fireworks A/B (spgov docs 100–104,
+  deepseek-v4-flash): arm B median wall 305.8 s vs arm A 315.5 s (−3%, bar −25%).
+  (c) borderline PASS — entities within ±20% on all docs; doc_100 triples +31%
+  (flash nondeterminism: arm B made 63 calls vs arm A 47 on that doc).
+- **Diagnosis (per-call profile of doc_100 arm A, 47 calls / 441 s):** the
+  ~30 governance calls cost only 72 s; the wall lives in ~15 big serial stage
+  calls (16–48 s each). Of those, only verification (4) + coref (1) were
+  parallelized — the **connectivity pass** (36 disconnected → 4 batches at
+  ~30–48 s) is the single largest untouched serial chunk (~30–48% of doc wall).
+  Classic Amdahl: the mechanism works, it was aimed at the wrong loops first.
+- **Verdict: PARTIAL.** Mechanism kept in-tree (default-off, tested, harmless);
+  wall bar unmet → follow-up EXP-ASYNC-BATCH-2 extends the SAME mechanism to
+  the connectivity batch loop.
+
+## EXP-ASYNC-BATCH-2 (GB-4): extend fan-out to the connectivity pass  (2026-07-12)
+- **Hypothesis:** connectivity batches are the dominant serial chunk missed by
+  EXP-ASYNC-BATCH (see its per-call profile). Adding the fourth fan-out site
+  should now clear the original wall bar.
+- **Change:** `extract_connectivity_relations` batch loop dispatches through the
+  same `map_batches` (worker = prompt build + LLM call; filtering/aggregation
+  ordered on the caller's thread). No other change.
+- **Lane/slice/control/bars:** identical to EXP-ASYNC-BATCH (Fireworks flash,
+  spgov docs 100–104, arm A concurrency=1 vs arm B =4, fresh caches; bar: arm B
+  median wall ≥25% below arm A; counts within ±20% modulo flash nondeterminism).
+- STATUS: RUNNING — same script, fresh cache dirs (`fw_async2A/B`).
