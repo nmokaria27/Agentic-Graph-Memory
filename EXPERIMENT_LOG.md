@@ -1557,3 +1557,29 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - **Action:** GB-13 (fixed-schema enforcement) + GB-14 (reviewer admission
   strictness / under-pruning) added to backlog. Cached artifacts + rich scores
   in evaluation/results/ (gitignored; numbers preserved here).
+
+### EXP-ASYNC-BATCH-2 verdict  (2026-07-13)
+- **Result:** (a) suite green — **283 passed** (276 + alias-sync + failover tests
+  landed in between). (b) **PASS** — arm B median wall 201.5 s vs arm A 324.9 s
+  (**−38%**, bar −25%); totals 1185 s vs 1759 s. (c) PASS — entities within ±20%
+  on all 5 docs; one triple count −25% (flash run-to-run spread); 0 errors.
+- **Verdict: ACCEPT (Fireworks evidence).** Connectivity was indeed the dominant
+  serial chunk. Mechanism stays default-off (`LLM_BATCH_CONCURRENCY` unset =
+  sequential; controls unmoved by construction).
+- **Action:** local confirmation = EXP-SPGOV-3 (below). GB-4 remains open only
+  for that confirmation.
+
+## EXP-SPGOV-3 (GB-4 local confirmation / GB-9 re-open attempt)  (2026-07-13)
+- **Hypothesis:** with GB-11+GB-12 (recall pathologies fixed) and GB-4 fan-out
+  (−38% wall on Fireworks), governed singlepass on local Qwen3 with
+  `LLM_BATCH_CONCURRENCY=4` clears the ORIGINAL EXP-SPGOV bars, including the
+  previously-unreachable wall bar (SPGOV-2: 123.9 s vs ≤90 s).
+- **Change:** none — measurement of merged HEAD with the env flag ON.
+- **Lane & model:** gpu02 vLLM Qwen3-30B (idle; paper-compare freeze lifted).
+- **Slice & control:** primary docs 100–119 + slice A diagnostic; cached
+  singlepass/hybrid baselines; fresh cache `docred_kg_cache_spgov3`.
+- **Success bar (unchanged from EXP-SPGOV):** entR ≥ 0.828, entP ≥ 0.728,
+  relF1@0.6 ≥ 0.137, median wall ≤ 90 s/doc, no doc > 3× singlepass wall.
+- **Cost estimate:** ~25 docs, ~45–75 min gpu02.
+- STATUS: RUNNING — `evaluation/DocRED/exp_spgov3.sh`; log
+  `evaluation/results/exp_spgov3.log`.
