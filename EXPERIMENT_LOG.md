@@ -1612,3 +1612,37 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - **Action:** GB-4 CLOSED (shipped: `LLM_BATCH_CONCURRENCY`, default-off).
   Embedding failover validated in production. Next per backlog: GB-13
   (fixed-schema leak, small) then GB-3 / GB-14.
+
+## DIAG-SCHEMA-ADMIT (GB-13 + GB-14 sizing, offline, zero LLM)  (2026-07-13)
+- **Method:** post-hoc projections on the cached EXP-PAPER-COMPARE governed
+  artifact, rescored with the paper's scorer. No code changes, no re-runs.
+- **GB-13 (fixed-schema leak) — KILLED as a precision lever.** Out-of-schema
+  types are only 68/1208 entities (5.6%; top: SYSTEM 27, PERSON 10). Removing
+  them + their triples: strict F1 0.080→0.079, mapped 0.152→0.153. Ceiling ≈ 0.
+  Downgraded to schema-hygiene; will come for free with GB-5 structured
+  decoding (enum-constrained types). No experiment will be run on it.
+- **GB-14 (admission strictness) — KILLED as pure thresholding.** Confidence-
+  floor sweep on the same artifact:
+  | floor | triples | strictP | strictR | strictF1 | mappedF1 |
+  |---|---|---|---|---|---|
+  | none | 2389 | 0.051 | 0.176 | 0.080 | 0.152 |
+  | ≥0.85 | 2071 | 0.055 | 0.161 | 0.082 | 0.159 |
+  | ≥0.90 | 1285 | 0.064 | 0.117 | 0.083 | **0.173** |
+  | ≥0.95 | 409 | 0.108 | 0.063 | 0.079 | 0.155 |
+  | verified-only | 2261 | 0.054 | 0.174 | 0.082 | 0.156 |
+  Strict F1 is FLAT along the whole frontier — confidence is nearly
+  uninformative about correctness (poor calibration). Even at 409 triples
+  (fewer than the paper's 1077) precision reaches only 0.108 vs the paper's
+  0.129 AT recall 0.199. The paper's GPT-5 edge was high precision AT high
+  recall — extraction/review QUALITY, not admission policy.
+- **Conclusion / backlog re-derivation:** the local-vs-paper precision gap is
+  a candidate-quality and review-quality problem. GB-14 re-scoped: "reviewer
+  quality on local models" — candidate mechanisms: evidence-quote-grounded
+  verification, LARGE-tier review pass, model headroom (gpt-oss-120b on a
+  SciERC dev slice). Requires design + pre-registration before any run.
+  GB-3 (pair discovery) is now NEXT — it attacks recall, the axis where the
+  local stack is already close to paper (0.176 vs 0.199).
+- **One free win available:** a ≥0.90 admission floor buys mapped F1
+  0.152→0.173 (+14%) at strict-F1 parity — worth folding into GB-14's design
+  as a default candidate, NOT accepting blind (it halves triple count; needs
+  a DocRED control check per anti-bias guard #4/#5).
