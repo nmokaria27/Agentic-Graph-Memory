@@ -1493,3 +1493,30 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   `EMBEDDING_BASE_URL` overridden. Same weights ⇒ same embedding space; noted
   here because the two legs now use different embedding HOSTS (not models).
 - Flat leg resumed cleanly: 0 embedding failures post-switch.
+
+### EXP-PAPER-COMPARE incident 2 + fixes  (2026-07-13)
+- **Incident 2 (real bug, GB-1 family):** the flat leg "completed" with ZERO
+  usable docs — all 100 documents extracted fully, then EACH failed on
+  `self.governed_kg.sync_aliases_from(...)` because ungoverned builds have
+  `governed_kg=None` (alias persistence, commit a77e2ca, was never exercised
+  on the ungoverned path). Failed docs never enter the checkpoint, so 40 min
+  of extraction left nothing on disk. Same crash at the corpus-level
+  cross-document step.
+  **Fix:** None-guards at both sync sites (aliases stay in shared memory for
+  ungoverned builds) + `tests/test_ungoverned_alias_sync.py` (3 regression
+  tests; the cross-document one raises AttributeError on pre-fix code).
+- **Incident 3 (harness, mine):** the scoring step used `evaluate_kg.py`
+  against a merged-KG artifact (scored "1/100 docs"). The paper scored with
+  `canonicalize_scierc_relations.py` → `score_accumulated_scierc_rich.py
+  --split test`. Re-scoring the governed leg with the correct tool; flat leg
+  re-runs on fixed code.
+- **Owner requirement (this session): embedding failover.** If the primary
+  embedding endpoint fails its full retry ladder, the process must
+  automatically fail over to the Fireworks embeddings API instead of stalling
+  (the gpu01 wedge cost a full leg). Change: sticky process-level failover in
+  `openai_client.get_embeddings` — env `EMBEDDING_FALLBACK_BASE_URL/_API_KEY/
+  _MODEL`, defaulting to Fireworks `qwen3-embedding-8b` via `FIREWORKS_API_KEY`
+  when set; loud one-time warning; documented caveat that pre-switch vectors
+  live in a different space (similarities degrade toward no-match — fail-safe
+  for dedup/conflict-candidate uses). Unit-tested with a stubbed failing
+  primary; default behavior with no fallback configured is unchanged (raise).
