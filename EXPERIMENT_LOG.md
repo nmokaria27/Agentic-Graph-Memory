@@ -1481,3 +1481,15 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   spgov docs 100–104, arm A concurrency=1 vs arm B =4, fresh caches; bar: arm B
   median wall ≥25% below arm A; counts within ±20% modulo flash nondeterminism).
 - STATUS: RUNNING — same script, fresh cache dirs (`fw_async2A/B`).
+
+### EXP-PAPER-COMPARE incident note  (2026-07-13)
+- Governed leg completed 100/100 (7 transient embedding-retry warnings, all
+  recovered). The flat leg then STALLED on doc 1: gpu01 Ollama wedged — HTTP
+  server responsive but embedding generation hung indefinitely (90 s probes
+  timed out; ssh to gpu01 also hung; likely external load).
+- **Mitigation:** same model, different host — `mxbai-embed-large:335m` served
+  from a fresh gpu02-local Ollama (CPU, port 11435, ~1 s/call, 1024-dim
+  identical). Flat leg restarted from checkpoint (0 docs lost) with only
+  `EMBEDDING_BASE_URL` overridden. Same weights ⇒ same embedding space; noted
+  here because the two legs now use different embedding HOSTS (not models).
+- Flat leg resumed cleanly: 0 embedding failures post-switch.
