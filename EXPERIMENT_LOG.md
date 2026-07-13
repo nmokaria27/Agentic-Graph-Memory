@@ -1520,3 +1520,40 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   live in a different space (similarities degrade toward no-match — fail-safe
   for dedup/conflict-candidate uses). Unit-tested with a stubbed failing
   primary; default behavior with no fallback configured is unchanged (raise).
+
+### EXP-PAPER-COMPARE verdict  (2026-07-13)
+- **Result — pre-registered questions (SciERC test 100, fixed schema, Qwen3-30B,
+  paper-protocol scoring):**
+  | | flat insertion | MAGG governed | paper flat (GPT-5) | paper MAGG (GPT-5) |
+  |---|---|---|---|---|
+  | strict triple F1 | 0.060 | **0.080** | 0.106 | 0.156 |
+  | mapped triple F1 | 0.130 | **0.152** | 0.192 | 0.290 |
+  | strict triple P | 0.036 | **0.051** | 0.066 | 0.129 |
+  | entity strict F1 | 0.515 | **0.523** | — | — |
+  | entities / triples | 1222 / 3534 | 1208 / **2389** | 1742 / 2881 | 1731 / 1077 |
+  - **Q1 (internal governance delta, model-controlled — PRIMARY):** strict F1
+    **+33%** (bar: paper's +47% — below), mapped **+17%** (paper +51% — below).
+    Direction CONFIRMED on a completely different model; magnitude not replicated.
+  - **Q2 (absolute vs paper):** below on all triple metrics (0.080/0.152 vs
+    0.156/0.290) — code+model confound, GPT-5 not reproducible (no key).
+  - **Q3 (shape):** governance prunes 32% of flat's triples (3534→2389; paper
+    pruned 63%, 2881→1077) — the current reviewer admits far more.
+  - **Q4 (robustness):** governed 100/100; flat re-run 100/100 with 0 errors
+    (first attempt: incident 2, fixed + regression-tested).
+- **Findings for the backlog:**
+  1. **Fixed-schema leak (new GB-13):** predictions contain entity types outside
+     the fixed SciERC 5-type schema (ORGANIZATION/PERSON/DATE/... all score 0)
+     — enforcement is looser than the paper era; hurts precision on BOTH legs.
+  2. **Under-pruning:** governance keeps 68% of flat triples vs the paper's 37%
+     — reviewer admission on Qwen3 is far more permissive; likely the main
+     driver of the precision gap and the smaller delta.
+- **Verdict: INCONCLUSIVE-POSITIVE (milestone measurement, no accept/revert).**
+  Governance still buys +33% strict / +17% mapped triple F1 with the SAME QA-free
+  protocol on a 30B local model at zero API cost (paper burned ~8M GPT-5 tokens
+  per build). The loop's post-paper gains (GB-1/8/11/12: robustness + dedup
+  integrity) are orthogonal to this benchmark's precision axis; the paper-era
+  precision edge came from GPT-5-quality review — recovering it locally is now
+  a measurable target.
+- **Action:** GB-13 (fixed-schema enforcement) + GB-14 (reviewer admission
+  strictness / under-pruning) added to backlog. Cached artifacts + rich scores
+  in evaluation/results/ (gitignored; numbers preserved here).
