@@ -7,7 +7,7 @@ Backend selection:
 - Default: Ollama at http://localhost:11434 (via SSH tunnel to GPU)
 """
 
-from typing import List, Dict, Any, Optional, Type, TypeVar
+from typing import List, Dict, Any, Optional, Tuple, Type, TypeVar
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 import os
@@ -864,31 +864,104 @@ def get_embedding(text: str, model: Optional[str] = None) -> List[float]:
     return get_embeddings([text], model=model)[0]
 
 
+# ── Embedding failover (owner requirement, 2026-07-13) ──────────────────
+# If the primary embedding endpoint fails its whole retry ladder (e.g. the
+# gpu01 Ollama wedge that stalled a 100-doc run indefinitely), fail over to a
+# secondary OpenAI-compatible endpoint for the REST OF THIS PROCESS instead of
+# raising. Configure with EMBEDDING_FALLBACK_BASE_URL / _API_KEY / _MODEL;
+# when unset, defaults to the Fireworks embeddings API iff FIREWORKS_API_KEY
+# is present. With no fallback configured, behavior is unchanged (raise).
+#
+# Caveat (accepted, fail-safe): vectors embedded before the switch live in a
+# different embedding space than those after it. Cross-space similarities
+# degrade toward "no match", so dedup/conflict-candidate consumers see fewer
+# matches — never crashes or false merges.
+_EMBED_FAILOVER: Dict[str, Any] = {"active": False, "client": None, "model": None}
+
+
+def _fallback_embedding_config() -> Optional[Tuple[str, str, str]]:
+    base = os.getenv("EMBEDDING_FALLBACK_BASE_URL")
+    key = os.getenv("EMBEDDING_FALLBACK_API_KEY") or os.getenv("FIREWORKS_API_KEY")
+    model = os.getenv(
+        "EMBEDDING_FALLBACK_MODEL", "accounts/fireworks/models/qwen3-embedding-8b"
+    )
+    if not base and os.getenv("FIREWORKS_API_KEY"):
+        base = "https://api.fireworks.ai/inference/v1"
+    if not (base and key):
+        return None
+    return base, key, model
+
+
+def _activate_embed_failover() -> bool:
+    """Switch this process to the fallback embedding endpoint. Sticky."""
+    cfg = _fallback_embedding_config()
+    if cfg is None:
+        return False
+    base, key, model = cfg
+    _EMBED_FAILOVER["client"] = OpenAI(base_url=base, api_key=key, timeout=_TIMEOUT)
+    _EMBED_FAILOVER["model"] = model
+    _EMBED_FAILOVER["active"] = True
+    print(
+        f"  WARNING: PRIMARY EMBEDDING ENDPOINT FAILED after {_MAX_RETRIES} attempts — "
+        f"failing over to {base} (model={model}) for the rest of this process. "
+        f"Vectors embedded before the switch are in a different space; "
+        f"similarity against them degrades toward no-match (fail-safe)."
+    )
+    return True
+
+
+def _resolved_embedding_model(model: Optional[str]) -> str:
+    """The model that will actually serve the next embedding call."""
+    if _EMBED_FAILOVER["active"]:
+        return str(_EMBED_FAILOVER["model"])
+    return model or DEFAULT_EMBEDDING_MODEL
+
+
 def get_embeddings(texts: List[str], model: Optional[str] = None) -> List[List[float]]:
-    """Get embedding vectors for a batch of texts (order preserved)."""
+    """Get embedding vectors for a batch of texts (order preserved).
+
+    Primary endpoint with the standard retry ladder; on exhaustion, one-time
+    sticky failover to the configured fallback endpoint (see above).
+    """
     model = model or DEFAULT_EMBEDDING_MODEL
     cleaned = [_truncate_for_embedding(t) or " " for t in texts]
     vectors: List[List[float]] = []
     for start in range(0, len(cleaned), _EMBED_BATCH_SIZE):
         batch = cleaned[start:start + _EMBED_BATCH_SIZE]
         last_error: Optional[Exception] = None
-        for attempt in range(1, _MAX_RETRIES + 1):
-            try:
-                response = embed_client.embeddings.create(model=model, input=batch)
-                # API may return items out of order; sort by index.
-                items = sorted(response.data, key=lambda item: item.index)
-                vectors.extend([item.embedding for item in items])
-                last_error = None
-                break
-            except Exception as exc:
-                last_error = exc
-                if attempt < _MAX_RETRIES:
-                    delay = min(_RETRY_BACKOFF * attempt, _RETRY_BACKOFF_CAP)
-                    print(
-                        f"  WARNING: Embedding call failed (attempt {attempt}/{_MAX_RETRIES}): "
-                        f"{exc}; retrying in {delay:.0f}s..."
+        for source in ("primary", "fallback"):
+            if source == "primary" and _EMBED_FAILOVER["active"]:
+                continue  # already switched in an earlier call
+            if source == "fallback" and not _EMBED_FAILOVER["active"]:
+                if last_error is None or not _activate_embed_failover():
+                    break  # primary succeeded, or no fallback configured
+            active_client = (
+                _EMBED_FAILOVER["client"] if _EMBED_FAILOVER["active"] else embed_client
+            )
+            active_model = (
+                _EMBED_FAILOVER["model"] if _EMBED_FAILOVER["active"] else model
+            )
+            for attempt in range(1, _MAX_RETRIES + 1):
+                try:
+                    response = active_client.embeddings.create(
+                        model=active_model, input=batch
                     )
-                    time.sleep(delay)
+                    # API may return items out of order; sort by index.
+                    items = sorted(response.data, key=lambda item: item.index)
+                    vectors.extend([item.embedding for item in items])
+                    last_error = None
+                    break
+                except Exception as exc:
+                    last_error = exc
+                    if attempt < _MAX_RETRIES:
+                        delay = min(_RETRY_BACKOFF * attempt, _RETRY_BACKOFF_CAP)
+                        print(
+                            f"  WARNING: Embedding call failed ({source}, attempt "
+                            f"{attempt}/{_MAX_RETRIES}): {exc}; retrying in {delay:.0f}s..."
+                        )
+                        time.sleep(delay)
+            if last_error is None:
+                break
         if last_error is not None:
             raise Exception(f"Embedding API call failed: {last_error}")
     return vectors
@@ -896,7 +969,7 @@ def get_embeddings(texts: List[str], model: Optional[str] = None) -> List[List[f
 
 def embed_query(text: str, model: Optional[str] = None) -> List[float]:
     """Embed a retrieval query (applies the asymmetric query prefix when needed)."""
-    model = model or DEFAULT_EMBEDDING_MODEL
+    model = _resolved_embedding_model(model)
     m = model.lower()
     if "mxbai" in m:
         text = _MXBAI_QUERY_PREFIX + text
@@ -909,7 +982,7 @@ def embed_query(text: str, model: Optional[str] = None) -> List[float]:
 
 def embed_passages(texts: List[str], model: Optional[str] = None) -> List[List[float]]:
     """Embed passages/documents for indexing (applies the asymmetric doc prefix when needed)."""
-    model = model or DEFAULT_EMBEDDING_MODEL
+    model = _resolved_embedding_model(model)
     m = model.lower()
     if "nomic" in m:
         texts = [_NOMIC_DOC_PREFIX + t for t in texts]

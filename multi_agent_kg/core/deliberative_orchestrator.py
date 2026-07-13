@@ -1211,8 +1211,11 @@ class DeliberativeOrchestrator:
             )
         
         # Persist per-document coref/organizer aliases into the governed KG
-        # (cross-document resolution syncs again at corpus level).
-        if self.shared_memory.entity_aliases:
+        # (cross-document resolution syncs again at corpus level). Ungoverned
+        # builds (governed_kg=None) keep aliases in shared memory only — before
+        # this guard, EVERY document of a 100-doc ungoverned SciERC build
+        # "failed" here AFTER full extraction (EXP-PAPER-COMPARE incident 2).
+        if self.shared_memory.entity_aliases and self.governed_kg is not None:
             self.governed_kg.sync_aliases_from(self.shared_memory.entity_aliases)
 
         # Summary
@@ -1986,8 +1989,12 @@ class DeliberativeOrchestrator:
                     remapped_triples += 1
 
         # Persist the session alias table into the governed KG so it survives
-        # save/load instead of dying with this orchestrator instance.
-        persisted = self.governed_kg.sync_aliases_from(alias_map)
+        # save/load instead of dying with this orchestrator instance
+        # (ungoverned builds have no governed KG to persist into).
+        persisted = (
+            self.governed_kg.sync_aliases_from(alias_map)
+            if self.governed_kg is not None else 0
+        )
 
         stats = self.shared_memory.get_stats()
         print(f"  Entity aliases registered: {stats.get('entity_aliases', 0)}")
