@@ -1353,3 +1353,143 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   (d) controls: existing dedup/type tests untouched and green.
 - **Cost estimate:** minutes (tests) + ~12 min gpu02 (diagnostic).
 - STATUS: RUNNING — implementing after this pre-registration is committed.
+
+### EXP-LITERAL-GUARD verdict  (2026-07-09)
+- **Result — all pre-committed bars hit:**
+  | bar | result |
+  |---|---|
+  | (a) pytest | **270 passed** (was 266; +4 literal-guard tests) |
+  | (b) LLM merge `1939 ← [1911, 1992]` blocked | PASS (all three survive; digit-free merge in same response unaffected) |
+  | (c) semantic dedup "1984"/"1985" blocked, digit-free near-dup still merges | PASS |
+  | (d) controls (GB-8/GB-11 dedup + type tests) | green, untouched |
+- **Diagnostic (n=5 spgov docs 100–104, runs/doesn't only):** doc_100 — the
+  motivating pathology — committed 21 → **42 entities**, entR 0.462 → **0.808**,
+  digit-bearing survivors 2 → 5 (1911/1939/1950s/1960s/1992 all present).
+  Other 4 docs within run-variance (−0.05…0). 5-doc aggregate entP 0.86.
+- **Finding:** the year-absorption path was the **embedding tier of semantic
+  dedup**, not the LLM merge groups — "1911"/"1939" share only ~2/6 trigrams
+  (cosine ≈0.33, below 0.88) but their mxbai embeddings clear 0.85. The LLM-path
+  guard print never fired; the semantic-path guard has no print (minor
+  observability gap — add a counter if it ever matters).
+- **Verdict: ACCEPT.** Guard is zero-LLM, zero dataset vocabulary, benefits all
+  modes (hybrid has the same embedding-dedup exposure).
+- **Action:** GB-12 CLOSED (commit 0015386). GB-9 re-open now blocked only on
+  GB-4 (wall bar — call parallelization). Test baseline now **270**.
+
+---
+
+## EXP-PAPER-COMPARE: current best stack vs the paper's Table 2 protocol  (2026-07-10)
+- **Hypothesis:** the paper ("From Extraction to Governed Memory", ACL sub 6433)
+  measured MAGG on the SciERC test split (100 docs, GPT-5, fixed schema):
+  strict F1 0.156 / mapped F1 0.290, governance delta over flat insertion
+  +47% strict / +51% mapped. Since then the loop shipped GB-1 (no silent loss),
+  GB-8 (dedup guards), GB-2/2b (freshness — inert on undated SciERC by design),
+  GB-10 (advanced-QA fallback crash), GB-11 (types reach stage 9), GB-12
+  (literal guard), and the production model moved to local Qwen3-30B. The
+  current stack should preserve or widen the paper's *internal* governance
+  delta, and its absolute numbers should be competitive with the paper's
+  GPT-5 numbers despite a 30B local model.
+- **Change:** NONE — pure milestone measurement of HEAD (667d239) using the
+  paper's own in-tree harness (`build_governed_scierc.py` /
+  `build_ungoverned_scierc.py`, `--split test --max-docs 100 --fixed-schema`,
+  canonicalize → `evaluate_kg.py` for strict+mapped).
+- **Lane & model:** local gpu02 Qwen3-30B-A3B (GPT-5 NOT reproducible — the
+  paper's `OPENAI_API_KEY_BACKUP` is no longer configured). The model confound
+  is EXPLICIT: absolute deltas vs the paper mix code+model; the flat-vs-MAGG
+  delta WITHIN this run is model-controlled and is the primary comparison.
+- **Slice & control:** SciERC test split docs 0–99 (the paper's own eval set —
+  never used by the improvement loop, which tuned only on DocRED/LongMemEval
+  dev slices; cross-benchmark validation per doctrine guard #5). Control =
+  flat insertion condition, same model, built by the same run.
+- **Pre-committed comparison questions (descriptive, not accept/revert bars):**
+  (Q1) internal governance delta: MAGG strict-F1 relative gain over flat
+       ≥ +47%? mapped ≥ +51%?
+  (Q2) absolute: current MAGG strict F1 vs 0.156, mapped vs 0.290;
+  (Q3) graph shape: entities/triples counts vs paper's 1731/1077 (over- vs
+       under-admission drift);
+  (Q4) robustness: 100/100 docs complete, zero silent drops (GB-1 check).
+- **Cost estimate:** governed ~2–3 min/doc + flat ~1 min/doc on Qwen3 ≈ 5–7 h
+  sequential on gpu02. Zero external API cost.
+- STATUS: RUNNING — `nohup bash evaluation/exp_paper_compare.sh`; log
+  `evaluation/results/exp_paper_compare.log`; artifacts
+  `evaluation/results/scierc_{governed,flat}_qwen3_test_100*.json`
+
+---
+
+## EXP-ASYNC-BATCH (GB-4): bounded parallel fan-out for per-batch LLM calls  (2026-07-10)
+- **Hypothesis:** stage wall time is dominated by SEQUENTIAL independent LLM calls
+  (spgov doc: ~34 calls; verification 3 batches + coref 2 batches + evidence
+  N batches run one-after-another though each batch is self-contained). vLLM
+  serves concurrent requests efficiently, so dispatching independent batches
+  through a bounded thread pool should cut median wall 25%+ with byte-identical
+  aggregation semantics. This is the only remaining blocker for re-opening GB-9
+  (EXP-SPGOV-2 wall 123.9 s vs ≤90 s bar).
+- **Change (one structural mechanism):** `multi_agent_kg/core/parallel.py` —
+  `map_batches(worker, batches)` dispatches via ThreadPoolExecutor bounded by
+  env `LLM_BATCH_CONCURRENCY`, collecting results in SUBMISSION ORDER. Default
+  (unset/≤1) = plain sequential loop — the control cannot move by construction.
+  Applied to exactly three fan-out sites, moving ONLY the prompt-build+LLM call
+  into workers (all aggregation stays ordered on the main thread): verification
+  batches, coref batches (per-batch GB-1 passthrough preserved inside the
+  worker), evidence-linking batches.
+- **Lane & model:** implemented in the gb8-dedup-guard worktree (main tree is
+  FROZEN — EXP-PAPER-COMPARE is running from it). Validation on the Fireworks
+  lane (deepseek-v4-flash) FROM THE WORKTREE. No merge to feat until the
+  freeze lifts.
+- **Slice & control:** spgov docs 100–104 (dev diagnostic slice), two arms,
+  fresh cache dirs: arm A `LLM_BATCH_CONCURRENCY=1` (control), arm B `=4`.
+  Same model, same code, env is the only delta.
+- **Success bar:**
+  (a) pytest green ≥270 + new tests (order preservation under out-of-order
+      completion; sequential fallback when env unset; exception propagation
+      matches sequential semantics);
+  (b) arm B median wall ≥25% below arm A on the 5 docs;
+  (c) quality watch: per-doc pred_entities/pred_triples within ±20% between
+      arms (LLM nondeterminism allowed; no collapses, no empty docs).
+  Local confirmation (EXP-SPGOV-3 vs the 90 s bar on gpu02) is a SEPARATE
+  follow-up after the paper-compare freeze lifts — Fireworks wall ratios are
+  evidence, not reportable numbers.
+- **Cost estimate:** ~10 docs × ~30 flash calls ≈ 300 Fireworks calls, minutes
+  of wall; zero gpu02 contention.
+- STATUS: RUNNING — implementing in worktree after committing this pre-registration.
+
+### EXP-ASYNC-BATCH verdict  (2026-07-12)
+- **Result:** (a) PASS — 276 tests (was 270; +6 parallel-dispatch tests, incl.
+  out-of-order completion and sequential/parallel equivalence on the real
+  verification agent). (b) **MISS** — Fireworks A/B (spgov docs 100–104,
+  deepseek-v4-flash): arm B median wall 305.8 s vs arm A 315.5 s (−3%, bar −25%).
+  (c) borderline PASS — entities within ±20% on all docs; doc_100 triples +31%
+  (flash nondeterminism: arm B made 63 calls vs arm A 47 on that doc).
+- **Diagnosis (per-call profile of doc_100 arm A, 47 calls / 441 s):** the
+  ~30 governance calls cost only 72 s; the wall lives in ~15 big serial stage
+  calls (16–48 s each). Of those, only verification (4) + coref (1) were
+  parallelized — the **connectivity pass** (36 disconnected → 4 batches at
+  ~30–48 s) is the single largest untouched serial chunk (~30–48% of doc wall).
+  Classic Amdahl: the mechanism works, it was aimed at the wrong loops first.
+- **Verdict: PARTIAL.** Mechanism kept in-tree (default-off, tested, harmless);
+  wall bar unmet → follow-up EXP-ASYNC-BATCH-2 extends the SAME mechanism to
+  the connectivity batch loop.
+
+## EXP-ASYNC-BATCH-2 (GB-4): extend fan-out to the connectivity pass  (2026-07-12)
+- **Hypothesis:** connectivity batches are the dominant serial chunk missed by
+  EXP-ASYNC-BATCH (see its per-call profile). Adding the fourth fan-out site
+  should now clear the original wall bar.
+- **Change:** `extract_connectivity_relations` batch loop dispatches through the
+  same `map_batches` (worker = prompt build + LLM call; filtering/aggregation
+  ordered on the caller's thread). No other change.
+- **Lane/slice/control/bars:** identical to EXP-ASYNC-BATCH (Fireworks flash,
+  spgov docs 100–104, arm A concurrency=1 vs arm B =4, fresh caches; bar: arm B
+  median wall ≥25% below arm A; counts within ±20% modulo flash nondeterminism).
+- STATUS: RUNNING — same script, fresh cache dirs (`fw_async2A/B`).
+
+### EXP-PAPER-COMPARE incident note  (2026-07-13)
+- Governed leg completed 100/100 (7 transient embedding-retry warnings, all
+  recovered). The flat leg then STALLED on doc 1: gpu01 Ollama wedged — HTTP
+  server responsive but embedding generation hung indefinitely (90 s probes
+  timed out; ssh to gpu01 also hung; likely external load).
+- **Mitigation:** same model, different host — `mxbai-embed-large:335m` served
+  from a fresh gpu02-local Ollama (CPU, port 11435, ~1 s/call, 1024-dim
+  identical). Flat leg restarted from checkpoint (0 docs lost) with only
+  `EMBEDDING_BASE_URL` overridden. Same weights ⇒ same embedding space; noted
+  here because the two legs now use different embedding HOSTS (not models).
+- Flat leg resumed cleanly: 0 embedding failures post-switch.
