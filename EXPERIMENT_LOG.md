@@ -1583,3 +1583,32 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - **Cost estimate:** ~25 docs, ~45–75 min gpu02.
 - STATUS: RUNNING — `evaluation/DocRED/exp_spgov3.sh`; log
   `evaluation/results/exp_spgov3.log`.
+
+### EXP-SPGOV-3 verdict  (2026-07-13)
+- **Result (primary docs 100–119 vs the original EXP-SPGOV bars):**
+  | bar | target | SPGOV-1 | SPGOV-2 | SPGOV-3 | |
+  |---|---|---|---|---|---|
+  | entity recall | ≥ 0.828 | 0.726 | 0.739 | **0.758** | MISS (best yet) |
+  | entity precision | ≥ 0.728 | 0.804 | 0.764 | **0.808** | PASS |
+  | relF1@0.6 | ≥ 0.137 | 0.123 | 0.137 | **0.161** | PASS (clear) |
+  | pairR (watch) | — | 0.216 | 0.214 | **0.242** | best yet |
+  | median wall | ≤ 90 s | 121 s | 123.9 s | **99.4 s** | MISS (−20%) |
+- **Measurement caveats (logged, not excused):** doc_100 wall 7456 s is infra
+  contamination — it absorbed the gpu01 embedding-wedge retry ladders before
+  the NEW failover switched the process to Fireworks embeddings (which then
+  worked flawlessly: 0 hard embedding failures, GB-12 guard observed firing
+  live). Median excluding doc_100 is ~100 s — the wall conclusion stands
+  either way. Docs after the switch used qwen3-embedding for semantic dedup
+  (vs mxbai in SPGOV-2).
+- **GB-4 local confirmation: ACCEPT.** Fan-out delivers −20% median wall on
+  local Qwen3 (vs −38% on Fireworks — local calls are faster so the
+  parallelizable share is smaller; Amdahl). Feature stays default-off.
+  GB-4 CLOSED.
+- **GB-9: stays closed.** relF1 and entP now clear their bars — the
+  architecture's quality pitch is real — but entR (0.758 vs 0.828) remains
+  structurally short of singlepass recall, and wall is ~10% over even with
+  fan-out. Re-open requires an entR mechanism (harvest union / re-glean —
+  GB-3 territory), not more tuning.
+- **Action:** GB-4 CLOSED (shipped: `LLM_BATCH_CONCURRENCY`, default-off).
+  Embedding failover validated in production. Next per backlog: GB-13
+  (fixed-schema leak, small) then GB-3 / GB-14.
