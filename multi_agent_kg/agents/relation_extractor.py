@@ -509,6 +509,44 @@ Return:
 }}"""
 
 
+PAIR_COMPLETION_PROMPT = """You are given a document and pairs of entities that BOTH appear in it
+near each other, but have NO relation in the extracted knowledge graph yet.
+
+DOCUMENT TEXT:
+{text}
+
+CANDIDATE PAIRS (currently unlinked — check each one):
+{pairs}
+
+KNOWN RELATION TYPES in this graph:
+{relation_types}
+
+INSTRUCTIONS:
+1. For each pair, decide whether the document text STATES a relationship between
+   the two entities (a verb, preposition, apposition, or explicit phrase).
+2. If it does, emit ONE triple for that pair (pick the direction the text supports).
+   You may use the known relation types above OR create new descriptive relation
+   types in UPPER_SNAKE_CASE.
+3. If the text does NOT state a relationship for a pair, OMIT that pair entirely.
+   It is normal and correct to omit many pairs — do not invent relations.
+4. Subject and object MUST be the two entities of the pair, never the same entity twice.
+
+Return:
+{{
+    "triples": [
+        {{
+            "subject": "<entity text>",
+            "subject_id": "<entity id>",
+            "relation": "<RELATION_TYPE>",
+            "object": "<entity text>",
+            "object_id": "<entity id>",
+            "confidence": <0.0-1.0>,
+            "evidence": "<supporting text from document>"
+        }}
+    ]
+}}"""
+
+
 RELATION_GLEANING_PROMPT = """Review the extracted graph and recover MISSING supported triples.
 
 TEXT:
@@ -2359,3 +2397,129 @@ class RelationExtractor(BaseAgent):
 
         print(f"  Connectivity pass: found {len(all_new_triples)} new triples")
         return all_new_triples
+
+    @staticmethod
+    def _pair_completion_candidates(
+        text: str,
+        entities: List[Dict[str, Any]],
+        triples: List[Dict[str, Any]],
+        window_chars: int = 300,
+        max_pairs: int = 100,
+    ) -> List[Tuple[Dict[str, Any], Dict[str, Any], int]]:
+        """Co-occurring, unlinked entity pairs — GB-3's dominant miss class.
+
+        A candidate pair: both surfaces occur in the text within
+        ``window_chars`` of each other AND no existing triple links them
+        (either direction, by id or surface). Sorted nearest-first, capped.
+        """
+        def _norm(s: Any) -> str:
+            return re.sub(r"\s+", " ", str(s or "").lower()).strip()
+
+        ntext = _norm(text)
+        located = []
+        for e in entities:
+            surface = e.get("text") or e.get("id", "")
+            pos = ntext.find(_norm(surface)) if surface else -1
+            if pos >= 0:
+                located.append((e, pos))
+
+        linked = set()
+        for t in triples:
+            ends = frozenset((
+                _norm(t.get("subject_id") or t.get("subject")),
+                _norm(t.get("object_id") or t.get("object")),
+            ))
+            linked.add(ends)
+            linked.add(frozenset((_norm(t.get("subject")), _norm(t.get("object")))))
+
+        candidates = []
+        for i in range(len(located)):
+            for j in range(i + 1, len(located)):
+                (ea, pa), (eb, pb) = located[i], located[j]
+                dist = abs(pa - pb)
+                if dist > window_chars:
+                    continue
+                ka = _norm(ea.get("id") or ea.get("text"))
+                kb = _norm(eb.get("id") or eb.get("text"))
+                sa = _norm(ea.get("text") or ea.get("id"))
+                sb = _norm(eb.get("text") or eb.get("id"))
+                if ka == kb or sa == sb:
+                    continue
+                if frozenset((ka, kb)) in linked or frozenset((sa, sb)) in linked:
+                    continue
+                candidates.append((ea, eb, dist))
+        candidates.sort(key=lambda c: c[2])
+        return candidates[:max_pairs]
+
+    def extract_pair_completion_relations(
+        self,
+        text: str,
+        entities: List[Dict[str, Any]],
+        triples: List[Dict[str, Any]],
+        relation_types: Optional[List[str]] = None,
+        window_chars: int = 300,
+        max_pairs: int = 100,
+        pairs_per_batch: int = 15,
+    ) -> List[Dict[str, Any]]:
+        """Pair-completion pass (GB-3, EXP-PAIR-COMPLETE).
+
+        Offline coverage analysis showed 40% of gold pairs are missed while
+        BOTH entities are already extracted (28% co-occurring within 300
+        chars). This pass shows the model exactly those unlinked co-occurring
+        pairs and asks which have a relation STATED in the text — omitting a
+        pair is an expected answer, not a failure. Additions are tagged
+        ``source=pair_completion`` and flow through the normal verification
+        and governance gates downstream.
+        """
+        candidates = self._pair_completion_candidates(
+            text, entities, triples, window_chars=window_chars, max_pairs=max_pairs
+        )
+        if not candidates:
+            print("  Pair completion: no unlinked co-occurring pairs")
+            return []
+
+        if not relation_types:
+            relation_types = list({
+                t.get("relation", "") for t in triples if t.get("relation")
+            })
+
+        print(f"  Pair completion: {len(candidates)} candidate pair(s)")
+        batches = [candidates[i:i + pairs_per_batch]
+                   for i in range(0, len(candidates), pairs_per_batch)]
+
+        def _pair_batch(index, batch):
+            # Worker: prompt build + LLM call only (GB-4 fan-out safe).
+            pairs_str = "\n".join(
+                f"- {a.get('id','?')}: \"{a.get('text', a.get('id','?'))}\"  <-?->  "
+                f"{b.get('id','?')}: \"{b.get('text', b.get('id','?'))}\""
+                for a, b, _ in batch
+            )
+            prompt = PAIR_COMPLETION_PROMPT.format(
+                text=text[:6000],
+                pairs=pairs_str,
+                relation_types=", ".join(relation_types) if relation_types else "none discovered yet",
+            )
+            return self.call_llm(
+                prompt=prompt,
+                system_prompt=(
+                    "You are an expert at judging whether a document states a "
+                    "relationship between two entities. Be precise; omit pairs "
+                    "with no stated relation."
+                ),
+                tier=ModelTier.MEDIUM,
+                max_tokens=4096,
+            )
+
+        from multi_agent_kg.core.parallel import map_batches
+        all_new: List[Dict[str, Any]] = []
+        for result in map_batches(_pair_batch, batches):
+            for t in _coerce_llm_items(result, ("triples",), TripleOut):
+                subj, obj = t.get("subject"), t.get("object")
+                if subj and obj and not _is_degenerate_endpoint_pair(
+                    subj, obj, t.get("relation"),
+                    t.get("subject_id"), t.get("object_id"),
+                ):
+                    t["source"] = "pair_completion"
+                    all_new.append(t)
+        print(f"  Pair completion: found {len(all_new)} new triples")
+        return all_new

@@ -62,7 +62,8 @@ def gold_reference(doc):
     return {"clusters": clusters, "triples": triples}
 
 
-def run_rhf(text, model, self_consistency=False, extraction_mode="deliberative"):
+def run_rhf(text, model, self_consistency=False, extraction_mode="deliberative",
+            pair_completion=False):
     from multi_agent_kg.core import DeliberativeOrchestrator
     from multi_agent_kg.core.knowledge_graph import KnowledgeGraph
     from multi_agent_kg.core.governed_kg import GovernedKnowledgeGraph
@@ -79,6 +80,7 @@ def run_rhf(text, model, self_consistency=False, extraction_mode="deliberative")
         enable_cross_document=False,
         model_tiers={t: model for t in ModelTier},
         extraction_mode=extraction_mode,
+        enable_pair_completion=pair_completion,
     )
     error = None
     try:
@@ -138,6 +140,7 @@ def main():
     ap.add_argument("--offset", type=int, default=0)
     ap.add_argument("--strategy", choices=["rhf", "singlepass", "hybrid", "spgov"], default="rhf")
     ap.add_argument("--sc", action="store_true", help="self-consistency (GATED — see EXTRACTION_EXPERIMENTS.md)")
+    ap.add_argument("--pair-completion", action="store_true", help="GB-3 stage 4c: pair-completion pass (opt-in)")
     ap.add_argument("--save-kg-dir", required=True)
     ap.add_argument("--output", required=True)
     args = ap.parse_args()
@@ -176,7 +179,8 @@ def main():
             # GB-9: governed singlepass — wide harvest becomes the triples,
             # RHF/evidence/deliberation skipped, verify + governed commit kept.
             entities, triples, error = run_rhf(text, model, self_consistency=args.sc,
-                                               extraction_mode="governed_singlepass")
+                                               extraction_mode="governed_singlepass",
+                                               pair_completion=args.pair_completion)
         else:
             entities, triples, error = run_singlepass(text, model)
         wall = round(time.time() - t0, 1)

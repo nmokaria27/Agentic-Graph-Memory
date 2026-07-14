@@ -115,6 +115,7 @@ class DeliberativeOrchestrator:
         enable_self_consistency: bool = True,
         enable_open_world: bool = True,
         enable_fixed_schema_pairwise: bool = True,
+        enable_pair_completion: bool = False,
         enable_deterministic_value_harvesting: bool = False,
         enable_deterministic_attribute_binding: bool = False,
         enable_cross_document: bool = True,
@@ -215,6 +216,9 @@ class DeliberativeOrchestrator:
         self.enable_self_consistency = enable_self_consistency
         self.enable_open_world = enable_open_world
         self.enable_fixed_schema_pairwise = enable_fixed_schema_pairwise
+        # GB-3 pair-completion pass (stage 4c). Default OFF: controls and all
+        # existing modes are unchanged unless explicitly enabled.
+        self.enable_pair_completion = enable_pair_completion
         self.enable_deterministic_value_harvesting = enable_deterministic_value_harvesting
         self.enable_deterministic_attribute_binding = enable_deterministic_attribute_binding
         self.enable_cross_document = enable_cross_document
@@ -1002,6 +1006,35 @@ class DeliberativeOrchestrator:
                 {"triples": triples, "ran_connectivity_pass": should_run_connectivity},
                 governed_kg=self.governed_kg,
             )
+
+        # Step 4c: Pair Completion (GB-3, opt-in) — co-occurring extracted
+        # entities with no triple between them get one targeted second look.
+        # Additions flow through the normal verification+governance gates.
+        if self.enable_pair_completion:
+            if ckpt.has("4c"):
+                payload = ckpt.load("4c")
+                triples = payload["triples"]
+                context.relations = triples
+                results["triples_extracted"] = len(triples)
+                print(f"\n[4c/9] Pair Completion — SKIPPED (resumed) — {len(triples)} triples")
+            else:
+                print(f"\n[4c/9] Pair Completion (GB-3)")
+                print("-" * 50)
+                pair_triples = self.relation_extractor.extract_pair_completion_relations(
+                    text=context.text,
+                    entities=entities,
+                    triples=triples,
+                )
+                if pair_triples:
+                    triples.extend(pair_triples)
+                    context.relations = triples
+                    results["triples_extracted"] = len(triples)
+                    print(f"  Total triples now: {len(triples)}")
+                ckpt.save(
+                    "4c",
+                    {"triples": triples},
+                    governed_kg=self.governed_kg,
+                )
 
         # Step 5: Evidence Linking
         if ckpt.has("5"):
