@@ -1646,3 +1646,36 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   0.152→0.173 (+14%) at strict-F1 parity — worth folding into GB-14's design
   as a default candidate, NOT accepting blind (it halves triple count; needs
   a DocRED control check per anti-bias guard #4/#5).
+
+---
+
+## EXP-PAIR-COMPLETE (GB-3): pair-completion pass for co-occurring unlinked entities  (2026-07-13)
+- **Hypothesis:** offline coverage analysis (docs 100–119, singlepass baseline
+  cache, exact-surface matching): of 455 unique gold pairs, 28% are missed with
+  BOTH entities extracted and co-occurring within ≤300 chars, +12% both-present
+  but distant — a 0.19→0.59 pairR ceiling with entities we already have.
+  (EXP-UNION2 already showed complementary misses are triples-on-known-entities,
+  not entity coverage.) A targeted second look at co-occurring unlinked pairs —
+  "which of these pairs have a relation STATED in the text?" — should recover a
+  material fraction at bounded cost. Domain-general: pure graph-shape +
+  co-occurrence trigger, no dataset vocabulary, allowed to answer "none".
+- **Change (one structural mechanism):** `RelationExtractor.
+  extract_pair_completion_relations(text, entities, triples)` — candidates =
+  extracted entity pairs, both surfaces found in text within a char window
+  (default 300), no existing triple between them; sorted by distance, capped
+  (default 100 pairs/doc), batched (15 pairs/prompt) through `map_batches`;
+  additions tagged `source=pair_completion` and flow through the NORMAL
+  verification + governance gates (no bypass). New orchestrator stage 4c gated
+  by `enable_pair_completion` (DEFAULT OFF — controls cannot move).
+- **Lane & model:** local gpu02 Qwen3-30B (idle), `LLM_BATCH_CONCURRENCY=4`.
+- **Slice & control:** docs 100–119, spgov + pair-completion, fresh cache
+  `docred_kg_cache_paircomp`. Control = EXP-SPGOV-3 cache (same code path,
+  flag off; pairR 0.242, entP 0.808, relF1@0.6 0.161, median wall 99.4 s).
+- **Success bar:**
+  (a) pytest green ≥283 + new tests (candidate windowing/cap/linked-exclusion;
+      stage default-off; batching);
+  (b) pairR ≥ 0.292 (control + 0.05 — a fifth of the near-pair headroom);
+  (c) entP drop ≤ 0.03 vs control; relF1@0.6 ≥ control (no F1 regression);
+  (d) median wall ≤ control + 50%.
+- **Cost estimate:** ~2–7 extra LLM calls/doc (capped), 20 docs, ~30–50 min.
+- STATUS: RUNNING — implementing after committing this pre-registration.
