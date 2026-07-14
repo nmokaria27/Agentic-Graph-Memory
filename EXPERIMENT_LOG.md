@@ -1679,3 +1679,30 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   (d) median wall ≤ control + 50%.
 - **Cost estimate:** ~2–7 extra LLM calls/doc (capped), 20 docs, ~30–50 min.
 - STATUS: RUNNING — implementing after committing this pre-registration.
+
+### EXP-PAIR-COMPLETE verdict  (2026-07-14)
+- **Result (docs 100–119 vs EXP-SPGOV-3 control):**
+  | bar | target | control | result | |
+  |---|---|---|---|---|
+  | pairR | ≥ 0.292 | 0.242 | **0.305** | **PASS** (+0.063 — largest pairR gain of any experiment) |
+  | entP drop | ≤ 0.03 | 0.808 | 0.752 (−0.056) | MISS |
+  | relF1@0.6 | ≥ 0.161 | 0.161 | 0.143 | MISS |
+  | median wall | ≤ 149 s | 99.4 s | 183 s | MISS |
+  | entR (watch) | — | 0.758 | 0.675 | regressed |
+- **Root cause of the misses:** the model does NOT omit. 1,897 pair-completion
+  triples were emitted over ~1,860 candidate pairs (20 docs) — essentially one
+  relation per pair despite the explicit "omit pairs with no stated relation"
+  instruction. Verification passed enough of them to dilute precision, inflate
+  wall (6 verification batches/doc), and perturb stage-9 grouping (entR drop).
+  Instruction-following is not a filter; the filter must be STRUCTURAL.
+- **Verdict: REVERT as configured** (stage 4c stays in-tree, default OFF — it
+  already was). The MECHANISM is validated — pairR bar passed exactly as the
+  coverage analysis predicted — the admission side is what failed.
+- **Action → GB-3b (pre-registered design, next):** deterministic evidence
+  grounding — pair-completion triples must carry an evidence quote that is a
+  literal (normalized) substring of the document; non-quoting triples are
+  dropped in code before verification (same principle as
+  `_enforce_strict_source_support`, zero extra LLM calls, no reliance on
+  instruction-following). Cache dumps must also preserve `source` and
+  `evidence` fields (this run's dump stripped them, blocking offline rescue —
+  measurement-tooling fix, not benchmark-specific).
