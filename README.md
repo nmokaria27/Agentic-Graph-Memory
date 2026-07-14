@@ -46,9 +46,53 @@ python scripts/build_governed_scierc.py --split dev --max-docs 10 --fixed-schema
 # Run the application-layer demo (QA over an existing governed KG)
 python scripts/run_demo.py
 
-# Spin up the QA server for the interactive explorer
+# Spin up the QA server for the interactive explorer (legacy, pairs with kg_explorer.html)
 python scripts/qa_server.py
+
+# Spin up the full API server (used by the frontend/ web app below)
+python scripts/api_server.py --port 8000
 ```
+
+## Frontend (Web UI)
+
+`frontend/app/` is a React + Vite + d3 single-page app — graph explorer, QA chat with
+streamed progress, governance review, document upload, and a live pipeline-progress
+status bar. It talks to `scripts/api_server.py` over HTTP (see that file's docstring
+for the full endpoint list). `evaluation/results/` (DocRED, etc. run caches) is also
+browsable from the UI's "Graph source" dropdown, read-only.
+
+**Dev mode** (hot reload, two processes):
+
+```bash
+python scripts/api_server.py --port 8000        # backend
+
+cd frontend/app
+npm install    # or: bun install
+npm run dev    # or: bun run dev  ->  http://localhost:3000
+```
+
+The Vite dev server proxies `/api/*` to the backend (`frontend/app/vite.config.js`) —
+adjust the `target` there if you run the API on a different port.
+
+**Single-port deploy** (backend also serves the built frontend — useful behind an SSH
+tunnel or a remote GPU box with no browser):
+
+```bash
+cd frontend/app
+npm install && VITE_API_BASE='' npm run build   # or: bun install && VITE_API_BASE='' bun run build
+cd ../..
+python scripts/api_server.py --port 8000        # now also serves frontend/app/dist/ at /
+```
+
+Open `http://localhost:8000`. `VITE_API_BASE=''` makes the built app call the API on
+its own origin instead of expecting the dev proxy.
+
+No `node`/`npm` on the machine? [bun](https://bun.sh) is a drop-in replacement for both
+commands above (`bun install`, `bun run build`, `bun run dev`).
+
+Running on the UMD MindLabs cluster (gpu01/gpu02)? See `SERVER_GUIDE.md` §9.6 for the
+exact port (vLLM occupies 8000 there — use `--port 5150`) and the SSH tunnel command to
+view it from your laptop.
 
 ## Project structure
 
@@ -67,7 +111,9 @@ scripts/                     # entry points
   run_pipeline.py            # create a governed KG from text
   build_governed_scierc.py   # build a governed KG from SciERC
   run_demo.py                # QA demo on top of a governed KG
-  qa_server.py               # HTTP QA server
+  qa_server.py               # legacy HTTP QA server (pairs with kg_explorer.html)
+  api_server.py              # full API server (used by frontend/app/)
+frontend/app/                # React + Vite + d3 web UI — see "Frontend" above
 ```
 
 ## Architecture

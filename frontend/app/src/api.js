@@ -140,3 +140,16 @@ export async function fetchPipelineStatus(jobId) {
   const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
   return jsonOrThrow(resp);
 }
+
+// ── Eval run viewer (read-only, evaluation/results/*) ───────────────────────
+
+export async function fetchEvalRuns() {
+  const resp = await fetch(`${API_BASE}/eval/runs`, { signal: AbortSignal.timeout(5000) });
+  return jsonOrThrow(resp);
+}
+
+export async function fetchEvalGraph(dir, strategy, doc = 'all') {
+  const qs = new URLSearchParams({ dir, strategy, doc }).toString();
+  const resp = await fetch(`${API_BASE}/eval/graph?${qs}`);
+  return jsonOrThrow(resp);
+}

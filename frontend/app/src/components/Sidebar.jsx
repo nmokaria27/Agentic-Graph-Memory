@@ -5,6 +5,17 @@ const INDIGO = '#7c83e8';
 
 const AMBER = '#f59e0b';
 
+// Encode/decode graphSource <-> a single <select> value, since eval sources
+// need two fields (dir + strategy) but a native select only carries one.
+function sourceToKey(src) {
+  return src.kind === 'eval' ? `eval::${src.dir}::${src.strategy}` : 'live';
+}
+function keyToSource(key) {
+  if (key === 'live') return { kind: 'live' };
+  const [, dir, strategy] = key.split('::');
+  return { kind: 'eval', dir, strategy, doc: 'all' };
+}
+
 export default function Sidebar({
   mode, onModeChange,
   filters, onFiltersChange,
@@ -12,12 +23,20 @@ export default function Sidebar({
   qaHistory, selectedQaId, onQaSelect, onQaHover,
   serverConnected,
   kgStats,
+  graphSource, onGraphSourceChange, evalRuns,
 }) {
   const [relExpanded, setRelExpanded] = useState(false);
 
   const sectionLabel = {
     fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase',
     color: '#3d4555', marginBottom: 8, fontWeight: 600,
+  };
+
+  const selectStyle = {
+    width: '100%', background: '#0f1117', border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: 4, padding: '6px 8px', color: '#c8d3e0', fontSize: 11,
+    fontFamily: "'JetBrains Mono', monospace", outline: 'none', boxSizing: 'border-box',
+    cursor: 'pointer',
   };
 
   return (
@@ -35,6 +54,29 @@ export default function Sidebar({
           MULTI-AGENT KG SYSTEM
         </div>
       </div>
+
+      {/* Graph source */}
+      {graphSource && onGraphSourceChange && (
+        <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+          <div style={sectionLabel}>Graph source</div>
+          <select
+            value={sourceToKey(graphSource)}
+            onChange={e => onGraphSourceChange(keyToSource(e.target.value))}
+            style={selectStyle}>
+            <option value="live">Live KG</option>
+            {(evalRuns || []).map(r => (
+              <option key={`${r.dir}::${r.strategy}`} value={`eval::${r.dir}::${r.strategy}`}>
+                {r.label}
+              </option>
+            ))}
+          </select>
+          {graphSource.kind === 'eval' && (
+            <div style={{ marginTop: 6, fontSize: 9, color: '#3d4555', fontFamily: "'JetBrains Mono', monospace", wordBreak: 'break-all' }}>
+              evaluation/results/{graphSource.dir}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Mode switcher */}
       <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>

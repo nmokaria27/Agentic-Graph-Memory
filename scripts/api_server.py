@@ -78,6 +78,23 @@ _kg_reload_lock = threading.Lock()  # protects governed_kg/qa_system swap during
 # How the KG/QA stack was initialized; reused by /kg/reload after ingestion.
 _INIT_CONFIG: dict = {"mode": "none"}
 
+# Ordered checkpoint stages written by the deliberative pipeline
+# (see multi_agent_kg/core/deliberative_orchestrator.py — stage 7 was
+# consolidated into verification, so it never appears in manifests).
+PIPELINE_STAGES = [
+    {"id": "1", "label": "Document Processing"},
+    {"id": "2", "label": "Domain Classification"},
+    {"id": "2b", "label": "Governance Bootstrap"},
+    {"id": "3", "label": "Entity Extraction"},
+    {"id": "3b", "label": "Domain Assignment"},
+    {"id": "4", "label": "Relation Extraction"},
+    {"id": "4b", "label": "Connectivity Pass"},
+    {"id": "5", "label": "Evidence Linking"},
+    {"id": "6", "label": "Deliberation"},
+    {"id": "8", "label": "Verification"},
+    {"id": "9", "label": "KG Integration"},
+]
+
 # Job table for /ingest + /pipeline/status (persisted to JOBS_FILE).
 JOBS: dict[str, dict] = {}
 if JOBS_FILE.exists():
@@ -127,14 +144,16 @@ def _safe_float(val, default: float = 0.0) -> float:
         return default
 
 
+ENTITY_TYPE_PALETTE = [
+    "#2e7d9e", "#c17f4a", "#7264c8", "#3d8f6e", "#a05070",
+    "#4a6b9e", "#d4a843", "#5e8c61", "#9b6b9e", "#c76f6f",
+    "#4a9e8e", "#8b7355", "#6a8fc1", "#c4826d", "#7a9e4a",
+]
+
+
 def _build_entity_types(entities: list[dict]) -> dict:
     """Derive entity type -> color mapping from entity data."""
-    # Color palette for entity types
-    PALETTE = [
-        "#2e7d9e", "#c17f4a", "#7264c8", "#3d8f6e", "#a05070",
-        "#4a6b9e", "#d4a843", "#5e8c61", "#9b6b9e", "#c76f6f",
-        "#4a9e8e", "#8b7355", "#6a8fc1", "#c4826d", "#7a9e4a",
-    ]
+    PALETTE = ENTITY_TYPE_PALETTE
     types_seen: dict[str, dict] = {}
     color_idx = 0
     for e in entities:
@@ -618,6 +637,159 @@ def kg_reload():
         raise HTTPException(status_code=500, detail=f"Reload failed: {exc}")
 
 
+# ── Eval run viewer (read-only) ──────────────────────────────────────────────
+# Lets the frontend browse graphs produced by evaluation/*/run_eval.py without
+# touching the live governed KG. Currently supports the DocRED runner's
+# per-document cache files (evaluation/results/<dir>/doc_<idx>_<strategy>.json,
+# written by evaluation/DocRED/run_eval.py). Read-only — nothing here writes,
+# moves, or renames anything under evaluation/.
+
+EVAL_RESULTS_DIR = PROJECT_ROOT / "evaluation" / "results"
+_DOCRED_STRATEGIES = ("rhf", "singlepass", "hybrid")
+_DOCRED_FILE_RE = re.compile(r"^doc_(\d+)_(rhf|singlepass|hybrid)\.json$")
+
+
+def _discover_docred_runs() -> list[dict]:
+    """Scan evaluation/results/*/ for DocRED doc-cache files (stat only, no JSON parsing)."""
+    if not EVAL_RESULTS_DIR.is_dir():
+        return []
+    runs: list[dict] = []
+    for sub in sorted(EVAL_RESULTS_DIR.iterdir()):
+        if not sub.is_dir():
+            continue
+        by_strategy: dict[str, list[int]] = {}
+        mtimes: dict[str, float] = {}
+        for f in sub.iterdir():
+            m = _DOCRED_FILE_RE.match(f.name)
+            if not m:
+                continue
+            idx, strategy = int(m.group(1)), m.group(2)
+            by_strategy.setdefault(strategy, []).append(idx)
+            mtimes[strategy] = max(mtimes.get(strategy, 0.0), f.stat().st_mtime)
+        for strategy, indices in by_strategy.items():
+            indices.sort()
+            runs.append({
+                "dir": sub.name,
+                "strategy": strategy,
+                "doc_count": len(indices),
+                "doc_indices": indices,
+                "latest_mtime": mtimes[strategy],
+                "label": f"{sub.name} · {strategy} ({len(indices)} docs)",
+            })
+    runs.sort(key=lambda r: r["latest_mtime"], reverse=True)
+    return runs
+
+
+@app.get("/eval/runs")
+def eval_runs():
+    """List DocRED eval runs found under evaluation/results/, newest first."""
+    runs = _discover_docred_runs()
+    return {"runs": runs, "default": runs[0] if runs else None}
+
+
+def _resolve_eval_run_dir(dir_name: str) -> Path:
+    if not dir_name or "/" in dir_name or dir_name in (".", ".."):
+        raise HTTPException(status_code=400, detail="invalid dir")
+    sub = EVAL_RESULTS_DIR / dir_name
+    if not sub.is_dir() or sub.resolve().parent != EVAL_RESULTS_DIR.resolve():
+        raise HTTPException(status_code=404, detail=f"unknown eval run dir: {dir_name}")
+    return sub
+
+
+@app.get("/eval/graph")
+def eval_graph(dir: str, strategy: str, doc: str = "all"):
+    """Reshape one DocRED doc-cache file (or all docs in a run) into the same
+    {entities, triples, entity_types, relation_types, org_chart} shape /kg/data
+    returns, so the frontend graph view works unmodified against eval data.
+    """
+    if strategy not in _DOCRED_STRATEGIES:
+        raise HTTPException(status_code=400, detail=f"strategy must be one of {_DOCRED_STRATEGIES}")
+    sub = _resolve_eval_run_dir(dir)
+
+    if doc == "all":
+        files = sorted(
+            sub.glob(f"doc_*_{strategy}.json"),
+            key=lambda p: int(_DOCRED_FILE_RE.match(p.name).group(1)),
+        )
+        if not files:
+            raise HTTPException(status_code=404, detail=f"no cached docs for {dir}/{strategy}")
+    else:
+        try:
+            doc_idx = int(doc)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="doc must be an integer index or 'all'")
+        f = sub / f"doc_{doc_idx}_{strategy}.json"
+        if not f.exists():
+            raise HTTPException(status_code=404, detail=f"no cached doc {doc_idx} for {dir}/{strategy}")
+        files = [f]
+
+    merged = len(files) > 1
+    entities: list[dict] = []
+    triples: list[dict] = []
+    entity_types: dict[str, dict] = {}
+    seen_ids: set[str] = set()
+
+    for fp in files:
+        try:
+            with open(fp) as fh:
+                record = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            continue
+        idx = record.get("idx")
+        title = record.get("title") or f"doc {idx}"
+        ns = f"{idx}::" if merged else ""
+        # In merged view, color/group by source document (extraction type is
+        # almost always "?" in this eval — grouping by type would render one
+        # undifferentiated blob). Single-doc view colors by extraction type.
+        pseudo_type = f"doc_{idx}" if merged else None
+
+        for e in record.get("entities", []):
+            eid = ns + str(e.get("id", ""))
+            if not eid or eid in seen_ids:
+                continue
+            seen_ids.add(eid)
+            raw_type = e.get("type") or "?"
+            etype = pseudo_type or ("UNKNOWN" if raw_type == "?" else raw_type)
+            labels = e.get("labels") or [e.get("name") or e.get("id", "")]
+            entities.append({
+                "id": eid,
+                "labels": labels,
+                "type": etype,
+                "metadata": {
+                    "confidence": 0.0,
+                    "source": title,
+                    "description": f"{title} (doc {idx}, extracted type={raw_type})",
+                },
+            })
+            if etype not in entity_types:
+                entity_types[etype] = {
+                    "color": ENTITY_TYPE_PALETTE[len(entity_types) % len(ENTITY_TYPE_PALETTE)],
+                    "label": title if merged else etype.replace("_", " ").title(),
+                }
+
+        for j, t in enumerate(record.get("triples", [])):
+            s, o = str(t.get("subject", "")), str(t.get("object", ""))
+            if not s or not o:
+                continue
+            triples.append({
+                "id": f"{ns}t{j}",
+                "subject": ns + s,
+                "relation": t.get("relation", ""),
+                "object": ns + o,
+                "confidence": _safe_float(t.get("confidence", 0.0)),
+                "source": title,
+            })
+
+    return {
+        "entities": entities,
+        "triples": triples,
+        "entity_types": entity_types,
+        "relation_types": sorted(set(t["relation"] for t in triples)),
+        "org_chart": {"domains": [], "assignments": {}},
+        "meta": {"dir": dir, "strategy": strategy, "doc": doc, "doc_count": len(files)},
+    }
+
+
 # ── Ingestion + pipeline status ──────────────────────────────────────────────
 
 
@@ -756,11 +928,34 @@ def pipeline_status(job_id: str | None = None):
         job = JOBS.get(job_id)
         if not job:
             raise HTTPException(status_code=404, detail=f"Unknown job_id: {job_id}")
-        return {**job, "checkpoint": _read_checkpoint_progress(job_id)}
+        return {**job, "checkpoint": _read_checkpoint_progress(job_id), "stages": PIPELINE_STAGES}
+    # Attach live checkpoint progress to in-flight jobs so a single poll can
+    # drive a global progress bar without a per-job follow-up request.
+    jobs = []
+    for job in sorted(JOBS.values(), key=lambda j: j.get("queued_at", 0), reverse=True):
+        if job.get("status") in ("queued", "running"):
+            job = {**job, "checkpoint": _read_checkpoint_progress(job.get("job_id"))}
+        jobs.append(job)
     return {
-        "jobs": sorted(JOBS.values(), key=lambda j: j.get("queued_at", 0), reverse=True),
+        "jobs": jobs,
         "checkpoint": {},
+        "stages": PIPELINE_STAGES,
     }
+
+
+# ── Static frontend ──────────────────────────────────────────────────────────
+# Serve the built React app (frontend/app/dist) from the same port so a single
+# SSH tunnel exposes both UI and API. API routes above take precedence; this
+# mount only catches paths that no route matched. Build with:
+#   cd frontend/app && VITE_API_BASE='' bun run build
+
+FRONTEND_DIST = PROJECT_ROOT / "frontend" / "app" / "dist"
+if FRONTEND_DIST.is_dir():
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+else:
+    print(f"NOTE: no frontend build at {FRONTEND_DIST} — serving API only.")
 
 
 # ── Startup logic ────────────────────────────────────────────────────────────

@@ -4,7 +4,11 @@ import Sidebar from './components/Sidebar.jsx';
 import QAPanel from './components/QAPanel.jsx';
 import UploadPanel from './components/UploadPanel.jsx';
 import GovernancePanel from './components/GovernancePanel.jsx';
-import { fetchHealth, fetchKGData, submitQuestion, submitQuestionStream } from './api.js';
+import StatusBar from './components/StatusBar.jsx';
+import {
+  fetchHealth, fetchKGData, submitQuestion, submitQuestionStream,
+  fetchEvalRuns, fetchEvalGraph,
+} from './api.js';
 import {
   MOCK_ENTITY_TYPES, MOCK_ENTITIES, MOCK_TRIPLES,
   MOCK_RELATION_TYPES,
@@ -39,13 +43,18 @@ export default function App() {
   const [orgChart, setOrgChart]           = useState(null);
   const [reloadKey, setReloadKey]         = useState(0);
 
+  // ── Graph source: live governed KG, or a cached eval run (read-only) ──────
+  // { kind: 'live' } | { kind: 'eval', dir, strategy, doc }
+  const [graphSource, setGraphSource] = useState({ kind: 'live' });
+  const [evalRuns, setEvalRuns]       = useState([]);
+  const [evalError, setEvalError]     = useState('');
+
   // ── Mode ──────────────────────────────────────────────────────────────────
   const [mode, setMode]               = useState('explore');
   const [selectedModel, setModel]     = useState('gemma4:31b');
   const [serverConnected, setServer]  = useState(false);
   const [backendStatus, setBackendStatus] = useState('loading'); // 'loading' | 'online' | 'offline' | 'no-kg'
   const [qaReady, setQaReady]         = useState(false);
-  const [kgStats, setKgStats]         = useState(null);
 
   // ── Governance ──────────────────────────────────────────────────────────
   const [selectedDomainId, setSelectedDomainId] = useState(null);
@@ -88,11 +97,34 @@ export default function App() {
     return Object.keys(map).length ? map : null;
   }, [orgChart]);
 
-  // ── Fetch data from server ────────────────────────────────────────────────
+  // ── Discover available eval runs (once) ───────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    fetchEvalRuns()
+      .then(data => { if (!cancelled) setEvalRuns(data.runs || []); })
+      .catch(() => { /* eval endpoint optional — ignore if unreachable */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Fetch graph data from server (live KG, or a selected eval run) ────────
   useEffect(() => {
     let cancelled = false;
 
-    async function loadData() {
+    function applyGraphData(data) {
+      setEntities(data.entities);
+      setTriples(data.triples);
+      setEntityTypes(data.entity_types);
+      setRelationTypes(data.relation_types);
+      setOrgChart(data.org_chart ?? null);
+      setFilters({
+        entityTypes: Object.fromEntries(Object.keys(data.entity_types).map(k => [k, true])),
+        relationTypes: Object.fromEntries(data.relation_types.map(r => [r, true])),
+        confidenceThreshold: 0,
+        searchQuery: '',
+      });
+    }
+
+    async function loadLive() {
       try {
         const health = await fetchHealth();
         if (cancelled) return;
@@ -100,24 +132,11 @@ export default function App() {
         if (health.status === 'ok') {
           setServer(true);
           setQaReady(!!health.qa_ready);
-          setKgStats(health.kg_stats ?? null);
 
           if (health.kg_loaded) {
             const data = await fetchKGData();
             if (cancelled) return;
-
-            setEntities(data.entities);
-            setTriples(data.triples);
-            setEntityTypes(data.entity_types);
-            setRelationTypes(data.relation_types);
-            setOrgChart(data.org_chart ?? null);
-
-            setFilters({
-              entityTypes: Object.fromEntries(Object.keys(data.entity_types).map(k => [k, true])),
-              relationTypes: Object.fromEntries(data.relation_types.map(r => [r, true])),
-              confidenceThreshold: 0,
-              searchQuery: '',
-            });
+            applyGraphData(data);
             setBackendStatus('online');
           } else {
             setBackendStatus('no-kg');
@@ -133,9 +152,36 @@ export default function App() {
       }
     }
 
-    loadData();
+    async function loadEval({ dir, strategy, doc }) {
+      setEvalError('');
+      try {
+        const health = await fetchHealth();
+        if (cancelled) return;
+        setServer(health.status === 'ok');
+        setQaReady(!!health.qa_ready);
+        if (health.status !== 'ok') { setBackendStatus('offline'); return; }
+
+        const data = await fetchEvalGraph(dir, strategy, doc);
+        if (cancelled) return;
+        applyGraphData(data);
+        setBackendStatus('online');
+      } catch (err) {
+        if (!cancelled) {
+          setBackendStatus('offline');
+          setEvalError(err?.message || 'Failed to load eval run');
+        }
+      }
+    }
+
+    if (graphSource.kind === 'eval') loadEval(graphSource);
+    else loadLive();
+
     return () => { cancelled = true; };
-  }, [reloadKey]);
+  }, [reloadKey, graphSource]);
+
+  // Graph size for the currently displayed source (live or eval) — shown in
+  // the sidebar footer and status bar.
+  const kgStats = useMemo(() => ({ entities: entities.length, triples: triples.length }), [entities, triples]);
 
   // ── Derived: filtered entities / triples ──────────────────────────────────
   // Cap rendered nodes for performance on very large KGs; highest-degree
@@ -266,6 +312,8 @@ export default function App() {
   // into thinking the backend had answered. Empty history shows suggested
   // question prompts (in QAPanel) which the user clicks to fire real questions.
 
+  const handlePipelineComplete = useCallback(() => setReloadKey(k => k + 1), []);
+
   // ── Layout ────────────────────────────────────────────────────────────────
   const handleModeChange = useCallback((m) => {
     setMode(m);
@@ -281,7 +329,9 @@ export default function App() {
 
   const banner = (() => {
     if (backendStatus === 'loading' || backendStatus === 'online') return null;
-    const text = backendStatus === 'offline'
+    const text = graphSource.kind === 'eval' && evalError
+      ? `Failed to load eval run: ${evalError}`
+      : backendStatus === 'offline'
       ? 'Backend offline — showing demo data. Start scripts/api_server.py to load the real KG.'
       : 'Backend online but no KG loaded — showing demo data. Run the pipeline first or check governed_kg_export.json.';
     return (
@@ -303,6 +353,9 @@ export default function App() {
       <Sidebar
         mode={mode}
         onModeChange={handleModeChange}
+        graphSource={graphSource}
+        onGraphSourceChange={setGraphSource}
+        evalRuns={evalRuns}
         filters={filters}
         onFiltersChange={setFilters}
         entityTypes={entityTypes}
@@ -341,7 +394,13 @@ export default function App() {
           }} />
         )}
 
-        <UploadPanel onIngestComplete={() => setReloadKey(k => k + 1)} />
+        <UploadPanel onIngestComplete={handlePipelineComplete} />
+
+        <StatusBar
+          serverConnected={serverConnected}
+          kgStats={kgStats}
+          onPipelineComplete={handlePipelineComplete}
+        />
 
         {/* Mode indicator badge */}
         <div style={{
