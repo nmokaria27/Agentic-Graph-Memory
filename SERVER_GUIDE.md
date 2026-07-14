@@ -1,5 +1,5 @@
 # UMD MindLabs GPU Cluster — Server Guide
-
+  
 Complete reference for the MindLabs GPU cluster at the University of Maryland. Covers hardware, software, services, access methods, and operational procedures for the Agent-Graph-Memory project.
 
 ---
@@ -10,7 +10,7 @@ Complete reference for the MindLabs GPU cluster at the University of Maryland. C
 2. [Hardware Specs](#2-hardware-specs)
 3. [Software Environment](#3-software-environment)
 4. [Storage Topology](#4-storage-topology)
-5. [Running Services](#5-running-services)
+5. [Running Services](#5-running-services) — includes [Using vLLM](#using-vllm-openai-compatible-client)
 6. [Access Methods](#6-access-methods)
 7. [Operational Procedures](#7-operational-procedures)
 8. [Hard Rules & Gotchas](#8-hard-rules--gotchas)
@@ -23,7 +23,7 @@ Complete reference for the MindLabs GPU cluster at the University of Maryland. C
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    MacBook (Local Dev)                    │
+│                 Local Dev Machine (laptop)                │
 │                                                           │
 │  SSH tunnels:                                             │
 │  -L 8000:localhost:8000     → gpu02 (vLLM)               │
@@ -54,7 +54,7 @@ Complete reference for the MindLabs GPU cluster at the University of Maryland. C
                   ▼
 ┌─────────────────────────────────────────────────────────┐
 │              Shared Storage (GlusterFS + NFS)             │
-│  /home/nmokaria  →  fs00.mind.local (GlusterFS)          │
+│  /home/<username> → fs00.mind.local (GlusterFS)          │
 │  /fs/scratch     →  fs01.mind.local:/zpool0/scratch (NFS)│
 └─────────────────────────────────────────────────────────┘
 ```
@@ -83,7 +83,7 @@ Complete reference for the MindLabs GPU cluster at the University of Maryland. C
 | OS | Rocky Linux 9.7 (Blue Onyx) |
 | Boot Disk | 447 GB NVMe (LVM: 70 GB root, 4 GB swap, ~370 GB home) |
 | Python | 3.13.13 (miniconda3 base env) |
-| Conda | `/home/nmokaria/miniconda3` (base env active) |
+| Conda | `~/miniconda3` (base env active; per-user home) |
 
 **NVMe layout differences:**
 
@@ -115,7 +115,7 @@ Complete reference for the MindLabs GPU cluster at the University of Maryland. C
 
 ### GPU01 (Ollama node) & GPU02 (vLLM node) — identical packages
 
-Both nodes share the same conda env via GlusterFS (`/home/nmokaria/miniconda3`).
+Both nodes see the same per-user conda env via GlusterFS (`~/miniconda3`).
 
 | Package | Version |
 |---------|---------|
@@ -141,7 +141,7 @@ Verified on both gpu01 and gpu02 (identical).
 
 ### Conda
 
-Only the `base` environment is currently set up. All packages are installed in the base conda env at `/home/nmokaria/miniconda3`. Since `/home` is shared via GlusterFS, the same conda env is available on both GPU nodes.
+Only the `base` environment is typically set up. Install packages in your own conda env at `~/miniconda3`. Since `/home` is shared via GlusterFS, the same env is available on both GPU nodes for your account.
 
 ---
 
@@ -151,7 +151,7 @@ Only the `base` environment is currently set up. All packages are installed in t
 
 | Mount | Source | Type | Notes |
 |-------|--------|------|-------|
-| `/home/nmokaria` | `fs00.mind.local:/home/nmokaria` | fuse.glusterfs | Shared across all nodes. Conda, code, home dir. |
+| `/home/<username>` | `fs00.mind.local:/home/<username>` | fuse.glusterfs | Shared across all nodes. Conda, code, home dir. |
 
 ### Network Scratch (NFS)
 
@@ -246,7 +246,7 @@ This is baked into the vLLM launch command (see [Section 7](#7-operational-proce
 # From within the cluster (jump node or any GPU node):
 curl -s gpu01.mind.cs.umd.edu:11434/api/tags | python3 -m json.tool
 
-# From local MacBook (requires SSH tunnel, see Section 6):
+# From local laptop (requires SSH tunnel, see Section 6):
 curl -s localhost:11435/api/tags | python3 -m json.tool
 ```
 
@@ -285,7 +285,7 @@ ollama pull <model_name>
 # From within the cluster:
 curl -s gpu02.mind.cs.umd.edu:8000/v1/models | python3 -m json.tool
 
-# From local MacBook (requires SSH tunnel):
+# From local laptop (requires SSH tunnel):
 curl -s localhost:8000/v1/models | python3 -m json.tool
 ```
 
@@ -294,26 +294,106 @@ curl -s localhost:8000/v1/models | python3 -m json.tool
 curl -s gpu02.mind.cs.umd.edu:8000/health
 ```
 
-**Test a chat completion:**
+### Using vLLM (OpenAI-compatible client)
+
+vLLM on gpu02 exposes an OpenAI-compatible HTTP API. Call it from any cluster node
+(or JupyterHub) directly, or from your laptop via the SSH tunnel in §6.2.
+
+| Access from | Base URL |
+|-------------|----------|
+| Cluster / JupyterHub | `http://gpu02.mind.cs.umd.edu:8000/v1` |
+| Laptop (SSH tunnel) | `http://localhost:8000/v1` |
+
+**Served model name** (pass this exact string as `model=`):
+
+```
+Qwen/Qwen3-30B-A3B-Instruct-2507
+```
+
+> Confirm the live name anytime with `curl -s …/v1/models`. If someone relaunched
+> a different checkpoint, use whatever `id` that endpoint returns.
+
+#### curl
+
 ```bash
-curl -s gpu02.mind.cs.umd.edu:8000/v1/chat/completions \
+curl -s http://gpu02.mind.cs.umd.edu:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "google/gemma-4-31B-it",
-    "messages": [{"role": "user", "content": "Hello"}],
-    "max_tokens": 50
-  }'
+    "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+    "messages": [
+      {"role": "user", "content": "Explain tensor parallelism in one sentence."}
+    ],
+    "max_tokens": 128,
+    "temperature": 0.7
+  }' | python3 -m json.tool
+```
+
+#### Python (`openai` SDK)
+
+```bash
+pip install openai   # once, in your conda env
+```
+
+```python
+from openai import OpenAI
+
+# From a cluster node / JupyterHub:
+client = OpenAI(
+    base_url="http://gpu02.mind.cs.umd.edu:8000/v1",
+    api_key="EMPTY",  # vLLM does not require a real key
+)
+
+# From your laptop (after SSH tunnel → localhost:8000):
+# client = OpenAI(base_url="http://localhost:8000/v1", api_key="EMPTY")
+
+resp = client.chat.completions.create(
+    model="Qwen/Qwen3-30B-A3B-Instruct-2507",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "What is a Mixture-of-Experts (MoE) model?"},
+    ],
+    max_tokens=256,
+    temperature=0.7,
+)
+print(resp.choices[0].message.content)
+```
+
+#### Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="Qwen/Qwen3-30B-A3B-Instruct-2507",
+    messages=[{"role": "user", "content": "Count from 1 to 5."}],
+    max_tokens=64,
+    stream=True,
+)
+for chunk in stream:
+    delta = chunk.choices[0].delta.content
+    if delta:
+        print(delta, end="", flush=True)
+print()
+```
+
+#### List models / quick sanity check
+
+```python
+print(client.models.list())
+```
+
+```bash
+# Same check without Python:
+curl -s http://gpu02.mind.cs.umd.edu:8000/v1/models | python3 -m json.tool
 ```
 
 ---
 
 ## 6. Access Methods
 
-### 6.1 SSH (MacBook → Jump Node → GPU Nodes)
+### 6.1 SSH (Laptop → Jump Node → GPU Nodes)
 
 **Direct SSH to jump node:**
 ```bash
-ssh nmokaria@mind-access00.cs.umd.edu
+ssh <username>@mind-access00.cs.umd.edu
 ```
 
 **From jump node to GPU nodes (passwordless within cluster):**
@@ -324,15 +404,15 @@ ssh gpu02.mind.cs.umd.edu
 
 ### 6.2 SSH Tunnels (Local Dev Access)
 
-Services on GPU nodes are **not exposed outside the firewall**. To access them from your MacBook, create SSH tunnels through the jump node.
+Services on GPU nodes are **not exposed outside the firewall**. To access them from your laptop, create SSH tunnels through the jump node.
 
-**Start both tunnels (run from MacBook):**
+**Start both tunnels (run from your laptop):**
 ```bash
 # vLLM tunnel (gpu02 :8000 → localhost:8000)
-ssh -f -N -J nmokaria@mind-access00.cs.umd.edu -L 8000:localhost:8000 nmokaria@gpu02.mind.cs.umd.edu
+ssh -f -N -J <username>@mind-access00.cs.umd.edu -L 8000:localhost:8000 <username>@gpu02.mind.cs.umd.edu
 
 # Ollama tunnel (gpu01 :11434 → localhost:11435)
-ssh -f -N -J nmokaria@mind-access00.cs.umd.edu -L 11435:localhost:11434 nmokaria@gpu01.mind.cs.umd.edu
+ssh -f -N -J <username>@mind-access00.cs.umd.edu -L 11435:localhost:11434 <username>@gpu01.mind.cs.umd.edu
 ```
 
 **Why port 11435 for Ollama?** Local port 11434 may be occupied by a local Ollama install. Using 11435 avoids conflicts. The `.env` file maps `EMBEDDING_BASE_URL=http://localhost:11435/v1` accordingly.
@@ -349,7 +429,7 @@ pkill -f "ssh.*mind-access00"
 
 **Alternative single-tunnel for Ollama only (from mentor docs):**
 ```bash
-ssh -L 11434:gpu01.mind.cs.umd.edu:11434 nmokaria@mind-access00.cs.umd.edu
+ssh -L 11434:gpu01.mind.cs.umd.edu:11434 <username>@mind-access00.cs.umd.edu
 ```
 This binds the remote Ollama port to local 11434. Keep this terminal open (or use `-f -N` for background).
 
@@ -386,9 +466,9 @@ https://gpuyter.mind.cs.umd.edu/user/<your_id>/proxy/<your_port>
 https://gpuyter.mind.cs.umd.edu/user/<your_id>/vscode/proxy/<your_port>
 ```
 
-Example: if username is `nmokaria` and the webserver listens on port 5150:
+Example: if your UMD username is `<username>` and the webserver listens on port 5150:
 ```
-https://gpuyter.mind.cs.umd.edu/user/nmokaria/proxy/5150
+https://gpuyter.mind.cs.umd.edu/user/<username>/proxy/5150
 ```
 
 ---
@@ -396,6 +476,12 @@ https://gpuyter.mind.cs.umd.edu/user/nmokaria/proxy/5150
 ## 7. Operational Procedures
 
 ### 7.1 Starting vLLM (gpu02)
+
+> **Target (mentor-aligned):** serve vLLM from Docker on host port **11534**, with
+> weights bind-mounted from `/scratch/models`. Compose + cutover runbook:
+> [`deploy/vllm/`](deploy/vllm/README.md). **gpu01 stays Ollama-only** (`:11434`).
+> Until cutover completes, the bare-metal commands below (port **8000**) remain the
+> live path.
 
 One model at a time (both L40S are needed via TP=2). Weights live under
 `/scratch/models/`. Use a model-specific `TRITON_CACHE_DIR` and log file.
@@ -409,7 +495,7 @@ nohup env \
   TRITON_CACHE_DIR=/scratch/triton_cache_qwen3 \
   VLLM_USE_FLASHINFER_SAMPLER=0 \
   CUDA_VISIBLE_DEVICES=0,1 \
-  /home/nmokaria/miniconda3/bin/python -m vllm.entrypoints.openai.api_server \
+  ~/miniconda3/bin/python -m vllm.entrypoints.openai.api_server \
     --model /scratch/models/qwen3-30b-a3b-instruct-2507-fp8 \
     --served-model-name Qwen/Qwen3-30B-A3B-Instruct-2507 \
     --tensor-parallel-size 2 \
@@ -427,7 +513,7 @@ nohup env \
   TRITON_CACHE_DIR=/scratch/triton_cache_nemotron \
   VLLM_USE_FLASHINFER_SAMPLER=0 \
   CUDA_VISIBLE_DEVICES=0,1 \
-  /home/nmokaria/miniconda3/bin/python -m vllm.entrypoints.openai.api_server \
+  ~/miniconda3/bin/python -m vllm.entrypoints.openai.api_server \
     --model /scratch/models/nemotron-nano-30b-fp8 \
     --served-model-name nvidia/nemotron-3-nano \
     --tensor-parallel-size 2 \
@@ -493,16 +579,16 @@ ssh gpu01.mind.cs.umd.edu 'sudo systemctl restart ollama'
 
 ### 7.3 SSH Tunnel Setup & Diagnostics
 
-**Full tunnel setup script (run from MacBook):**
+**Full tunnel setup script (run from your laptop):**
 ```bash
 # Kill any existing tunnels
 pkill -f "ssh.*mind-access00"
 
 # Start vLLM tunnel
-ssh -f -N -J nmokaria@mind-access00.cs.umd.edu -L 8000:localhost:8000 nmokaria@gpu02.mind.cs.umd.edu
+ssh -f -N -J <username>@mind-access00.cs.umd.edu -L 8000:localhost:8000 <username>@gpu02.mind.cs.umd.edu
 
 # Start Ollama tunnel
-ssh -f -N -J nmokaria@mind-access00.cs.umd.edu -L 11435:localhost:11434 nmokaria@gpu01.mind.cs.umd.edu
+ssh -f -N -J <username>@mind-access00.cs.umd.edu -L 11435:localhost:11434 <username>@gpu01.mind.cs.umd.edu
 
 # Verify
 sleep 2
@@ -547,9 +633,9 @@ python scripts/run_pipeline.py --input <your_doc.txt> --output output.json
    - Ollama loading an embedding model on the same node will cause OOM.
    - Ollama stays on gpu01, vLLM stays on gpu02. No exceptions.
 
-2. **ALWAYS use the full HuggingFace ID for vLLM.**
-   - Correct: `google/gemma-4-31B-it`
-   - Wrong: `gemma4:31b` (that's the Ollama tag, vLLM won't find it)
+2. **ALWAYS use the full HuggingFace / served-model ID for vLLM.**
+   - Correct: `Qwen/Qwen3-30B-A3B-Instruct-2507` (match `/v1/models`)
+   - Wrong: `qwen3:32b` (that's an Ollama tag, vLLM won't find it)
 
 3. **ALWAYS set `TRITON_CACHE_DIR` to a local path.**
    - GlusterFS (`/home`) causes Triton JIT race conditions.
@@ -593,7 +679,7 @@ The project supports three LLM backends via `LLM_BACKEND` env var. For the local
 LLM_BACKEND=vllm
 VLLM_BASE_URL=http://localhost:8000/v1
 VLLM_API_KEY=EMPTY
-LLM_DEFAULT_MODEL=google/gemma-4-31B-it
+LLM_DEFAULT_MODEL=Qwen/Qwen3-30B-A3B-Instruct-2507
 
 EMBEDDING_BASE_URL=http://localhost:11435/v1
 EMBEDDING_API_KEY=ollama
@@ -622,6 +708,7 @@ Defined in `multi_agent_kg/core/adaptive_config.py` (`MODEL_SPECS` dict). Used f
 |-------|---------|------------|---------|
 | `gemma4:31b` | 32768 | 8192 | Ollama |
 | `google/gemma-4-31B-it` | 32768 | 8192 | vLLM |
+| `Qwen/Qwen3-30B-A3B-Instruct-2507` | 131072 | — | vLLM (current on gpu02) |
 | `qwen3:4b` / `qwen3:8b` | 32768 | 8192 | Ollama |
 | `deepseek-r1:14b` | 32768 | 8192 | Ollama |
 | `meta-llama/Llama-3.1-8B-Instruct` | 131072 | 32768 | vLLM |
@@ -672,10 +759,10 @@ nohup python scripts/api_server.py --port 5150 > pipeline_logs/api_server.log 2>
 which is what the single-port deploy needs. (Without it the app defaults to `/api`,
 which only works behind the Vite dev proxy.)
 
-**On your MacBook — tunnel and open:**
+**On your laptop — tunnel and open:**
 
 ```bash
-ssh -f -N -J nmokaria@mind-access00.cs.umd.edu -L 5150:localhost:5150 nmokaria@gpu02.mind.cs.umd.edu
+ssh -f -N -J <username>@mind-access00.cs.umd.edu -L 5150:localhost:5150 <username>@gpu02.mind.cs.umd.edu
 open http://localhost:5150
 ```
 
@@ -688,7 +775,7 @@ backend health, KG size, and a live per-stage pipeline progress bar during inges
 proxy in `vite.config.js` targets 5150), and tunnel port 3000 instead.
 
 Alternative access without a tunnel — the JupyterHub web proxy:
-`https://gpuyter.mind.cs.umd.edu/user/nmokaria/proxy/5150/` (only works while your
+`https://gpuyter.mind.cs.umd.edu/user/<username>/proxy/5150/` (only works while your
 JupyterHub session runs on the same node as the server; asset paths may need a
 relative-base build: `VITE_API_BASE='' bun run build -- --base=./`).
 
@@ -696,13 +783,13 @@ relative-base build: `VITE_API_BASE='' bun run build -- --base=./`).
 
 ## 10. Quick Reference
 
-### One-liner: Start everything from MacBook
+### One-liner: Start everything from your laptop
 
 ```bash
 # 1. Start SSH tunnels
 pkill -f "ssh.*mind-access00" 2>/dev/null
-ssh -f -N -J nmokaria@mind-access00.cs.umd.edu -L 8000:localhost:8000 nmokaria@gpu02.mind.cs.umd.edu
-ssh -f -N -J nmokaria@mind-access00.cs.umd.edu -L 11435:localhost:11434 nmokaria@gpu01.mind.cs.umd.edu
+ssh -f -N -J <username>@mind-access00.cs.umd.edu -L 8000:localhost:8000 <username>@gpu02.mind.cs.umd.edu
+ssh -f -N -J <username>@mind-access00.cs.umd.edu -L 11435:localhost:11434 <username>@gpu01.mind.cs.umd.edu
 
 # 2. Verify
 curl -s localhost:8000/v1/models | python3 -m json.tool
@@ -738,7 +825,8 @@ sed -i.bak \
   -e 's/^# LLM_BACKEND=vllm$/LLM_BACKEND=vllm/' \
   -e 's/^# VLLM_BASE_URL=http:\/\/localhost:8000/VLLM_BASE_URL=http:\/\/localhost:8000/' \
   -e 's/^# VLLM_API_KEY=EMPTY/VLLM_API_KEY=EMPTY/' \
-  -e 's/^# LLM_DEFAULT_MODEL=google\/gemma-4-31B-it/LLM_DEFAULT_MODEL=google\/gemma-4-31B-it/' \
+  -e 's/^# LLM_DEFAULT_MODEL=Qwen\/Qwen3-30B-A3B-Instruct-2507/LLM_DEFAULT_MODEL=Qwen\/Qwen3-30B-A3B-Instruct-2507/' \
+  -e 's/^# LLM_DEFAULT_MODEL=google\/gemma-4-31B-it/LLM_DEFAULT_MODEL=Qwen\/Qwen3-30B-A3B-Instruct-2507/' \
   -e 's/^# EMBEDDING_BASE_URL=http:\/\/localhost:11435/EMBEDDING_BASE_URL=http:\/\/localhost:11435/' \
   -e 's/^# EMBEDDING_API_KEY=ollama/EMBEDDING_API_KEY=ollama/' \
   -e 's/^# EMBEDDING_MODEL=mxbai-embed-large:335m/EMBEDDING_MODEL=mxbai-embed-large:335m/' \
@@ -771,9 +859,9 @@ ssh gpu02.mind.cs.umd.edu 'nvidia-smi'
 
 | Service | URL | Username |
 |---------|-----|----------|
-| SSH (jump) | `nmokaria@mind-access00.cs.umd.edu` | `nmokaria` |
-| JupyterHub (new) | `https://gpuyter.mind.cs.umd.edu` | `nmokaria` |
-| JupyterHub (old) | `https://jupyter.mind.cs.umd.edu` | `nmokaria` |
-| VS Code Server | via JupyterHub launcher | `nmokaria` |
+| SSH (jump) | `<username>@mind-access00.cs.umd.edu` | your UMD username |
+| JupyterHub (new) | `https://gpuyter.mind.cs.umd.edu` | your UMD username |
+| JupyterHub (old) | `https://jupyter.mind.cs.umd.edu` | your UMD username |
+| VS Code Server | via JupyterHub launcher | your UMD username |
 
 > All services use the same UMD username and password.
