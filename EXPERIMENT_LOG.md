@@ -1706,3 +1706,45 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   instruction-following). Cache dumps must also preserve `source` and
   `evidence` fields (this run's dump stripped them, blocking offline rescue —
   measurement-tooling fix, not benchmark-specific).
+
+---
+
+## EXP-PAIR-GROUND (GB-3b): structural evidence grounding for pair completion  (2026-07-14)
+- **Hypothesis:** EXP-PAIR-COMPLETE's pairR gain (0.242→0.305) came with precision
+  dilution because the model links ~every candidate pair despite the omit
+  instruction. Requiring each pair-completion triple to carry an evidence quote
+  that is a literal (normalized) substring of the document — enforced in code,
+  dropped otherwise — converts omission from an instruction into a structural
+  gate. Fabricated relations rarely come with verbatim quotes; stated relations do.
+- **Change (one mechanism):** in `extract_pair_completion_relations`, drop any
+  returned triple whose `evidence` field is empty or not a normalized substring
+  of the source text (count + print drops). Also: eval dumps preserve per-triple
+  `source` and `evidence` (measurement fix flagged in the PAIR-COMPLETE verdict).
+- **Lane & model:** local gpu02 Qwen3 (post model-swap back from gemma4 —
+  gemma4 had no measured numbers on this harness; every cached control is Qwen3).
+- **Slice & control:** docs 100–119 spgov + pair-completion (grounded), fresh
+  cache `docred_kg_cache_paircomp2`. Controls: EXP-SPGOV-3 (flag off) and
+  EXP-PAIR-COMPLETE (ungrounded) caches.
+- **Success bar:** (a) tests (kept/dropped/fabricated-quote cases) green;
+  (b) pairR ≥ 0.292 (keep ≥80% of the ungrounded gain); (c) entP ≥ 0.778
+  (drop ≤0.03 vs SPGOV-3); (d) relF1@0.6 ≥ 0.161; (e) median wall ≤ 149 s.
+- **Cost:** ~40 min gpu02 after the model swap.
+- STATUS: RUNNING — implementing after this pre-registration commits.
+
+## EXP-HEADROOM-SCIERC (GB-14 probe): is the review-precision gap model-bound?  (2026-07-14)
+- **Hypothesis:** DIAG-SCHEMA-ADMIT showed the paper's precision edge was
+  review/extraction QUALITY, not admission policy. Cheapest discriminating
+  evidence: the same governed build on a stronger model. If gpt-oss-120b
+  (Fireworks) materially beats Qwen3 on strict precision at comparable recall
+  on the SAME docs, GB-14 is (partly) model-bound → design centers on a
+  LARGE-tier review pass / local 120B; if flat, it's mechanism-bound →
+  evidence-grounded verification design.
+- **Change:** none — measurement. `build_governed_scierc --split test
+  --max-docs 10 --fixed-schema` on Fireworks `gpt-oss-120b`; canonicalize +
+  rich-score (10 docs); compare vs the SAME 10 docs sub-scored from the cached
+  Qwen3 governed artifact. Fireworks = evidence lane; any adoption reproduces
+  locally.
+- **Success bar (interpretive, n=10):** gpt-oss strict-P ≥ Qwen3-subset + 0.03
+  with strict-R ≥ Qwen3-subset − 0.02 ⇒ model-bound signal; else mechanism-bound.
+- **Cost:** ~10 docs × ~18 calls ≈ 200 Fireworks calls.
+- STATUS: RUNNING — log `evaluation/results/exp_headroom_scierc.log`.
