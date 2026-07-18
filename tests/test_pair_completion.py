@@ -51,9 +51,11 @@ def test_extract_pair_completion_tags_source_and_filters(monkeypatch):
             {"subject": "Marie Curie", "subject_id": "marie_curie",
              "relation": "STUDIED_AT",
              "object": "University of Paris", "object_id": "university_of_paris",
-             "confidence": 0.9, "evidence": "studied at"},
+             "confidence": 0.9,
+             "evidence": "Marie Curie studied at the University of Paris."},
             {"subject": "Marie Curie", "relation": "SELF",
-             "object": "Marie Curie"},  # degenerate — dropped
+             "object": "Marie Curie",
+             "evidence": "Marie Curie studied at the University of Paris."},  # degenerate
         ]}
 
     ex.call_llm = fake_call_llm
@@ -63,6 +65,31 @@ def test_extract_pair_completion_tags_source_and_filters(monkeypatch):
     assert out[0]["relation"] == "STUDIED_AT"
     # The candidate pairs (not raw entities) are what the prompt lists.
     assert "<-?->" in prompts[0]
+
+
+def test_evidence_grounding_drops_fabricated_and_missing_quotes():
+    """GB-3b: only triples whose evidence quote literally appears in the
+    document survive. Missing, too-short, and fabricated quotes are dropped."""
+    ex = RelationExtractor.__new__(RelationExtractor)
+
+    def fake_call_llm(**kwargs):
+        return {"triples": [
+            {"subject": "Marie Curie", "subject_id": "marie_curie",
+             "relation": "STUDIED_AT",
+             "object": "University of Paris", "object_id": "university_of_paris",
+             "evidence": "Marie Curie STUDIED at the  University of Paris."},  # verbatim modulo case/ws
+            {"subject": "Pierre Curie", "subject_id": "pierre_curie",
+             "relation": "WORKS_AT",
+             "object": "University of Paris", "object_id": "university_of_paris",
+             "evidence": "Pierre Curie was a professor at the University of Paris."},  # fabricated
+            {"subject": "Marie Curie", "subject_id": "marie_curie",
+             "relation": "RELATED_TO",
+             "object": "Pierre Curie", "object_id": "pierre_curie"},  # no evidence at all
+        ]}
+
+    ex.call_llm = fake_call_llm
+    out = ex.extract_pair_completion_relations(TEXT, ENTS, [])
+    assert [t["relation"] for t in out] == ["STUDIED_AT"]
 
 
 def test_stage_4c_default_off():

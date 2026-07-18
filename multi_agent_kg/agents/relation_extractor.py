@@ -530,6 +530,9 @@ INSTRUCTIONS:
 3. If the text does NOT state a relationship for a pair, OMIT that pair entirely.
    It is normal and correct to omit many pairs — do not invent relations.
 4. Subject and object MUST be the two entities of the pair, never the same entity twice.
+5. "evidence" MUST be an EXACT quote copied verbatim from the document (the
+   sentence or phrase stating the relationship). Triples whose evidence is not
+   found verbatim in the document are DISCARDED automatically.
 
 Return:
 {{
@@ -2510,16 +2513,39 @@ class RelationExtractor(BaseAgent):
                 max_tokens=4096,
             )
 
+        # GB-3b (EXP-PAIR-GROUND): structural evidence grounding. The model
+        # links ~every candidate pair regardless of the omit instruction
+        # (EXP-PAIR-COMPLETE: 1897 triples over ~1860 pairs), so omission must
+        # be enforced in code: a triple survives only if its evidence quote is
+        # a literal (normalized) substring of the document. Fabricated
+        # relations rarely come with verbatim quotes; stated relations do.
+        norm_text = re.sub(r"\s+", " ", text.lower()).strip()
+
+        def _grounded(t: Dict[str, Any]) -> bool:
+            quote = t.get("evidence")
+            if isinstance(quote, list):
+                quote = " ".join(str(q) for q in quote)
+            quote = re.sub(r"\s+", " ", str(quote or "").lower()).strip()
+            return len(quote) >= 10 and quote in norm_text
+
         from multi_agent_kg.core.parallel import map_batches
         all_new: List[Dict[str, Any]] = []
+        ungrounded = 0
         for result in map_batches(_pair_batch, batches):
             for t in _coerce_llm_items(result, ("triples",), TripleOut):
                 subj, obj = t.get("subject"), t.get("object")
-                if subj and obj and not _is_degenerate_endpoint_pair(
+                if not (subj and obj) or _is_degenerate_endpoint_pair(
                     subj, obj, t.get("relation"),
                     t.get("subject_id"), t.get("object_id"),
                 ):
-                    t["source"] = "pair_completion"
-                    all_new.append(t)
+                    continue
+                if not _grounded(t):
+                    ungrounded += 1
+                    continue
+                t["source"] = "pair_completion"
+                all_new.append(t)
+        if ungrounded:
+            print(f"  Pair completion: dropped {ungrounded} ungrounded triple(s) "
+                  f"(no verbatim evidence quote — GB-3b)")
         print(f"  Pair completion: found {len(all_new)} new triples")
         return all_new

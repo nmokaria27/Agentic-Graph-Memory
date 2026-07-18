@@ -100,9 +100,14 @@ def run_rhf(text, model, self_consistency=False, extraction_mode="deliberative",
          "labels": [str(l) for l in (getattr(e, "labels", None) or [])]}
         for eid, e in gkg.entities.items()
     ]
+    # GB-3b measurement fix: keep source/evidence on dumped triples so offline
+    # analyses can attribute triples to their pipeline stage and re-check
+    # grounding without a re-run (EXP-PAIR-COMPLETE lost this).
     triples = [
         {"subject": t.subject, "relation": t.relation, "object": t.object,
-         "confidence": float(getattr(t, "confidence", 0.0) or 0.0)}
+         "confidence": float(getattr(t, "confidence", 0.0) or 0.0),
+         "source": (getattr(t, "metadata", None) or {}).get("source"),
+         "evidence": (getattr(t, "metadata", None) or {}).get("evidence")}
         for t in gkg.triples
     ]
     return entities, triples, error
