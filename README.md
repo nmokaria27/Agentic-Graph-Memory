@@ -142,8 +142,29 @@ python evaluation/LongMemEval/run_eval.py --question-type knowledge-update --max
   --save-kg-dir ckpt --output out.json
 ```
 
-A React + Vite + d3 web UI (graph explorer, QA chat, governance review) lives on
-the `feat/web-ui` branch (`frontend/app/` + `scripts/api_server.py`).
+## Web frontend
+
+`frontend/app/` is a React + Vite + d3 single-page app served by
+`scripts/api_server.py`: graph explorer (search fly-to, double-click neighborhood
+focus, PNG/JSON export), QA chat with live stage progress and a model picker
+(local vLLM model + Fireworks-hosted models, mixed per-question), governance
+review, document upload with a pipeline progress bar, and a read-only browser for
+`evaluation/results/` run caches (graph + per-run metrics).
+
+```bash
+# one-time: build the frontend (bun is a drop-in replacement if npm is missing)
+cd frontend/app && npm install && VITE_API_BASE='' npm run build && cd ../..
+
+# serve API + frontend on one port
+python scripts/api_server.py --port 8000        # add --data-only to skip QA init
+```
+
+Open `http://localhost:8000`. On the MindLabs cluster use `--port 5150` (vLLM
+occupies 8000 on gpu02) and tunnel it:
+`ssh -f -N -J <user>@mind-access00.cs.umd.edu -L 5150:localhost:5150 <user>@gpu02...`
+— see `SERVER_GUIDE.md` §9.6. For frontend dev with hot reload:
+`cd frontend/app && npm run dev` (proxies `/api/*` to `localhost:5150`, see
+`vite.config.js`).
 
 ## Experiment discipline
 
@@ -189,6 +210,7 @@ evaluation/
   kgafe/                     # QA answer-faithfulness evaluation
   governance/                # governed-update benchmarks
   adapters/ datasets/        # dataset adapters and data
+frontend/app/                # React + Vite + d3 web UI — see "Web frontend" above
 scripts/                     # entry points (pipeline, SciERC builds, QA server, API server)
 tests/                       # 286 tests incl. fault-injection suites for every shipped guard
 EXPERIMENT_LOG.md            # the full pre-registered experiment trail (source of truth)

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
 
 const EDGE_COLOR    = '#7c83e8';
@@ -12,12 +12,30 @@ function nodeRadius(degree, maxDegree) {
   return NODE_MIN_R + (degree / maxDegree) * (NODE_MAX_R - NODE_MIN_R);
 }
 
+const canvasBtnStyle = {
+  width: 32, height: 32, border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(24,28,38,0.92)', color: '#8892a4', borderRadius: 4,
+  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  fontSize: 16, transition: 'color 0.15s, border-color 0.15s',
+};
+
+function CanvasBtn({ icon, title, onClick, small }) {
+  return (
+    <button title={title} onClick={onClick}
+      style={{ ...canvasBtnStyle, fontSize: small ? 11 : 16 }}
+      onMouseEnter={e => { e.currentTarget.style.color = TEAL; e.currentTarget.style.borderColor = 'rgba(29,233,182,0.4)'; }}
+      onMouseLeave={e => { e.currentTarget.style.color = '#8892a4'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
+      {icon}
+    </button>
+  );
+}
+
 export default function GraphCanvas({
   entities, triples, entityTypes, mode,
   highlightedNodes, highlightedEdges,
-  selectedNodeId, onNodeClick, onNodeHover,
+  selectedNodeId, onNodeClick, onNodeHover, onNodeFocus,
   hoveredChipNodeId, tweaks,
-  nodeColorById,
+  nodeColorById, flyTo, loading, onExported,
 }) {
   const svgRef       = useRef(null);
   const simRef       = useRef(null);
@@ -26,14 +44,22 @@ export default function GraphCanvas({
   const degreesRef   = useRef({});
   const maxDegreeRef = useRef(1);
   const zoomBehavRef = useRef(null);
+  const posRef       = useRef(new Map());  // node id -> {x, y} from the last layout
+  const nodesRef     = useRef([]);
+  const labelsHiddenRef = useRef(false);
 
   const [tooltip, setTooltip]       = useState(null);
   const [detailNode, setDetailNode] = useState(null);
+  // Detail panel follows selection: clearing the selection (Esc, background
+  // click) hides it without needing a state-syncing effect.
+  const shownDetail = selectedNodeId ? detailNode : null;
 
   const onNodeClickRef = useRef(onNodeClick);
   const onNodeHoverRef = useRef(onNodeHover);
+  const onNodeFocusRef = useRef(onNodeFocus);
   useEffect(() => { onNodeClickRef.current = onNodeClick; }, [onNodeClick]);
   useEffect(() => { onNodeHoverRef.current = onNodeHover; }, [onNodeHover]);
+  useEffect(() => { onNodeFocusRef.current = onNodeFocus; }, [onNodeFocus]);
   const setTooltipRef = useRef(setTooltip);
   const setDetailRef  = useRef(setDetailNode);
 
@@ -50,13 +76,20 @@ export default function GraphCanvas({
 
   // ── Main D3 setup ─────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!svgRef.current || !entities.length) return;
+    if (!svgRef.current) return;
 
     const svg    = d3.select(svgRef.current);
     const width  = svgRef.current.clientWidth  || 900;
     const height = svgRef.current.clientHeight || 700;
 
     svg.selectAll('*').remove();
+    if (!entities.length) { nodesRef.current = []; return; }
+
+    // Keep tooltips inside the canvas so they never overflow its edges.
+    const clampTip = (x, y) => ({
+      x: Math.min(Math.max(x, 8), width - 290),
+      y: Math.min(Math.max(y, 8), height - 150),
+    });
 
     // Arrowhead markers
     const defs = svg.append('defs');
@@ -77,7 +110,15 @@ export default function GraphCanvas({
     const entityMap = {};
     entities.forEach(e => { entityMap[e.id] = e; });
 
-    const nodes = entities.map(e => ({ ...e }));
+    // Seed nodes with their previous coordinates so filter changes reposition
+    // gently instead of exploding into a fresh layout.
+    const prevPos = posRef.current;
+    let seeded = 0;
+    const nodes = entities.map(e => {
+      const p = prevPos.get(e.id);
+      if (p) { seeded += 1; return { ...e, x: p.x, y: p.y }; }
+      return { ...e };
+    });
     const links = triples
       .filter(t => entityMap[t.subject] && entityMap[t.object] && t.subject !== t.object)
       .map(t => ({ ...t, source: t.subject, target: t.object }));
@@ -96,7 +137,16 @@ export default function GraphCanvas({
     const g = svg.append('g').attr('class', 'graph-root');
     const zoom = d3.zoom()
       .scaleExtent([0.08, 4])
-      .on('zoom', ev => g.attr('transform', ev.transform));
+      .on('zoom', ev => {
+        g.attr('transform', ev.transform);
+        // Label LOD: hide labels when zoomed far out (toggled on threshold
+        // crossings only, so panning stays cheap).
+        const hide = ev.transform.k < 0.45;
+        if (hide !== labelsHiddenRef.current) {
+          labelsHiddenRef.current = hide;
+          g.selectAll('.node-label').attr('display', hide ? 'none' : null);
+        }
+      });
     svg.call(zoom).on('dblclick.zoom', null);
     zoomBehavRef.current = zoom;
 
@@ -116,12 +166,12 @@ export default function GraphCanvas({
       .attr('marker-end', 'url(#arrow-normal)')
       .on('mouseover', function (ev, d) {
         const rect = svgRef.current.getBoundingClientRect();
-        setTooltipRef.current({ kind: 'edge', d, x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+        setTooltipRef.current({ kind: 'edge', d, ...clampTip(ev.clientX - rect.left, ev.clientY - rect.top) });
         d3.select(this).attr('stroke', TEAL).attr('stroke-opacity', 1);
       })
       .on('mousemove', function (ev) {
         const rect = svgRef.current.getBoundingClientRect();
-        setTooltipRef.current(p => p ? { ...p, x: ev.clientX - rect.left, y: ev.clientY - rect.top } : null);
+        setTooltipRef.current(p => p ? { ...p, ...clampTip(ev.clientX - rect.left, ev.clientY - rect.top) } : null);
       })
       .on('mouseout', function () {
         setTooltipRef.current(null);
@@ -144,12 +194,12 @@ export default function GraphCanvas({
         const r = nodeRadius(degrees[d.id] || 0, maxDegree);
         d3.select(this).select('.node-circle').transition().duration(120).attr('r', r * 1.25);
         const rect = svgRef.current.getBoundingClientRect();
-        setTooltipRef.current({ kind: 'node', d, degree: degrees[d.id] || 0, x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+        setTooltipRef.current({ kind: 'node', d, degree: degrees[d.id] || 0, ...clampTip(ev.clientX - rect.left, ev.clientY - rect.top) });
         onNodeHoverRef.current(d.id);
       })
       .on('mousemove', function (ev) {
         const rect = svgRef.current.getBoundingClientRect();
-        setTooltipRef.current(p => p ? { ...p, x: ev.clientX - rect.left, y: ev.clientY - rect.top } : null);
+        setTooltipRef.current(p => p ? { ...p, ...clampTip(ev.clientX - rect.left, ev.clientY - rect.top) } : null);
       })
       .on('mouseout', function (ev, d) {
         const r = nodeRadius(degrees[d.id] || 0, maxDegree);
@@ -162,6 +212,10 @@ export default function GraphCanvas({
         const neighbors = neighborMap[d.id] || [];
         setDetailRef.current(prev => prev?.id === d.id ? null : { ...d, degree: degrees[d.id] || 0, neighbors });
         onNodeClickRef.current(d.id);
+      })
+      .on('dblclick', function (ev, d) {
+        ev.stopPropagation();
+        if (onNodeFocusRef.current) onNodeFocusRef.current(d.id);
       });
 
     // Pulse ring
@@ -206,6 +260,11 @@ export default function GraphCanvas({
       .force('center',    d3.forceCenter(width / 2, height / 2))
       .force('collision', d3.forceCollide().radius(d => nodeRadius(degrees[d.id] || 0, maxDegree) + 6));
     simRef.current = sim;
+    nodesRef.current = nodes;
+
+    // Mostly the same nodes as the previous layout (e.g. a filter tweak):
+    // settle gently from the seeded positions instead of a full reheat.
+    if (seeded / nodes.length > 0.7) sim.alpha(0.25);
 
     sim.on('tick', () => {
       link
@@ -226,8 +285,22 @@ export default function GraphCanvas({
       nodeGroup.attr('transform', d => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
 
-    return () => sim.stop();
+    return () => {
+      sim.stop();
+      nodes.forEach(n => { if (n.x != null) prevPos.set(n.id, { x: n.x, y: n.y }); });
+    };
   }, [entities, triples, entityTypes, nodeColorById]); // eslint-disable-line
+
+  // ── Fly to a node (search hit) ────────────────────────────────────────────
+  useEffect(() => {
+    if (!flyTo?.id || !svgRef.current || !zoomBehavRef.current) return;
+    const node = (nodesRef.current || []).find(n => n.id === flyTo.id);
+    if (!node || node.x == null) return;
+    const w = svgRef.current.clientWidth, h = svgRef.current.clientHeight;
+    const k = 1.15;
+    const t = d3.zoomIdentity.translate(w / 2 - k * node.x, h / 2 - k * node.y).scale(k);
+    d3.select(svgRef.current).transition().duration(550).call(zoomBehavRef.current.transform, t);
+  }, [flyTo]);
 
   // ── Highlight effect (QA mode) ────────────────────────────────────────────
   useEffect(() => {
@@ -275,44 +348,93 @@ export default function GraphCanvas({
       .on('end', function () { d3.select(this).attr('r', r + 4); });
   }, [hoveredChipNodeId]);
 
-  // ── Zoom controls ─────────────────────────────────────────────────────────
-  const handleZoomIn    = () => d3.select(svgRef.current).transition().call(zoomBehavRef.current.scaleBy, 1.4);
-  const handleZoomOut   = () => d3.select(svgRef.current).transition().call(zoomBehavRef.current.scaleBy, 0.72);
-  const handleFitScreen = () => d3.select(svgRef.current).transition().duration(500).call(zoomBehavRef.current.transform, d3.zoomIdentity.translate(20, 20).scale(0.9));
-  const handleReset     = () => { if (simRef.current) simRef.current.alpha(0.6).restart(); };
+  // ── Zoom / export controls ────────────────────────────────────────────────
+  const handleZoomIn    = useCallback(() => d3.select(svgRef.current).transition().call(zoomBehavRef.current.scaleBy, 1.4), []);
+  const handleZoomOut   = useCallback(() => d3.select(svgRef.current).transition().call(zoomBehavRef.current.scaleBy, 0.72), []);
+  const handleFitScreen = useCallback(() => d3.select(svgRef.current).transition().duration(500).call(zoomBehavRef.current.transform, d3.zoomIdentity.translate(20, 20).scale(0.9)), []);
+  const handleReset     = useCallback(() => {
+    posRef.current.clear();  // forget the old layout so reset really re-layouts
+    if (simRef.current) simRef.current.alpha(1).restart();
+  }, []);
 
-  const canvasBtnStyle = {
-    width: 32, height: 32, border: '1px solid rgba(255,255,255,0.1)',
-    background: 'rgba(24,28,38,0.92)', color: '#8892a4', borderRadius: 4,
-    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 16, transition: 'color 0.15s, border-color 0.15s',
-  };
+  const handleExportPng = useCallback(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    const w = svgEl.clientWidth, h = svgEl.clientHeight;
+    const clone = svgEl.cloneNode(true);
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('width', w);
+    clone.setAttribute('height', h);
+    const url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml' }));
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w * 2; canvas.height = h * 2;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0f1117';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.scale(2, 2);
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      canvas.toBlob(b => {
+        if (!b) return;
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(b);
+        a.download = 'makg-graph.png';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        if (onExported) onExported('PNG');
+      });
+    };
+    img.src = url;
+  }, [onExported]);
+
+  const handleExportJson = useCallback(() => {
+    const blob = new Blob([JSON.stringify({ entities, triples }, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'makg-view.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    if (onExported) onExported('JSON');
+  }, [entities, triples, onExported]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', background: '#0f1117', overflow: 'hidden' }}>
       <svg ref={svgRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 
+      {/* Loading skeleton */}
+      {loading && entities.length === 0 && (
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 10, pointerEvents: 'none',
+        }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[0, 1, 2].map(i => (
+              <span key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: TEAL, display: 'inline-block', animation: `dotBounce 1.2s ${i * 0.2}s ease-in-out infinite` }} />
+            ))}
+          </div>
+          <span style={{ fontSize: 11, color: '#3d4555', fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.08em' }}>
+            LOADING KNOWLEDGE GRAPH
+          </span>
+        </div>
+      )}
+
       {/* Canvas controls */}
       <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        {[
-          { icon: '+', title: 'Zoom in',       action: handleZoomIn },
-          { icon: '\u2212', title: 'Zoom out', action: handleZoomOut },
-          { icon: '\u2291', title: 'Fit to screen', action: handleFitScreen },
-          { icon: '\u21BA', title: 'Reset layout',  action: handleReset },
-        ].map(btn => (
-          <button key={btn.title} title={btn.title} onClick={btn.action} style={canvasBtnStyle}
-            onMouseEnter={e => { e.currentTarget.style.color = TEAL; e.currentTarget.style.borderColor = 'rgba(29,233,182,0.4)'; }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#8892a4'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
-            {btn.icon}
-          </button>
-        ))}
+        <CanvasBtn icon="+"      title="Zoom in"       onClick={handleZoomIn} />
+        <CanvasBtn icon={'\u2212'} title="Zoom out"    onClick={handleZoomOut} />
+        <CanvasBtn icon={'\u2291'} title="Fit to screen" onClick={handleFitScreen} />
+        <CanvasBtn icon={'\u21BA'} title="Reset layout"  onClick={handleReset} />
+        <CanvasBtn icon="PNG"   title="Export view as PNG"  onClick={handleExportPng} small />
+        <CanvasBtn icon="{ }"   title="Export view as JSON" onClick={handleExportJson} small />
       </div>
 
-      {/* Stats overlay */}
-      <div style={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 16, pointerEvents: 'none' }}>
+      {/* Stats overlay (below the status bar) */}
+      <div style={{ position: 'absolute', top: 52, left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: 16, pointerEvents: 'none' }}>
         {[
-          { label: 'entities', value: entities.length },
-          { label: 'triples',  value: triples.length },
+          { label: 'entities shown', value: entities.length },
+          { label: 'triples shown',  value: triples.length },
           { label: 'connected', value: `${Math.round((new Set([...triples.map(t=>t.subject),...triples.map(t=>t.object)]).size / Math.max(entities.length,1))*100)}%` },
         ].map(s => (
           <div key={s.label} style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#3d4555', background: 'rgba(15,17,23,0.7)', padding: '3px 8px', borderRadius: 3, border: '1px solid rgba(255,255,255,0.04)' }}>
@@ -322,7 +444,7 @@ export default function GraphCanvas({
       </div>
 
       {/* Entity type legend */}
-      <div style={{ position: 'absolute', bottom: detailNode ? 176 : 16, left: 16, display: 'flex', flexDirection: 'column', gap: 4, transition: 'bottom 0.25s ease' }}>
+      <div style={{ position: 'absolute', bottom: shownDetail ? 176 : 16, left: 16, display: 'flex', flexDirection: 'column', gap: 4, transition: 'bottom 0.25s ease' }}>
         {Object.entries(entityTypes).map(([type, { color }]) => (
           <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: '#5a6375', fontFamily: "'JetBrains Mono', monospace" }}>
             <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, display: 'inline-block', flexShrink: 0 }} />
@@ -374,11 +496,11 @@ export default function GraphCanvas({
       <div style={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         background: '#181c26', borderTop: '1px solid rgba(124,131,232,0.18)',
-        padding: '14px 20px', transform: detailNode ? 'translateY(0)' : 'translateY(100%)',
+        padding: '14px 20px', transform: shownDetail ? 'translateY(0)' : 'translateY(100%)',
         transition: 'transform 0.22s ease', height: 160, overflow: 'hidden',
         display: 'flex', gap: 32, alignItems: 'flex-start',
       }}>
-        {detailNode && (() => {
+        {shownDetail && (() => {
           const typeInfo = entityTypes[detailNode.type] || {};
           const neighbors = detailNode.neighbors || [];
           return (

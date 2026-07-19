@@ -26,6 +26,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 import uuid
 from pathlib import Path
 
@@ -291,17 +292,69 @@ def kg_data():
     }
 
 
+# Hosted models offered in the QA dropdown when FIREWORKS_API_KEY is set.
+# Override with FIREWORKS_QA_MODELS (comma-separated). The "fireworks/" prefix
+# is expanded to "accounts/fireworks/models/" by the LLM client, which routes
+# these to the Fireworks API per-request regardless of LLM_BACKEND.
+_FIREWORKS_QA_DEFAULTS = [
+    "fireworks/deepseek-v4-flash",
+    "fireworks/deepseek-v4-pro",
+    "fireworks/glm-5p2",
+    "fireworks/gpt-oss-120b",
+    "fireworks/kimi-k2p6",
+]
+
+
+def _live_vllm_models() -> list[str]:
+    """Ask the running vLLM server what it's actually serving (2s budget)."""
+    if os.getenv("LLM_BACKEND", "").lower() != "vllm":
+        return []
+    base = os.getenv("VLLM_BASE_URL", "http://localhost:8000/v1").rstrip("/")
+    req = urllib.request.Request(f"{base}/models")
+    key = os.getenv("VLLM_API_KEY", "")
+    if key and key != "EMPTY":
+        req.add_header("Authorization", f"Bearer {key}")
+    try:
+        with urllib.request.urlopen(req, timeout=2) as resp:
+            data = json.load(resp)
+        return [m["id"] for m in data.get("data", []) if m.get("id")]
+    except Exception:
+        return []
+
+
 @app.get("/models")
 def list_models():
-    """Return the list of QA models the server is configured to use.
+    """QA model catalog: the model(s) the local vLLM server is actually serving,
+    plus Fireworks-hosted models (when FIREWORKS_API_KEY is configured).
 
-    Note: currently single-model — runtime model switching from the frontend is not
-    yet plumbed through the orchestrator. The dropdown is informational.
+    /qa and /qa/stream accept any of these via the request's `model` field;
+    Fireworks names are routed to the Fireworks API by the LLM client.
     """
-    default = os.getenv("LLM_DEFAULT_MODEL", "gemma4:31b")
+    env_default = os.getenv("LLM_DEFAULT_MODEL", "")
     extra = [m.strip() for m in os.getenv("LLM_AVAILABLE_MODELS", "").split(",") if m.strip()]
-    models = [default] + [m for m in extra if m != default]
-    return {"models": models, "default": default}
+
+    local = _live_vllm_models()
+    local_label = "vLLM (local)" if local else "Configured"
+    if not local:
+        local = [m for m in [env_default, *extra] if m]
+
+    fireworks: list[str] = []
+    if os.getenv("FIREWORKS_API_KEY"):
+        configured = [m.strip() for m in os.getenv("FIREWORKS_QA_MODELS", "").split(",") if m.strip()]
+        fireworks = configured or _FIREWORKS_QA_DEFAULTS
+
+    groups = []
+    if local:
+        groups.append({"provider": "vllm", "label": local_label, "models": local})
+    if fireworks:
+        groups.append({"provider": "fireworks", "label": "Fireworks (hosted)", "models": fireworks})
+
+    # Prefer the live local model as default so QA stays on gpu02 unless the
+    # user explicitly picks a hosted model.
+    default = (env_default if env_default in local else None) or (local[0] if local else None) \
+        or (fireworks[0] if fireworks else "")
+    flat = [m for g in groups for m in g["models"]]
+    return {"models": flat, "default": default, "groups": groups}
 
 
 @app.get("/kg/stats")
@@ -750,17 +803,201 @@ def _read_checkpoint_progress(job_id: str | None = None) -> dict:
     return progress
 
 
+# Canonical checkpoint stage order (ids match CheckpointManager manifests;
+# stage 7 was consolidated into verification). Labels from the orchestrator's
+# stage headers — used by the frontend status bar for progress fractions.
+PIPELINE_STAGES = [
+    {"id": "1",  "label": "Document Processing"},
+    {"id": "2",  "label": "Domain Classification"},
+    {"id": "2b", "label": "Governance Bootstrap"},
+    {"id": "3",  "label": "Entity Extraction"},
+    {"id": "3b", "label": "Orphan Relink"},
+    {"id": "4",  "label": "Relation Extraction"},
+    {"id": "4b", "label": "Connectivity Pass"},
+    {"id": "5",  "label": "Evidence Linking"},
+    {"id": "6",  "label": "Deliberation"},
+    {"id": "8",  "label": "Verification"},
+    {"id": "9",  "label": "KG Integration"},
+]
+
+
 @app.get("/pipeline/status")
 def pipeline_status(job_id: str | None = None):
     if job_id:
         job = JOBS.get(job_id)
         if not job:
             raise HTTPException(status_code=404, detail=f"Unknown job_id: {job_id}")
-        return {**job, "checkpoint": _read_checkpoint_progress(job_id)}
-    return {
-        "jobs": sorted(JOBS.values(), key=lambda j: j.get("queued_at", 0), reverse=True),
-        "checkpoint": {},
+        return {**job, "checkpoint": _read_checkpoint_progress(job_id), "stages": PIPELINE_STAGES}
+    jobs = []
+    for job in sorted(JOBS.values(), key=lambda j: j.get("queued_at", 0), reverse=True):
+        if job.get("status") in ("queued", "running"):
+            job = {**job, "checkpoint": _read_checkpoint_progress(job.get("job_id"))}
+        jobs.append(job)
+    return {"jobs": jobs, "checkpoint": {}, "stages": PIPELINE_STAGES}
+
+
+# ── Eval run viewer (read-only) ──────────────────────────────────────────────
+# Browse cached eval-harness outputs (DocRED-style doc caches) straight from
+# evaluation/results/ without moving files. Response shape matches /kg/data so
+# the frontend graph canvas renders them unchanged.
+
+EVAL_RESULTS_DIR = PROJECT_ROOT / "evaluation" / "results"
+_DOCRED_FILE_RE = re.compile(r"^doc_(\d+)_(rhf|singlepass|hybrid)\.json$")
+
+
+def _discover_docred_runs() -> list[dict]:
+    """Stat-only scan of evaluation/results for doc caches, newest first."""
+    runs: dict[tuple[str, str], dict] = {}
+    if not EVAL_RESULTS_DIR.is_dir():
+        return []
+    for d in EVAL_RESULTS_DIR.iterdir():
+        if not d.is_dir():
+            continue
+        try:
+            files = list(d.iterdir())
+        except OSError:
+            continue
+        for f in files:
+            m = _DOCRED_FILE_RE.match(f.name)
+            if not m:
+                continue
+            key = (d.name, m.group(2))
+            run = runs.setdefault(key, {
+                "dir": d.name, "strategy": m.group(2),
+                "doc_count": 0, "doc_indices": [], "latest_mtime": 0.0,
+            })
+            run["doc_count"] += 1
+            run["doc_indices"].append(int(m.group(1)))
+            run["latest_mtime"] = max(run["latest_mtime"], f.stat().st_mtime)
+    out = sorted(runs.values(), key=lambda r: r["latest_mtime"], reverse=True)
+    for r in out:
+        r["doc_indices"].sort()
+        r["label"] = f"{r['dir']} · {r['strategy']} ({r['doc_count']} docs)"
+    return out
+
+
+def _resolve_eval_run_dir(dir_name: str) -> Path:
+    """Validate a run dir name against path traversal; return its Path."""
+    if not dir_name or "/" in dir_name or "\\" in dir_name or dir_name in (".", ".."):
+        raise HTTPException(status_code=400, detail="Invalid run dir")
+    path = (EVAL_RESULTS_DIR / dir_name).resolve()
+    if path.parent != EVAL_RESULTS_DIR.resolve() or not path.is_dir():
+        raise HTTPException(status_code=404, detail=f"Unknown run dir: {dir_name}")
+    return path
+
+
+def _iter_run_docs(run_dir: Path, strategy: str, doc: str = "all"):
+    """Yield (idx, path) for a run's doc caches, filtered to one doc if given."""
+    out = []
+    for f in sorted(run_dir.iterdir()):
+        m = _DOCRED_FILE_RE.match(f.name)
+        if m and m.group(2) == strategy and (doc == "all" or doc == m.group(1)):
+            out.append((int(m.group(1)), f))
+    return out
+
+
+@app.get("/eval/runs")
+def eval_runs():
+    runs = _discover_docred_runs()
+    return {"runs": runs, "default": runs[0] if runs else None}
+
+
+@app.get("/eval/metrics")
+def eval_metrics(dir: str, strategy: str):
+    """Aggregate the counts blocks of one run: pred/gold sizes, calls, wall time."""
+    run_dir = _resolve_eval_run_dir(dir)
+    docs = []
+    for idx, f in _iter_run_docs(run_dir, strategy):
+        try:
+            blob = json.loads(f.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        c = blob.get("counts") or {}
+        docs.append({
+            "idx": idx, "title": blob.get("title", ""), "model": blob.get("model", ""),
+            **{k: c.get(k) for k in (
+                "wall_s", "llm_calls", "empty_calls", "pred_entities",
+                "pred_triples", "gold_entities", "gold_triples", "error")},
+        })
+    if not docs:
+        raise HTTPException(status_code=404, detail=f"No {strategy} docs in {dir}")
+
+    def _tot(k):
+        return sum(d.get(k) or 0 for d in docs)
+
+    summary = {
+        "docs": len(docs),
+        "model": docs[0].get("model", ""),
+        "pred_entities": _tot("pred_entities"), "gold_entities": _tot("gold_entities"),
+        "pred_triples": _tot("pred_triples"), "gold_triples": _tot("gold_triples"),
+        "llm_calls": _tot("llm_calls"), "empty_calls": _tot("empty_calls"),
+        "errors": sum(1 for d in docs if d.get("error")),
+        "mean_wall_s": round(_tot("wall_s") / len(docs), 1),
     }
+    return {"summary": summary, "docs": docs}
+
+
+@app.get("/eval/graph")
+def eval_graph(dir: str, strategy: str, doc: str = "all"):
+    """Reshape one run's doc caches into the /kg/data response contract.
+
+    doc="all" merges every document (ids namespaced "<idx>::", one color per
+    source doc); doc="<idx>" shows a single document with real entity types.
+    """
+    run_dir = _resolve_eval_run_dir(dir)
+    files = _iter_run_docs(run_dir, strategy, doc)
+    if not files:
+        raise HTTPException(status_code=404, detail=f"No {strategy} docs in {dir} (doc={doc})")
+
+    merged = doc == "all" and len(files) > 1
+    entities: list[dict] = []
+    triples: list[dict] = []
+    for idx, f in files:
+        try:
+            blob = json.loads(f.read_text())
+        except (json.JSONDecodeError, OSError):
+            continue
+        prefix = f"{idx}::" if merged else ""
+        title = blob.get("title", f.name)
+        for e in blob.get("entities", []):
+            etype = f"doc_{idx}" if merged else (e.get("type") or "UNKNOWN")
+            if etype == "?":
+                etype = "UNKNOWN"
+            entities.append({
+                "id": prefix + e.get("id", ""),
+                "labels": e.get("labels") or [e.get("name", e.get("id", ""))],
+                "type": etype,
+                "metadata": {"confidence": 1.0, "source": title, "description": ""},
+            })
+        for i, t in enumerate(blob.get("triples", [])):
+            triples.append({
+                "id": f"{prefix}t{i}",
+                "subject": prefix + t.get("subject", ""),
+                "relation": t.get("relation", ""),
+                "object": prefix + t.get("object", ""),
+                "confidence": t.get("confidence", 1.0),
+                "source": title,
+            })
+    return {
+        "entities": entities,
+        "triples": triples,
+        "entity_types": _build_entity_types(entities),
+        "relation_types": sorted({t["relation"] for t in triples}),
+        "org_chart": {"domains": [], "assignments": {}},
+        "meta": {"dir": dir, "strategy": strategy, "doc": doc, "docs": len(files)},
+    }
+
+
+# ── Frontend static serving ──────────────────────────────────────────────────
+# Registered after all API routes so they take precedence over the mount.
+
+FRONTEND_DIST = PROJECT_ROOT / "frontend" / "app" / "dist"
+if FRONTEND_DIST.is_dir():
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+else:
+    print(f"NOTE: no frontend build at {FRONTEND_DIST} — serving API only.")
 
 
 # ── Startup logic ────────────────────────────────────────────────────────────

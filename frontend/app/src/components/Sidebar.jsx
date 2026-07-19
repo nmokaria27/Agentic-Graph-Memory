@@ -1,9 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { fetchEvalMetrics } from '../api.js';
 
 const TEAL   = '#1de9b6';
 const INDIGO = '#7c83e8';
 
 const AMBER = '#f59e0b';
+
+const selectStyle = {
+  width: '100%', background: '#0f1117', border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: 4, padding: '6px 8px', color: '#c8d3e0', fontSize: 11,
+  fontFamily: "'JetBrains Mono', monospace", outline: 'none', cursor: 'pointer',
+};
+
+const sourceToKey = (s) => s.kind === 'live' ? 'live' : `eval|${s.dir}|${s.strategy}`;
+const keyToSource = (key) => {
+  if (key === 'live') return { kind: 'live' };
+  const [, dir, strategy] = key.split('|');
+  return { kind: 'eval', dir, strategy, doc: 'all' };
+};
 
 export default function Sidebar({
   mode, onModeChange,
@@ -12,8 +26,31 @@ export default function Sidebar({
   qaHistory, selectedQaId, onQaSelect, onQaHover,
   serverConnected,
   kgStats,
+  graphSource, onGraphSourceChange, evalRuns,
+  onSearchEnter,
 }) {
   const [relExpanded, setRelExpanded] = useState(false);
+  // Metrics are cached keyed by run so switching runs shows nothing stale
+  // (derived below) without a state reset inside the effect.
+  const [metricsCache, setMetricsCache] = useState(null); // { key, summary }
+
+  const isEval = graphSource?.kind === 'eval';
+  const currentRun = isEval
+    ? (evalRuns || []).find(r => r.dir === graphSource.dir && r.strategy === graphSource.strategy)
+    : null;
+  const metricsKey = isEval ? `${graphSource.dir}|${graphSource.strategy}` : null;
+
+  useEffect(() => {
+    if (!metricsKey) return undefined;
+    let cancelled = false;
+    const [dir, strategy] = metricsKey.split('|');
+    fetchEvalMetrics(dir, strategy)
+      .then(d => { if (!cancelled) setMetricsCache({ key: metricsKey, summary: d.summary }); })
+      .catch(() => { /* metrics are optional */ });
+    return () => { cancelled = true; };
+  }, [metricsKey]);
+
+  const runMetrics = metricsCache && metricsCache.key === metricsKey ? metricsCache.summary : null;
 
   const sectionLabel = {
     fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -34,6 +71,33 @@ export default function Sidebar({
         <div style={{ fontSize: 10, color: '#3d4555', marginTop: 4, fontFamily: "'JetBrains Mono', monospace", letterSpacing: '0.04em' }}>
           MULTI-AGENT KG SYSTEM
         </div>
+      </div>
+
+      {/* Graph source */}
+      <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div style={{ ...sectionLabel, marginBottom: 6 }}>Graph source</div>
+        <select
+          value={graphSource ? sourceToKey(graphSource) : 'live'}
+          onChange={e => onGraphSourceChange && onGraphSourceChange(keyToSource(e.target.value))}
+          style={selectStyle}>
+          <option value="live">Live KG (governed)</option>
+          {(evalRuns || []).map(r => (
+            <option key={`${r.dir}|${r.strategy}`} value={`eval|${r.dir}|${r.strategy}`}>
+              {r.label}
+            </option>
+          ))}
+        </select>
+        {isEval && currentRun && (
+          <select
+            value={graphSource.doc || 'all'}
+            onChange={e => onGraphSourceChange && onGraphSourceChange({ ...graphSource, doc: e.target.value })}
+            style={{ ...selectStyle, marginTop: 6 }}>
+            <option value="all">All {currentRun.doc_count} docs (merged)</option>
+            {currentRun.doc_indices.map(i => (
+              <option key={i} value={String(i)}>doc {i}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {/* Mode switcher */}
@@ -66,14 +130,43 @@ export default function Sidebar({
 
         {mode === 'explore' && (
           <>
+            {/* Eval run metrics */}
+            {isEval && runMetrics && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={sectionLabel}>Run metrics</div>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 10px',
+                  fontSize: 10, fontFamily: "'JetBrains Mono', monospace",
+                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 4, padding: '8px 10px', color: '#6a7585',
+                }}>
+                  <span>docs</span><span style={{ color: '#c8d3e0', textAlign: 'right' }}>{runMetrics.docs}</span>
+                  <span>pred / gold ent</span><span style={{ color: '#c8d3e0', textAlign: 'right' }}>{runMetrics.pred_entities}/{runMetrics.gold_entities}</span>
+                  <span>pred / gold tri</span><span style={{ color: '#c8d3e0', textAlign: 'right' }}>{runMetrics.pred_triples}/{runMetrics.gold_triples}</span>
+                  <span>llm calls</span><span style={{ color: '#c8d3e0', textAlign: 'right' }}>{runMetrics.llm_calls}</span>
+                  <span>empty calls</span><span style={{ color: runMetrics.empty_calls ? AMBER : '#c8d3e0', textAlign: 'right' }}>{runMetrics.empty_calls}</span>
+                  <span>errors</span><span style={{ color: runMetrics.errors ? '#ef4444' : '#c8d3e0', textAlign: 'right' }}>{runMetrics.errors}</span>
+                  <span>mean wall</span><span style={{ color: '#c8d3e0', textAlign: 'right' }}>{runMetrics.mean_wall_s}s</span>
+                </div>
+                {runMetrics.model && (
+                  <div style={{ fontSize: 9, color: '#3d4555', fontFamily: "'JetBrains Mono', monospace", marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={runMetrics.model}>
+                    model: {runMetrics.model}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Search */}
             <div style={{ marginBottom: 16 }}>
-              <div style={sectionLabel}>Search entity</div>
+              <div style={sectionLabel}>Search entity {'—'} Enter to fly to</div>
               <input
+                id="entity-search"
                 type="text"
                 placeholder="Filter by name..."
                 value={filters.searchQuery}
                 onChange={e => onFiltersChange(f => ({ ...f, searchQuery: e.target.value }))}
+                onKeyDown={e => { if (e.key === 'Enter' && onSearchEnter) onSearchEnter(); }}
                 style={{
                   width: '100%', background: '#0f1117', border: '1px solid rgba(255,255,255,0.1)',
                   borderRadius: 4, padding: '7px 10px', color: '#c8d3e0', fontSize: 12,
@@ -126,8 +219,8 @@ export default function Sidebar({
             {/* Relation types */}
             <div style={{ marginBottom: 14 }}>
               <button onClick={() => setRelExpanded(x => !x)}
-                style={{ ...sectionLabel, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', width: '100%', padding: 0, marginBottom: 8 }}>
-                <span style={sectionLabel}>Relation types</span>
+                style={{ ...sectionLabel, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', cursor: 'pointer', width: '100%', padding: 0 }}>
+                <span>Relation types</span>
                 <span style={{ color: '#3d4555', fontSize: 10 }}>{relExpanded ? '\u25B2' : '\u25BC'}</span>
               </button>
               {relExpanded && (

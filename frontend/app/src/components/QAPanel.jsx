@@ -1,32 +1,59 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchModels, fetchKGStats } from '../api.js';
+import ReactMarkdown from 'react-markdown';
+import { fetchModels } from '../api.js';
 
 const TEAL   = '#1de9b6';
 const INDIGO = '#7c83e8';
-const DEFAULT_MODELS = ['gemma4:31b'];
+const AMBER  = '#f59e0b';
+const DEFAULT_MODEL_GROUPS = [{ provider: 'vllm', label: 'Configured', models: ['gemma4:31b'] }];
 
-function renderMarkdown(text) {
-  if (!text) return '';
-  let html = text
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#c8d3e0">$1</strong>')
-    .replace(/\n\n/g, '</p><p style="margin:0 0 10px">')
-    .replace(/\n/g, '<br>');
-  return `<p style="margin:0 0 10px">${html}</p>`;
+// "accounts/fireworks/models/glm-5p2" / "fireworks/glm-5p2" -> "glm-5p2"
+function shortModel(m) {
+  return (m || '').replace(/^accounts\/fireworks\/models\//, '').replace(/^fireworks\//, '');
+}
+
+const mono = { fontFamily: "'JetBrains Mono', monospace" };
+
+// Styled element mapping for answer markdown (lists, code, links, headers).
+const MD_COMPONENTS = {
+  p:  props => <p style={{ margin: '0 0 10px' }} {...props} />,
+  strong: props => <strong style={{ color: '#c8d3e0' }} {...props} />,
+  a:  props => <a style={{ color: TEAL }} target="_blank" rel="noreferrer" {...props} />,
+  ul: props => <ul style={{ margin: '0 0 10px', paddingLeft: 18 }} {...props} />,
+  ol: props => <ol style={{ margin: '0 0 10px', paddingLeft: 18 }} {...props} />,
+  li: props => <li style={{ marginBottom: 4 }} {...props} />,
+  h1: props => <div style={{ fontSize: 13, fontWeight: 700, color: '#c8d3e0', margin: '10px 0 6px' }} {...props} />,
+  h2: props => <div style={{ fontSize: 13, fontWeight: 700, color: '#c8d3e0', margin: '10px 0 6px' }} {...props} />,
+  h3: props => <div style={{ fontSize: 12, fontWeight: 700, color: '#a8b3c4', margin: '8px 0 5px' }} {...props} />,
+  code: ({ inline, ...props }) => inline
+    ? <code style={{ ...mono, fontSize: 11, background: 'rgba(255,255,255,0.06)', padding: '1px 5px', borderRadius: 3, color: '#c8d3e0' }} {...props} />
+    : <code style={{ ...mono, fontSize: 11, color: '#c8d3e0' }} {...props} />,
+  pre: props => <pre style={{ background: '#0f1117', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 4, padding: 10, overflowX: 'auto', margin: '0 0 10px' }} {...props} />,
+  blockquote: props => <blockquote style={{ borderLeft: `2px solid ${INDIGO}`, margin: '0 0 10px', paddingLeft: 10, color: '#6a7585' }} {...props} />,
+};
+
+/** Ticks once a second while `active`; returns whole seconds since startedAt. */
+function useElapsedSeconds(active, startedAt) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return undefined;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [active]);
+  if (!active || !startedAt) return null;
+  return Math.max(0, Math.round((now - startedAt) / 1000));
 }
 
 function ChipRow({ turn, onChipHover, entities, entityTypes }) {
   const [visibleCount, setVisibleCount] = useState(0);
 
   useEffect(() => {
-    if (turn.status !== 'done') { setVisibleCount(0); return; }
-    const nodeIds = turn.referencedNodes || [];
-    const edgeIds = turn.referencedEdges || [];
-    const total = nodeIds.length + edgeIds.length;
+    if (turn.status !== 'done') return undefined;
+    const total = (turn.referencedNodes || []).length + (turn.referencedEdges || []).length;
     let i = 0;
     const timer = setInterval(() => {
-      i++;
-      setVisibleCount(i);
+      i += 1;
+      setVisibleCount(v => Math.max(v, i));
       if (i >= total) clearInterval(timer);
     }, 55);
     return () => clearInterval(timer);
@@ -133,7 +160,9 @@ function DomainPanel({ domainResponses }) {
   );
 }
 
-function QATurn({ turn, onChipHover, entities, entityTypes }) {
+function QATurn({ turn, onChipHover, entities, entityTypes, onCancel }) {
+  const isLoading = turn.status === 'loading';
+  const elapsed = useElapsedSeconds(isLoading, turn.startedAt);
   return (
     <div style={{ marginBottom: 20 }}>
       {/* Question bubble */}
@@ -155,17 +184,23 @@ function QATurn({ turn, onChipHover, entities, entityTypes }) {
             background: '#1e2334', border: '1px solid rgba(255,255,255,0.07)',
             fontSize: 13, color: '#8892a4', lineHeight: 1.65, minHeight: 48,
           }}>
-            {/* Model badge + timestamp */}
-            <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: INDIGO, background: 'rgba(124,131,232,0.12)', padding: '2px 7px', borderRadius: 2 }}>
-                {turn.model}
+            {/* Model badge + duration + timestamp */}
+            <div style={{ marginBottom: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
+              <span style={{ ...mono, fontSize: 10, color: INDIGO, background: 'rgba(124,131,232,0.12)', padding: '2px 7px', borderRadius: 2 }}>
+                {shortModel(turn.model)}
               </span>
+              {turn.status === 'done' && turn.durationMs != null && (
+                <span style={{ ...mono, fontSize: 10, color: '#3d4555' }}>
+                  {(turn.durationMs / 1000).toFixed(1)}s
+                </span>
+              )}
+              <span style={{ flex: 1 }} />
               {turn.timestamp && (
-                <span style={{ fontSize: 10, color: '#2a3040', fontFamily: "'JetBrains Mono', monospace" }}>{turn.timestamp}</span>
+                <span style={{ ...mono, fontSize: 10, color: '#2a3040' }}>{turn.timestamp}</span>
               )}
             </div>
 
-            {turn.status === 'loading' && (
+            {isLoading && (
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '8px 0' }}>
                 <span style={{ fontSize: 12, color: '#3d4555', fontStyle: 'italic' }}>
                   {turn.stage ? turn.stage.replace(/_/g, ' ') : 'Routing to domain experts'}
@@ -173,21 +208,33 @@ function QATurn({ turn, onChipHover, entities, entityTypes }) {
                 {[0,1,2].map(i => (
                   <span key={i} style={{ width: 5, height: 5, borderRadius: '50%', background: TEAL, display: 'inline-block', animation: `dotBounce 1.2s ${i * 0.2}s ease-in-out infinite` }} />
                 ))}
-              </div>
-            )}
-
-            {turn.status === 'streaming' && (
-              <div style={{ whiteSpace: 'pre-wrap', color: '#8892a4', lineHeight: 1.65 }}>
-                {turn.streamedAnswer}
-                <span style={{ animation: 'cursorBlink 0.75s step-end infinite', color: TEAL, marginLeft: 1 }}>&#x2588;</span>
+                {elapsed != null && (
+                  <span style={{ ...mono, fontSize: 10, color: '#3d4555' }}>{elapsed}s</span>
+                )}
+                <span style={{ flex: 1 }} />
+                {onCancel && (
+                  <button onClick={() => onCancel(turn.id)}
+                    style={{
+                      ...mono, padding: '2px 8px', borderRadius: 3, cursor: 'pointer',
+                      background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+                      color: '#ffb4b4', fontSize: 9, letterSpacing: '0.05em',
+                    }}>
+                    CANCEL
+                  </button>
+                )}
               </div>
             )}
 
             {turn.status === 'done' && (
-              <div
-                style={{ color: '#8892a4', lineHeight: 1.65 }}
-                dangerouslySetInnerHTML={{ __html: renderMarkdown(turn.answer) }}
-              />
+              <div style={{ color: '#8892a4', lineHeight: 1.65 }}>
+                <ReactMarkdown components={MD_COMPONENTS}>{turn.answer || ''}</ReactMarkdown>
+              </div>
+            )}
+
+            {turn.status === 'cancelled' && (
+              <div style={{ ...mono, fontSize: 11, color: '#5a6375', fontStyle: 'italic' }}>
+                Cancelled{turn.durationMs != null ? ` after ${(turn.durationMs / 1000).toFixed(0)}s` : ''}.
+              </div>
             )}
 
             {turn.status === 'error' && (
@@ -218,32 +265,37 @@ export default function QAPanel({
   qaHistory, onSubmitQuestion, onChipHover,
   selectedModel, onModelChange, activeQaId,
   entities, entityTypes,
-  onClearChats, qaReady = true,
+  onClearChats, onCancelQa, qaReady = true,
+  serverConnected = false, kgStats = null,
 }) {
   const [input, setInput]       = useState('');
   const [modelOpen, setModelOpen] = useState(false);
-  const [models, setModels]     = useState(DEFAULT_MODELS);
-  const [activeModel, setActiveModel] = useState(null);  // model the server is actually using
-  const [kgStats, setKgStats]   = useState(null);
+  const [modelGroups, setModelGroups] = useState(DEFAULT_MODEL_GROUPS);
+  const [activeModel, setActiveModel] = useState(null);  // backend's default model
   const feedRef  = useRef(null);
 
+  // Refetch the model catalog whenever the backend (re)connects, so a brief
+  // outage at mount doesn't leave a stale single-model dropdown forever.
   useEffect(() => {
+    if (!serverConnected) return undefined;
     let cancelled = false;
     fetchModels()
       .then(d => {
         if (cancelled) return;
-        if (Array.isArray(d?.models) && d.models.length) setModels(d.models);
+        if (Array.isArray(d?.groups) && d.groups.length) {
+          setModelGroups(d.groups);
+        } else if (Array.isArray(d?.models) && d.models.length) {
+          // Older backend: flat list only
+          setModelGroups([{ provider: 'vllm', label: 'Configured', models: d.models }]);
+        }
         if (d?.default) {
           setActiveModel(d.default);
           if (onModelChange) onModelChange(d.default);
         }
       })
-      .catch(() => { /* keep DEFAULT_MODELS */ });
-    fetchKGStats()
-      .then(d => { if (!cancelled) setKgStats(d?.kg ?? null); })
-      .catch(() => { /* ignore */ });
+      .catch(() => { /* keep current groups */ });
     return () => { cancelled = true; };
-  }, []); // eslint-disable-line
+  }, [serverConnected]); // eslint-disable-line
 
   useEffect(() => {
     if (feedRef.current) {
@@ -331,13 +383,13 @@ export default function QAPanel({
               background: 'rgba(124,131,232,0.12)', border: '1px solid rgba(124,131,232,0.25)',
               color: INDIGO, fontSize: 11, fontFamily: "'JetBrains Mono', monospace",
             }}>
-            {selectedModel}
+            {shortModel(selectedModel) || 'auto'}
             <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
               <path d="M2 4l3 3 3-3" stroke={INDIGO} strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </button>
           {activeModel && (
-            <span title={`Backend currently running ${activeModel}`}
+            <span title={`Backend default model: ${activeModel}`}
               style={{
                 fontSize: 9, padding: '2px 6px', borderRadius: 2,
                 background: 'rgba(29,233,182,0.1)',
@@ -345,7 +397,7 @@ export default function QAPanel({
                 color: TEAL, fontFamily: "'JetBrains Mono', monospace",
                 letterSpacing: '0.05em',
               }}>
-              IN USE: {activeModel}
+              DEFAULT: {shortModel(activeModel)}
             </span>
           )}
           <div style={{ flex: 1 }} />
@@ -370,21 +422,35 @@ export default function QAPanel({
             <div style={{
               position: 'absolute', top: 28, left: 56, zIndex: 300,
               background: '#1e2334', border: '1px solid rgba(124,131,232,0.25)',
-              borderRadius: 4, overflow: 'hidden', minWidth: 140,
+              borderRadius: 4, overflow: 'hidden', minWidth: 210, maxHeight: 320, overflowY: 'auto',
               boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
             }}>
-              {models.map(m => (
-                <button key={m} onClick={() => { onModelChange(m); setModelOpen(false); }}
-                  style={{
-                    display: 'block', width: '100%', padding: '8px 14px', textAlign: 'left',
-                    background: m === selectedModel ? 'rgba(124,131,232,0.15)' : 'transparent',
-                    border: 'none', cursor: 'pointer', color: m === selectedModel ? INDIGO : '#6a7585',
-                    fontSize: 12, fontFamily: "'JetBrains Mono', monospace", transition: 'background 0.1s',
-                  }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(124,131,232,0.1)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = m === selectedModel ? 'rgba(124,131,232,0.15)' : 'transparent'; }}>
-                  {m}
-                </button>
+              {modelGroups.map(group => (
+                <div key={group.provider}>
+                  <div style={{
+                    padding: '6px 14px 4px', fontSize: 9, letterSpacing: '0.1em',
+                    textTransform: 'uppercase', fontFamily: "'JetBrains Mono', monospace",
+                    color: group.provider === 'fireworks' ? AMBER : TEAL,
+                    borderTop: '1px solid rgba(255,255,255,0.05)',
+                  }}>
+                    {group.label}
+                  </div>
+                  {group.models.map(m => (
+                    <button key={m} onClick={() => { onModelChange(m); setModelOpen(false); }}
+                      title={m}
+                      style={{
+                        display: 'block', width: '100%', padding: '7px 14px', textAlign: 'left',
+                        background: m === selectedModel ? 'rgba(124,131,232,0.15)' : 'transparent',
+                        border: 'none', cursor: 'pointer', color: m === selectedModel ? INDIGO : '#6a7585',
+                        fontSize: 12, fontFamily: "'JetBrains Mono', monospace", transition: 'background 0.1s',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(124,131,232,0.1)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = m === selectedModel ? 'rgba(124,131,232,0.15)' : 'transparent'; }}>
+                      {shortModel(m)}
+                    </button>
+                  ))}
+                </div>
               ))}
             </div>
           )}
@@ -419,7 +485,7 @@ export default function QAPanel({
         )}
 
         {qaHistory.map(turn => (
-          <QATurn key={turn.id} turn={turn} onChipHover={onChipHover} entities={entities} entityTypes={entityTypes} />
+          <QATurn key={turn.id} turn={turn} onChipHover={onChipHover} entities={entities} entityTypes={entityTypes} onCancel={onCancelQa} />
         ))}
       </div>
 
@@ -429,8 +495,8 @@ export default function QAPanel({
           fontSize: 10, color: '#3d4555', fontFamily: "'JetBrains Mono', monospace",
           display: 'flex', justifyContent: 'space-between', flexShrink: 0,
         }}>
-          <span>entities: {kgStats.num_entities ?? '?'}</span>
-          <span>triples: {kgStats.num_triples ?? '?'}</span>
+          <span>entities: {kgStats.entities ?? kgStats.num_entities ?? '?'}</span>
+          <span>triples: {kgStats.triples ?? kgStats.num_triples ?? '?'}</span>
         </div>
       )}
     </div>

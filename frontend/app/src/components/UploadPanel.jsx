@@ -88,13 +88,13 @@ export default function UploadPanel({ onIngestComplete }) {
           borderRadius: 4, boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         }}>
           <div style={{ fontSize: 10, color: '#3d4555', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Upload .txt for pipeline
+            Upload .txt / .pdf for pipeline
           </div>
 
           <input
             ref={fileRef}
             type="file"
-            accept=".txt"
+            accept=".txt,.pdf"
             onChange={e => handleFile(e.target.files?.[0])}
             style={{ display: 'none' }}
           />
