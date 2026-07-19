@@ -1771,3 +1771,28 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   - Scheduling: LongMemEval breadth runs TONIGHT on Qwen3 as planned (its
     baselines are Qwen3; comparability preserved). gpt-oss qualification takes
     the next free gpu02 slot after.
+
+### EXP-PAIR-GROUND verdict  (2026-07-18)
+- **Result (docs 100–119):**
+  | bar | target | result | | SPGOV-3 ctrl | ungrounded ctrl |
+  |---|---|---|---|---|---|
+  | pairR | ≥ 0.292 | 0.265 | MISS | 0.242 | 0.305 |
+  | entP | ≥ 0.778 | 0.727 | MISS | 0.808 | 0.752 |
+  | relF1@0.6 | ≥ 0.161 | 0.144 | MISS | 0.161 | 0.143 |
+  | median wall | ≤ 149 s | 148.7 s | PASS | 99.4 s | 183 s |
+  Gate mechanics worked (drops observed on 15/20 docs, ~15–25% of stage output;
+  round-trip dump now preserves source/evidence). Quality did not follow.
+- **Finding (revises the playbook's 4.1.1 ranking):** a verbatim quote proves
+  CO-OCCURRENCE, not the RELATION — the model attaches real sentences to wrong
+  relation labels, so quote-grounding filters fabrication but not mislabeling.
+  Also: the pair cap bounds pairs, not emitted triples (doc_112: 211 triples
+  from ≤100 pairs) — any future attempt needs a one-triple-per-pair cap.
+- **Verdict: REVERT** (stage 4c remains in-tree, default OFF). GB-3 series
+  conclusion after 3 experiments: pair-completion finds real pairs (ceiling
+  ~0.59 confirmed twice) but Qwen3-30B cannot admit them precisely under
+  instruction OR quote gates. Convergent with EXP-HEADROOM-SCIERC (2.8×
+  precision from gpt-oss-120b on identical protocol): **model-bound**.
+- **Action:** GB-3 PAUSED, blocked on **EXP-MODEL-LOCAL-2** (qualify
+  gpt-oss-120b locally) — one experiment now potentially lifts both open
+  frontiers (pair admission + review precision). LongMemEval breadth proceeds
+  tonight on Qwen3 as planned (baseline comparability).
