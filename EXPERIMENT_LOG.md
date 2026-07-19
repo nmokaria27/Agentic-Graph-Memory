@@ -1796,3 +1796,23 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   gpt-oss-120b locally) — one experiment now potentially lifts both open
   frontiers (pair admission + review precision). LongMemEval breadth proceeds
   tonight on Qwen3 as planned (baseline comparability).
+
+---
+
+## EXP-LME-BREADTH: LongMemEval ability characterization on the merged stack  (2026-07-18)
+- **Hypothesis/purpose:** only knowledge-update (1 of 6 abilities) has ever been
+  measured. This is a CHARACTERIZATION run of v0.2-post-loop (no accept/revert):
+  it establishes the per-ability baseline table that re-derives the backlog.
+- **Change:** none. Merged HEAD, Qwen3 (baseline comparability — gpt-oss
+  qualification is a separate later experiment), default extraction mode,
+  dated ingestion on.
+- **Slice:** 8 dev questions (indices 0–7) × 6 ability types = 48 questions.
+  Held-out indices (20+) untouched. knowledge-update serves as the anchor —
+  its behavior must reproduce the GB-2b era (supersedes ≥1 on update questions).
+- **Pre-committed checks:** (i) zero silent-empty KGs (GB-1); (ii) anchor
+  reproduces; (iii) per-type substring + judge scores recorded as baselines;
+  hand-reads only on dev.
+- **Cost:** ~48 questions, ingestion-dominated ≈ 10–15 h gpu02 overnight.
+- STATUS: RUNNING — `evaluation/LongMemEval/exp_breadth.sh`, log
+  `evaluation/results/exp_lme_breadth.log`, per-type caches
+  `evaluation/results/lme_breadth_<type>/`.
