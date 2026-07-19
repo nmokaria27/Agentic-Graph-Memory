@@ -1748,3 +1748,26 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   with strict-R ≥ Qwen3-subset − 0.02 ⇒ model-bound signal; else mechanism-bound.
 - **Cost:** ~10 docs × ~18 calls ≈ 200 Fireworks calls.
 - STATUS: RUNNING — log `evaluation/results/exp_headroom_scierc.log`.
+
+### EXP-HEADROOM-SCIERC verdict  (2026-07-18)
+- **Result (same 10 SciERC test docs, governed build, paper scorer):**
+  | | ent F1 | strict P | strict R | strict F1 | mapped F1 |
+  |---|---|---|---|---|---|
+  | Qwen3-30B (local) | 0.539 | 0.086 | 0.182 | 0.116 | 0.225 |
+  | gpt-oss-120b (FW) | **0.621** | **0.240** | **0.398** | **0.299** | **0.444** |
+  Bar was strict-P +0.03 at held recall → delivered **+0.154 P with recall 2.2×**.
+  n=10 caveat noted; the direction is unambiguous.
+- **Verdict: MODEL-BOUND (decisively).** The paper-precision gap (GB-14) is
+  dominated by reviewer/extractor model capability, not mechanism. gpt-oss-120b
+  at n=10 even exceeds the paper's GPT-5 100-doc numbers (0.156/0.290).
+- **Action → GB-14 design settled: model first, mechanism second.**
+  1. **EXP-MODEL-LOCAL-2 (next gpu02 slot):** qualify gpt-oss-120b locally
+     (~63 GB fits 2× L40S; serving recipe to validate — MXFP4 path on Ada).
+     Gate: slice-A extraction + LongMemEval smoke + wall/doc, per the model-
+     qualification template (PLAYBOOK 2.1). Fireworks evidence must reproduce
+     locally before adoption (standing rule #6).
+  2. Grounded-verification-everywhere (PLAYBOOK 4.1.1) remains queued as the
+     mechanism-side complement — cheap and model-independent.
+  - Scheduling: LongMemEval breadth runs TONIGHT on Qwen3 as planned (its
+    baselines are Qwen3; comparability preserved). gpt-oss qualification takes
+    the next free gpu02 slot after.
