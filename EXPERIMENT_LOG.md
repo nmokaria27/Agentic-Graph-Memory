@@ -1883,7 +1883,7 @@ Hand-read of all 16 dev answers on the two worst abilities + competitive study.
   the worse one ran the benchmark.
 - **RC3 — stale-fact selection at answer time:** yoga frequency answered
   "twice a week" where gold is "three times" — the newest-fact preference is
-  not decisive in the inline path (KG-side supersede数 reproduced fine).
+  not decisive in the inline path (KG-side supersede counts reproduced fine).
 - **RC4 — answer form:** correct content scored wrong ("ten to twelve hours"
   vs gold "10-12 hours"); verbose hedges where gold is "Yes." Also one answer
   leaked a schema placeholder ("variable 'loan_amount'") instead of the value.
