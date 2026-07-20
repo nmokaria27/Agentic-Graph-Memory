@@ -1816,3 +1816,36 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - STATUS: RUNNING — `evaluation/LongMemEval/exp_breadth.sh`, log
   `evaluation/results/exp_lme_breadth.log`, per-type caches
   `evaluation/results/lme_breadth_<type>/`.
+
+### EXP-LME-BREADTH verdict  (2026-07-19)
+- **Run:** 48/48 questions, 6/6 legs, 26.6 h, ZERO errors, ZERO empty KGs
+  (check i ✓). ~13.9k entities / ~33k triples admitted across 48 governed KGs.
+  KG-level anchor reproduced (supersedes 0–20/question on knowledge-update,
+  near-zero on temporal — correct asymmetry; check ii ✓).
+- **Baseline table (dev indices 0–7, n=8/ability; substring / Qwen3-judge):**
+  | ability | substring | judge |
+  |---|---|---|
+  | knowledge-update | 0.125 | 0.125 |
+  | temporal-reasoning | 0.500 | 0.125 |
+  | multi-session | 0.125 | **0.000** |
+  | single-session-user | 0.500 | 0.375 |
+  | single-session-assistant | 0.375 | 0.500 |
+  | single-session-preference | n/a | **0.750** |
+  Macro judge ≈ **0.31** vs the ~0.60–0.71 published field — honest gap, now
+  quantified per-ability for the first time.
+- **Findings (characterization — no accept/revert):**
+  1. **multi-session is the worst ability (judge 0.00)** — consistent with
+     cross-session identity being unvalidated (PLAYBOOK 5.4); now evidence-backed.
+  2. **knowledge-update 0.125 is ANOMALOUS vs the GB-2b era** (which answered
+     q0/q2 correctly post-GB-10 via requery). KG-side freshness reproduces, so
+     the suspect is the QA/answer-assembly path in run_eval vs the requery
+     harness — investigate BEFORE trusting any LongMemEval number (possible
+     GB-15: QA-path divergence).
+  3. temporal substring 0.50 vs judge 0.125 divergence — substring is generous
+     on date fragments; triangulation rule applies (judge-only or substring-only
+     signals stay INCONCLUSIVE; dev hand-reads next session).
+  4. preference 0.75 — strongest ability, unexpected; worth a hand-read to
+     confirm it's real.
+- **Action:** baselines recorded; backlog inputs: GB-15 (QA-path divergence,
+  investigate first), multi-session identity (5.4) next. Proceeding to
+  EXP-MODEL-LOCAL-2 per plan.
