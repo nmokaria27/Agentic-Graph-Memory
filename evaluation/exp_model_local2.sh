@@ -46,8 +46,12 @@ restore_qwen3() {
 
   echo "[ML2] === (b) JSON-shape smoke through project client ==="
   LLM_DEFAULT_MODEL="$GPTOSS_MODEL" python -c "
+import os
 from multi_agent_kg.llm.openai_client import chat_completion_json
-r = chat_completion_json(prompt='Extract entities from: Marie Curie won the Nobel Prize in Paris. Return {\"entities\":[{\"text\":...,\"type\":...}]}', system_prompt='Return only JSON.', max_tokens=1024)
+r = chat_completion_json(
+    messages=[{'role':'system','content':'Return only JSON.'},
+              {'role':'user','content':'Extract entities from: Marie Curie won the Nobel Prize in Paris. Return {\"entities\":[{\"text\":\"...\",\"type\":\"...\"}]}'}],
+    model=os.environ['LLM_DEFAULT_MODEL'], max_tokens=1024)
 assert isinstance(r, dict) and r.get('entities'), f'bad shape: {r!r}'
 print('[ML2] gate (b) PASS —', len(r['entities']), 'entities')
 " || { echo "[ML2] GATE (b) FAIL"; restore_qwen3; echo "ML2_DONE_FAIL_B $(date)"; exit 1; }
