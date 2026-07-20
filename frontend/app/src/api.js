@@ -41,12 +41,19 @@ export async function fetchModels() {
   return jsonOrThrow(resp);
 }
 
-export async function submitQuestion(question, model) {
+// Combine a caller-provided abort signal (e.g. a cancel button) with a timeout.
+function withTimeout(signal, ms) {
+  const t = AbortSignal.timeout(ms);
+  if (!signal) return t;
+  return typeof AbortSignal.any === 'function' ? AbortSignal.any([signal, t]) : signal;
+}
+
+export async function submitQuestion(question, model, { signal } = {}) {
   const resp = await fetch(`${API_BASE}/qa`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question, model }),
-    signal: AbortSignal.timeout(600_000),
+    signal: withTimeout(signal, 600_000),
   });
   return jsonOrThrow(resp);
 }
@@ -56,12 +63,12 @@ export async function submitQuestion(question, model) {
  * Calls onProgress({stage, info}) for each progress event.
  * Resolves with the final result payload, or rejects on error.
  */
-export async function submitQuestionStream(question, model, onProgress) {
+export async function submitQuestionStream(question, model, onProgress, { signal } = {}) {
   const resp = await fetch(`${API_BASE}/qa/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ question, model }),
-    signal: AbortSignal.timeout(600_000),
+    signal: withTimeout(signal, 600_000),
   });
   if (!resp.ok || !resp.body) {
     let detail = '';
@@ -138,5 +145,24 @@ export async function fetchPipelineStatus(jobId) {
     ? `${API_BASE}/pipeline/status?job_id=${encodeURIComponent(jobId)}`
     : `${API_BASE}/pipeline/status`;
   const resp = await fetch(url, { signal: AbortSignal.timeout(5000) });
+  return jsonOrThrow(resp);
+}
+
+// ── Eval run viewer ──────────────────────────────────────────────────────────
+
+export async function fetchEvalRuns() {
+  const resp = await fetch(`${API_BASE}/eval/runs`, { signal: AbortSignal.timeout(5000) });
+  return jsonOrThrow(resp);
+}
+
+export async function fetchEvalGraph(dir, strategy, doc = 'all') {
+  const qs = new URLSearchParams({ dir, strategy, doc }).toString();
+  const resp = await fetch(`${API_BASE}/eval/graph?${qs}`);
+  return jsonOrThrow(resp);
+}
+
+export async function fetchEvalMetrics(dir, strategy) {
+  const qs = new URLSearchParams({ dir, strategy }).toString();
+  const resp = await fetch(`${API_BASE}/eval/metrics?${qs}`, { signal: AbortSignal.timeout(30_000) });
   return jsonOrThrow(resp);
 }

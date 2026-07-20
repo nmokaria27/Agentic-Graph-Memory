@@ -1748,3 +1748,230 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   with strict-R ≥ Qwen3-subset − 0.02 ⇒ model-bound signal; else mechanism-bound.
 - **Cost:** ~10 docs × ~18 calls ≈ 200 Fireworks calls.
 - STATUS: RUNNING — log `evaluation/results/exp_headroom_scierc.log`.
+
+### EXP-HEADROOM-SCIERC verdict  (2026-07-18)
+- **Result (same 10 SciERC test docs, governed build, paper scorer):**
+  | | ent F1 | strict P | strict R | strict F1 | mapped F1 |
+  |---|---|---|---|---|---|
+  | Qwen3-30B (local) | 0.539 | 0.086 | 0.182 | 0.116 | 0.225 |
+  | gpt-oss-120b (FW) | **0.621** | **0.240** | **0.398** | **0.299** | **0.444** |
+  Bar was strict-P +0.03 at held recall → delivered **+0.154 P with recall 2.2×**.
+  n=10 caveat noted; the direction is unambiguous.
+- **Verdict: MODEL-BOUND (decisively).** The paper-precision gap (GB-14) is
+  dominated by reviewer/extractor model capability, not mechanism. gpt-oss-120b
+  at n=10 even exceeds the paper's GPT-5 100-doc numbers (0.156/0.290).
+- **Action → GB-14 design settled: model first, mechanism second.**
+  1. **EXP-MODEL-LOCAL-2 (next gpu02 slot):** qualify gpt-oss-120b locally
+     (~63 GB fits 2× L40S; serving recipe to validate — MXFP4 path on Ada).
+     Gate: slice-A extraction + LongMemEval smoke + wall/doc, per the model-
+     qualification template (PLAYBOOK 2.1). Fireworks evidence must reproduce
+     locally before adoption (standing rule #6).
+  2. Grounded-verification-everywhere (PLAYBOOK 4.1.1) remains queued as the
+     mechanism-side complement — cheap and model-independent.
+  - Scheduling: LongMemEval breadth runs TONIGHT on Qwen3 as planned (its
+    baselines are Qwen3; comparability preserved). gpt-oss qualification takes
+    the next free gpu02 slot after.
+
+### EXP-PAIR-GROUND verdict  (2026-07-18)
+- **Result (docs 100–119):**
+  | bar | target | result | | SPGOV-3 ctrl | ungrounded ctrl |
+  |---|---|---|---|---|---|
+  | pairR | ≥ 0.292 | 0.265 | MISS | 0.242 | 0.305 |
+  | entP | ≥ 0.778 | 0.727 | MISS | 0.808 | 0.752 |
+  | relF1@0.6 | ≥ 0.161 | 0.144 | MISS | 0.161 | 0.143 |
+  | median wall | ≤ 149 s | 148.7 s | PASS | 99.4 s | 183 s |
+  Gate mechanics worked (drops observed on 15/20 docs, ~15–25% of stage output;
+  round-trip dump now preserves source/evidence). Quality did not follow.
+- **Finding (revises the playbook's 4.1.1 ranking):** a verbatim quote proves
+  CO-OCCURRENCE, not the RELATION — the model attaches real sentences to wrong
+  relation labels, so quote-grounding filters fabrication but not mislabeling.
+  Also: the pair cap bounds pairs, not emitted triples (doc_112: 211 triples
+  from ≤100 pairs) — any future attempt needs a one-triple-per-pair cap.
+- **Verdict: REVERT** (stage 4c remains in-tree, default OFF). GB-3 series
+  conclusion after 3 experiments: pair-completion finds real pairs (ceiling
+  ~0.59 confirmed twice) but Qwen3-30B cannot admit them precisely under
+  instruction OR quote gates. Convergent with EXP-HEADROOM-SCIERC (2.8×
+  precision from gpt-oss-120b on identical protocol): **model-bound**.
+- **Action:** GB-3 PAUSED, blocked on **EXP-MODEL-LOCAL-2** (qualify
+  gpt-oss-120b locally) — one experiment now potentially lifts both open
+  frontiers (pair admission + review precision). LongMemEval breadth proceeds
+  tonight on Qwen3 as planned (baseline comparability).
+
+---
+
+## EXP-LME-BREADTH: LongMemEval ability characterization on the merged stack  (2026-07-18)
+- **Hypothesis/purpose:** only knowledge-update (1 of 6 abilities) has ever been
+  measured. This is a CHARACTERIZATION run of v0.2-post-loop (no accept/revert):
+  it establishes the per-ability baseline table that re-derives the backlog.
+- **Change:** none. Merged HEAD, Qwen3 (baseline comparability — gpt-oss
+  qualification is a separate later experiment), default extraction mode,
+  dated ingestion on.
+- **Slice:** 8 dev questions (indices 0–7) × 6 ability types = 48 questions.
+  Held-out indices (20+) untouched. knowledge-update serves as the anchor —
+  its behavior must reproduce the GB-2b era (supersedes ≥1 on update questions).
+- **Pre-committed checks:** (i) zero silent-empty KGs (GB-1); (ii) anchor
+  reproduces; (iii) per-type substring + judge scores recorded as baselines;
+  hand-reads only on dev.
+- **Cost:** ~48 questions, ingestion-dominated ≈ 10–15 h gpu02 overnight.
+- STATUS: RUNNING — `evaluation/LongMemEval/exp_breadth.sh`, log
+  `evaluation/results/exp_lme_breadth.log`, per-type caches
+  `evaluation/results/lme_breadth_<type>/`.
+
+### EXP-LME-BREADTH verdict  (2026-07-19)
+- **Run:** 48/48 questions, 6/6 legs, 26.6 h, ZERO errors, ZERO empty KGs
+  (check i ✓). ~13.9k entities / ~33k triples admitted across 48 governed KGs.
+  KG-level anchor reproduced (supersedes 0–20/question on knowledge-update,
+  near-zero on temporal — correct asymmetry; check ii ✓).
+- **Baseline table (dev indices 0–7, n=8/ability; substring / Qwen3-judge):**
+  | ability | substring | judge |
+  |---|---|---|
+  | knowledge-update | 0.125 | 0.125 |
+  | temporal-reasoning | 0.500 | 0.125 |
+  | multi-session | 0.125 | **0.000** |
+  | single-session-user | 0.500 | 0.375 |
+  | single-session-assistant | 0.375 | 0.500 |
+  | single-session-preference | n/a | **0.750** |
+  Macro judge ≈ **0.31** vs the ~0.60–0.71 published field — honest gap, now
+  quantified per-ability for the first time.
+- **Findings (characterization — no accept/revert):**
+  1. **multi-session is the worst ability (judge 0.00)** — consistent with
+     cross-session identity being unvalidated (PLAYBOOK 5.4); now evidence-backed.
+  2. **knowledge-update 0.125 is ANOMALOUS vs the GB-2b era** (which answered
+     q0/q2 correctly post-GB-10 via requery). KG-side freshness reproduces, so
+     the suspect is the QA/answer-assembly path in run_eval vs the requery
+     harness — investigate BEFORE trusting any LongMemEval number (possible
+     GB-15: QA-path divergence).
+  3. temporal substring 0.50 vs judge 0.125 divergence — substring is generous
+     on date fragments; triangulation rule applies (judge-only or substring-only
+     signals stay INCONCLUSIVE; dev hand-reads next session).
+  4. preference 0.75 — strongest ability, unexpected; worth a hand-read to
+     confirm it's real.
+- **Action:** baselines recorded; backlog inputs: GB-15 (QA-path divergence,
+  investigate first), multi-session identity (5.4) next. Proceeding to
+  EXP-MODEL-LOCAL-2 per plan.
+
+## EXP-MODEL-LOCAL-2: qualify gpt-oss-120b on gpu02  (2026-07-19)
+- **Hypothesis:** EXP-HEADROOM-SCIERC showed the review/extraction quality gap is
+  model-bound (strict P 0.240 vs 0.086, R 2.2×, same docs, Fireworks). If
+  gpt-oss-120b serves viably on 2× L40S (MXFP4 dequant path, TP=2), the same
+  gains should reproduce locally, lifting both open frontiers (GB-14 review
+  precision, GB-3 pair admission).
+- **Change:** none to code — model qualification per the PLAYBOOK 2.1 gate.
+- **Gate (all four required to qualify):**
+  (a) serves + health + preflight (correct model name, max-model-len 32768);
+  (b) JSON-shape suite through the project client (chat_completion_json smoke);
+  (c) DocRED slice A singlepass: entR within −0.05 of Qwen3's 0.908 AND
+      wall ≤ 30 s/doc (Qwen3: ~8 s — dequant overhead allowed but bounded);
+  (d) SciERC 10-doc governed rebuild: strict P ≥ 0.15 (vs Fireworks 0.240,
+      Qwen3 0.086) — reproduces ≥half the headroom gain locally.
+  Fail any ⇒ restore Qwen3 (SERVER_GUIDE recipe), verdict honestly.
+- **Cost:** model swap + ~30 min runs. STATUS: RUNNING —
+  `evaluation/exp_model_local2.sh`, log `evaluation/results/exp_model_local2.log`.
+
+## DIAG-LME-FAILURES: root causes of the breadth-run accuracy gap  (2026-07-20)
+Hand-read of all 16 dev answers on the two worst abilities + competitive study.
+- **RC1 — question-type-blind QA (dominant; explains multi-session 0/8):** every
+  multi-session miss is an AGGREGATION question (count/sum/duration: "3", "8
+  days", "$185", "five kits"). Our QA retrieves a focused top-k subgraph and
+  reasons over it — perfect for point lookups, structurally incapable of
+  exhaustive enumeration ("found 1 of 5 model kits"). The #1 LongMemEval system
+  (OMEGA, 95.4%) attributes its final gains to CATEGORY-SPECIFIC retrieval +
+  prompts per question type — independent confirmation.
+- **RC2 — GB-15 QA-path divergence CONFIRMED by content:** q0 "25:50" and q3
+  "the suburbs" were answered CORRECTLY by the requery path in the GB-2b era
+  and are wrong via run_eval's inline QA path in this run. Two QA paths exist;
+  the worse one ran the benchmark.
+- **RC3 — stale-fact selection at answer time:** yoga frequency answered
+  "twice a week" where gold is "three times" — the newest-fact preference is
+  not decisive in the inline path (KG-side supersede counts reproduced fine).
+- **RC4 — answer form:** correct content scored wrong ("ten to twelve hours"
+  vs gold "10-12 hours"); verbose hedges where gold is "Yes." Also one answer
+  leaked a schema placeholder ("variable 'loan_amount'") instead of the value.
+- **Key structural insight from competitors:** leaders (OMEGA 95.4, Mastra
+  94.9) are RETRIEVAL-heavy over retained episode text (observation logs /
+  hybrid vector+FTS+time-decay), not graph-only. Zep (71.2, closest cousin —
+  bi-temporal KG like our supersede) also retains episodes alongside the graph.
+  We discard raw sessions at QA time — graph-only answering forfeits verbatim
+  and aggregation questions the episode store would catch.
+- **Fix queue (ALL QA-side — the 48 cached KGs mean validation is requery-only,
+  no re-ingestion):**
+  1. GB-15 EXP-QA-PATH (small): unify inline QA onto the requery path
+     (community context + best snapshot + newest-fact assembly). Bar: KU ≥ 3/8.
+  2. GB-16 EXP-QA-INTENT (medium): intent classifier (count/sum/list/point/
+     boolean) → per-intent retrieval (exhaustive category enumeration for
+     aggregates, then arithmetic in assembly). Bar: multi-session ≥ 3/8, no
+     point-lookup regression.
+  3. GB-17 EXP-ANSWER-FORM (small): concise final-answer line + numeric
+     normalization in scorer (transparent, control-checked).
+  4. GB-18 EXP-EPISODIC-HYBRID (larger, competitor-inspired): retain session
+     chunks as a parallel retrieval lane fused with graph evidence at QA.
+  Then re-run breadth dev via requery against the SAME cached KGs.
+
+### EXP-MODEL-LOCAL-2 verdict  (2026-07-20)
+- **Result — ALL FOUR GATES PASS:**
+  | gate | bar | result |
+  |---|---|---|
+  | (a) serve on 2× L40S | health + name | PASS (11 min load, MXFP4 kernels) |
+  | (b) JSON via project client | valid shape | PASS |
+  | (c) slice A singlepass | entR ≥ 0.858, wall ≤ 30 s | **entR 0.870, 19.2 s median** |
+  | (d) SciERC 10-doc governed | strict P ≥ 0.15 | **strict P 0.303** (F1 0.348, mapped 0.502) |
+- **The headroom REPRODUCED LOCALLY AND EXCEEDED the Fireworks evidence**
+  (strict P 0.303 local vs 0.240 FW vs 0.086 Qwen3, same docs). At n=10 the
+  local governed build beats the paper's GPT-5 100-doc numbers (0.156/0.290)
+  on both strict and mapped F1. Cost: 2.4× Qwen3's singlepass wall (19 vs 8 s)
+  — acceptable.
+- **Verdict: ACCEPT — gpt-oss-120b is QUALIFIED as production candidate.**
+  Attempt-1 failure was the gate script's own auth bug (logged); auto-restore
+  worked. gpu02 left serving gpt-oss-120b.
+- **Action / open decisions for next session:**
+  1. Production ADOPTION (make it the default in .env + SERVER_GUIDE §7.1 +
+     re-derive key baselines at n=100 SciERC / DocRED slices) — owner-visible
+     decision; the qualification makes it well-supported.
+  2. GB-15 QA-path validation must swap Qwen3 BACK first (breadth baselines are
+     Qwen3; model must be held fixed for that comparison), then re-swap.
+  3. GB-3 unpauses: retry pair-completion admission under gpt-oss.
+
+### DIAG-LME-FAILURES addendum — decisive attribution  (2026-07-20)
+Offline probe of every knowledge-update miss against its own cached KG:
+| idx | gold | fact in graph? | what QA served |
+|---|---|---|---|
+| 0 | 25:50 | **YES** | rambled about schedule |
+| 2 | the suburbs | **YES** | "a city near Tampa" |
+| 3 | $400,000 | **YES** | leaked placeholder "variable 'loan_amount'" |
+| 4 | three times a week | **YES** | STALE "twice a week" (both in graph) |
+- Governance/commit is CLEAR: approved triples all present (an intermediate
+  "approved-then-vanished" hypothesis was an idx-ordering artifact — noted so
+  nobody rediscovers it). Extraction is CLEAR on these questions.
+- **The knowledge-update gap is entirely answer-layer**: fact selection
+  (stale-over-new despite supersede data), placeholder surfacing, and
+  retrieval misses over graphs that contain the answer. This narrows GB-15/
+  GB-16/GB-17 to THE fix track with high confidence, and means the validation
+  loop is requery-only over the 48 cached KGs.
+- Next concrete step (GB-15 implementation): unify inline QA onto the requery
+  construction; make newest-active-fact selection decisive in answer assembly
+  (supersede filter + document_date ordering exposed to the answerer); ban
+  raw node-id/placeholder strings from final answers.
+
+## EXP-QA-PATH (GB-15): make newest-active-fact selection decisive at answer time  (2026-07-20)
+- **Hypothesis:** DIAG addendum proved every probed knowledge-update miss has
+  the gold fact in the graph; QA serves stale/wrong/placeholder facts instead.
+  Three mechanisms, all in the answer path: (1) superseded triples are not
+  excluded (or not decisively down-ranked) in evidence assembly; (2) evidence
+  lines don't carry document_date, so the answerer can't prefer newer facts;
+  (3) raw node-ids/placeholders can surface verbatim in answers.
+- **Change (one mechanism: answer over ACTIVE, DATED evidence):** in the QA
+  evidence assembly used by the LongMemEval wrapper — filter superseded triples
+  out of evidence; attach "(as of <document_date>)" to each evidence line when
+  provenance has a date; instruct final answer to be a concise direct answer
+  (no ids). Applies to the shared QA path; DocRED/undated corpora unaffected
+  (no dates → no annotation; nothing superseded → no filtering).
+- **Lane & model:** implementation + tests offline. Validation: requery the
+  cached breadth knowledge-update KGs — MUST swap Qwen3 back first (breadth
+  baseline model; gpt-oss currently serving). Fresh copies of caches so the
+  originals stay pristine.
+- **Slice & control:** knowledge-update dev cache (8 questions) primary;
+  temporal-reasoning cache as regression control (must not drop).
+- **Success bar:** (a) tests green; (b) KU judge ≥ 3/8 (was 1/8); (c) temporal
+  judge ≥ 1/8 (no regression below baseline 0.125); (d) zero placeholder-string
+  answers on the 16 requeried questions.
+- STATUS: RUNNING — implementing.

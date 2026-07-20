@@ -53,6 +53,32 @@ else:
         timeout=_TIMEOUT,
     )
 
+# ── Fireworks (hosted) chat routing ───────────────────────────────────
+# Models named "accounts/fireworks/models/..." (or the "fireworks/<name>"
+# shorthand) route to the Fireworks serverless API regardless of LLM_BACKEND,
+# so a request can pick a hosted model while the default stays on local vLLM.
+FIREWORKS_BASE_URL = os.getenv("FIREWORKS_BASE_URL", "https://api.fireworks.ai/inference/v1")
+_fireworks_client: Optional[OpenAI] = None
+
+
+def _is_fireworks_model(model: str) -> bool:
+    return model.startswith("accounts/fireworks/") or model.startswith("fireworks/")
+
+
+def _client_for_model(resolved_model: str) -> OpenAI:
+    global _fireworks_client
+    if _is_fireworks_model(resolved_model):
+        key = os.getenv("FIREWORKS_API_KEY")
+        if not key:
+            raise Exception(
+                f"FIREWORKS_API_KEY is not set — cannot route {resolved_model!r} to Fireworks"
+            )
+        if _fireworks_client is None:
+            _fireworks_client = OpenAI(base_url=FIREWORKS_BASE_URL, api_key=key, timeout=_TIMEOUT)
+        return _fireworks_client
+    return client
+
+
 # ── Embedding backend (may differ from chat) ──────────────────────────
 # Embeddings can target a separate OpenAI-compatible server than chat. Common
 # setup: chat on vLLM (gemma), embeddings on Ollama's mxbai-embed-large via the
@@ -145,7 +171,9 @@ _OPENAI_TO_OLLAMA = {
 
 def _resolve_model(model: str) -> str:
     """Resolve model name: translate OpenAI names to Ollama/VLLM when using those backends."""
-    if LLM_BACKEND in ("openai", "vllm"):
+    if model.startswith("fireworks/"):
+        return "accounts/fireworks/models/" + model[len("fireworks/"):]
+    if _is_fireworks_model(model) or LLM_BACKEND in ("openai", "vllm"):
         return model
     return _OPENAI_TO_OLLAMA.get(model, model)
 
@@ -491,10 +519,11 @@ def chat_completion(
     if LLM_BACKEND == "openai":
         params.update(kwargs)
 
+    active_client = _client_for_model(resolved_model)
     last_error = None
     for attempt in range(1, _MAX_RETRIES + 1):
         try:
-            response = client.chat.completions.create(**params)
+            response = active_client.chat.completions.create(**params)
             _log_usage(resolved_model, response)
             choice = response.choices[0]
             content = choice.message.content
@@ -594,7 +623,7 @@ def chat_completion(
                 connection_like = any(
                     m in err_lower for m in ("connection", "refused", "reset", "eof", "server disconnected")
                 )
-                if connection_like and LLM_BACKEND != "openai":
+                if connection_like and LLM_BACKEND != "openai" and not _is_fireworks_model(resolved_model):
                     _backend_label = "VLLM" if LLM_BACKEND == "vllm" else "Ollama"
                     print(
                         f"  WARNING: {_backend_label} appears unreachable on attempt {attempt}/{_MAX_RETRIES}; "
@@ -693,7 +722,11 @@ def chat_completion_json(
         #   blocks reasoning tokens (Ollama GBNF) or strips them (VLLM), leading
         #   to empty or malformed output. Rely on _extract_json post-hoc instead.
         # - First attempt only for non-thinking Ollama/VLLM models
-        if LLM_BACKEND == "openai":
+        if _is_fireworks_model(resolved_model):
+            # Fireworks supports json_object, but thinking models (deepseek,
+            # qwen3, gpt-oss…) still emit reasoning — same rule as vLLM.
+            use_json_mode = (not _is_thinking_model) and attempt == 1
+        elif LLM_BACKEND == "openai":
             use_json_mode = True
         elif _is_thinking_model and LLM_BACKEND in ("ollama", "vllm"):
             use_json_mode = False
