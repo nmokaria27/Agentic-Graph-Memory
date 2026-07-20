@@ -1867,3 +1867,42 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
   Fail any ⇒ restore Qwen3 (SERVER_GUIDE recipe), verdict honestly.
 - **Cost:** model swap + ~30 min runs. STATUS: RUNNING —
   `evaluation/exp_model_local2.sh`, log `evaluation/results/exp_model_local2.log`.
+
+## DIAG-LME-FAILURES: root causes of the breadth-run accuracy gap  (2026-07-20)
+Hand-read of all 16 dev answers on the two worst abilities + competitive study.
+- **RC1 — question-type-blind QA (dominant; explains multi-session 0/8):** every
+  multi-session miss is an AGGREGATION question (count/sum/duration: "3", "8
+  days", "$185", "five kits"). Our QA retrieves a focused top-k subgraph and
+  reasons over it — perfect for point lookups, structurally incapable of
+  exhaustive enumeration ("found 1 of 5 model kits"). The #1 LongMemEval system
+  (OMEGA, 95.4%) attributes its final gains to CATEGORY-SPECIFIC retrieval +
+  prompts per question type — independent confirmation.
+- **RC2 — GB-15 QA-path divergence CONFIRMED by content:** q0 "25:50" and q3
+  "the suburbs" were answered CORRECTLY by the requery path in the GB-2b era
+  and are wrong via run_eval's inline QA path in this run. Two QA paths exist;
+  the worse one ran the benchmark.
+- **RC3 — stale-fact selection at answer time:** yoga frequency answered
+  "twice a week" where gold is "three times" — the newest-fact preference is
+  not decisive in the inline path (KG-side supersede数 reproduced fine).
+- **RC4 — answer form:** correct content scored wrong ("ten to twelve hours"
+  vs gold "10-12 hours"); verbose hedges where gold is "Yes." Also one answer
+  leaked a schema placeholder ("variable 'loan_amount'") instead of the value.
+- **Key structural insight from competitors:** leaders (OMEGA 95.4, Mastra
+  94.9) are RETRIEVAL-heavy over retained episode text (observation logs /
+  hybrid vector+FTS+time-decay), not graph-only. Zep (71.2, closest cousin —
+  bi-temporal KG like our supersede) also retains episodes alongside the graph.
+  We discard raw sessions at QA time — graph-only answering forfeits verbatim
+  and aggregation questions the episode store would catch.
+- **Fix queue (ALL QA-side — the 48 cached KGs mean validation is requery-only,
+  no re-ingestion):**
+  1. GB-15 EXP-QA-PATH (small): unify inline QA onto the requery path
+     (community context + best snapshot + newest-fact assembly). Bar: KU ≥ 3/8.
+  2. GB-16 EXP-QA-INTENT (medium): intent classifier (count/sum/list/point/
+     boolean) → per-intent retrieval (exhaustive category enumeration for
+     aggregates, then arithmetic in assembly). Bar: multi-session ≥ 3/8, no
+     point-lookup regression.
+  3. GB-17 EXP-ANSWER-FORM (small): concise final-answer line + numeric
+     normalization in scorer (transparent, control-checked).
+  4. GB-18 EXP-EPISODIC-HYBRID (larger, competitor-inspired): retain session
+     chunks as a parallel retrieval lane fused with graph evidence at QA.
+  Then re-run breadth dev via requery against the SAME cached KGs.
