@@ -1951,3 +1951,27 @@ Offline probe of every knowledge-update miss against its own cached KG:
   construction; make newest-active-fact selection decisive in answer assembly
   (supersede filter + document_date ordering exposed to the answerer); ban
   raw node-id/placeholder strings from final answers.
+
+## EXP-QA-PATH (GB-15): make newest-active-fact selection decisive at answer time  (2026-07-20)
+- **Hypothesis:** DIAG addendum proved every probed knowledge-update miss has
+  the gold fact in the graph; QA serves stale/wrong/placeholder facts instead.
+  Three mechanisms, all in the answer path: (1) superseded triples are not
+  excluded (or not decisively down-ranked) in evidence assembly; (2) evidence
+  lines don't carry document_date, so the answerer can't prefer newer facts;
+  (3) raw node-ids/placeholders can surface verbatim in answers.
+- **Change (one mechanism: answer over ACTIVE, DATED evidence):** in the QA
+  evidence assembly used by the LongMemEval wrapper — filter superseded triples
+  out of evidence; attach "(as of <document_date>)" to each evidence line when
+  provenance has a date; instruct final answer to be a concise direct answer
+  (no ids). Applies to the shared QA path; DocRED/undated corpora unaffected
+  (no dates → no annotation; nothing superseded → no filtering).
+- **Lane & model:** implementation + tests offline. Validation: requery the
+  cached breadth knowledge-update KGs — MUST swap Qwen3 back first (breadth
+  baseline model; gpt-oss currently serving). Fresh copies of caches so the
+  originals stay pristine.
+- **Slice & control:** knowledge-update dev cache (8 questions) primary;
+  temporal-reasoning cache as regression control (must not drop).
+- **Success bar:** (a) tests green; (b) KU judge ≥ 3/8 (was 1/8); (c) temporal
+  judge ≥ 1/8 (no regression below baseline 0.125); (d) zero placeholder-string
+  answers on the 16 requeried questions.
+- STATUS: RUNNING — implementing.
