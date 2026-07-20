@@ -1849,3 +1849,21 @@ sequential ids remain as aliases (commits/logs reference them). Convention:
 - **Action:** baselines recorded; backlog inputs: GB-15 (QA-path divergence,
   investigate first), multi-session identity (5.4) next. Proceeding to
   EXP-MODEL-LOCAL-2 per plan.
+
+## EXP-MODEL-LOCAL-2: qualify gpt-oss-120b on gpu02  (2026-07-19)
+- **Hypothesis:** EXP-HEADROOM-SCIERC showed the review/extraction quality gap is
+  model-bound (strict P 0.240 vs 0.086, R 2.2×, same docs, Fireworks). If
+  gpt-oss-120b serves viably on 2× L40S (MXFP4 dequant path, TP=2), the same
+  gains should reproduce locally, lifting both open frontiers (GB-14 review
+  precision, GB-3 pair admission).
+- **Change:** none to code — model qualification per the PLAYBOOK 2.1 gate.
+- **Gate (all four required to qualify):**
+  (a) serves + health + preflight (correct model name, max-model-len 32768);
+  (b) JSON-shape suite through the project client (chat_completion_json smoke);
+  (c) DocRED slice A singlepass: entR within −0.05 of Qwen3's 0.908 AND
+      wall ≤ 30 s/doc (Qwen3: ~8 s — dequant overhead allowed but bounded);
+  (d) SciERC 10-doc governed rebuild: strict P ≥ 0.15 (vs Fireworks 0.240,
+      Qwen3 0.086) — reproduces ≥half the headroom gain locally.
+  Fail any ⇒ restore Qwen3 (SERVER_GUIDE recipe), verdict honestly.
+- **Cost:** model swap + ~30 min runs. STATUS: RUNNING —
+  `evaluation/exp_model_local2.sh`, log `evaluation/results/exp_model_local2.log`.
