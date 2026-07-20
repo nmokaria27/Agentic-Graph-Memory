@@ -41,7 +41,7 @@ restore_qwen3() {
     fi
     [ "$i" = 120 ] && { echo "[ML2] GATE (a) FAIL: no health after 30 min"; restore_qwen3; echo "ML2_DONE_FAIL_A $(date)"; exit 1; }
   done
-  curl -s localhost:8000/v1/models | grep -q "gpt-oss-120b" || { echo "[ML2] GATE (a) FAIL: wrong model name"; restore_qwen3; echo "ML2_DONE_FAIL_A $(date)"; exit 1; }
+  curl -s -H "Authorization: Bearer $VLLM_API_KEY" localhost:8000/v1/models | grep -q "gpt-oss-120b" || { echo "[ML2] GATE (a) FAIL: wrong model name"; restore_qwen3; echo "ML2_DONE_FAIL_A $(date)"; exit 1; }
   echo "[ML2] gate (a) PASS $(date)"
 
   echo "[ML2] === (b) JSON-shape smoke through project client ==="
