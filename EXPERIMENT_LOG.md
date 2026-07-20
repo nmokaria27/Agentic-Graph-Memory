@@ -1975,3 +1975,38 @@ Offline probe of every knowledge-update miss against its own cached KG:
   judge ≥ 1/8 (no regression below baseline 0.125); (d) zero placeholder-string
   answers on the 16 requeried questions.
 - STATUS: RUNNING — implementing.
+
+### EXP-QA-PATH verdict  (2026-07-20)
+- **Result (requery on cached KU + temporal, Qwen3, judge-scored):**
+  | | KU judge | KU substring | temporal judge | temporal substring |
+  |---|---|---|---|---|
+  | before | 0.125 (1/8) | 0.125 | 0.125 (1/8) | 0.500 |
+  | after | 0.125 (1/8) | 0.125 | **0.375 (3/8)** | 0.500 |
+  Bar (b) KU ≥ 0.375: **MISS**. Bar (c) temporal no-regression: **PASS**
+  (improved 1/8→3/8). Bar (d) zero placeholder answers: **PASS** (the
+  `variable 'loan_amount'` leak from idx=3 is gone).
+- **The mechanism works exactly as designed when it engages:** idx=7 (bike
+  count) flipped wrong→correct — post-fix answer opens "As of 2023/10/10...
+  four bicycles," gold "4". That is the freshness annotation doing its job.
+- **idx=6 flipped correct→wrong** (retrieval selected different evidence this
+  run; not a freshness regression — subgraph selection is not fully
+  deterministic at temp 0.2, a pre-existing property, not new).
+- **idx=3 root-caused — NOT a QA-path bug, it's GB-2d's exact motivating
+  pattern, found live for the first time:** the KG holds THREE differently-
+  represented loan-amount facts — entity `loan_amount` (name "$350,000"),
+  `loan_amount_financed` (name "$300,000"), and `four_hundred_thousand_dollars`
+  (gold value, "$400,000") — via different relations
+  (`PRE-APPROVED_FOR_LOAN_AMOUNT`, `IS_ASSIGNED_TO_LENDER`, `HAS_PRE_APPROVAL_
+  AMOUNT`) on differently-shaped entities. `find_conflicts()` never fired
+  (no shared exact key), so NONE carry a superseded marker — there is no
+  freshness signal for the answer layer to use, because governance never saw
+  these as competing. No QA-side prompt fix can reliably pick the right one
+  without that signal.
+- **Verdict: PARTIAL ACCEPT.** Mechanism correct and shipped (temporal
+  improved, placeholder leak eliminated); KU bar not met because a large share
+  of KU errors are upstream of the answer layer (GB-2d-class value collisions,
+  not fixable by better prompting). Kept in production (default path, no
+  regression risk — undated/non-superseded corpora unaffected by construction).
+- **Action:** GB-2d PROMOTED to NEXT with a concrete, evidence-grounded design
+  input (this idx=3 case is the reference example). GB-16 (intent-based
+  retrieval for aggregation questions) still queued behind it for multi-session.
