@@ -1906,3 +1906,27 @@ Hand-read of all 16 dev answers on the two worst abilities + competitive study.
   4. GB-18 EXP-EPISODIC-HYBRID (larger, competitor-inspired): retain session
      chunks as a parallel retrieval lane fused with graph evidence at QA.
   Then re-run breadth dev via requery against the SAME cached KGs.
+
+### EXP-MODEL-LOCAL-2 verdict  (2026-07-20)
+- **Result — ALL FOUR GATES PASS:**
+  | gate | bar | result |
+  |---|---|---|
+  | (a) serve on 2× L40S | health + name | PASS (11 min load, MXFP4 kernels) |
+  | (b) JSON via project client | valid shape | PASS |
+  | (c) slice A singlepass | entR ≥ 0.858, wall ≤ 30 s | **entR 0.870, 19.2 s median** |
+  | (d) SciERC 10-doc governed | strict P ≥ 0.15 | **strict P 0.303** (F1 0.348, mapped 0.502) |
+- **The headroom REPRODUCED LOCALLY AND EXCEEDED the Fireworks evidence**
+  (strict P 0.303 local vs 0.240 FW vs 0.086 Qwen3, same docs). At n=10 the
+  local governed build beats the paper's GPT-5 100-doc numbers (0.156/0.290)
+  on both strict and mapped F1. Cost: 2.4× Qwen3's singlepass wall (19 vs 8 s)
+  — acceptable.
+- **Verdict: ACCEPT — gpt-oss-120b is QUALIFIED as production candidate.**
+  Attempt-1 failure was the gate script's own auth bug (logged); auto-restore
+  worked. gpu02 left serving gpt-oss-120b.
+- **Action / open decisions for next session:**
+  1. Production ADOPTION (make it the default in .env + SERVER_GUIDE §7.1 +
+     re-derive key baselines at n=100 SciERC / DocRED slices) — owner-visible
+     decision; the qualification makes it well-supported.
+  2. GB-15 QA-path validation must swap Qwen3 BACK first (breadth baselines are
+     Qwen3; model must be held fixed for that comparison), then re-swap.
+  3. GB-3 unpauses: retry pair-completion admission under gpt-oss.
