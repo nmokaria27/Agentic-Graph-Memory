@@ -79,6 +79,7 @@ from multi_agent_kg.core.domain_experts import (
     paths_to_text,
 )
 from multi_agent_kg.core.kg_operations import normalize_entity_name, normalize_for_matching
+from multi_agent_kg.core.qa_orchestrator import _format_triple
 from multi_agent_kg.llm.openai_client import chat_completion, chat_completion_json
 
 if TYPE_CHECKING:
@@ -104,10 +105,10 @@ class ProvenanceRecord:
         return {
             "claim": self.claim,
             "supporting_triples": [
-                f"({t.subject}) -[{t.relation}]-> ({t.object})" for t in self.supporting_triples
+                _format_triple(t) for t in self.supporting_triples
             ],
             "hop_path": [
-                f"({t.subject}) -[{t.relation}]-> ({t.object})" for t in self.hop_path
+                _format_triple(t) for t in self.hop_path
             ],
             "source_domain": self.source_domain,
             "confidence": self.confidence,
@@ -322,11 +323,11 @@ class ActiveExplorerExpert(DomainExpertAgent):
             focused, summary = self._select_evidence(query)
             if mode == "chunk" and focused:
                 subgraph_text = "RELEVANT TRIPLES:\n" + "\n".join(
-                    f"  ({t.subject}) -[{t.relation}]-> ({t.object})" for t in focused
+                    "  " + _format_triple(t) for t in focused
                 )
             elif mode == "graph_completion" and focused:
                 extra_evidence += "\n\nQUERY-FOCUSED TRIPLES:\n" + "\n".join(
-                    f"  ({t.subject}) -[{t.relation}]-> ({t.object})" for t in focused
+                    "  " + _format_triple(t) for t in focused
                 )
             if summary:
                 extra_evidence += "\n\nSUMMARY OF RELEVANT SUBGRAPH:\n" + summary
@@ -423,7 +424,7 @@ class ActiveExplorerExpert(DomainExpertAgent):
             )
             if nbr:
                 nbr_lines = [
-                    f"  ({t.subject}) -[{t.relation}]-> ({t.object})"
+                    "  " + _format_triple(t)
                     for t in nbr[: self.retrieval_config.neighbourhood_display]
                 ]
                 multi_hop_text = (
@@ -595,7 +596,7 @@ Return ONLY the JSON."""
                     new_evidence_lines.append(f"\nNeighbourhood of '{eid}':")
                     for t in nbr[:20]:
                         new_evidence_lines.append(
-                            f"  ({t.subject}) -[{t.relation}]-> ({t.object})"
+                            "  " + _format_triple(t)
                         )
 
         return "\n".join(new_evidence_lines)

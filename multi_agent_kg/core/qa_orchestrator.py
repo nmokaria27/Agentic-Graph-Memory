@@ -101,9 +101,24 @@ def _format_triple(triple: Any) -> str:
     # Surface the session date stamped at build time (Fix A) so temporal questions
     # can be answered from the fact itself instead of a disconnected DATE triple.
     meta = getattr(triple, "metadata", None) or {}
-    session_date = meta.get("session_date") if isinstance(meta, dict) else None
+    if not isinstance(meta, dict):
+        meta = {}
+    session_date = meta.get("session_date")
     if session_date:
         base += f" [on {session_date}]"
+    else:
+        # GB-15: surface the provenance document_date so the answerer can
+        # prefer newer facts when evidence lines conflict.
+        prov = meta.get("provenance") or {}
+        refs = prov.get("refs") if isinstance(prov, dict) else None
+        doc_dates = [r.get("document_date") for r in (refs or [])
+                     if isinstance(r, dict) and r.get("document_date")]
+        if doc_dates:
+            base += f" [as of {max(doc_dates)}]"
+    # GB-15: a superseded fact must never be served as current truth — mark it
+    # so the answer prompt's freshness rule can exclude it decisively.
+    if meta.get("superseded_by") or meta.get("superseded_at"):
+        base += " [SUPERSEDED by newer information — do not use as the answer]"
     return base
 
 
@@ -221,6 +236,9 @@ Based ONLY on the knowledge graph data above, provide:
    note the gap in a short neutral phrase.
 3. Do NOT mention domain IDs, expert agents, routing, or the phrase "knowledge graph".
 4. Do NOT speculate, generalize, or add background knowledge.
+4b. FRESHNESS RULE: if evidence lines conflict, use the line with the NEWEST
+   "[on ...]"/"[as of ...]" date and NEVER a line marked SUPERSEDED. State the
+   concrete value itself — never an internal id, variable name, or placeholder.
 5. A coverage score (0.0-1.0)
 6. The specific KG triples that support your answer
 7. Your confidence in the answer (0.0-1.0)
@@ -641,7 +659,7 @@ class FallbackGraphExpert(DomainExpertAgent):
                 for path in all_paths[:8]:
                     for triple in path:
                         evidence_blocks.append(
-                            f"({triple.subject}) -[{triple.relation}]-> ({triple.object})"
+                            _format_triple(triple)
                         )
                     evidence_blocks.append("---")
 
@@ -652,9 +670,7 @@ class FallbackGraphExpert(DomainExpertAgent):
             if triples:
                 evidence_blocks.append(f"LOCAL NEIGHBOURHOOD OF {entity_id}:")
                 for triple in triples[: self.retrieval_config.neighbourhood_display]:
-                    evidence_blocks.append(
-                        f"({triple.subject}) -[{triple.relation}]-> ({triple.object})"
-                    )
+                    evidence_blocks.append(_format_triple(triple))
 
         if not evidence_blocks:
             evidence_blocks.append("No direct query-specific graph evidence was found.")
@@ -679,6 +695,8 @@ Return JSON:
 Rules:
 - Be concise and relation-focused.
 - Do not speculate or use background knowledge.
+- FRESHNESS: on conflicting lines use the NEWEST "[on ...]"/"[as of ...]" date;
+  never use lines marked SUPERSEDED; state concrete values, never internal ids.
 - If evidence is weak, answer only the supported part.
 - Do not mention expert systems, routing, or the phrase "knowledge graph".
 
@@ -1014,7 +1032,7 @@ class QAOrchestrator:
             lines.append(f"\n{entity_id}:")
             for triple in triples[:15]:
                 lines.append(
-                    f"  ({triple.subject}) -[{triple.relation}]-> ({triple.object})"
+                    "  " + _format_triple(triple)
                 )
         return "\n".join(lines) if len(lines) > 1 else ""
 
@@ -1109,7 +1127,7 @@ class QAOrchestrator:
         if relevant_cross:
             lines.append("Relevant cross-domain hints:")
             for triple in relevant_cross[:8]:
-                lines.append(f"  - ({triple.subject}) -[{triple.relation}]-> ({triple.object})")
+                lines.append("  - " + _format_triple(triple))
 
         return "\n".join(lines).strip()
 
@@ -1278,7 +1296,7 @@ Return ONLY the JSON."""
             if relevant_cross:
                 lines.append("Cross-domain relationships:")
                 for triple in relevant_cross[:20]:
-                    lines.append(f"  ({triple.subject}) -[{triple.relation}]-> ({triple.object})")
+                    lines.append("  " + _format_triple(triple))
 
         if len(matched_entities) >= 2:
             for index in range(len(matched_entities)):
