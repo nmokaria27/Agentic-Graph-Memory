@@ -1930,3 +1930,24 @@ Hand-read of all 16 dev answers on the two worst abilities + competitive study.
   2. GB-15 QA-path validation must swap Qwen3 BACK first (breadth baselines are
      Qwen3; model must be held fixed for that comparison), then re-swap.
   3. GB-3 unpauses: retry pair-completion admission under gpt-oss.
+
+### DIAG-LME-FAILURES addendum — decisive attribution  (2026-07-20)
+Offline probe of every knowledge-update miss against its own cached KG:
+| idx | gold | fact in graph? | what QA served |
+|---|---|---|---|
+| 0 | 25:50 | **YES** | rambled about schedule |
+| 2 | the suburbs | **YES** | "a city near Tampa" |
+| 3 | $400,000 | **YES** | leaked placeholder "variable 'loan_amount'" |
+| 4 | three times a week | **YES** | STALE "twice a week" (both in graph) |
+- Governance/commit is CLEAR: approved triples all present (an intermediate
+  "approved-then-vanished" hypothesis was an idx-ordering artifact — noted so
+  nobody rediscovers it). Extraction is CLEAR on these questions.
+- **The knowledge-update gap is entirely answer-layer**: fact selection
+  (stale-over-new despite supersede data), placeholder surfacing, and
+  retrieval misses over graphs that contain the answer. This narrows GB-15/
+  GB-16/GB-17 to THE fix track with high confidence, and means the validation
+  loop is requery-only over the 48 cached KGs.
+- Next concrete step (GB-15 implementation): unify inline QA onto the requery
+  construction; make newest-active-fact selection decisive in answer assembly
+  (supersede filter + document_date ordering exposed to the answerer); ban
+  raw node-id/placeholder strings from final answers.
